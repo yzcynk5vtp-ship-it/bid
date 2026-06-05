@@ -56,7 +56,7 @@ class ProjectDocumentWorkflowServiceTest {
                 bindingGateway
         );
 
-        when(projectRepository.findById(1001L)).thenReturn(Optional.of(Project.builder().id(1001L).build()));
+        when(projectRepository.findById(1001L)).thenReturn(Optional.of(Project.builder().id(1001L).status(Project.Status.PENDING_INITIATION).build()));
     }
 
     @Test

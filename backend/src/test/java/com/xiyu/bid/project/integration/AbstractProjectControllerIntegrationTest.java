@@ -109,15 +109,6 @@ abstract class AbstractProjectControllerIntegrationTest {
         );
 
         projectRepository.save(Project.builder()
-                .name("真实项目列表回归")
-                .tenderId(101L)
-                .status(Project.Status.BIDDING)
-                .managerId(managerUser.getId())
-                .teamMembers(List.of(staffUser.getId(), 602L))
-                .startDate(LocalDateTime.of(2026, 3, 10, 9, 0))
-                .endDate(LocalDateTime.of(2026, 3, 20, 18, 0))
-                .build());
-        projectRepository.save(Project.builder()
                 .name("无权限项目")
                 .tenderId(102L)
                 .status(Project.Status.EVALUATING)
@@ -125,6 +116,15 @@ abstract class AbstractProjectControllerIntegrationTest {
                 .teamMembers(List.of(889L))
                 .startDate(LocalDateTime.of(2026, 3, 12, 9, 0))
                 .endDate(LocalDateTime.of(2026, 3, 22, 18, 0))
+                .build());
+        projectRepository.save(Project.builder()
+                .name("真实项目列表回归")
+                .tenderId(101L)
+                .status(Project.Status.BIDDING)
+                .managerId(managerUser.getId())
+                .teamMembers(List.of(staffUser.getId(), 602L))
+                .startDate(LocalDateTime.of(2026, 3, 10, 9, 0))
+                .endDate(LocalDateTime.of(2026, 3, 20, 18, 0))
                 .build());
 
         Long visibleProjectId = projectRepository.findByNameContainingIgnoreCase("真实项目列表回归")

@@ -76,7 +76,9 @@ public class ProjectEvaluationService {
         entity.setNotes(req.getNotes());
         entity.setUpdatedBy(userId);
         ProjectEvaluation saved = repository.save(entity);
-        advanceProjectStageToResultPending(projectId);
+        if (target == EvaluationSubStage.ANNOUNCED) {
+            advanceProjectStageToResultPending(projectId);
+        }
         log.info("Evaluation sub-stage transitioned project={} {}->{} user={}",
                 projectId, current, target, userId);
         return toDto(saved);
