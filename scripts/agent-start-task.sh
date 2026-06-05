@@ -112,7 +112,7 @@ if [[ ! "$LOCK_DAYS" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-WORKTREES_ROOT="/Users/user/xiyu/worktrees"
+WORKTREES_ROOT="${WORKTREES_ROOT:-$HOME/xiyu/worktrees}"
 WORKTREE_PATH="$WORKTREES_ROOT/$AGENT_NAME-$TASK_SLUG"
 BRANCH_NAME="$AGENT_NAME/$TASK_SLUG"
 
@@ -168,7 +168,7 @@ created_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
 # 安装 git hooks（本地 CI 门禁），新 worktree 自动激活
-(cd "$WORKTREE_PATH" && bash scripts/install-githooks.sh)
+(cd "$WORKTREE_PATH" && bash scripts/install-githooks.sh && bash scripts/install-java-standards-hook.sh)
 
 if [[ "${#LOCK_PATHS[@]}" -gt 0 ]]; then
   for index in "${!LOCK_PATHS[@]}"; do
@@ -200,10 +200,9 @@ fi
 echo
 echo "Next:"
 echo "  cd $WORKTREE_PATH"
-echo "  scripts/install-java-standards-hook.sh"
 echo "  npm run agent:lock-check"
 if [[ "${#LOCK_PATHS[@]}" -gt 0 ]]; then
-  echo "  git add .agent-locks.yml"
+  echo "  git add .agent-locks/"
   echo "  git commit -m \"chore: register initial agent locks for $TASK_SLUG\""
   echo "  git push -u origin $BRANCH_NAME"
 else
