@@ -20,18 +20,24 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/archive")
@@ -137,119 +143,108 @@ public class ProjectArchiveController {
     }
 
     @PostMapping("/export-excel")
-    public ResponseEntity<StreamingResponseBody> exportExcel(
+    public ResponseEntity<byte[]> exportExcel(
             @RequestBody ProjectArchiveQuery query,
-            @RequestParam(required = false) Long userId) {
-        String timestamp = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+            @RequestParam(required = false) Long userId) throws IOException {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
         HttpHeaders headers = new HttpHeaders();
+        // Content-Disposition 必须是 ISO-8859-1，中文用 RFC 5987 编码作 filename* 备份
         headers.add("Content-Disposition",
-                "attachment; filename=\"方案管理-项目档案台账-" + timestamp + ".xlsx\"");
+                "attachment; filename=\"archive-ledger-" + timestamp + ".xlsx\"; "
+                + "filename*=UTF-8''" + java.net.URLEncoder.encode("方案管理-项目档案台账-" + timestamp + ".xlsx", java.nio.charset.StandardCharsets.UTF_8));
         headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 
-        try {
-            List<ProjectArchive> archives = workflowService.getRawArchives(query);
-            Set<Long> exportableProjectIds = archiveExportService.resolveExportableProjectIds();
-            List<Long> allowedProjectIds = archives.stream()
-                    .map(ProjectArchive::getProjectId)
-                    .filter(Objects::nonNull)
-                    .filter(exportableProjectIds::contains)
-                    .toList();
-            String opName = getCurrentOperatorName();
-            String ts = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            if (!allowedProjectIds.isEmpty() && !archives.isEmpty()) {
-                workflowService.recordLog(archives.get(0).getId(), 0L, opName, "导出", "台账导出 " + opName + " " + ts);
-            }
-            ProjectArchiveExportService.ArchiveExportResult result =
-                    archiveExportService.exportProjectArchives(new java.util.HashSet<>(allowedProjectIds));
-            Path tempFile = Files.createTempFile("project_archive_export_", ".xlsx");
-            Files.write(tempFile, result.data());
-
-            StreamingResponseBody body = outputStream -> {
-                try {
-                    Files.copy(tempFile, outputStream);
-                } finally {
-                    try { Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
-                }
-            };
-            return new ResponseEntity<>(body, headers, HttpStatus.OK);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initiate Excel export", e);
+        List<ProjectArchive> archives = workflowService.getRawArchives(query);
+        Set<Long> exportableProjectIds = archiveExportService.resolveExportableProjectIds();
+        // admin 时 exportableProjectIds == null，全部放行；非 admin 时 archive.projectId 已 filter null，Set 也 filter 过 null，contains 安全
+        List<Long> allowedProjectIds = archives.stream()
+                .map(ProjectArchive::getProjectId)
+                .filter(Objects::nonNull)
+                .filter(id -> exportableProjectIds == null || exportableProjectIds.contains(id))
+                .toList();
+        String opName = getCurrentOperatorName();
+        String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        if (!allowedProjectIds.isEmpty() && !archives.isEmpty()) {
+            workflowService.recordLog(archives.get(0).getId(), 0L, opName, "导出", "台账导出 " + opName + " " + ts);
         }
+        ProjectArchiveExportService.ArchiveExportResult result =
+                archiveExportService.exportProjectArchives(new HashSet<>(allowedProjectIds));
+        headers.setContentLength(result.data().length);
+        return new ResponseEntity<>(result.data(), headers, HttpStatus.OK);
     }
 
     /** 导出单个项目全部资料（ZIP 压缩包）。 */
     @GetMapping("/export-zip/{projectId}")
-    public ResponseEntity<StreamingResponseBody> exportSingleProjectArchive(
-            @PathVariable Long projectId) {
-        String timestamp = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-        try {
-            ProjectArchiveQuery query = new ProjectArchiveQuery();
-            // Workaround: no projectId filter in query, get raw archives and filter
-            List<ProjectArchive> allArchives = workflowService.getRawArchives(new ProjectArchiveQuery());
-            List<ProjectArchive> archives = allArchives.stream()
-                    .filter(a -> a.getProjectId().equals(projectId))
-                    .toList();
-            if (archives.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            Set<Long> exportableProjectIds = archiveExportService.resolveExportableProjectIds();
-            if (!exportableProjectIds.contains(projectId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-            // Generate single-project Excel ledger
-            ProjectArchiveExportService.ArchiveExportResult excelResult =
-                    archiveExportService.exportProjectArchives(new java.util.HashSet<>(Set.of(projectId)));
-            Path tempExcelPath = Files.createTempFile("single_archive_", ".xlsx");
-            Files.write(tempExcelPath, excelResult.data());
-
-            StreamingResponseBody body = streamingZipPackager.packageArchives(archives, tempExcelPath);
-            HttpHeaders headers = new HttpHeaders();
-            headers.add(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"project_archive_" + projectId + "_" + timestamp + ".zip\"");
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            return new ResponseEntity<>(body, headers, HttpStatus.OK);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to export single project archive: " + projectId, e);
+    public ResponseEntity<byte[]> exportSingleProjectArchive(
+            @PathVariable Long projectId) throws IOException {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+        ProjectArchiveQuery query = new ProjectArchiveQuery();
+        // Workaround: no projectId filter in query, get raw archives and filter
+        List<ProjectArchive> allArchives = workflowService.getRawArchives(new ProjectArchiveQuery());
+        List<ProjectArchive> archives = allArchives.stream()
+                .filter(a -> a.getProjectId().equals(projectId))
+                .toList();
+        if (archives.isEmpty()) {
+            return ResponseEntity.notFound().build();
         }
+        Set<Long> exportableProjectIds = archiveExportService.resolveExportableProjectIds();
+        // admin 时 exportableProjectIds == null，全部放行；非 admin 才校验项目权限
+        if (exportableProjectIds != null && !exportableProjectIds.contains(projectId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        // Generate single-project Excel ledger
+        ProjectArchiveExportService.ArchiveExportResult excelResult =
+                archiveExportService.exportProjectArchives(new HashSet<>(Set.of(projectId)));
+        Path tempExcelPath = Files.createTempFile("single_archive_", ".xlsx");
+        Files.write(tempExcelPath, excelResult.data());
+        byte[] zipBytes = streamingZipPackager.buildZipBytes(archives, tempExcelPath);
+        HttpHeaders headers = new HttpHeaders();
+        // ISO-8859-1 主 filename + RFC 5987 中文 filename* 备份
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"archive-" + projectId + "-" + timestamp + ".zip\"; "
+                + "filename*=UTF-8''" + java.net.URLEncoder.encode("项目档案-" + projectId + "-" + timestamp + ".zip", java.nio.charset.StandardCharsets.UTF_8));
+        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentLength(zipBytes.length);
+        return new ResponseEntity<>(zipBytes, headers, HttpStatus.OK);
     }
 
 
     @PostMapping("/export-zip")
-    public ResponseEntity<StreamingResponseBody> exportZip(
+    public ResponseEntity<byte[]> exportZip(
             @RequestBody ProjectArchiveQuery query,
-            @RequestParam(required = false) Long userId) {
-        String timestamp = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
-        try {
-            List<ProjectArchive> archives = workflowService.getRawArchives(query);
-            Set<Long> exportableProjectIds = archiveExportService.resolveExportableProjectIds();
-            List<Long> allowedProjectIds = archives.stream()
-                    .map(ProjectArchive::getProjectId)
-                    .filter(Objects::nonNull)
-                    .filter(exportableProjectIds::contains)
-                    .toList();
-            List<ProjectArchive> filteredArchives = archives.stream()
-                    .filter(a -> allowedProjectIds.contains(a.getProjectId()))
-                    .toList();
-            String opName = getCurrentOperatorName();
-            String ts = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            if (!allowedProjectIds.isEmpty() && !archives.isEmpty()) {
-                workflowService.recordLog(archives.get(0).getId(), 0L, opName, "导出", "台账导出 " + opName + " " + ts);
-            }
-
-            ProjectArchiveExportService.ArchiveExportResult excelResult =
-                    archiveExportService.exportProjectArchives(new java.util.HashSet<>(allowedProjectIds));
-            Path tempExcelPath = Files.createTempFile("archive_ledger_", ".xlsx");
-            Files.write(tempExcelPath, excelResult.data());
-
-            StreamingResponseBody body = streamingZipPackager.packageArchives(filteredArchives, tempExcelPath);
-            HttpHeaders headers = new HttpHeaders();
-            headers.add("Content-Disposition",
-                    "attachment; filename=\"方案管理-项目档案文件包-" + timestamp + ".zip\"");
-            headers.setContentType(MediaType.parseMediaType("application/zip"));
-            return new ResponseEntity<>(body, headers, HttpStatus.OK);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initiate ZIP export", e);
+            @RequestParam(required = false) Long userId) throws IOException {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
+        List<ProjectArchive> archives = workflowService.getRawArchives(query);
+        Set<Long> exportableProjectIds = archiveExportService.resolveExportableProjectIds();
+        // admin 时 exportableProjectIds == null，全部放行；非 admin 时 archive.projectId 已 filter null，contains 安全
+        List<Long> allowedProjectIds = archives.stream()
+                .map(ProjectArchive::getProjectId)
+                .filter(Objects::nonNull)
+                .filter(id -> exportableProjectIds == null || exportableProjectIds.contains(id))
+                .toList();
+        List<ProjectArchive> filteredArchives = archives.stream()
+                .filter(a -> allowedProjectIds.contains(a.getProjectId()))
+                .toList();
+        String opName = getCurrentOperatorName();
+        String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        if (!allowedProjectIds.isEmpty() && !archives.isEmpty()) {
+            workflowService.recordLog(archives.get(0).getId(), 0L, opName, "导出", "台账导出 " + opName + " " + ts);
         }
+
+        ProjectArchiveExportService.ArchiveExportResult excelResult =
+                archiveExportService.exportProjectArchives(new HashSet<>(allowedProjectIds));
+        Path tempExcelPath = Files.createTempFile("archive_ledger_", ".xlsx");
+        Files.write(tempExcelPath, excelResult.data());
+
+        byte[] zipBytes = streamingZipPackager.buildZipBytes(filteredArchives, tempExcelPath);
+        HttpHeaders headers = new HttpHeaders();
+        // ISO-8859-1 主 filename + RFC 5987 中文 filename* 备份（Tomcat 会拒绝裸中文）
+        headers.add("Content-Disposition",
+                "attachment; filename=\"archive-bundle-" + timestamp + ".zip\"; "
+                + "filename*=UTF-8''" + java.net.URLEncoder.encode("方案管理-项目档案文件包-" + timestamp + ".zip", java.nio.charset.StandardCharsets.UTF_8));
+        headers.setContentType(MediaType.parseMediaType("application/zip"));
+        headers.setContentLength(zipBytes.length);
+        return new ResponseEntity<>(zipBytes, headers, HttpStatus.OK);
     }
 
     private String inferContentType(String filename) {
@@ -276,7 +271,9 @@ public class ProjectArchiveController {
         try {
             var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getName() != null) return auth.getName();
-        } catch (Exception ignored) {}
+        } catch (IllegalStateException | NullPointerException ignored) {
+            // 无 SecurityContext 时（导出端点被未来异步化时也可能），安全降级到 "系统"
+        }
         return "系统";
     }
 }
