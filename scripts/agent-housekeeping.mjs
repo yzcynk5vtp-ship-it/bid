@@ -10,17 +10,26 @@ import { spawnSync } from 'node:child_process'
 import process from 'node:process'
 
 const ROOT_DIR = '/Users/user/xiyu/xiyu-bid-poc'
-const WORKTREE_DIRS = [
-  '/Users/user/xiyu/xiyu-bid-poc',
-  '/Users/user/.codex/worktrees/85e2/xiyu-bid-poc',
-  '/Users/user/xiyu/worktrees/claude',
-  '/Users/user/xiyu/worktrees/codex',
-  '/Users/user/xiyu/worktrees/cursor',
-  '/Users/user/xiyu/worktrees/gemini',
-  '/Users/user/xiyu/worktrees/integrator',
-  '/Users/user/xiyu/worktrees/qoder',
-  '/Users/user/xiyu/worktrees/trae',
-]
+
+function discoverWorktrees() {
+  // 从 git worktree list 动态获取所有 worktree 路径
+  const result = spawnSync('git', ['worktree', 'list'], {
+    cwd: ROOT_DIR, encoding: 'utf8',
+  })
+  if (result.status !== 0) {
+    console.error('❌ 无法获取 worktree 列表')
+    process.exit(1)
+  }
+  
+  const dirs = []
+  for (const line of result.stdout.trim().split('\n')) {
+    const parts = line.split(/\s+/)
+    if (parts[0]) dirs.push(parts[0])
+  }
+  return dirs
+}
+
+const WORKTREE_DIRS = discoverWorktrees()
 
 const SUBCOMMAND = process.argv[2] || 'status'
 
