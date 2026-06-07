@@ -1,5 +1,4 @@
--- Input: V1053__performance_attachment_file_size.sql
--- Rollback for V1053__performance_attachment_file_size.sql
+-- U1053: Remove file_size column from performance_attachment
 
 ALTER TABLE performance_attachment
     DROP COLUMN file_size;
