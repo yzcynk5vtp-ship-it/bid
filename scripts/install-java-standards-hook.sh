@@ -33,7 +33,15 @@ if [ -f "$TARGET_HOOK" ]; then
   echo "Backed up existing pre-commit hook to: $backup"
 fi
 
-cp "$SOURCE_HOOK" "$TARGET_HOOK"
+# 当 core.hooksPath 指向 .githooks 时，SOURCE_HOOK 与 TARGET_HOOK 为同一文件，
+# macOS cp 在 source==target 时会报 "identical" 并以退出码 1 结束。
+# 使用 -ef 判断硬链接相等性，同文件时跳过复制，避免 set -e 中断安装流程。
+if [[ "$SOURCE_HOOK" -ef "$TARGET_HOOK" ]]; then
+  echo "Source and target are the same file; skipping copy."
+else
+  cp "$SOURCE_HOOK" "$TARGET_HOOK"
+fi
+
 chmod +x "$TARGET_HOOK"
 chmod +x "$SOURCE_HOOK"
 chmod +x "$ROOT_DIR/scripts/agent-worktree-guard.sh"
