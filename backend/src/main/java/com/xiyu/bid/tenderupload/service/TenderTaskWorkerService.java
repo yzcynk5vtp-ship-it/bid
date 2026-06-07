@@ -154,7 +154,7 @@ public class TenderTaskWorkerService {
             if (retryDecision.movedToDlq()) {
                 TenderTaskDlq dlq = TenderTaskDlq.builder()
                         .taskId(task.getId())
-                        .fileId(task.getFile().getId())
+                        .fileId(task.getFile() != null ? task.getFile().getId() : null)
                         .failedAt(LocalDateTime.now())
                         .errorCode(decision.reasonCode())
                         .errorMessage(ex.getMessage())
@@ -222,7 +222,7 @@ public class TenderTaskWorkerService {
     private String toPayload(TenderTask task) {
         Map<String, Object> payload = Map.of(
                 "taskId", task.getId(),
-                "fileId", task.getFile().getId(),
+                "fileId", task.getFile() != null ? task.getFile().getId() : null,
                 "attempts", task.getAttempts(),
                 "status", task.getStatus().name(),
                 "availableAt", String.valueOf(task.getAvailableAt())

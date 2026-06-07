@@ -123,8 +123,12 @@ public class IdempotencyFilter extends OncePerRequestFilter {
                         bodyBytes,
                         requestBodyHash
                 );
-                store.save(cacheKey, snapshot, Duration.ofSeconds(annotation.ttlSeconds()));
-                log.debug("Idempotency cache STORE key={} status={}", cacheKey, status);
+                try {
+                    store.save(cacheKey, snapshot, Duration.ofSeconds(annotation.ttlSeconds()));
+                    log.debug("Idempotency cache STORE key={} status={}", cacheKey, status);
+                } catch (RuntimeException ex) {
+                    log.warn("[idempotency] Failed to cache response for key={}: {}", cacheKey, ex.getMessage());
+                }
             }
             wrappedResponse.copyBodyToResponse();
         }

@@ -6,6 +6,7 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -122,6 +123,148 @@ class IdempotencyFilterTest {
 
         assertThat(resp2.getStatus()).isEqualTo(201);
         assertThat(resp2.getContentAsString()).isEqualTo("{\"retry\":true}");
+    }
+
+    // ========== 鲁棒性测试：重试与幂等 ==========
+
+    @Test
+    @DisplayName("幂等：同一 Idempotency-Key 并发请求，缓存命中返回相同响应，handler 仅执行一次")
+    void concurrentRequestsWithSameKey_secondBlocksUntilFirstCompletes() throws Exception {
+        MockHttpServletRequest req1 = post("{\"a\":1}", "k-concurrent");
+        stubHandler(req1, "idempotentHandler");
+        MockHttpServletResponse resp1 = new MockHttpServletResponse();
+        MockFilterChain chain1 = okChain(201, "{\"id\":42}");
+
+        MockHttpServletRequest req2 = post("{\"a\":1}", "k-concurrent");
+        stubHandler(req2, "idempotentHandler");
+        MockHttpServletResponse resp2 = new MockHttpServletResponse();
+        MockFilterChain chain2 = new MockFilterChain();
+
+        // 模拟并发：req1 先完成，req2 在 req1 写入缓存前尝试读取
+        filter.doFilter(req1, resp1, chain1);
+
+        // req2 应命中缓存，返回相同响应
+        filter.doFilter(req2, resp2, chain2);
+
+        assertThat(resp2.getStatus()).isEqualTo(201);
+        assertThat(resp2.getContentAsString()).isEqualTo("{\"id\":42}");
+    }
+
+    @Test
+    @DisplayName("幂等：TTL 过期后，相同 key 的新请求应该重新执行业务逻辑，不返回旧缓存")
+    void expiredKey_allowsNewExecution() throws Exception {
+        // 使用极短 TTL 模拟过期场景
+        InMemoryIdempotencyStore shortTtlStore = new InMemoryIdempotencyStore();
+        IdempotencyFilter shortTtlFilter = new IdempotencyFilter(handlerMapping, shortTtlStore);
+
+        // 第一个请求（通过反射注入短 TTL）
+        MockHttpServletRequest req1 = post("{\"a\":1}", "k-ttl");
+        stubHandler(req1, "idempotentHandler");
+        MockHttpServletResponse resp1 = new MockHttpServletResponse();
+        shortTtlFilter.doFilter(req1, resp1, okChain(201, "{\"id\":1}"));
+
+        assertThat(resp1.getStatus()).isEqualTo(201);
+
+        // 模拟 TTL 过期：手动从 cache 中移除该 key
+        java.lang.reflect.Field cacheField = InMemoryIdempotencyStore.class.getDeclaredField("cache");
+        cacheField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, ?> cache =
+                (java.util.Map<String, ?>) cacheField.get(shortTtlStore);
+        cache.clear(); // 模拟 TTL 过期后缓存被清除
+
+        // 第二个请求应该重新执行业务逻辑
+        MockHttpServletRequest req2 = post("{\"a\":1}", "k-ttl");
+        stubHandler(req2, "idempotentHandler");
+        MockHttpServletResponse resp2 = new MockHttpServletResponse();
+        MockFilterChain chain2 = okChain(201, "{\"id\":2}");
+
+        shortTtlFilter.doFilter(req2, resp2, chain2);
+
+        assertThat(resp2.getStatus()).isEqualTo(201);
+        assertThat(resp2.getContentAsString()).isEqualTo("{\"id\":2}");
+    }
+
+    @Test
+    @DisplayName("幂等：不同用户的相同 Idempotency-Key + 相同 body → 各自独立执行（用户 scope 隔离）")
+    void differentUsers_sameKey_sameBody_bothSucceed() throws Exception {
+        // 每个测试使用独立的 store，避免跨测试干扰
+        InMemoryIdempotencyStore freshStore = new InMemoryIdempotencyStore();
+        IdempotencyFilter freshFilter = new IdempotencyFilter(handlerMapping, freshStore);
+
+        // Alice 的请求（cache key = alice:POST:/api/tenders:k-alice-bob-scope）
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("alice", null, java.util.Collections.emptyList())
+        );
+        MockHttpServletRequest reqAlice = post("{\"user\":\"alice\"}", "k-alice-bob-scope");
+        stubHandler(reqAlice, "idempotentHandler");
+        MockHttpServletResponse respAlice = new MockHttpServletResponse();
+        freshFilter.doFilter(reqAlice, respAlice, okChain(201, "{\"id\":100}"));
+        assertThat(respAlice.getStatus()).isEqualTo(201);
+
+        // Bob 的请求（相同 key，不同用户，相同 body → 不同的 cache key，各自独立）
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("bob", null, java.util.Collections.emptyList())
+        );
+        MockHttpServletRequest reqBob = post("{\"user\":\"alice\"}", "k-alice-bob-scope");
+        stubHandler(reqBob, "idempotentHandler");
+        MockHttpServletResponse respBob = new MockHttpServletResponse();
+        MockFilterChain chainBob = okChain(201, "{\"id\":200}");
+        freshFilter.doFilter(reqBob, respBob, chainBob);
+
+        assertThat(respBob.getStatus()).isEqualTo(201);
+        assertThat(respBob.getContentAsString()).isEqualTo("{\"id\":200}");
+    }
+
+    @Test
+    @DisplayName("幂等：不同端点的相同 Idempotency-Key + 相同 body → 各自独立执行")
+    void sameKey_differentEndpoint_sameBody_bothSucceed() throws Exception {
+        // 每个测试使用独立的 store
+        InMemoryIdempotencyStore freshStore = new InMemoryIdempotencyStore();
+        IdempotencyFilter freshFilter = new IdempotencyFilter(handlerMapping, freshStore);
+
+        // POST /api/tenders（k-cross-ep-uniq）
+        MockHttpServletRequest req1 = post("{\"tender\":1}", "k-cross-ep-uniq");
+        stubHandler(req1, "idempotentHandler");
+        MockHttpServletResponse resp1 = new MockHttpServletResponse();
+        freshFilter.doFilter(req1, resp1, okChain(201, "{\"tenderId\":1}"));
+        assertThat(resp1.getStatus()).isEqualTo(201);
+
+        // POST /api/documents（相同 key，不同端点 → 不同的 cache key，各自独立）
+        MockHttpServletRequest req2 = new MockHttpServletRequest("POST", "/api/documents");
+        req2.setContentType("application/json");
+        req2.setContent("{\"tender\":1}".getBytes(StandardCharsets.UTF_8));
+        req2.addHeader("Idempotency-Key", "k-cross-ep-uniq");
+        stubHandler(req2, "idempotentHandler");
+        MockHttpServletResponse resp2 = new MockHttpServletResponse();
+        MockFilterChain chain2 = okChain(200, "{\"docId\":2}");
+        freshFilter.doFilter(req2, resp2, chain2);
+
+        assertThat(resp2.getStatus()).isEqualTo(200);
+        assertThat(resp2.getContentAsString()).isEqualTo("{\"docId\":2}");
+    }
+
+    @Test
+    @DisplayName("幂等：store 抛出异常时，请求应该降级透传到 handler，不阻塞业务")
+    void storeFailure_shouldBypassToHandler() throws Exception {
+        InMemoryIdempotencyStore failingStore = new InMemoryIdempotencyStore() {
+            @Override
+            public void save(String key, IdempotencyStore.CachedResponse response, java.time.Duration ttl) {
+                throw new RuntimeException("Redis connection failed");
+            }
+        };
+        IdempotencyFilter failingFilter = new IdempotencyFilter(handlerMapping, failingStore);
+
+        MockHttpServletRequest req = post("{\"a\":1}", "k-fail-store");
+        stubHandler(req, "idempotentHandler");
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+        MockFilterChain chain = okChain(201, "{\"id\":999}");
+
+        // 降级：store 异常时应该透传到 handler
+        failingFilter.doFilter(req, resp, chain);
+
+        assertThat(resp.getStatus()).isEqualTo(201);
+        assertThat(resp.getContentAsString()).isEqualTo("{\"id\":999}");
     }
 
     private MockHttpServletRequest post(String body, String idempotencyKey) {

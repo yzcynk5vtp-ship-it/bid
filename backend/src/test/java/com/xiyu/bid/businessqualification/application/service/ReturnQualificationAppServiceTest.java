@@ -93,6 +93,10 @@ class ReturnQualificationAppServiceTest {
                 "GX-001",
                 "科技局",
                 "张三",
+                "代理机构联系方式",
+                "资质适用范围",
+                "资质审查备注",
+                "持证人姓名",
                 new ValidityPeriod(LocalDate.now().minusYears(1), LocalDate.now().plusYears(1)),
                 new ReminderPolicy(true, 30, null),
                 LoanStatus.BORROWED,
@@ -100,7 +104,7 @@ class ReturnQualificationAppServiceTest {
                 null,
                 "100",
                 null,
-                null,
+                LocalDate.now().plusDays(30),
                 null,
                 List.of()
         );
