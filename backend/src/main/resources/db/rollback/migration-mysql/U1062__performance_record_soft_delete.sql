@@ -1,8 +1,8 @@
--- U1057: Remove soft delete columns from performance_record
+-- Input: V1057__performance_record_soft_delete.sql
+-- Rollback for V1057__performance_record_soft_delete.sql
 
 DROP INDEX idx_perf_deleted ON performance_record;
-
 ALTER TABLE performance_record
-    DROP COLUMN is_deleted,
+    DROP COLUMN deleted,
     DROP COLUMN deleted_at,
     DROP COLUMN deleted_by;

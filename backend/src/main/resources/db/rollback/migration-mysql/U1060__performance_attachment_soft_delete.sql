@@ -1,8 +1,8 @@
--- U1055: Remove soft delete columns from performance_attachment
+-- Input: V1055__performance_attachment_soft_delete.sql
+-- Rollback for V1055__performance_attachment_soft_delete.sql
 
 DROP INDEX idx_attachment_deleted ON performance_attachment;
-
 ALTER TABLE performance_attachment
-    DROP COLUMN is_deleted,
+    DROP COLUMN deleted,
     DROP COLUMN deleted_at,
     DROP COLUMN deleted_by;
