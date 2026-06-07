@@ -21,6 +21,8 @@
     <suppress files=".*/infrastructure/.*\.java" checks="JavadocVariable|MissingJavadocMethod|DesignForExtension"/>
     <!-- Application services: orchestration, Spring-managed singletons -->
     <suppress files=".*/application/.*\.java" checks="JavadocVariable|MissingJavadocMethod|DesignForExtension|FinalParameters|HiddenField"/>
+    <!-- IdempotencyFilter: HandlerMapping.getHandler() declares throws Exception, must catch it -->
+    <suppress files=".*/idempotency/IdempotencyFilter\.java" checks="IllegalCatch"/>
 
     <!--
       Javadoc 历史债 blanket（37k+ pre-existing）。

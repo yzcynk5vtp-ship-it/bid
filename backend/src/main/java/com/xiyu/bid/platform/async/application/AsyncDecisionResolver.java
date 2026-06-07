@@ -5,6 +5,8 @@ import com.xiyu.bid.platform.async.domain.AsyncHandlingDecision;
 import com.xiyu.bid.platform.async.domain.AsyncRetrySchedule;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+
 @Component
 public class AsyncDecisionResolver {
     public AsyncHandlingDecision resolve(
@@ -14,6 +16,7 @@ public class AsyncDecisionResolver {
             AsyncRetrySchedule retrySchedule,
             boolean deadLetterSupported
     ) {
+        Objects.requireNonNull(failureKind, "failureKind");
         return switch (failureKind) {
             case BUSINESS_REJECT -> AsyncHandlingDecision.drop("BUSINESS_REJECT", false);
             case IDEMPOTENT_DUPLICATE -> AsyncHandlingDecision.succeedWithLog("IDEMPOTENT_DUPLICATE");

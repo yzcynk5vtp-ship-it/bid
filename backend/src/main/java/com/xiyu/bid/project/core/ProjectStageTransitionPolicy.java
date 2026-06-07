@@ -99,14 +99,20 @@ public final class ProjectStageTransitionPolicy {
     public sealed interface Decision permits Decision.Allow, Decision.Deny {
         Decision ALLOW = new Allow();
 
-        default boolean allowed() {
-            return this instanceof Allow;
-        }
+        boolean allowed();
 
         record Allow() implements Decision {
+            @Override
+            public boolean allowed() {
+                return true;
+            }
         }
 
         record Deny(String reason) implements Decision {
+            @Override
+            public boolean allowed() {
+                return false;
+            }
         }
     }
 }
