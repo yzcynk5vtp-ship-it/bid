@@ -336,6 +336,15 @@ fi
 # 安装 git hooks（本地 CI 门禁），新 worktree 自动激活
 (cd "$WORKTREE_PATH" && bash scripts/install-githooks.sh && bash scripts/install-java-standards-hook.sh)
 
+# 自动检测并以离线优先方式安装 node 依赖，缩减冷启动时间
+if [[ -f "$WORKTREE_PATH/package.json" ]]; then
+  echo "agent-start-task: package.json detected, running fast offline-first pnpm install..."
+  (
+    cd "$WORKTREE_PATH"
+    pnpm install --prefer-offline --reporter=silent || pnpm install
+  )
+fi
+
 if [[ "${#LOCK_PATHS[@]}" -gt 0 ]]; then
   for index in "${!LOCK_PATHS[@]}"; do
     (
