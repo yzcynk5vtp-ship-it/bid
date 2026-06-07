@@ -63,7 +63,7 @@
       </template>
 
       <!-- 标书审核人：驳回 + 审核通过 -->
-      <template v-if="(perm.canReviewBid || (isAssignedReviewer && !perm.canSubmitBidForReview)) && reviewState === 'reviewing'">
+      <template v-if="perm.canReviewBid && reviewState === 'reviewing'">
         <el-button type="danger" @click="handleReviewBid">驳回</el-button>
         <el-button type="success" :loading="reviewApproving" @click="confirmReviewBid('approve')">审核通过</el-button>
       </template>
@@ -142,10 +142,6 @@ const reviewState = ref(null)        // null | 'reviewing' | 'rejected' | 'appro
 const rejectReasonText = ref('')
 const uploadUrl = computed(() => getApiUrl(`/api/projects/${props.projectId}/documents`))
 const uploadHeaders = computed(() => { const t = userStore?.token; return t ? { Authorization: 'Bearer ' + t } : {} })
-const isAssignedReviewer = computed(() =>
-  bidReviewerId.value != null && userStore.currentUser?.id != null &&
-  Number(userStore.currentUser.id) === Number(bidReviewerId.value)
-)
 
 const qualityCheckRef = ref(null)
 
@@ -205,8 +201,6 @@ async function submitBidForReview() {
   try {
     await projectLifecycleApi.submitBidForReview(props.projectId, { reviewerId: bidReviewerId.value })
     reviewState.value = 'reviewing'
-    const selected = reviewerOptions.value.find(u => u.id === Number(bidReviewerId.value))
-    reviewerName.value = selected?.name || ''
     rejectReasonText.value = ''
     ElMessage.success('已提交标书审核')
   } catch (e) { ElMessage.error(e?.response?.data?.msg || '提交审核失败') }
