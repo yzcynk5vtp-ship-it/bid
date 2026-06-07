@@ -1,0 +1,241 @@
+// Input: multipart Excel upload (11 列), current user operator name
+// Output: per-row success/failure with command payload for downstream create
+// Pos: Application service 编排 + 校验，副作用下沉到 service 层 Excel 解析
+// 维护声明: 仅做 Excel → RowInput 解析 + 行级校验；入库走 CreateQualificationAppService
+package com.xiyu.bid.businessqualification.application.service;
+
+import com.xiyu.bid.businessqualification.application.command.QualificationImportRowResult;
+import com.xiyu.bid.businessqualification.application.command.QualificationUpsertCommand;
+import com.xiyu.bid.businessqualification.infrastructure.persistence.repository.BusinessQualificationJpaRepository;
+import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.FormulaEvaluator;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+
+/**
+ * §4.1.3.4 资质批量导入应用层
+ *
+ * 职责：
+ *  1. 解析上传的 11 列 Excel
+ *  2. 逐行校验（必填/长度/格式/日期/查重）
+ *  3. 对校验通过的行调用 CreateQualificationAppService 入库
+ *  4. 返回行级结果汇总 {success, failed, results[]}
+ *
+ * 失败行不中断整体导入；证书编号已存在则整行跳过。
+ */
+@Service
+@RequiredArgsConstructor
+public class ImportQualificationAppService {
+
+    private static final Pattern PHONE = Pattern.compile("^1[3-9]\\d{9}$");
+    private static final Pattern LANDLINE = Pattern.compile("^(0\\d{2,3})[-]?\\d{7,8}$");
+    private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+
+    private final BusinessQualificationJpaRepository jpaRepository;
+    private final CreateQualificationAppService createAppService;
+
+    public record ImportSummary(
+            int total,
+            int success,
+            int failed,
+            List<QualificationImportRowResult> results
+    ) {
+        public static ImportSummary empty() {
+            return new ImportSummary(0, 0, 0, new ArrayList<>());
+        }
+    }
+
+    /**
+     * 解析 + 校验 + 入库（事务内）。失败行不抛异常。
+     */
+    @Transactional
+    public ImportSummary importFromExcel(MultipartFile file, String operatorName) throws IOException {
+List<RowInput> rows;
+        try (Workbook wb = new XSSFWorkbook(file.getInputStream())) {
+            rows = parse(wb);
+        }
+if (rows.isEmpty()) {
+            return ImportSummary.empty();
+        }
+        ImportSummary summary = new ImportSummary(rows.size(), 0, 0, new ArrayList<>(rows.size()));
+        for (RowInput row : rows) {
+            QualificationImportRowResult result = processRow(row, operatorName);
+            summary.results().add(result);
+            if (result.isSuccess()) {
+                summary = new ImportSummary(summary.total(), summary.success() + 1, summary.failed(), summary.results());
+            } else {
+                summary = new ImportSummary(summary.total(), summary.success(), summary.failed() + 1, summary.results());
+            }
+        }
+        return summary;
+    }
+
+    private QualificationImportRowResult processRow(RowInput row, String operatorName) {
+        // 必填校验
+        if (isBlank(row.name())) return fail(row.rowNumber(), row.certificateNo(), "证书名称不能为空");
+        if (isBlank(row.issuer())) return fail(row.rowNumber(), row.certificateNo(), "认证机构不能为空");
+        if (isBlank(row.certificateNo())) return fail(row.rowNumber(), row.certificateNo(), "证书编号不能为空");
+        if (isBlank(row.issueDate())) return fail(row.rowNumber(), row.certificateNo(), "发证日期不能为空");
+        if (isBlank(row.expiryDate())) return fail(row.rowNumber(), row.certificateNo(), "证书有效期不能为空");
+        if (isBlank(row.agency())) return fail(row.rowNumber(), row.certificateNo(), "代理机构不能为空");
+        if (isBlank(row.agencyContact())) return fail(row.rowNumber(), row.certificateNo(), "代理联系方式不能为空");
+        if (isBlank(row.certScope())) return fail(row.rowNumber(), row.certificateNo(), "认证范围不能为空");
+        if (isBlank(row.attachmentFileName())) return fail(row.rowNumber(), row.certificateNo(), "附件文件名不能为空");
+
+        // 长度校验
+        if (row.name().length() > 200) return fail(row.rowNumber(), row.certificateNo(), "证书名称超过200字符");
+        if (row.level() != null && row.level().length() > 50) {
+            return fail(row.rowNumber(), row.certificateNo(), "等级超过50字符");
+        }
+        if (row.issuer().length() > 200) return fail(row.rowNumber(), row.certificateNo(), "认证机构超过200字符");
+        if (row.certificateNo().length() > 120) return fail(row.rowNumber(), row.certificateNo(), "证书编号超过120字符");
+        if (row.agency().length() > 200) return fail(row.rowNumber(), row.certificateNo(), "代理机构超过200字符");
+        if (row.certScope().length() > 1000) return fail(row.rowNumber(), row.certificateNo(), "认证范围超过1000字符");
+        if (row.certReviewNote() != null && row.certReviewNote().length() > 200) {
+            return fail(row.rowNumber(), row.certificateNo(), "证书审核提醒超过200字符");
+        }
+
+        // 联系方式正则
+        if (!isValidContact(row.agencyContact())) {
+            return fail(row.rowNumber(), row.certificateNo(), "代理联系方式格式不正确");
+        }
+
+        // 日期解析 + 顺序
+        java.time.LocalDate issueDate, expiryDate;
+        try {
+            issueDate = java.time.LocalDate.parse(row.issueDate().trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            return fail(row.rowNumber(), row.certificateNo(), "发证日期格式错误（应为 YYYY-MM-DD）");
+        }
+        try {
+            expiryDate = java.time.LocalDate.parse(row.expiryDate().trim());
+        } catch (java.time.format.DateTimeParseException e) {
+            return fail(row.rowNumber(), row.certificateNo(), "证书有效期格式错误（应为 YYYY-MM-DD）");
+        }
+        if (!expiryDate.isAfter(issueDate)) {
+            return fail(row.rowNumber(), row.certificateNo(), "证书有效期须晚于发证日期");
+        }
+
+        // 证书编号查重
+        if (jpaRepository.existsByCertificateNo(row.certificateNo().trim())) {
+            return fail(row.rowNumber(), row.certificateNo(), "证书编号已存在");
+        }
+
+        // 附件命名格式：QUAL_{证书编号}_{序号}_{文件名}.{扩展名}
+        if (!row.attachmentFileName().startsWith("QUAL_" + row.certificateNo().trim() + "_")) {
+            return fail(row.rowNumber(), row.certificateNo(), "附件文件名命名格式不符（应 QUAL_" + row.certificateNo().trim() + "_NN_xxx.ext）");
+        }
+
+        // 入库
+        String operator = (operatorName == null || operatorName.isBlank()) ? "系统导入" : operatorName;
+        QualificationUpsertCommand command = QualificationUpsertCommand.builder()
+                .name(row.name().trim())
+                .level(isBlank(row.level()) ? null : row.level().trim())
+                .subjectType(com.xiyu.bid.businessqualification.domain.valueobject.QualificationSubjectType.COMPANY)
+                .subjectName(operator)
+                .category(com.xiyu.bid.businessqualification.domain.valueobject.QualificationCategory.OTHER)
+                .certificateNo(row.certificateNo().trim())
+                .issuer(row.issuer().trim())
+                .agency(row.agency().trim())
+                .agencyContact(row.agencyContact().trim())
+                .certScope(row.certScope().trim())
+                .certReviewNote(isBlank(row.certReviewNote()) ? null : row.certReviewNote().trim())
+                .holderName(operator)
+                .issueDate(issueDate)
+                .expiryDate(expiryDate)
+                .reminderEnabled(true)
+                .reminderDays(30)
+                .fileUrl(row.attachmentFileName().trim())
+                .attachments(List.of())
+                .build();
+
+        try {
+            createAppService.create(command);
+            return QualificationImportRowResult.success(row.rowNumber(), row.certificateNo().trim(), command);
+        } catch (RuntimeException e) {
+            return fail(row.rowNumber(), row.certificateNo(), "入库失败：" + e.getMessage());
+        }
+    }
+
+    /* ---------------- Excel 解析 ---------------- */
+
+    public record RowInput(
+            int rowNumber,
+            String name,
+            String level,
+            String issuer,
+            String certificateNo,
+            String issueDate,
+            String expiryDate,
+            String agency,
+            String agencyContact,
+            String certScope,
+            String certReviewNote,
+            String attachmentFileName
+    ) {}
+
+    private static List<RowInput> parse(Workbook wb) {
+        List<RowInput> rows = new ArrayList<>();
+        Sheet sheet = wb.getSheetAt(0);
+        if (sheet == null) return rows;
+        DataFormatter formatter = new DataFormatter();
+        FormulaEvaluator evaluator = wb.getCreationHelper().createFormulaEvaluator();
+        // 跳过表头（行 0），从行 1 开始；行号 = 物理行号 + 1（人类阅读用 1-based）
+        for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) continue;
+            String name = readCell(row.getCell(0), formatter, evaluator);
+            String level = readCell(row.getCell(1), formatter, evaluator);
+            String issuer = readCell(row.getCell(2), formatter, evaluator);
+            String certNo = readCell(row.getCell(3), formatter, evaluator);
+            String issueDate = readCell(row.getCell(4), formatter, evaluator);
+            String expiryDate = readCell(row.getCell(5), formatter, evaluator);
+            String agency = readCell(row.getCell(6), formatter, evaluator);
+            String agencyContact = readCell(row.getCell(7), formatter, evaluator);
+            String certScope = readCell(row.getCell(8), formatter, evaluator);
+            String certReviewNote = readCell(row.getCell(9), formatter, evaluator);
+            String attachmentFileName = readCell(row.getCell(10), formatter, evaluator);
+            // 完全空行跳过
+            if (isBlank(name) && isBlank(certNo) && isBlank(issuer)) continue;
+            rows.add(new RowInput(r + 1, name, level, issuer, certNo, issueDate, expiryDate, agency, agencyContact, certScope, certReviewNote, attachmentFileName));
+        }
+        return rows;
+    }
+
+    private static String readCell(Cell cell, DataFormatter formatter, FormulaEvaluator evaluator) {
+        if (cell == null) return null;
+        if (cell.getCellType() == CellType.FORMULA) {
+            return formatter.formatCellValue(cell, evaluator);
+        }
+        return formatter.formatCellValue(cell);
+    }
+
+    /* ---------------- helpers ---------------- */
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private static boolean isValidContact(String value) {
+        if (value == null) return false;
+        String v = value.trim();
+        return PHONE.matcher(v).matches() || LANDLINE.matcher(v).matches() || EMAIL.matcher(v).matches();
+    }
+
+    private static QualificationImportRowResult fail(int rowNumber, String certificateNo, String reason) {
+        return QualificationImportRowResult.failure(rowNumber, certificateNo == null ? "" : certificateNo, reason);
+    }
+}

@@ -1,5 +1,6 @@
 package com.xiyu.bid.businessqualification.infrastructure.persistence.repository;
 
+import com.xiyu.bid.businessqualification.domain.valueobject.QualificationStatus;
 import com.xiyu.bid.businessqualification.infrastructure.persistence.entity.BusinessQualificationEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -14,5 +15,10 @@ public interface BusinessQualificationJpaRepository extends JpaRepository<Busine
      * 排除已下架（status=RETIRED）的证书。
      */
     List<BusinessQualificationEntity> findByExpiryDateLessThanEqualAndStatusNot(
-            LocalDate expiryDate, com.xiyu.bid.businessqualification.domain.valueobject.QualificationStatus excludedStatus);
+            LocalDate expiryDate, QualificationStatus excludedStatus);
+
+    /**
+     * §4.1.3.4 蓝图：按证书编号查重（导入时行级校验）。
+     */
+    boolean existsByCertificateNo(String certificateNo);
 }
