@@ -1,17 +1,23 @@
 package com.xiyu.bid.casework.controller;
 
+import com.xiyu.bid.casework.application.service.CaseExportAppService;
 import com.xiyu.bid.casework.application.CasePrecipitationAppService;
 import com.xiyu.bid.casework.application.service.CaseReferenceAppService;
 import com.xiyu.bid.casework.application.service.KnowledgeCaseCommandAppService;
 import com.xiyu.bid.casework.application.service.KnowledgeCaseQueryAppService;
 import com.xiyu.bid.casework.application.service.KnowledgeCaseRecommendAppService;
 import com.xiyu.bid.casework.domain.model.KnowledgeCaseMatchScore;
+import com.xiyu.bid.casework.dto.CaseExportQuery;
 import com.xiyu.bid.casework.dto.CaseReferenceRecordDTO;
 import com.xiyu.bid.casework.dto.KnowledgeCaseResponse;
 import com.xiyu.bid.casework.infrastructure.KnowledgeCase;
 import com.xiyu.bid.service.ProjectAccessScopeService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -23,6 +29,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +45,8 @@ public class KnowledgeCaseController {
     private final KnowledgeCaseRecommendAppService recommendAppService;
     private final CaseReferenceAppService caseReferenceAppService;
     private final CasePrecipitationAppService precipitationAppService;
+    private final CaseExportAppService caseExportZipAppService;
+    private final com.xiyu.bid.casework.application.CaseExportAppService caseExportExcelAppService;
     private final ProjectAccessScopeService projectAccessScopeService;
 
     @GetMapping
@@ -131,6 +142,61 @@ public class KnowledgeCaseController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
     public ResponseEntity<List<CaseReferenceRecordDTO>> getReferenceRecords(@PathVariable Long id) {
         return ResponseEntity.ok(caseReferenceAppService.getReferenceRecords(id));
+    }
+
+    @PostMapping("/export-excel")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    public void exportCasesAsExcel(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String scoringCategory,
+            @RequestParam(required = false) String customerType,
+            @RequestParam(required = false) String projectTypes,
+            @RequestParam(required = false) String uploadDateFrom,
+            @RequestParam(required = false) String uploadDateTo,
+            @RequestParam(required = false) String closeDateFrom,
+            @RequestParam(required = false) String closeDateTo,
+            @RequestParam(required = false) String statuses,
+            HttpServletResponse response) throws IOException {
+
+        var result = caseExportExcelAppService.exportCasesAsExcel(
+                keyword, scoringCategory, customerType, parseList(projectTypes),
+                uploadDateFrom, uploadDateTo, closeDateFrom, closeDateTo, parseList(statuses));
+
+        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + java.net.URLEncoder.encode(result.filename(), java.nio.charset.StandardCharsets.UTF_8) + "\"");
+        response.getOutputStream().write(result.data());
+        response.getOutputStream().flush();
+    }
+
+    @PostMapping("/export-zip")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    public ResponseEntity<byte[]> exportCasesAsZip(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String scoringCategory,
+            @RequestParam(required = false) String customerType,
+            @RequestParam(required = false) String projectTypes,
+            @RequestParam(required = false) String uploadDateFrom,
+            @RequestParam(required = false) String uploadDateTo,
+            @RequestParam(required = false) String closeDateFrom,
+            @RequestParam(required = false) String closeDateTo,
+            @RequestParam(required = false) String statuses,
+            @RequestParam(required = false) String sortBy) {
+        String operatorName = resolveCurrentUserName();
+        CaseExportQuery query = new CaseExportQuery(
+                keyword, scoringCategory, customerType, parseList(projectTypes),
+                parseList(statuses), uploadDateFrom, uploadDateTo,
+                closeDateFrom, closeDateTo, sortBy);
+
+        var result = caseExportZipAppService.exportCases(query, operatorName);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/zip"));
+        headers.setContentLength(result.zipBytes().length);
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + URLEncoder.encode(result.zipFileName(), StandardCharsets.UTF_8) + "\"");
+
+        return new ResponseEntity<>(result.zipBytes(), headers, HttpStatus.OK);
     }
 
 
