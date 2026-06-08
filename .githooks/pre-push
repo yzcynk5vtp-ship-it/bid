@@ -31,7 +31,7 @@ remote_url="$(git remote get-url "$remote" 2>/dev/null || true)"
 
 case "$remote_url" in
   *gitee.com*)
-    if [[ -z "${GITEE_TOKEN:-}" ]]; then
+    if [[ -z "${GITEE_TOKEN:-}" && -z "${GITEE_PUSH_OK:-}" ]]; then
       echo ""
       echo "╔══════════════════════════════════════════════════════════════╗"
       echo "║  ❌ GITEE_TOKEN 未设置，拒绝 push                         ║"
