@@ -88,6 +88,7 @@ class ReturnQualificationAppServiceTest {
         return BusinessQualification.create(
                 9L,
                 "高新技术企业证书",
+                "AAA",
                 QualificationSubject.of(QualificationSubjectType.COMPANY, "西域科技"),
                 QualificationCategory.PRODUCT,
                 "GX-001",

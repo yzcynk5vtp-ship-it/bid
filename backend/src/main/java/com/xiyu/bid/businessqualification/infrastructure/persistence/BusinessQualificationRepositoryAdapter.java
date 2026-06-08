@@ -77,6 +77,11 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
         return qualificationJpaRepository.existsById(id);
     }
 
+    @Override
+    public boolean existsByCertificateNo(String certificateNo) {
+        return qualificationJpaRepository.existsByCertificateNo(certificateNo);
+    }
+
     private boolean matches(BusinessQualification item, QualificationListCriteria criteria) {
         if (criteria == null) {
             return true;
@@ -157,6 +162,7 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
         return BusinessQualification.create(
                 entity.getId(),
                 entity.getName(),
+                entity.getLevel(),
                 QualificationSubject.of(entity.getSubjectType(), entity.getSubjectName()),
                 entity.getCategory(),
                 entity.getCertificateNo(),

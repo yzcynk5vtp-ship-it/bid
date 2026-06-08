@@ -36,7 +36,7 @@
             <el-input v-model="form.name" maxlength="200" placeholder="如：ISO 9001 质量管理体系认证" data-testid="qf-name" />
           </el-form-item>
           <el-form-item label="等级" prop="level">
-            <el-input v-model="form.level" maxlength="50" placeholder="如: AAA级（非必填）" data-testid="qf-level" />
+            <el-input v-model="form.level" maxlength="50" placeholder="如: AAA级" data-testid="qf-level" />
           </el-form-item>
           <el-form-item label="认证机构" prop="issuer">
             <el-input v-model="form.issuer" maxlength="200" placeholder="发证/认证机构" data-testid="qf-issuer" />
@@ -66,7 +66,7 @@
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-divider content-position="left">补充信息（非必填）</el-divider>
+          <el-divider content-position="left">补充信息</el-divider>
           <el-form-item label="持证人" prop="holderName">
             <el-input v-model="form.holderName" maxlength="120" placeholder="证书持有人姓名" data-testid="qf-holderName" />
           </el-form-item>
@@ -91,8 +91,8 @@
           </el-form-item>
         </el-col>
       </el-row>
-      <el-divider content-position="left">附件（选填）</el-divider>
-      <el-form-item label="证书附件">
+      <el-divider content-position="left">附件（必填）</el-divider>
+      <el-form-item label="证书附件" prop="attachment">
         <el-upload
           :auto-upload="false"
           :limit="1"
@@ -121,6 +121,7 @@ import { ref, reactive, watch } from 'vue'
 import { ElMessage, ElNotification } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import http from '@/api/client'
+import { useQualFormRules } from './useQualFormRules'
 
 const CONTACT_REGEX = /^(1[3-9]\d{9}|(0\d{2,3})[-]?\d{7,8}|[^\s@]+@[^\s@]+\.[^\s@]+)$/
 
@@ -141,39 +142,7 @@ const form = reactive({
   subjectType: 'COMPANY', subjectName: '西域', category: 'LICENSE'
 })
 
-// 4.1.3.1 必填规则：5 个核心字段必填，6 个非必填
-// 联系方式格式：非必填但若填必须符合手机/固话/邮箱
-const formRules = {
-  name: [{ required: true, message: '请输入证书名称', trigger: 'blur' }],
-  issuer: [{ required: true, message: '请输入认证机构', trigger: 'blur' }],
-  certificateNo: [{ required: true, message: '请输入证书编号', trigger: 'blur' }],
-  issueDate: [{ required: true, message: '请选择发证日期', trigger: 'change' }],
-  expiryDate: [
-    { required: true, message: '请选择证书有效期', trigger: 'change' },
-    {
-      validator: (rule, value, callback) => {
-        if (value && form.issueDate && value <= form.issueDate) {
-          callback(new Error('证书有效期必须晚于发证日期'))
-        } else {
-          callback()
-        }
-      },
-      trigger: 'change'
-    }
-  ],
-  agencyContact: [
-    {
-      validator: (rule, value, callback) => {
-        if (value && !CONTACT_REGEX.test(value)) {
-          callback(new Error('请输入有效的手机号、固话或邮箱'))
-        } else {
-          callback()
-        }
-      },
-      trigger: 'blur'
-    }
-  ]
-}
+const { rules: formRules } = useQualFormRules(form, certFile, editingId)
 
 watch(() => props.modelValue, (v) => {
   visible.value = v

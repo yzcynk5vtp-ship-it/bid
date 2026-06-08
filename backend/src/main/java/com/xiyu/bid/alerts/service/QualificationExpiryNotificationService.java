@@ -237,7 +237,7 @@ public class QualificationExpiryNotificationService {
                 new com.xiyu.bid.businessqualification.domain.valueobject.ReminderPolicy(
                         e.isReminderEnabled(), e.getReminderDays(), e.getLastRemindedAt());
         return com.xiyu.bid.businessqualification.domain.model.BusinessQualification.create(
-                e.getId(), e.getName(), subject, e.getCategory(),
+                e.getId(), e.getName(), e.getLevel(), subject, e.getCategory(),
                 e.getCertificateNo(), e.getIssuer(), e.getAgency(), e.getAgencyContact(),
                 e.getCertScope(), e.getCertReviewNote(), e.getHolderName(),
                 validity, policy,

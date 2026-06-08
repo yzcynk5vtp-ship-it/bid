@@ -193,6 +193,9 @@ public class QualificationController {
         if (dto.getSubjectName() != null) dto.setSubjectName(InputSanitizer.sanitizeString(dto.getSubjectName(), 200));
         if (dto.getCertificateNo() != null) dto.setCertificateNo(InputSanitizer.sanitizeString(dto.getCertificateNo(), 120));
         if (dto.getIssuer() != null) dto.setIssuer(InputSanitizer.sanitizeString(dto.getIssuer(), 200));
+        if (dto.getAgency() != null) dto.setAgency(InputSanitizer.sanitizeString(dto.getAgency(), 200));
+        if (dto.getAgencyContact() != null) dto.setAgencyContact(InputSanitizer.sanitizeString(dto.getAgencyContact(), 200));
+        if (dto.getCertScope() != null) dto.setCertScope(InputSanitizer.sanitizeString(dto.getCertScope(), 1000));
         if (dto.getHolderName() != null) dto.setHolderName(InputSanitizer.sanitizeString(dto.getHolderName(), 120));
         if (dto.getRetireReason() != null) dto.setRetireReason(InputSanitizer.sanitizeString(dto.getRetireReason(), 500));
         if (dto.getFileUrl() != null) dto.setFileUrl(InputSanitizer.sanitizeString(dto.getFileUrl(), 500));
