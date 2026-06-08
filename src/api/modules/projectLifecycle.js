@@ -23,7 +23,7 @@ export const projectLifecycleApi = {
 
   // WS-A initiation
   getInitiation(id) {
-    return httpClient.get(`${base(id)}/initiation`)
+    return httpClient.get(`${base(id)}/initiation`, { skipGlobalErrorMessage: true })
   },
   submitInitiation(id, payload) {
     return httpClient.post(`${base(id)}/initiation`, payload)
@@ -63,7 +63,7 @@ export const projectLifecycleApi = {
 
   // WS-C evaluation
   getEvaluation(id) {
-    return httpClient.get(`${base(id)}/evaluation`)
+    return httpClient.get(`${base(id)}/evaluation`, { skipGlobalErrorMessage: true })
   },
   transitionEvaluationSubStage(id, payload) {
     return httpClient.patch(`${base(id)}/evaluation/sub-stage`, payload)
