@@ -49,6 +49,9 @@ public class PersonnelEducationEntity {
     @Column(name = "major", length = 100)
     private String major;
 
+    @Column(name = "is_highest_education_school")
+    private boolean isHighestEducationSchool;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

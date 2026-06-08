@@ -41,6 +41,7 @@ public class CreatePersonnelAppService {
                 command.technicalTitle(),
                 PersonnelStatus.ACTIVE,
                 command.attachmentUrl(),
+                command.remark(),
                 certs,
                 educations
         );

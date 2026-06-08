@@ -71,6 +71,9 @@ public class PersonnelEntity {
     @Column(name = "attachment_url", length = 500)
     private String attachmentUrl;
 
+    @Column(length = 500)
+    private String remark;
+
     @Column(name = "created_by")
     private Long createdBy;
 

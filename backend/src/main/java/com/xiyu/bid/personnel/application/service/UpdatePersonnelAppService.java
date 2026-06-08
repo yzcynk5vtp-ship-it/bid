@@ -63,6 +63,7 @@ public class UpdatePersonnelAppService {
                         command.phone(),
                         command.education(),
                         command.technicalTitle(),
+                        command.remark(),
                         newCertificates,
                         newEducations
                 );

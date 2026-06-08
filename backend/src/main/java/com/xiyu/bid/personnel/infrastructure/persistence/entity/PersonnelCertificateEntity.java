@@ -56,6 +56,15 @@ public class PersonnelCertificateEntity {
     @Column(name = "attachment_url", length = 500)
     private String attachmentUrl;
 
+    @Column(length = 50)
+    private String title;
+
+    @Column(name = "is_permanent")
+    private boolean isPermanent;
+
+    @Column(length = 500)
+    private String remark;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

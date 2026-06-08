@@ -88,7 +88,7 @@ class PersonnelImportExecutor {
                     p.departmentCode(), p.departmentName(),
                     row.gender(), row.entryDate(), row.birthDate(),
                     row.phone(), row.education(), row.technicalTitle(),
-                    p.status(), p.attachmentUrl(),
+                    p.status(), p.attachmentUrl(), p.remark(),
                     certs, edus,
                     p.createdAt(), LocalDateTime.now()
             );
@@ -106,6 +106,7 @@ class PersonnelImportExecutor {
                     row.education(),
                     row.technicalTitle(),
                     PersonnelStatus.ACTIVE,
+                    null,
                     null,
                     List.of(),
                     List.of()
@@ -135,7 +136,8 @@ class PersonnelImportExecutor {
                         row.endDate(),
                         row.highestEducation(),
                         row.studyForm(),
-                        row.major()
+                        row.major(),
+                        false
                 );
                 personnelRepository.addEducation(personnelId, education);
             } catch (RuntimeException e) {
@@ -169,6 +171,9 @@ class PersonnelImportExecutor {
                         certType,
                         row.issueDate(),
                         row.expiryDate(),
+                        null,
+                        null,
+                        false,
                         null
                 );
                 personnelRepository.addCertificate(personnelId, certificate);

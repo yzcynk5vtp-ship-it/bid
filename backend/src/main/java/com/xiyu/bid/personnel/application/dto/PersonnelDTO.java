@@ -23,6 +23,7 @@ public record PersonnelDTO(
         String technicalTitle,
         PersonnelStatus status,
         String attachmentUrl,
+        String remark,
         List<CertificateDTO> certificates,
         List<EducationDTO> educations,       // 新增：教育经历多条
         int totalProjects,
@@ -41,6 +42,7 @@ public record PersonnelDTO(
             LocalDate endDate,
             String highestEducation,
             String studyForm,
-            String major
+            String major,
+            boolean isHighestEducationSchool
     ) {}
 }

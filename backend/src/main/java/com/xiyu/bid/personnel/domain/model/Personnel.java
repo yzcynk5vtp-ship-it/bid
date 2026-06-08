@@ -22,6 +22,7 @@ public record Personnel(
         String technicalTitle,
         PersonnelStatus status,
         String attachmentUrl,
+        String remark,
         List<Certificate> certificates,
         List<Education> educations,
         LocalDateTime createdAt,
@@ -38,34 +39,34 @@ public record Personnel(
             String departmentCode, String departmentName,
             String gender, LocalDate entryDate, LocalDate birthDate, String phone,
             String education, String technicalTitle,
-            PersonnelStatus status, String attachmentUrl,
+            PersonnelStatus status, String attachmentUrl, String remark,
             List<Certificate> certificates,
             List<Education> educations
     ) {
         return new Personnel(id, name, employeeNumber, departmentCode,
                 departmentName, gender, entryDate, birthDate, phone, education, technicalTitle,
-                status, attachmentUrl, certificates, educations,
+                status, attachmentUrl, remark, certificates, educations,
                 LocalDateTime.now(), LocalDateTime.now());
     }
 
     public Personnel withCertificates(List<Certificate> updatedCerts) {
         return new Personnel(id, name, employeeNumber, departmentCode,
                 departmentName, gender, entryDate, birthDate, phone, education, technicalTitle,
-                status, attachmentUrl, updatedCerts, educations,
+                status, attachmentUrl, remark, updatedCerts, educations,
                 createdAt, LocalDateTime.now());
     }
 
     public Personnel withEducations(List<Education> updatedEducations) {
         return new Personnel(id, name, employeeNumber, departmentCode,
                 departmentName, gender, entryDate, birthDate, phone, education, technicalTitle,
-                status, attachmentUrl, certificates, updatedEducations,
+                status, attachmentUrl, remark, certificates, updatedEducations,
                 createdAt, LocalDateTime.now());
     }
 
     public Personnel withStatus(PersonnelStatus newStatus) {
         return new Personnel(id, name, employeeNumber, departmentCode,
                 departmentName, gender, entryDate, birthDate, phone, education, technicalTitle,
-                newStatus, attachmentUrl, certificates, educations,
+                newStatus, attachmentUrl, remark, certificates, educations,
                 createdAt, LocalDateTime.now());
     }
 
@@ -77,7 +78,7 @@ public record Personnel(
         return new Personnel(
                 id, name, newEmployeeNumber, departmentCode, departmentName,
                 gender, entryDate, birthDate, phone, education, technicalTitle,
-                status, attachmentUrl, certificates, educations,
+                status, attachmentUrl, remark, certificates, educations,
                 createdAt, LocalDateTime.now()
         );
     }
@@ -114,6 +115,7 @@ public record Personnel(
             String newPhone,
             String newEducation,
             String newTechnicalTitle,
+            String newRemark,
             List<Certificate> newCertificates,
             List<Education> newEducations
     ) {
@@ -131,6 +133,7 @@ public record Personnel(
                 newTechnicalTitle,
                 status,
                 attachmentUrl,
+                newRemark,
                 newCertificates,
                 newEducations,
                 createdAt,
