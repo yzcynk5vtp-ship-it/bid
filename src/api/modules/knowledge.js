@@ -459,6 +459,69 @@ export const casesApi = {
     return response
   },
 
+  async exportZip(params = {}) {
+    const queryParams = {
+      keyword: params.keyword || undefined,
+      scoringCategory: params.scoringCategory || undefined,
+      customerType: params.customerType || undefined,
+      projectTypes: Array.isArray(params.projectTypes) && params.projectTypes.length > 0
+        ? params.projectTypes.join(',') : undefined,
+      uploadDateFrom: params.uploadDateFrom || undefined,
+      uploadDateTo: params.uploadDateTo || undefined,
+      closeDateFrom: params.closeDateFrom || undefined,
+      closeDateTo: params.closeDateTo || undefined,
+      statuses: Array.isArray(params.statuses) && params.statuses.length > 0
+        ? params.statuses.join(',') : undefined,
+      sortBy: params.sortBy || 'created'
+    }
+    const response = await httpClient.post('/api/cases/export-zip', null, {
+      params: queryParams,
+      responseType: 'blob'
+    })
+    return response?.data || response
+  },
+
+  async exportExcel(params = {}) {
+    const query = {
+      keyword: params.keyword || undefined,
+      scoringCategory: params.scoringCategory || undefined,
+      customerType: params.customerType || undefined,
+      projectTypes: Array.isArray(params.projectTypes) && params.projectTypes.length > 0
+        ? params.projectTypes.join(',') : undefined,
+      uploadDateFrom: params.uploadDateFrom || undefined,
+      uploadDateTo: params.uploadDateTo || undefined,
+      closeDateFrom: params.closeDateFrom || undefined,
+      closeDateTo: params.closeDateTo || undefined,
+      statuses: Array.isArray(params.statuses) && params.statuses.length > 0
+        ? params.statuses.join(',') : undefined
+    }
+    const response = await httpClient.post('/api/cases/export-excel', null, {
+      params: query,
+      responseType: 'blob'
+    })
+    const blob = response?.data
+    if (blob && blob instanceof Blob) {
+      const contentDisposition = response?.headers?.['content-disposition']
+      let filename = '案例库台账.xlsx'
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename[^;=\n]*=(?:(\\?['"])(.*?)\1|[^;\n]*)/)
+        if (match && match[2]) {
+          filename = decodeURIComponent(match[2])
+        }
+      }
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      return { success: true, filename }
+    }
+    return { success: false }
+  },
+
 }
 
 export const templatesApi = {

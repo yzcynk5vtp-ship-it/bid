@@ -47,6 +47,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch"><el-icon class="mr-1"><Search /></el-icon>筛选</el-button>
           <el-button @click="handleReset"><el-icon class="mr-1"><Refresh /></el-icon>重置</el-button>
+          <el-button type="warning" @click="handleExportZip" :loading="exportLoading"><el-icon class="mr-1"><Download /></el-icon>📦 导出文件包</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -86,7 +87,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { Grid, Search, Refresh, Link, Document } from '@element-plus/icons-vue'
+import { Grid, Search, Refresh, Link, Document, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import httpClient from '@/api/client.js'
 import { casesApi } from '@/api/modules/knowledge.js'
@@ -101,7 +102,7 @@ const canManage = computed(() => { const r = userStore.currentUser?.role; return
 const filters = reactive({ keyword: '', scoringCategory: '', customerType: '', projectTypes: [], statuses: [], sortBy: 'created', uploadDateRange: [], closeDateRange: [] })
 const loading = ref(false); const cases = ref([]); const page = ref(1); const pageSize = ref(16); const totalElements = ref(0)
 const drawerVisible = ref(false); const drawerLoading = ref(false); const selectedCase = ref(null); const relatedCases = ref([]); const reuseHistory = ref([])
-const offShelfDialogVisible = ref(false); const offShelfTarget = ref(null); const offShelfLoading = ref(false)
+const offShelfDialogVisible = ref(false); const offShelfTarget = ref(null); const offShelfLoading = ref(false); const exportLoading = ref(false)
 
 const loadCases = async () => {
   loading.value = true
@@ -131,6 +132,62 @@ const handleReset = () => {
   page.value = 1; loadCases()
 }
 const handleSizeChange = (val) => { pageSize.value = val; page.value = 1; loadCases() }
+
+const handleExportZip = async () => {
+  exportLoading.value = true
+  try {
+    const blob = await casesApi.exportZip({
+      keyword: filters.keyword || undefined,
+      scoringCategory: filters.scoringCategory || undefined,
+      customerType: filters.customerType || undefined,
+      projectTypes: filters.projectTypes.length > 0 ? filters.projectTypes : undefined,
+      statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
+      sortBy: filters.sortBy,
+      uploadDateFrom: filters.uploadDateRange?.[0] || undefined,
+      uploadDateTo: filters.uploadDateRange?.[1] || undefined
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `方案管理-案例库文件包-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12)}.zip`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出文件包成功')
+  } catch (e) {
+    console.error('Export failed:', e)
+    ElMessage.error('导出文件包失败')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+const handleExportExcel = async () => {
+  exportLoading.value = true
+  try {
+    const result = await casesApi.exportExcel({
+      keyword: filters.keyword || undefined,
+      scoringCategory: filters.scoringCategory || undefined,
+      customerType: filters.customerType || undefined,
+      projectTypes: filters.projectTypes.length > 0 ? filters.projectTypes : undefined,
+      statuses: filters.statuses.length > 0 ? filters.statuses : undefined,
+      uploadDateFrom: filters.uploadDateRange?.[0] || undefined,
+      uploadDateTo: filters.uploadDateRange?.[1] || undefined,
+      closeDateFrom: filters.closeDateRange?.[0] || undefined,
+      closeDateTo: filters.closeDateRange?.[1] || undefined
+    })
+    if (result?.success) {
+      ElMessage.success(`台账已导出：${result.filename || '案例库台账.xlsx'}`)
+    } else {
+      ElMessage.error('导出失败，请重试')
+    }
+  } catch {
+    ElMessage.error('导出失败，请重试')
+  } finally {
+    exportLoading.value = false
+  }
+}
 
 const handleReuse = async (item) => {
   try { await navigator.clipboard.writeText(item.responseText || item.summary || ''); await casesApi.reuseCase(item.caseId || item.id); if (item.reuseCount != null) item.reuseCount += 1; ElMessage.success('已复制到剪贴板')
