@@ -287,7 +287,7 @@ info "=== sync-env ==="
 info "Root:    $ROOT_DIR"
 info "Target:  $TARGET_DIR"
 
-echo# Step 1: sync env files
+echo
 info "--- env file sync ---"
 sync_env_files "$ROOT_DIR" "$TARGET_DIR"
 echo
