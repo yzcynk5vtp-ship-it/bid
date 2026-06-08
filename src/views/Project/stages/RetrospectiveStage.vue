@@ -259,16 +259,12 @@ async function doReview() {
 onMounted(load)
 </script>
 <style scoped>
-.retrospective-stage { padding: 16px; }
-.stage-section {
-  margin-bottom: 16px;
-  border: 1px solid var(--el-border-color-lighter);
-}
+.retrospective-stage { display: flex; flex-direction: column; gap: 16px; }
 .section-title { font-size: 15px; font-weight: 600; color: #2E7659; }
 .loss-reason-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.btn-container { display: flex; justify-content: flex-end; margin-top: 24px; }
+.btn-container { display: flex; justify-content: flex-end; }
 </style>

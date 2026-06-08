@@ -137,8 +137,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.evaluation-stage { padding: 16px; }
-.stage-section { margin-bottom: 16px; border: 1px solid var(--el-border-color-lighter); }
+.evaluation-stage { display: flex; flex-direction: column; gap: 16px; }
 .section-title { font-size: 15px; font-weight: 600; color: #2E7659; }
 
 .status-group { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
@@ -158,5 +157,5 @@ onMounted(load)
 .notes-label { display: block; font-size: 13px; font-weight: 500; color: #333; margin-bottom: 8px; }
 .required-mark { color: #e65100; margin-left: 2px; }
 
-.btn-container { display: flex; justify-content: flex-end; margin-top: 24px; }
+.btn-container { display: flex; justify-content: flex-end; }
 </style>
