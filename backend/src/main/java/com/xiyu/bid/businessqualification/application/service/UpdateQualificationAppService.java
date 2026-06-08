@@ -9,6 +9,7 @@ import com.xiyu.bid.businessqualification.domain.service.QualificationValidation
 import com.xiyu.bid.businessqualification.domain.valueobject.QualificationSubject;
 import com.xiyu.bid.businessqualification.domain.valueobject.ReminderPolicy;
 import com.xiyu.bid.businessqualification.domain.valueobject.ValidityPeriod;
+import com.xiyu.bid.exception.InvalidArgumentException;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ public class UpdateQualificationAppService {
         BusinessQualification updated = BusinessQualification.create(
                 existing.id(),
                 command.getName() == null ? existing.name() : command.getName(),
+                command.getLevel() == null ? existing.level() : command.getLevel(),
                 subject,
                 command.getCategory() == null ? existing.category() : command.getCategory(),
                 command.getCertificateNo() == null ? existing.certificateNo() : command.getCertificateNo(),
@@ -70,6 +72,12 @@ public class UpdateQualificationAppService {
                 newAttachments
         );
 
+        String newCertificateNo = updated.certificateNo();
+        if (newCertificateNo != null && !newCertificateNo.equals(existing.certificateNo())
+                && repository.existsByCertificateNo(newCertificateNo)) {
+            throw new InvalidArgumentException("证书编号已存在");
+        }
+
         recordAttachmentChangeAudit(existing, updated, command.getFileUrl(), command.getAttachments());
 
         return repository.save(updated);
@@ -92,7 +100,7 @@ public class UpdateQualificationAppService {
         String oldValue = buildOldValueDesc(existing);
         String newValue = buildNewValueDesc(updatedUrl, newAttachments);
 
-        auditLogService.log(AuditLogService.AuditLogEntry.builder()
+        auditLogService.log(com.xiyu.bid.audit.service.AuditLogService.AuditLogEntry.builder()
                 .action("ATTACHMENT_CHANGE")
                 .entityType("Qualification")
                 .entityId(String.valueOf(existing.id()))
@@ -137,7 +145,7 @@ public class UpdateQualificationAppService {
 
     private void requireValid(QualificationValidationResult validationResult) {
         if (!validationResult.valid()) {
-            throw new IllegalArgumentException(validationResult.message());
+            throw new InvalidArgumentException(validationResult.message());
         }
     }
 }

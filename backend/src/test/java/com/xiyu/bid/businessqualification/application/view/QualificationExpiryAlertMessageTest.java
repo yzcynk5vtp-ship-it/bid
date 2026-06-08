@@ -57,7 +57,7 @@ class QualificationExpiryAlertMessageTest {
     @DisplayName("缺字段时使用占位符「—」")
     void body_MissingOptionalFields_ShouldUsePlaceholder() {
         BusinessQualification q = BusinessQualification.create(
-                1L, "无名", QualificationSubject.of(QualificationSubjectType.COMPANY, "测试公司"),
+                1L, "无名", "AAA", QualificationSubject.of(QualificationSubjectType.COMPANY, "测试公司"),
                 QualificationCategory.OTHER, "", null, null, null, null, null, null,
                 new ValidityPeriod(null, LocalDate.of(2026, 7, 7)),
                 new ReminderPolicy(true, 30, null),
@@ -100,7 +100,7 @@ class QualificationExpiryAlertMessageTest {
 
     private BusinessQualification sample(LocalDate today, long remainingDays) {
         return BusinessQualification.create(
-                1L, "测试证书 ABC",
+                1L, "测试证书 ABC", "AAA",
                 QualificationSubject.of(QualificationSubjectType.COMPANY, "测试公司"),
                 QualificationCategory.OTHER, "CN-2024-001", "国家计量局",
                 "中兴代理", "13800000000", null, null, "测试持有人",

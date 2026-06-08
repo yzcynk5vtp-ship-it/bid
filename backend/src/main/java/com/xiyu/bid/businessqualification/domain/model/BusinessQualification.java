@@ -15,6 +15,7 @@ import java.util.List;
 public record BusinessQualification(
         Long id,
         String name,
+        String level,
         QualificationSubject subject,
         QualificationCategory category,
         String certificateNo,
@@ -44,6 +45,7 @@ public record BusinessQualification(
     public static BusinessQualification create(
             Long id,
             String name,
+            String level,
             QualificationSubject subject,
             QualificationCategory category,
             String certificateNo,
@@ -68,6 +70,7 @@ public record BusinessQualification(
         return new BusinessQualification(
                 id,
                 name,
+                level,
                 subject,
                 category,
                 certificateNo,
@@ -153,6 +156,7 @@ public record BusinessQualification(
         return new BusinessQualification(
                 id,
                 name,
+                level,
                 subject,
                 category,
                 certificateNo,

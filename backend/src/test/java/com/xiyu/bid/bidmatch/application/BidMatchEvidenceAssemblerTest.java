@@ -160,6 +160,7 @@ class BidMatchEvidenceAssemblerTest {
         return BusinessQualification.create(
                 id,
                 name,
+                "AAA",
                 QualificationSubject.of(QualificationSubjectType.COMPANY, "西域"),
                 QualificationCategory.LICENSE,
                 "CERT-" + id,

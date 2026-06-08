@@ -3,8 +3,10 @@ package com.xiyu.bid.businessqualification.application.service;
 import com.xiyu.bid.businessqualification.application.command.QualificationUpsertCommand;
 import com.xiyu.bid.businessqualification.domain.model.BusinessQualification;
 import com.xiyu.bid.businessqualification.domain.port.BusinessQualificationRepository;
+import com.xiyu.bid.businessqualification.domain.service.QualificationCreationPolicy;
 import com.xiyu.bid.businessqualification.domain.service.QualificationValidationResult;
 import com.xiyu.bid.businessqualification.domain.valueobject.LoanStatus;
+import com.xiyu.bid.exception.InvalidArgumentException;
 import com.xiyu.bid.businessqualification.domain.valueobject.QualificationSubject;
 import com.xiyu.bid.businessqualification.domain.valueobject.ReminderPolicy;
 import com.xiyu.bid.businessqualification.domain.valueobject.ValidityPeriod;
@@ -19,6 +21,7 @@ import java.util.List;
 public class CreateQualificationAppService {
 
     private final BusinessQualificationRepository repository;
+    private final QualificationCreationPolicy creationPolicy;
 
     @Transactional
     public BusinessQualification create(QualificationUpsertCommand command) {
@@ -31,6 +34,7 @@ public class CreateQualificationAppService {
         BusinessQualification qualification = BusinessQualification.create(
                 null,
                 command.getName(),
+                command.getLevel(),
                 subject,
                 command.getCategory(),
                 command.getCertificateNo(),
@@ -53,12 +57,18 @@ public class CreateQualificationAppService {
                 command.getAttachments() == null ? List.of() : command.getAttachments()
         );
 
+        requireValid(creationPolicy.validateForCreate(qualification));
+
+        if (repository.existsByCertificateNo(qualification.certificateNo())) {
+            throw new InvalidArgumentException("证书编号已存在");
+        }
+
         return repository.save(qualification);
     }
 
     private void requireValid(QualificationValidationResult validationResult) {
         if (!validationResult.valid()) {
-            throw new IllegalArgumentException(validationResult.message());
+            throw new InvalidArgumentException(validationResult.message());
         }
     }
 }
