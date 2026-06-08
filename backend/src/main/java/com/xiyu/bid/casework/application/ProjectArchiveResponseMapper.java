@@ -47,11 +47,15 @@ class ProjectArchiveResponseMapper {
         String bidResult = "OTHER";
         String projectManager = null;
         String bidManager = null;
+        String projectStatus = "PENDING_INITIATION";
 
         Optional<Project> projectOpt = projectRepository.findById(archive.getProjectId());
         Optional<Tender> tenderOpt = projectOpt
                 .map(Project::getTenderId)
                 .flatMap(tenderRepository::findById);
+        if (projectOpt.isPresent()) {
+            projectStatus = projectOpt.get().getStatus().name();
+        }
         if (tenderOpt.isPresent()) {
             Tender tender = tenderOpt.get();
             projectType = tender.getProjectType();
@@ -83,9 +87,10 @@ class ProjectArchiveResponseMapper {
 
         return new ProjectArchiveResponse(
                 archive.getId(),
+                archive.getProjectId(),
                 archive.getProjectName(),
                 projectType,
-                archive.getArchiveStatus(),
+                projectStatus,
                 bidResult,
                 files.size(),
                 categoryDetails,
