@@ -1,4 +1,5 @@
 package com.xiyu.bid.batch.core;
+import org.springframework.stereotype.Component;
 
 import com.xiyu.bid.entity.User;
 
@@ -7,6 +8,7 @@ import java.util.List;
 /**
  * 批处理基础校验规则
  */
+@Component
 public class BatchValidationPolicy {
 
     public static final int MAX_BATCH_SIZE = 100;
