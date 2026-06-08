@@ -5,6 +5,7 @@ import java.util.Map;
 
 public record ProjectArchiveResponse(
     Long archiveId,
+    Long projectId,
     String projectName,
     String projectType,
     String projectStatus,
