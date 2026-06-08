@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.UUID;
 
 @Component
 public class PersonnelFileStorageAdapter implements PersonnelFileStorage {
@@ -16,7 +15,8 @@ public class PersonnelFileStorageAdapter implements PersonnelFileStorage {
 
     @Override
     public String storeCertAttachment(Long personnelId, Long certId, byte[] content, String originalFilename, String contentType) {
-        return storeCertAttachmentWithNaming(personnelId, certId, content, null, null, 1, null, originalFilename, contentType);
+        String fileName = generateStandardFileName(null, null, 1, null, originalFilename);
+        return storeToFile(personnelId, fileName, content);
     }
 
     @Override
@@ -31,17 +31,14 @@ public class PersonnelFileStorageAdapter implements PersonnelFileStorage {
             String originalFilename,
             String contentType) {
 
-        if (content == null || content.length == 0) {
-            throw new IllegalArgumentException("附件文件为空");
-        }
-
         String safeFileName = generateStandardFileName(
                 personnelName, employeeNumber, certificateSequence, certificateName, originalFilename);
 
         return storeToFile(personnelId, safeFileName, content);
     }
 
-    private String generateStandardFileName(
+    @Override
+    public String generateStandardFileName(
             String personnelName,
             String employeeNumber,
             int certificateSequence,
@@ -78,6 +75,9 @@ public class PersonnelFileStorageAdapter implements PersonnelFileStorage {
     }
 
     private String storeToFile(Long personnelId, String fileName, byte[] content) {
+        if (content == null || content.length == 0) {
+            throw new IllegalArgumentException("附件文件为空");
+        }
         try {
             Path dir = Paths.get(BASE_DIR, String.valueOf(personnelId));
             Files.createDirectories(dir);

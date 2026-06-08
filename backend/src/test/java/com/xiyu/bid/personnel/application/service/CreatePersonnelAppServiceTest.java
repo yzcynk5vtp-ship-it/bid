@@ -42,7 +42,7 @@ class CreatePersonnelAppServiceTest {
             Personnel p = inv.getArgument(0);
             return new Personnel(1L, p.name(), p.employeeNumber(),
                     p.departmentCode(), p.departmentName(),
-                    p.gender(), p.entryDate(), p.phone(),
+                    p.gender(), p.entryDate(), p.birthDate(), p.phone(),
                     p.education(), p.technicalTitle(),
                     p.status(), p.attachmentUrl(),
                     p.certificates(), p.educations(),
@@ -51,7 +51,7 @@ class CreatePersonnelAppServiceTest {
 
         var command = new PersonnelUpsertCommand(
                 "张三", "EMP001", "DEPT01", "技术部",
-                "男", LocalDate.of(2020, 3, 1), "13800138000",
+                "男", LocalDate.of(2020, 3, 1), LocalDate.of(1995, 1, 1), "13800138000",
                 "本科", "高级工程师", null,
                 List.of(), List.of(
                         new PersonnelUpsertCommand.EducationEntry(
@@ -76,7 +76,7 @@ class CreatePersonnelAppServiceTest {
 
         var command = new PersonnelUpsertCommand(
                 "张三", "EMP001", "DEPT01", "技术部",
-                "男", LocalDate.of(2020, 3, 1), "13800138000",
+                "男", LocalDate.of(2020, 3, 1), LocalDate.of(1995, 1, 1), "13800138000",
                 "本科", "高级工程师", null,
                 List.of(), List.of()
         );
@@ -95,7 +95,7 @@ class CreatePersonnelAppServiceTest {
             Personnel p = inv.getArgument(0);
             return new Personnel(2L, p.name(), p.employeeNumber(),
                     p.departmentCode(), p.departmentName(),
-                    p.gender(), p.entryDate(), p.phone(),
+                    p.gender(), p.entryDate(), p.birthDate(), p.phone(),
                     p.education(), p.technicalTitle(),
                     p.status(), p.attachmentUrl(),
                     p.certificates(), p.educations(),
@@ -104,7 +104,7 @@ class CreatePersonnelAppServiceTest {
 
         var command = new PersonnelUpsertCommand(
                 "李四", "EMP002", "DEPT02", "商务部",
-                "女", LocalDate.of(2021, 6, 15), "13900139000",
+                "女", LocalDate.of(2021, 6, 15), LocalDate.of(1998, 1, 1), "13900139000",
                 "硕士", "经济师", null,
                 List.of(new PersonnelUpsertCommand.CertificateEntry(
                         "一级建造师", "CERT001", CertificateType.CONSTRUCTOR,

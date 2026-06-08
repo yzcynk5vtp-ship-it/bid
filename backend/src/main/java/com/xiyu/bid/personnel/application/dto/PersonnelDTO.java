@@ -1,6 +1,5 @@
 package com.xiyu.bid.personnel.application.dto;
 
-import com.xiyu.bid.personnel.domain.valueobject.CertificateType;
 import com.xiyu.bid.personnel.domain.valueobject.PersonnelStatus;
 
 import java.time.LocalDate;
@@ -18,6 +17,7 @@ public record PersonnelDTO(
         String departmentName,
         String gender,
         LocalDate entryDate,
+        LocalDate birthDate,
         String phone,
         String education,                    // 旧单字段，兼容期保留
         String technicalTitle,

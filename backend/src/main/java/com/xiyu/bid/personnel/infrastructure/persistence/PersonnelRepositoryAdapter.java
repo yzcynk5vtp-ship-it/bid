@@ -172,6 +172,7 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
         e.setTechnicalTitle(p.technicalTitle());
         e.setStatus(p.status());
         e.setAttachmentUrl(p.attachmentUrl());
+        e.setBirthDate(p.birthDate());
         e.setCreatedAt(p.createdAt());
         e.setUpdatedAt(p.updatedAt());
         return e;
@@ -189,7 +190,7 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
         return new Personnel(
                 e.getId(), e.getName(), e.getEmployeeNumber(),
                 e.getDepartmentCode(), e.getDepartmentName(),
-                e.getGender(), e.getEntryDate(), e.getPhone(),
+                e.getGender(), e.getEntryDate(), e.getBirthDate(), e.getPhone(),
                 e.getEducation(), e.getTechnicalTitle(),
                 e.getStatus(), e.getAttachmentUrl(),
                 certs, educations,

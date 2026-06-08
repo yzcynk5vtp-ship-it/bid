@@ -15,6 +15,7 @@ public record PersonnelUpsertCommand(
         String departmentName,
         String gender,
         java.time.LocalDate entryDate,
+        java.time.LocalDate birthDate,
         String phone,
         String education,                    // 保留旧字段，向后兼容本迭代
         String technicalTitle,

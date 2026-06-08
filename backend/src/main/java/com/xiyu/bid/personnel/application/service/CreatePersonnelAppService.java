@@ -35,6 +35,7 @@ public class CreatePersonnelAppService {
                 command.departmentName(),
                 command.gender(),
                 command.entryDate(),
+                command.birthDate(),
                 command.phone(),
                 command.education(),
                 command.technicalTitle(),

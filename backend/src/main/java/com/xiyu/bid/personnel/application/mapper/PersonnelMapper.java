@@ -36,7 +36,7 @@ public class PersonnelMapper {
         return new PersonnelDTO(
                 p.id(), p.name(), p.employeeNumber(),
                 p.departmentCode(), p.departmentName(),
-                p.gender(), p.entryDate(), p.phone(),
+                p.gender(), p.entryDate(), p.birthDate(), p.phone(),
                 p.education(), p.technicalTitle(),
                 p.status(), p.attachmentUrl(),
                 certDTOs, eduDTOs, 0,
