@@ -267,7 +267,8 @@
 }
 
 .custom-stage-tabs .el-card.stage-view,
-.custom-stage-tabs .el-card.section-card {
+.custom-stage-tabs .el-card.section-card,
+.custom-stage-tabs .el-card.stage-section {
   border: none;
   box-shadow: none;
   background: transparent;
@@ -275,7 +276,8 @@
 }
 
 .custom-stage-tabs .el-card.stage-view .el-card__header,
-.custom-stage-tabs .el-card.section-card .el-card__header {
+.custom-stage-tabs .el-card.section-card .el-card__header,
+.custom-stage-tabs .el-card.stage-section .el-card__header {
   border-bottom: 1px solid #f2f6fc;
   padding: 12px 0;
   font-size: 16px;
@@ -283,7 +285,8 @@
 }
 
 .custom-stage-tabs .el-card.stage-view .el-card__body,
-.custom-stage-tabs .el-card.section-card .el-card__body {
+.custom-stage-tabs .el-card.section-card .el-card__body,
+.custom-stage-tabs .el-card.stage-section .el-card__body {
   padding: 16px 0;
 }
 

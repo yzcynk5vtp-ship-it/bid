@@ -245,12 +245,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.result-stage { padding: 16px; }
-
-.stage-section {
-  margin-bottom: 16px;
-  border: 1px solid var(--el-border-color-lighter);
-}
+.result-stage { display: flex; flex-direction: column; gap: 16px; }
 .section-title { font-size: 15px; font-weight: 600; color: #2E7659; }
 
 /* 结果类型卡片 */
@@ -288,5 +283,5 @@ onMounted(load)
 .add-row-btn { margin-top: 12px; }
 
 /* 操作按钮 */
-.btn-container { display: flex; justify-content: flex-end; margin-top: 24px; }
+.btn-container { display: flex; justify-content: flex-end; }
 </style>
