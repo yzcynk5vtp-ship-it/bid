@@ -4,6 +4,8 @@ import com.xiyu.bid.scoreanalysis.RiskLevel;
 import com.xiyu.bid.scoreanalysis.dto.DimensionScoreDTO;
 import com.xiyu.bid.scoreanalysis.entity.DimensionScore;
 
+import org.springframework.stereotype.Component;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -11,6 +13,7 @@ import java.util.List;
 /**
  * 评分计算策略 (Pure Core)
  */
+@Component
 public class ScoreAnalysisCalculationPolicy {
 
     public BigDecimal calculateWeightedScoreFromDTOs(List<DimensionScoreDTO> dimensions) {

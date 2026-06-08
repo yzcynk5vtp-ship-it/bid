@@ -1,10 +1,12 @@
 package com.xiyu.bid.batch.core;
 
+import org.springframework.stereotype.Component;
 import com.xiyu.bid.entity.Tender;
 
 import java.util.EnumSet;
 import java.util.Set;
 
+@Component
 public class TenderStatusTransitionPolicy {
 
     public boolean canTransition(Tender.Status currentStatus, Tender.Status targetStatus) {

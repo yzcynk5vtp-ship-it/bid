@@ -1,4 +1,5 @@
 package com.xiyu.bid.batch.core;
+import org.springframework.stereotype.Component;
 
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.service.ProjectAccessScopeService;
@@ -10,6 +11,7 @@ import java.util.List;
 /**
  * 任务批量分配规则
  */
+@Component
 public class BatchAssignmentPolicy {
 
     private final ProjectAccessScopeService projectAccessScopeService;
