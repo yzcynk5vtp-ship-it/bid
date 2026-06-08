@@ -123,6 +123,21 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
 
     @Override
     @Transactional
+    public Personnel addEducation(Long personnelId, Education education) {
+        PersonnelEducationEntity eduEntity = new PersonnelEducationEntity();
+        eduEntity.setPersonnelId(personnelId);
+        eduEntity.setSchoolName(education.schoolName());
+        eduEntity.setStartDate(education.startDate());
+        eduEntity.setEndDate(education.endDate());
+        eduEntity.setHighestEducation(education.highestEducation());
+        eduEntity.setStudyForm(education.studyForm());
+        eduEntity.setMajor(education.major());
+        educationRepository.save(eduEntity);
+        return findById(personnelId).orElseThrow();
+    }
+
+    @Override
+    @Transactional
     public Personnel removeCertificate(Long personnelId, Long certificateId) {
         // 编辑证书子节：支持软删除（替换附件时也走软删除）
         certRepository.findById(certificateId).ifPresent(cert -> {
