@@ -42,12 +42,36 @@ public class QualificationAuditController {
         List<AuditLog> logs = auditLogRepository
                 .findByEntityTypeAndEntityIdOrderByTimestampDesc(ENTITY_TYPE, String.valueOf(id));
 
-        Map<String, User> userCache = resolveUsers(logs);
-        List<AuditLogItemDTO> items = logs.stream()
+        // §4.2.1.7 排除系统自动触发（定时任务/扫描等无用户登录态的操作）
+        List<AuditLog> userLogs = logs.stream()
+                .filter(log -> !isSystemTriggered(log))
+                .toList();
+
+        Map<String, User> userCache = resolveUsers(userLogs);
+        List<AuditLogItemDTO> items = userLogs.stream()
                 .map(log -> itemMapper.toItemDto(log, userCache.get(userKey(log))))
                 .toList();
 
         return ResponseEntity.ok(ApiResponse.success(items));
+    }
+
+    private boolean isSystemTriggered(AuditLog log) {
+        if (log == null) return false;
+        String userId = log.getUserId();
+        if (userId != null) {
+            String uid = userId.trim().toLowerCase();
+            if (uid.equals("system") || uid.equals("scheduler") || uid.equals("auto")) {
+                return true;
+            }
+        }
+        String action = log.getAction();
+        if (action != null) {
+            String act = action.trim().toUpperCase();
+            if (act.startsWith("AUTO_")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Map<String, User> resolveUsers(List<AuditLog> logs) {

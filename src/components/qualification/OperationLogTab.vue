@@ -101,6 +101,10 @@ const tagType = (actionType) => {
 }
 
 const formatOperator = (log) => {
+  // 后端已返回 "姓名（工号）" 格式，直接透传；兜底显示
+  if (log?.operator && log.operator.includes('（') && log.operator.includes('）')) {
+    return log.operator
+  }
   const name = log?.operator || '未知用户'
   const role = log?.role && log.role !== 'unknown' ? `（${log.role}）` : ''
   return `${name}${role}`

@@ -66,13 +66,20 @@ public class AuditLogItemMapper {
     }
 
     private String resolveOperator(AuditLog auditLog, User user) {
+        String name = null;
         if (user != null && user.getFullName() != null && !user.getFullName().isBlank()) {
-            return user.getFullName();
+            name = user.getFullName();
+        } else if (auditLog.getUsername() != null && !auditLog.getUsername().isBlank()) {
+            name = auditLog.getUsername();
         }
-        if (auditLog.getUsername() != null && !auditLog.getUsername().isBlank()) {
-            return auditLog.getUsername();
+        if (name == null) {
+            return "未知用户";
         }
-        return "未知用户";
+        String workNo = user != null && user.getUsername() != null ? user.getUsername() : "";
+        if (!workNo.isBlank()) {
+            return name + "（" + workNo + "）";
+        }
+        return name;
     }
 
     private String resolveRole(User user) {
