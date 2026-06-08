@@ -46,7 +46,7 @@ class AuditLogQueryServiceTest {
 
         assertEquals(1, response.getItems().size());
         assertEquals("project", response.getItems().get(0).getModule());
-        assertEquals("项目用户", response.getItems().get(0).getOperator());
+        assertEquals("项目用户（project-user）", response.getItems().get(0).getOperator());
         assertEquals(1, response.getSummary().getTotalCount());
         verify(auditLogRepository).searchLogs("状态", "UPDATE", null, null, null, true);
     }
@@ -66,7 +66,7 @@ class AuditLogQueryServiceTest {
 
         AuditLogQueryResponse response = service.queryLogs(null, null, null, null, null, null, null);
 
-        assertEquals("空白用户", response.getItems().get(0).getOperator());
+        assertEquals("空白用户（blank-user）", response.getItems().get(0).getOperator());
         verify(userRepository).findByUsername("blank-user");
     }
 
@@ -95,7 +95,7 @@ class AuditLogQueryServiceTest {
         );
 
         assertEquals(1, response.getItems().size());
-        assertEquals("小王", response.getItems().get(0).getOperator());
+        assertEquals("小王（xiaowang）", response.getItems().get(0).getOperator());
         assertEquals("task", response.getItems().get(0).getModule());
         verify(auditLogRepository).searchLogsForActor("删除", "DELETE", "xiaowang", "42", null, null, true);
     }
