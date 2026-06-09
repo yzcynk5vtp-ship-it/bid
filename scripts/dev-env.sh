@@ -87,6 +87,32 @@ else
   export REDIS_DB=0
 fi
 
+# Apply branch-based database suffix if in a git repo and not on protected/anchor branches
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  CURRENT_BRANCH="$(git symbolic-ref --short HEAD 2>/dev/null || echo "")"
+  if [[ -n "$CURRENT_BRANCH" ]]; then
+    case "$CURRENT_BRANCH" in
+      main|master|integrate/baseline|*-init)
+        # Skip suffixing for protected/anchor branches
+        ;;
+      *)
+        # Extract last part or strip common prefixes: agent/<name>/
+        # e.g., agent/gemini/feat-login -> feat-login
+        CLEAN_BRANCH="$(echo "$CURRENT_BRANCH" | sed -E 's/^agent\/[a-zA-Z0-9_-]+\///')"
+        # Lowercase, convert '/' and '-' to '_', remove non-safe characters
+        CLEAN_BRANCH="$(echo "$CLEAN_BRANCH" | tr '[:upper:]' '[:lower:]' | tr '/-' '_' | tr -cd 'a-z0-9_')"
+        # Limit suffix to 30 characters
+        CLEAN_BRANCH="${CLEAN_BRANCH:0:30}"
+        # Remove leading/trailing underscores
+        CLEAN_BRANCH="$(echo "$CLEAN_BRANCH" | sed -e 's/^_*//' -e 's/_*$//')"
+        if [[ -n "$CLEAN_BRANCH" ]]; then
+          export DB_NAME="${DB_NAME}_${CLEAN_BRANCH}"
+        fi
+        ;;
+    esac
+  fi
+fi
+
 echo "Environment detected: $(basename "$CURRENT_DIR")"
 echo "Frontend Port: $FRONTEND_PORT"
 echo "Backend Port: $BACKEND_PORT"

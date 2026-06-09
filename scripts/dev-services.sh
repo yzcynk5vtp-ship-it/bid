@@ -833,6 +833,13 @@ start_backend() {
   echo "[backend] redis: ${REDIS_HOST}:${REDIS_PORT}/${SPRING_DATA_REDIS_DATABASE}"
   : >"$BACKEND_LOG"
 
+  # Pre-create the database in docker mysql to ensure it exists before backend startup
+  if command -v docker >/dev/null 2>&1; then
+    echo "[backend] ensuring database '${DB_NAME}' exists..."
+    docker exec xiyu-bid-local-mysql mysql -uroot -pXiyuRoot!2026 -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >/dev/null 2>&1 || \
+    docker exec xiyu-bid-mysql mysql -uroot -pXiyuRoot!2026 -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" >/dev/null 2>&1 || true
+  fi
+
   # Pre-flight: mvn compile check (fail fast before nohup)
   # Pre-flight: mvn package（编译 + 打包 jar，fail fast）
   echo "[backend] running mvn package -DskipTests (pre-flight) ..."
