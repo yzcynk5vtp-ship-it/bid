@@ -3,14 +3,20 @@
     <WarehouseFilterBar
       v-model:filters="filters"
       :total="total"
+      :selected-count="selectedRows.length"
       @search="resetPageAndLoad"
       @reset="resetFilters"
       @create="openCreate"
       @export="exportVisible = true"
+      @import="importVisible = true"
+      @download-template="handleDownloadTemplate"
+      @batch-export="handleBatchExport"
     />
     <el-card class="data-card" shadow="never">
       <el-table :data="records" v-loading="loading" style="width:100%" @row-click="openDrawer"
-        :row-class-name="({row}) => newlyCreatedIds.has(row.id) ? 'row-newly-created' : ''">
+        :row-class-name="({row}) => newlyCreatedIds.has(row.id) ? 'row-newly-created' : ''"
+        @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" :selectable="r => r.status !== 'CLOSED'" />
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="name" label="仓库名称" min-width="160" show-overflow-tooltip>
           <template #default="s"><span class="warehouse-name">{{ s.row.name }}</span></template>
@@ -65,7 +71,8 @@
       @submitted="handleSubmitted"
     />
     <WarehouseDrawer v-model="drawerVisible" :warehouse-id="detailId" @edit="handleDrawerEdit" />
-    <WarehouseExportDialog v-model="exportVisible" :filters="filters" />
+    <WarehouseExportDialog v-model="exportVisible" :filters="exportFilters" :mode="exportMode" :selected-ids="selectedRowIds" />
+    <WarehouseImportDialog v-model="importVisible" @imported="handleImported" />
   </div>
 </template>
 
@@ -184,6 +191,43 @@ const handleSubmitted = async (newId) => {
     newlyCreatedIds.value.add(newId)
     setTimeout(() => newlyCreatedIds.value.delete(newId), 3000)
   }
+}
+
+const handleSelectionChange = (rows) => {
+  selectedRows.value = rows
+}
+
+const handleDownloadTemplate = async () => {
+  try {
+    const response = await http.get('/api/knowledge/warehouses/import/template', { responseType: 'blob' })
+    const blob = response.data
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '仓库导入模板.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('模板已下载')
+  } catch (err) {
+    ElMessage.error(err.response?.data?.message || '模板下载失败')
+  }
+}
+
+const handleBatchExport = () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先勾选要导出的仓库')
+    return
+  }
+  exportMode.value = 'ids'
+  exportFilters.value = { ids: selectedRowIds.value }
+  exportVisible.value = true
+}
+
+const handleImported = () => {
+  selectedRows.value = []
+  load()
 }
 
 const formatDateMonth = (d) => {

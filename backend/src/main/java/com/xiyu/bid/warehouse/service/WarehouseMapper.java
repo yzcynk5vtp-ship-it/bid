@@ -20,7 +20,10 @@ public class WarehouseMapper {
                 .name(d.getName()).type(d.getType()).region(d.getRegion()).province(d.getProvince())
                 .address(d.getAddress()).area(d.getArea()).contactPerson(d.getContactPerson()).remarks(d.getRemarks())
                 .startDate(d.getStartDate()).endDate(d.getEndDate()).lessor(d.getLessor()).lessee(d.getLessee())
-                .invoicePeriod(d.getInvoicePeriod()).closePlan(d.getClosePlan())
+                .invoicePeriod(d.getInvoicePeriod())
+                .invoicePeriodStart(d.getInvoicePeriodStart())
+                .invoicePeriodEnd(d.getInvoicePeriodEnd())
+                .closePlan(d.getClosePlan())
                 .hasPropertyCert(d.getHasPropertyCert()).hasInvoice(d.getHasInvoice()).hasPhotos(d.getHasPhotos())
                 .certRemarks(d.getCertRemarks()).build();
     }
@@ -39,6 +42,8 @@ public class WarehouseMapper {
         if (d.getLessor() != null) e.setLessor(d.getLessor());
         if (d.getLessee() != null) e.setLessee(d.getLessee());
         if (d.getInvoicePeriod() != null) e.setInvoicePeriod(d.getInvoicePeriod());
+        if (d.getInvoicePeriodStart() != null) e.setInvoicePeriodStart(d.getInvoicePeriodStart());
+        if (d.getInvoicePeriodEnd() != null) e.setInvoicePeriodEnd(d.getInvoicePeriodEnd());
         if (d.getClosePlan() != null) e.setClosePlan(d.getClosePlan());
         if (d.getHasPropertyCert() != null) e.setHasPropertyCert(d.getHasPropertyCert());
         if (d.getHasInvoice() != null) e.setHasInvoice(d.getHasInvoice());
@@ -56,7 +61,8 @@ public class WarehouseMapper {
                 e.getContactPerson(), e.getRemarks(),
                 e.getStartDate(), e.getEndDate(),
                 e.getLessor(), e.getLessee(),
-                e.getInvoicePeriod(), e.getClosePlan(), e.getCloseReason(),
+                e.getInvoicePeriod(), e.getInvoicePeriodStart(), e.getInvoicePeriodEnd(),
+                e.getClosePlan(), e.getCloseReason(),
                 e.getHasPropertyCert(), e.getHasInvoice(), e.getHasPhotos(),
                 e.getCertRemarks(),
                 WarehouseDetailDTO.WarehouseStatusEnum.valueOf(e.getStatus().name()),

@@ -33,6 +33,14 @@ public class WarehouseFilterService {
         return warehouseRepository.findAll(warehouseFilterSpec.toSpec(criteria));
     }
 
+    /**
+     * 按 ID 列表加载仓库实体，用于批量导出场景。
+     */
+    public List<WarehouseEntity> findAllByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return warehouseRepository.findAllById(ids);
+    }
+
     private WarehouseFilterCriteria toCriteria(WarehouseFilterDTO dto) {
         if (dto == null) {
             return WarehouseFilterCriteria.empty();

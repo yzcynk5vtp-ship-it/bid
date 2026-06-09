@@ -9,13 +9,22 @@
     data-testid="warehouse-export-dialog"
   >
     <div v-if="!taskId" class="export-init">
-      <el-alert title="即将导出仓库台账（Excel）" :closable="false" type="info" show-icon />
-      <div class="filter-summary">
+      <el-alert
+        :title="mode === 'ids' ? `即将按勾选 ID 导出 ${selectedIds.length} 条仓库台账` : '即将导出仓库台账（Excel）'"
+        :closable="false"
+        type="info"
+        show-icon
+      />
+      <div v-if="mode !== 'ids'" class="filter-summary">
         <span>当前筛选条件：</span>
         <el-tag v-if="!hasFilters" size="small">无（导出全部）</el-tag>
         <template v-else>
           <el-tag v-for="tag in filterTags" :key="tag" size="small" class="filter-tag">{{ tag }}</el-tag>
         </template>
+      </div>
+      <div v-else class="filter-summary">
+        <el-tag size="small">勾选模式</el-tag>
+        <el-tag size="small" type="info">共 {{ selectedIds.length }} 条</el-tag>
       </div>
     </div>
     <div v-else class="export-task">
@@ -54,7 +63,9 @@ import http from '@/api/client'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
-  filters: { type: Object, default: () => ({}) }
+  filters: { type: Object, default: () => ({}) },
+  mode: { type: String, default: 'filter' },
+  selectedIds: { type: Array, default: () => [] }
 })
 const emit = defineEmits(['update:modelValue'])
 
@@ -112,7 +123,10 @@ const startPolling = () => {
 
 const startExport = async () => {
   try {
-    const { data } = await http.post('/api/knowledge/warehouses/export', props.filters)
+    const payload = props.mode === 'ids'
+      ? { ids: props.selectedIds }
+      : props.filters
+    const { data } = await http.post('/api/knowledge/warehouses/export', payload)
     taskId.value = data.taskId
     status.value = 'PENDING'
     totalCount.value = 0

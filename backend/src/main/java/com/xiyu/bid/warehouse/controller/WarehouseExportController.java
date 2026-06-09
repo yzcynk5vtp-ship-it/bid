@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -40,16 +41,31 @@ public class WarehouseExportController {
 
     private final WarehouseExportAppService exportAppService;
     private final UserResolver userResolver;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     @PostMapping
     @PreAuthorize("hasAuthority('" + PERM + "')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> triggerExport(
-            @RequestBody(required = false) WarehouseFilterDTO filterDTO) {
+            @RequestBody(required = false) Map<String, Object> body) {
         Long operatorId = userResolver.resolveCurrentUserId();
         if (operatorId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("未登录"));
         }
-        WarehouseExportAppService.ExportTaskResult result = exportAppService.export(filterDTO, operatorId);
+        WarehouseExportAppService.ExportTaskResult result;
+        if (body != null && body.get("ids") instanceof List<?> rawIds) {
+            List<Long> ids = rawIds.stream()
+                    .filter(o -> o instanceof Number)
+                    .map(o -> ((Number) o).longValue())
+                    .toList();
+            if (ids.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("未选择任何仓库"));
+            }
+            result = exportAppService.exportByIds(ids, operatorId);
+        } else {
+            WarehouseFilterDTO filterDTO = body == null ? null
+                    : objectMapper.convertValue(body, WarehouseFilterDTO.class);
+            result = exportAppService.export(filterDTO, operatorId);
+        }
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(ApiResponse.success("导出任务已创建", Map.of("taskId", result.taskId())));
     }

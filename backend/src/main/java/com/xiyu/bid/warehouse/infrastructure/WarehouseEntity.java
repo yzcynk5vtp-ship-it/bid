@@ -60,6 +60,12 @@ public class WarehouseEntity {
     @Column(name = "invoice_period", length = 100)
     private String invoicePeriod;
 
+    @Column(name = "invoice_period_start")
+    private LocalDate invoicePeriodStart;
+
+    @Column(name = "invoice_period_end")
+    private LocalDate invoicePeriodEnd;
+
     @Column(name = "close_plan", length = 500)
     private String closePlan;
 
