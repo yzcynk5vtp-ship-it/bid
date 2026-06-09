@@ -49,7 +49,7 @@
       :init-tab="activeTab"
       @submitted="handleSubmitted"
     />
-    <WarehouseDrawer v-model="drawerVisible" :warehouse-id="detailId" />
+    <WarehouseDrawer v-model="drawerVisible" :warehouse-id="detailId" @edit="handleDrawerEdit" />
     <WarehouseExportDialog v-model="exportVisible" :filters="filters" />
   </div>
 </template>
@@ -130,6 +130,19 @@ const openEdit = (row) => {
 }
 
 const openDrawer = (row) => { detailId.value = row.id; drawerVisible.value = true }
+
+const handleDrawerEdit = (row) => {
+  drawerVisible.value = false
+  Object.assign(form, {
+    name: row.name || '', type: row.type || 'SELF_OPERATED', region: row.region || '', province: row.province || '',
+    address: row.address || '', area: row.area || 0, contactPerson: row.contactPerson || '', remarks: row.remarks || '',
+    startDate: row.startDate, endDate: row.endDate, lessor: row.lessor || '', lessee: row.lessee || '',
+    invoicePeriod: row.invoicePeriod || '', closePlan: row.closePlan || '',
+    hasPropertyCert: row.hasPropertyCert || false, hasInvoice: row.hasInvoice || false, hasPhotos: row.hasPhotos || false,
+    certRemarks: row.certRemarks || ''
+  })
+  activeTab.value = 'basic'; editingId.value = row.id; dialogVisible.value = true
+}
 
 const handleClose = async (row) => {
   try {

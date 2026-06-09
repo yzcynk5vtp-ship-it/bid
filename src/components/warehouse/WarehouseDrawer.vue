@@ -86,6 +86,7 @@
     <template #footer>
       <div style="text-align:right">
         <el-button @click="visible = false">关闭</el-button>
+        <el-button type="primary" @click="$emit('edit', detail)">编辑</el-button>
       </div>
     </template>
   </el-drawer>
@@ -101,7 +102,7 @@ const props = defineProps({
   modelValue: Boolean,
   warehouseId: { type: Number, default: null }
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'edit'])
 
 const visible = computed({ get: () => props.modelValue, set: (v) => emit('update:modelValue', v) })
 const detail = ref(null); const attachments = ref([]); const logs = ref([])
