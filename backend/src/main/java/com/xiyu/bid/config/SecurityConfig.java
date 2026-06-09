@@ -84,6 +84,7 @@ public class SecurityConfig {
             "/actuator/health",
             "/actuator/health/**",
             "/api/external/**",
+            "/api/systems/external/**",
             "/error"
     };
 
