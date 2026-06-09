@@ -29,13 +29,12 @@ public class BatchTenderCommandService {
 
     private final TenderRepository tenderRepository;
     private final ProjectRepository projectRepository;
-    private final BatchValidationPolicy validationPolicy;
     private final BatchOperationLogService logService;
     private final ProjectAccessScopeService projectAccessScopeService;
 
     public BatchOperationResponse batchClaimTenders(List<Long> tenderIds, Long userId) {
-        validationPolicy.validateBatchInput(tenderIds, "Tender IDs");
-        validationPolicy.validateUserId(userId);
+        BatchValidationPolicy.validateBatchInput(tenderIds, "Tender IDs");
+        BatchValidationPolicy.validateUserId(userId);
         log.info("Batch claiming tenders: count={}, userId={}", tenderIds.size(), userId);
 
         BatchOperationResponse response = newResponse("CLAIM", tenderIds.size());

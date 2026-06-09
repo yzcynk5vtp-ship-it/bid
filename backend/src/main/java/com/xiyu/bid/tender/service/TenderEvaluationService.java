@@ -59,7 +59,6 @@ public class TenderEvaluationService {
     private final ProjectService projectService;
     private final TaskService taskService;
     private final UserRepository userRepository;
-    private final TenderStatusTransitionPolicy statusTransitionPolicy;
     private final TenderEvaluationSubmissionService submissionService;
     private final TenderAssignmentPermissions permissions;
     private final TenderProjectAccessGuard accessGuard;
@@ -71,7 +70,6 @@ public class TenderEvaluationService {
             ProjectService projectService,
             TaskService taskService,
             UserRepository userRepository,
-            TenderStatusTransitionPolicy statusTransitionPolicy,
             TenderEvaluationSubmissionService submissionService,
             TenderAssignmentPermissions permissions,
             TenderProjectAccessGuard accessGuard) {
@@ -80,7 +78,6 @@ public class TenderEvaluationService {
         this.projectService = projectService;
         this.taskService = taskService;
         this.userRepository = userRepository;
-        this.statusTransitionPolicy = statusTransitionPolicy;
         this.submissionService = submissionService;
         this.permissions = permissions;
         this.accessGuard = accessGuard;
@@ -163,10 +160,10 @@ public class TenderEvaluationService {
         TenderEvaluation savedEvaluation = tenderEvaluationRepository.save(evaluation);
 
         if (request.approved()) {
-            statusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.BIDDING);
+            TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.BIDDING);
             tender.setStatus(Tender.Status.BIDDING);
         } else {
-            statusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.ABANDONED);
+            TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.ABANDONED);
             tender.setStatus(Tender.Status.ABANDONED);
             if (request.abandonmentReason() != null && !request.abandonmentReason().isBlank()) {
                 tender.setAbandonmentReason(request.abandonmentReason());

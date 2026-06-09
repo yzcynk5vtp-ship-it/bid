@@ -13,12 +13,15 @@ import com.xiyu.bid.task.dto.TaskAssignmentRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.function.BiFunction;
+
 @Service
 @RequiredArgsConstructor
 class BatchTaskAssignmentResolver {
 
     private final UserRepository userRepository;
-    private final BatchAssignmentPolicy assignmentPolicy;
+    private final BiFunction<User, String, List<String>> deptCodesSupplier;
 
     BatchAssignmentSnapshot resolve(BatchAssignRequest request, User currentUser) {
         TaskAssignmentRequest assignmentRequest = TaskAssignmentRequest.builder()
@@ -34,12 +37,13 @@ class BatchTaskAssignmentResolver {
         if (assignmentRequest.getAssigneeId() != null) {
             User assignee = userRepository.findById(assignmentRequest.getAssigneeId())
                     .orElseThrow(() -> new IllegalArgumentException("Assignee not found"));
-            return assignmentPolicy.resolveUserAssignment(
+            return BatchAssignmentPolicy.resolveUserAssignment(
                     assignee,
                     currentUser,
-                    Boolean.TRUE.equals(assignmentRequest.getAllowCrossDeptCollaboration())
+                    Boolean.TRUE.equals(assignmentRequest.getAllowCrossDeptCollaboration()),
+                    deptCodesSupplier
             );
         }
-        return assignmentPolicy.resolveDepartmentAssignment(assignmentRequest, currentUser);
+        return BatchAssignmentPolicy.resolveDepartmentAssignment(assignmentRequest, currentUser, deptCodesSupplier);
     }
 }

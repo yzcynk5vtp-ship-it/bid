@@ -1,15 +1,18 @@
 package com.xiyu.bid.batch.core;
 
-import org.springframework.stereotype.Component;
 import com.xiyu.bid.entity.Tender;
 
 import java.util.EnumSet;
 import java.util.Set;
 
-@Component
-public class TenderStatusTransitionPolicy {
+/**
+ * 投标状态迁移规则 (Pure Core — no Spring dependencies)
+ */
+public final class TenderStatusTransitionPolicy {
 
-    public boolean canTransition(Tender.Status currentStatus, Tender.Status targetStatus) {
+    public TenderStatusTransitionPolicy() {}
+
+    public static boolean canTransition(Tender.Status currentStatus, Tender.Status targetStatus) {
         if (currentStatus == null || targetStatus == null) {
             return false;
         }
@@ -19,7 +22,7 @@ public class TenderStatusTransitionPolicy {
         return allowedTargets(currentStatus).contains(targetStatus);
     }
 
-    public void assertTransition(Tender.Status currentStatus, Tender.Status targetStatus) {
+    public static void assertTransition(Tender.Status currentStatus, Tender.Status targetStatus) {
         if (!canTransition(currentStatus, targetStatus)) {
             throw new IllegalArgumentException(
                     String.format("Tender status cannot transition from %s to %s", currentStatus, targetStatus)
@@ -27,7 +30,7 @@ public class TenderStatusTransitionPolicy {
         }
     }
 
-    private Set<Tender.Status> allowedTargets(Tender.Status currentStatus) {
+    private static Set<Tender.Status> allowedTargets(Tender.Status currentStatus) {
         return switch (currentStatus) {
             case PENDING_ASSIGNMENT -> EnumSet.of(Tender.Status.TRACKING, Tender.Status.ABANDONED);
             case TRACKING -> EnumSet.of(Tender.Status.PENDING_ASSIGNMENT, Tender.Status.EVALUATED, Tender.Status.ABANDONED);

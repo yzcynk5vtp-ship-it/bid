@@ -55,7 +55,6 @@ abstract class AbstractScoreAnalysisServiceTest {
                 dimensionScoreRepository,
                 projectAccessScopeService,
                 tenderCommandService,
-                calculationPolicy,
                 queryService
         );
 

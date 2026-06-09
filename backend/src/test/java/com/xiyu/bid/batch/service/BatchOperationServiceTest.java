@@ -69,29 +69,28 @@ class BatchOperationServiceTest {
 
     @BeforeEach
     void setUp() {
-        BatchValidationPolicy validationPolicy = new BatchValidationPolicy();
-        BatchAssignmentPolicy assignmentPolicy = new BatchAssignmentPolicy(projectAccessScopeService);
         BatchOperationLogService logService = new BatchOperationLogService(auditLogService);
         BatchProjectAccessGuard projectAccessGuard = new BatchProjectAccessGuard(projectAccessScopeService, projectRepository);
-        BatchTaskAssignmentResolver taskAssignmentResolver = new BatchTaskAssignmentResolver(userRepository, assignmentPolicy);
+        java.util.function.BiFunction<com.xiyu.bid.entity.User, String, java.util.List<String>> deptCodesSupplier =
+                (user, scope) -> projectAccessScopeService.getAllowedDepartmentCodes(user);
+        BatchTaskAssignmentResolver taskAssignmentResolver = new BatchTaskAssignmentResolver(userRepository, deptCodesSupplier);
         BatchTenderCommandService tenderCommandService = new BatchTenderCommandService(
-                tenderRepository, projectRepository, validationPolicy, logService, projectAccessScopeService
+                tenderRepository, projectRepository, logService, projectAccessScopeService
         );
         BatchTaskCommandService taskCommandService = new BatchTaskCommandService(
-                taskRepository, validationPolicy, taskAssignmentResolver, logService, projectAccessGuard
+                taskRepository, taskAssignmentResolver, logService, projectAccessGuard
         );
         BatchProjectCommandService projectCommandService = new BatchProjectCommandService(
-                projectRepository, validationPolicy, logService, projectAccessScopeService
+                projectRepository, logService, projectAccessScopeService
         );
         BatchFeeCommandService feeCommandService = new BatchFeeCommandService(
-                feeRepository, validationPolicy, logService, projectAccessScopeService
+                feeRepository, logService, projectAccessScopeService
         );
         batchOperationService = new BatchOperationService(
                 tenderCommandService,
                 taskCommandService,
                 projectCommandService,
-                feeCommandService,
-                validationPolicy
+                feeCommandService
         );
 
         testTender1 = Tender.builder()

@@ -43,9 +43,7 @@ class BatchTenderStatusAppServiceTest {
         service = new BatchTenderStatusAppService(
                 tenderRepository,
                 projectAccessGuard,
-                new BatchOperationLogService(auditLogService),
-                new BatchValidationPolicy(),
-                new TenderStatusTransitionPolicy()
+                new BatchOperationLogService(auditLogService)
         );
     }
 

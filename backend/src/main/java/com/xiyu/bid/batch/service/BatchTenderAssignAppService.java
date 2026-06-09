@@ -27,7 +27,6 @@ public class BatchTenderAssignAppService {
     private final BatchProjectAccessGuard projectAccessGuard;
     private final BatchTenderAssignmentSupport assignmentSupport;
     private final BatchOperationLogService batchOperationLogService;
-    private final TenderStatusTransitionPolicy transitionPolicy;
     private final NotificationApplicationService notificationAppService;
 
     @Transactional
@@ -93,7 +92,7 @@ public class BatchTenderAssignAppService {
     ) {
         try {
             projectAccessGuard.requireTender(tender.getId());
-            transitionPolicy.assertTransition(tender.getStatus(), Tender.Status.TRACKING);
+            TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.TRACKING);
             tender.setProjectManagerId(assignee.getId());
             tender.setProjectManagerName(assignee.getFullName());
             tender.setDepartment(assignee.getDepartmentName());

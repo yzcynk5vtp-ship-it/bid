@@ -36,7 +36,6 @@ public class ScoreAnalysisService {
     private final DimensionScoreRepository dimensionScoreRepository;
     private final ProjectAccessScopeService projectAccessScopeService;
     private final com.xiyu.bid.tender.service.TenderCommandService tenderCommandService;
-    private final ScoreAnalysisCalculationPolicy calculationPolicy;
     private final ScoreAnalysisQueryService queryService;
 
     @Auditable(action = "CREATE", entityType = "ScoreAnalysis", description = "创建评分分析")
@@ -57,9 +56,9 @@ public class ScoreAnalysisService {
                     .build();
 
             if (request.getDimensions() != null && !request.getDimensions().isEmpty()) {
-                BigDecimal totalScore = calculationPolicy.calculateWeightedScoreFromDTOs(request.getDimensions());
+                BigDecimal totalScore = ScoreAnalysisCalculationPolicy.calculateWeightedScoreFromDTOs(request.getDimensions());
                 analysis.setOverallScore(totalScore.intValue());
-                analysis.setRiskLevel(calculationPolicy.determineRiskLevel(totalScore.intValue()));
+                analysis.setRiskLevel(ScoreAnalysisCalculationPolicy.determineRiskLevel(totalScore.intValue()));
             }
 
             ScoreAnalysis savedAnalysis = scoreAnalysisRepository.save(analysis);
@@ -106,9 +105,9 @@ public class ScoreAnalysisService {
 
             if (dimensions.isEmpty()) return ApiResponse.success("综合评分计算成功", analysis.getOverallScore());
 
-            BigDecimal totalScore = calculationPolicy.calculateWeightedScoreFromEntities(dimensions);
+            BigDecimal totalScore = ScoreAnalysisCalculationPolicy.calculateWeightedScoreFromEntities(dimensions);
             analysis.setOverallScore(totalScore.intValue());
-            analysis.setRiskLevel(calculationPolicy.determineRiskLevel(totalScore.intValue()));
+            analysis.setRiskLevel(ScoreAnalysisCalculationPolicy.determineRiskLevel(totalScore.intValue()));
             scoreAnalysisRepository.save(analysis);
 
             return ApiResponse.success(totalScore.intValue());
@@ -118,10 +117,6 @@ public class ScoreAnalysisService {
             return ApiResponse.error("计算综合评分失败: " + e.getMessage());
         }
     }
-
-    // Delegation to query service for backward compatibility if needed, 
-    // or just remove them if controller is updated.
-    // I'll keep them as delegates for now to avoid breaking the controller.
 
     public ApiResponse<ScoreAnalysisDTO> getAnalysisByProject(Long projectId) {
         return queryService.getAnalysisByProject(projectId);
