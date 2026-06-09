@@ -29,7 +29,7 @@ class BatchTaskAssignmentResolverTest {
         projectAccessScopeService = mock(ProjectAccessScopeService.class);
         batchTaskAssignmentResolver = new BatchTaskAssignmentResolver(
                 userRepository,
-                new BatchAssignmentPolicy(projectAccessScopeService)
+                (user, scope) -> projectAccessScopeService.getAllowedDepartmentCodes(user)
         );
     }
 

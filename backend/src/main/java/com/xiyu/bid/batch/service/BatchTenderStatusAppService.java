@@ -22,13 +22,11 @@ public class BatchTenderStatusAppService {
     private final TenderRepository tenderRepository;
     private final BatchProjectAccessGuard projectAccessGuard;
     private final BatchOperationLogService batchOperationLogService;
-    private final BatchValidationPolicy validationPolicy;
-    private final TenderStatusTransitionPolicy transitionPolicy;
 
     @Transactional
     public BatchOperationResponse batchUpdateStatus(BatchTenderStatusUpdateRequest request, User currentUser) {
-        validationPolicy.requireNonNull(request, "Batch tender status request cannot be null");
-        validationPolicy.validateBatchInput(request.getTenderIds(), "Tender IDs");
+        BatchValidationPolicy.requireNonNull(request, "Batch tender status request cannot be null");
+        BatchValidationPolicy.validateBatchInput(request.getTenderIds(), "Tender IDs");
 
         Tender.Status targetStatus = Tender.Status.valueOf(request.getStatus().trim().toUpperCase());
         BatchOperationResponse response = BatchOperationResponse.builder()
@@ -61,7 +59,7 @@ public class BatchTenderStatusAppService {
     ) {
         try {
             projectAccessGuard.requireTender(tender.getId());
-            transitionPolicy.assertTransition(tender.getStatus(), targetStatus);
+            TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), targetStatus);
             if (tender.getStatus() != targetStatus) {
                 tender.setStatus(targetStatus);
                 changedTenders.add(tender);

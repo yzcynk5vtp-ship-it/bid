@@ -28,14 +28,13 @@ import java.util.List;
 public class BatchProjectCommandService {
 
     private final ProjectRepository projectRepository;
-    private final BatchValidationPolicy validationPolicy;
     private final BatchOperationLogService logService;
     private final ProjectAccessScopeService projectAccessScopeService;
 
     public BatchOperationResponse batchDeleteProjects(List<Long> projectIds, Long userId, User.Role userRole) {
-        validationPolicy.validateBatchInput(projectIds, "Project IDs");
-        validationPolicy.validateUserId(userId);
-        validationPolicy.validateUserRole(userRole);
+        BatchValidationPolicy.validateBatchInput(projectIds, "Project IDs");
+        BatchValidationPolicy.validateUserId(userId);
+        BatchValidationPolicy.validateUserRole(userRole);
         log.info("Batch deleting projects: count={}, userId={}", projectIds.size(), userId);
 
         BatchOperationResponse response = newResponse("DELETE", projectIds.size());
@@ -67,13 +66,13 @@ public class BatchProjectCommandService {
     }
 
     public BatchOperationResponse batchUpdateProjects(BatchProjectUpdateRequest request, Long userId, User.Role userRole) {
-        validationPolicy.requireNonNull(request, "Batch update request cannot be null");
+        BatchValidationPolicy.requireNonNull(request, "Batch update request cannot be null");
         if (!request.hasUpdates()) {
             throw new IllegalArgumentException("At least one field (status or managerId) must be specified for update");
         }
-        validationPolicy.validateBatchInput(request.getProjectIds(), "Project IDs");
-        validationPolicy.validateUserId(userId);
-        validationPolicy.validateUserRole(userRole);
+        BatchValidationPolicy.validateBatchInput(request.getProjectIds(), "Project IDs");
+        BatchValidationPolicy.validateUserId(userId);
+        BatchValidationPolicy.validateUserRole(userRole);
         log.info("Batch updating projects: count={}, userId={}, status={}, managerId={}",
                 request.getProjectIds().size(), userId, request.getStatus(), request.getManagerId());
 

@@ -55,7 +55,6 @@ class BatchTenderAssignAppServiceTest {
                 projectAccessGuard,
                 assignmentSupport,
                 new BatchOperationLogService(auditLogService),
-                new TenderStatusTransitionPolicy(),
                 notificationAppService
         );
     }

@@ -119,10 +119,9 @@ class TenderCommandServiceTest {
                         java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))));
         TenderMapper tenderMapper = new TenderMapper();
         TenderProjectAccessGuard accessGuard = new TenderProjectAccessGuard(projectRepository, projectAccessScopeService, dataScopeConfigService, userRepository);
-        statusTransitionPolicy = new com.xiyu.bid.batch.core.TenderStatusTransitionPolicy();
         tenderCommandService = new TenderCommandService(
                 tenderDeduplicationService, tenderRepository, projectRepository, tenderEvaluationRepository, initiationDetailsRepository, objectMapper, aiService, tenderMapper, accessGuard,
-                statusTransitionPolicy, taskService, tenderAssignmentPermissions, commandAccessGuard, autoAssignmentService, eventPublisher, userRepository, notificationApplicationService);
+                taskService, tenderAssignmentPermissions, commandAccessGuard, autoAssignmentService, eventPublisher, userRepository, notificationApplicationService);
         // Permissive by default — individual instance-permission tests override.
         org.mockito.Mockito.lenient()
                 .when(projectAccessScopeService.currentUserHasAdminAccess())

@@ -28,14 +28,13 @@ import java.util.List;
 public class BatchTaskCommandService {
 
     private final TaskRepository taskRepository;
-    private final BatchValidationPolicy validationPolicy;
     private final BatchTaskAssignmentResolver assignmentResolver;
     private final BatchOperationLogService logService;
     private final BatchProjectAccessGuard projectAccessGuard;
 
     public BatchOperationResponse batchAssignTasks(List<Long> taskIds, Long assigneeId) {
-        validationPolicy.validateBatchInput(taskIds, "Task IDs");
-        validationPolicy.validateUserId(assigneeId);
+        BatchValidationPolicy.validateBatchInput(taskIds, "Task IDs");
+        BatchValidationPolicy.validateUserId(assigneeId);
         log.info("Batch assigning tasks: count={}, assigneeId={}", taskIds.size(), assigneeId);
 
         BatchOperationResponse response = newResponse("ASSIGN", taskIds.size());
@@ -64,8 +63,8 @@ public class BatchTaskCommandService {
     }
 
     public BatchOperationResponse batchAssignTasks(BatchAssignRequest request, User currentUser) {
-        validationPolicy.requireNonNull(request, "Batch assign request cannot be null");
-        validationPolicy.validateBatchInput(request.getTaskIds(), "Task IDs");
+        BatchValidationPolicy.requireNonNull(request, "Batch assign request cannot be null");
+        BatchValidationPolicy.validateBatchInput(request.getTaskIds(), "Task IDs");
 
         BatchAssignmentSnapshot assignment = assignmentResolver.resolve(request, currentUser);
         BatchOperationResponse response = newResponse("ASSIGN", request.getTaskIds().size());

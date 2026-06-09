@@ -67,7 +67,6 @@ class TenderEvaluationServiceTest {
                 projectService,
                 taskService,
                 userRepository,
-                new TenderStatusTransitionPolicy(),
                 mock(TenderEvaluationSubmissionService.class),
                 permissions,
                 accessGuard

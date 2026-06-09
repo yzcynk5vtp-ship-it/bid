@@ -1,19 +1,19 @@
 package com.xiyu.bid.batch.core;
-import org.springframework.stereotype.Component;
 
 import com.xiyu.bid.entity.User;
 
 import java.util.List;
 
 /**
- * 批处理基础校验规则
+ * 批处理基础校验规则 (Pure Core — no Spring dependencies)
  */
-@Component
-public class BatchValidationPolicy {
+public final class BatchValidationPolicy {
 
     public static final int MAX_BATCH_SIZE = 100;
 
-    public void validateBatchInput(List<?> ids, String fieldName) {
+    public BatchValidationPolicy() {}
+
+    public static void validateBatchInput(List<?> ids, String fieldName) {
         if (ids == null) {
             throw new IllegalArgumentException(fieldName + " cannot be null");
         }
@@ -25,7 +25,7 @@ public class BatchValidationPolicy {
         }
     }
 
-    public void validateUserId(Long userId) {
+    public static void validateUserId(Long userId) {
         if (userId == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
@@ -34,13 +34,13 @@ public class BatchValidationPolicy {
         }
     }
 
-    public void validateUserRole(User.Role userRole) {
+    public static void validateUserRole(User.Role userRole) {
         if (userRole == null) {
             throw new IllegalArgumentException("User role cannot be null");
         }
     }
 
-    public void requireNonNull(Object request, String message) {
+    public static void requireNonNull(Object request, String message) {
         if (request == null) {
             throw new IllegalArgumentException(message);
         }
