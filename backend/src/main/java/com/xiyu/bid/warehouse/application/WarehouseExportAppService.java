@@ -217,6 +217,7 @@ public class WarehouseExportAppService {
     public record ExportTaskResult(Long taskId) {}
 
     private Map<Long, List<WarehouseAttachmentEntity>> loadAttachments(List<WarehouseEntity> entities) {
+        if (entities.isEmpty()) return Map.of();
         List<Long> ids = entities.stream().map(WarehouseEntity::getId).toList();
         return attachmentRepo.findByWarehouseIdIn(ids).stream()
                 .collect(Collectors.groupingBy(a -> a.getWarehouse().getId()));
