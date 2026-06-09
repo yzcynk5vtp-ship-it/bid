@@ -4,7 +4,6 @@ package com.xiyu.bid.warehouse.controller;
 import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.entity.RoleProfileCatalog;
-import com.xiyu.bid.warehouse.domain.WarehouseAttachmentType;
 import com.xiyu.bid.warehouse.domain.WarehouseStatus;
 import com.xiyu.bid.warehouse.domain.WarehouseType;
 import com.xiyu.bid.warehouse.domain.WarehouseActionType;
@@ -13,8 +12,6 @@ import com.xiyu.bid.warehouse.dto.WarehouseDetailDTO;
 import com.xiyu.bid.warehouse.dto.WarehouseOperationLogDTO;
 import com.xiyu.bid.warehouse.dto.WarehouseDTO;
 import com.xiyu.bid.warehouse.dto.CloseWarehouseRequest;
-import com.xiyu.bid.warehouse.dto.WarehouseAttachmentDTO;
-import com.xiyu.bid.warehouse.file.WarehouseFileService;
 import com.xiyu.bid.warehouse.infrastructure.WarehouseEntity;
 import com.xiyu.bid.warehouse.infrastructure.WarehouseRepository;
 import com.xiyu.bid.warehouse.infrastructure.WarehouseAttachmentRepository;
@@ -38,11 +35,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.List;
@@ -59,7 +54,6 @@ public class WarehouseController {
     private final WarehouseFilterService filterService;
     private final WarehouseAttachmentRepository attachmentRepo;
     private final WarehouseOperationLogRepository oplogRepo;
-    private final WarehouseFileService fileService;
     private final WarehouseMapper warehouseMapper;
     private final WarehouseLogService warehouseLogService;
     private final UserResolver userResolver;
@@ -228,71 +222,7 @@ public class WarehouseController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
-    // ── Attachment endpoints ──────────────────────────────────────────────────
-
-    @PostMapping("/{id}/attachments")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
-    @Auditable(action = "CREATE", entityType = "WarehouseAttachment", description = "上传仓库附件")
-    public ResponseEntity<ApiResponse<WarehouseAttachmentDTO>> uploadAttachment(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("type") WarehouseAttachmentType type) {
-        if (!repo.existsById(id)) return ResponseEntity.notFound().build();
-        try {
-            com.xiyu.bid.entity.User user = getCurrentUser();
-            if (user == null) {
-                throw new IllegalStateException("未找到当前登录用户");
-            }
-            Long uploadedBy = user.getId();
-            String operatorUsername = user.getFullName() + "(" + user.getUsername() + ")";
-
-            WarehouseAttachmentEntity entity = fileService.upload(id, type, file, uploadedBy);
-            WarehouseEntity wh = repo.findById(id).orElse(null);
-            if (wh != null) {
-                String attachTypeLabel = type == WarehouseAttachmentType.PROPERTY_CERTIFICATE ? "产权证" :
-                                         type == WarehouseAttachmentType.INVOICE ? "发票" : "内外照片";
-                warehouseLogService.saveLog(wh, WarehouseActionType.ATTACH_UPLOAD, attachTypeLabel, null, null, "上传附件：" + entity.getOriginalFilename(), operatorUsername, uploadedBy);
-            }
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success("上传成功", warehouseMapper.toAttachmentDTO(entity)));
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
-        }
-    }
-
-    @GetMapping("/{id}/attachments")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
-    public ResponseEntity<ApiResponse<List<WarehouseAttachmentDTO>>> listAttachments(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(attachmentRepo.findByWarehouseId(id).stream()
-                .map(warehouseMapper::toAttachmentDTO)
-                .toList()));
-    }
-
-    @DeleteMapping("/{id}/attachments/{attachmentId}")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
-    @Auditable(action = "DELETE", entityType = "WarehouseAttachment", description = "删除仓库附件")
-    public ResponseEntity<ApiResponse<Void>> deleteAttachment(
-            @PathVariable Long id, @PathVariable Long attachmentId) {
-        return attachmentRepo.findById(attachmentId)
-                .filter(a -> a.getWarehouse().getId().equals(id))
-                .map(a -> {
-                    com.xiyu.bid.entity.User user = getCurrentUser();
-                    String operatorUsername = user != null ? user.getFullName() + "(" + user.getUsername() + ")" : "system";
-                    Long operatorId = user != null ? user.getId() : null;
-
-                    String fileName = a.getOriginalFilename();
-                    WarehouseAttachmentType type = a.getType();
-                    fileService.delete(a);
-                    WarehouseEntity wh = repo.findById(id).orElse(null);
-                    if (wh != null) {
-                        String attachTypeLabel = type == WarehouseAttachmentType.PROPERTY_CERTIFICATE ? "产权证" :
-                                                 type == WarehouseAttachmentType.INVOICE ? "发票" : "内外照片";
-                        warehouseLogService.saveLog(wh, WarehouseActionType.ATTACH_DELETE, attachTypeLabel, null, null, "删除附件：" + fileName, operatorUsername, operatorId);
-                    }
-                    return ResponseEntity.ok(ApiResponse.<Void>success("删除成功", null));
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
+    // ── Attachment endpoints moved to WarehouseAttachmentController ─────────
 
     private com.xiyu.bid.entity.User getCurrentUser() {
         return userResolver.resolveCurrentUser();
