@@ -69,11 +69,27 @@
           :sub-title="`成功 ${importedRows} 条 | 失败 ${invalidRows} 条`"
         >
           <template #extra>
-            <el-button type="primary" @click="handleClose">关闭</el-button>
+            <el-button v-if="hasCorrectionFile" type="primary" @click="handleDownloadCorrection">
+              <el-icon><Download /></el-icon> 下载修正文件
+            </el-button>
+            <el-button @click="handleClose">关闭</el-button>
           </template>
         </el-result>
+        <div v-if="(attachedCount > 0 || unmatchedFiles.length > 0)" class="report-block">
+          <div class="block-title">📎 仓库附件关联</div>
+          <div class="block-stats">
+            <el-tag type="success" size="default">成功关联 {{ attachedCount }}</el-tag>
+            <el-tag :type="unmatchedFiles.length > 0 ? 'warning' : 'info'" size="default">
+              未匹配 {{ unmatchedFiles.length }}
+            </el-tag>
+          </div>
+          <el-table v-if="unmatchedFiles.length > 0" :data="unmatchedFiles" size="small" style="margin-top:8px">
+            <el-table-column prop="filename" label="文件名" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="reason" label="未匹配原因" min-width="160" />
+          </el-table>
+        </div>
         <div v-if="errorDetails" class="error-details">
-          <div class="error-title">失败明细（前 200 行）：</div>
+          <div class="error-title">📥 仓库信息导入 — 失败明细（前 200 行）：</div>
           <pre>{{ truncatedErrors }}</pre>
         </div>
       </div>
@@ -98,7 +114,7 @@
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled, Files } from '@element-plus/icons-vue'
+import { UploadFilled, Files, Download } from '@element-plus/icons-vue'
 import http from '@/api/client'
 
 const props = defineProps({
@@ -112,6 +128,10 @@ const totalRows = ref(0)
 const validRows = ref(0)
 const invalidRows = ref(0)
 const importedRows = ref(0)
+const attachedCount = ref(0)
+const unmatchedFiles = ref([])
+const hasCorrectionFile = ref(false)
+const correctionFileUrl = ref('')
 const errorDetails = ref('')
 const failureReason = ref('')
 const submitting = ref(false)
@@ -137,8 +157,11 @@ const statusText = computed(() => {
 })
 const truncatedErrors = computed(() => {
   if (!errorDetails.value) return ''
-  const lines = errorDetails.value.split('\n').slice(0, 200)
-  return lines.join('\n')
+  return errorDetails.value
+    .split('\n')
+    .filter(l => !l.startsWith('[CORRECTION_FILE]') && !l.startsWith('[ATTACH_RESULT]') && !l.startsWith('[UNMATCHED] '))
+    .slice(0, 200)
+    .join('\n')
 })
 
 const stopPolling = () => {
@@ -171,8 +194,31 @@ const applyTaskStatus = (data) => {
   if (data.validRows != null) validRows.value = data.validRows
   if (data.invalidRows != null) invalidRows.value = data.invalidRows
   if (data.importedRows != null) importedRows.value = data.importedRows
+  if (data.attachedCount != null) attachedCount.value = data.attachedCount
+  if (data.unmatchedFiles) unmatchedFiles.value = data.unmatchedFiles
+  if (data.hasCorrectionFile != null) hasCorrectionFile.value = data.hasCorrectionFile
+  if (data.correctionFileUrl) correctionFileUrl.value = data.correctionFileUrl
   if (data.errorDetails) errorDetails.value = data.errorDetails
   if (data.failureReason) failureReason.value = data.failureReason
+}
+
+const handleDownloadCorrection = async () => {
+  if (!correctionFileUrl.value) return
+  try {
+    const response = await http.get(correctionFileUrl.value, { responseType: 'blob' })
+    const blob = response.data
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    a.download = `仓库信息导入_${ts}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    ElMessage.error('下载修正文件失败')
+  }
 }
 
 const handleExcelChange = (uploadFile) => {
@@ -273,6 +319,9 @@ onUnmounted(stopPolling)
 .error-details { margin-top: 12px; padding: 12px; background: #fdf6ec; border-radius: 6px; }
 .error-title { font-weight: 600; color: #b88230; margin-bottom: 8px; }
 .error-details pre { font-size: 12px; line-height: 1.6; max-height: 200px; overflow-y: auto; margin: 0; white-space: pre-wrap; word-break: break-all; }
+.report-block { margin-top: 16px; padding: 12px; background: #f5f7fa; border-radius: 6px; }
+.block-title { font-weight: 600; color: #303133; margin-bottom: 8px; }
+.block-stats { display: flex; gap: 8px; }
 .dialog-footer { display: flex; justify-content: flex-end; gap: 8px; }
 :deep(.el-form-item__label) { color: var(--el-text-color-regular); }
 </style>
