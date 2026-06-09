@@ -115,8 +115,6 @@ export function useQualificationBatch({ fetchQualifications }) {
     importTriggerRef,
     handleImportLedgerClick,
     handleImportChange,
-    importResultVisible,
-    importResultData,
     handleImportResultClosed,
     batchAttachUploadRef,
     batchAttachTriggerRef,
