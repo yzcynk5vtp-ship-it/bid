@@ -3,14 +3,11 @@
 # Output: gate pass/fail, then delegates to real git push (with --no-verify filtered)
 # Pos: .githooks/ - push 命令别名包装器 (2026-06-09)
 #
-# 为什么有这个脚本：
-#   通过 git alias 配置为 push 命令的替代入口，确保每次 git push
-#   无论是否带 --no-verify 都先跑 pre-push-gate.sh（14 道门禁）。
-#
 # 门禁流程：
-#   1. 强制跑 pre-push-gate.sh（不通过则 exit 1）
+#   1. 强制跑 pre-push-gate.sh（14 道门禁，不通过则 exit 1）
 #   2. 过滤掉 --no-verify / -n 参数
 #   3. 调用真实 git push（会触发 .githooks/pre-push 二次门禁）
+#   4. push 成功后自动为 agent/* 分支创建 PR（Agent 无需记住）
 #
 # 激活方式（由 agent-start-task.sh 自动执行）：
 #   git config alias.push '!bash .githooks/git-push-wrapper.sh'
@@ -57,5 +54,31 @@ if [ -z "$REAL_GIT" ]; then
   exit 1
 fi
 
-# ── 4. 委派给真实 git push ──
-exec "$REAL_GIT" push "${ARGS[@]}"
+# ── 4. 记下分支名，执行真实 push ──
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+if ! "$REAL_GIT" push "${ARGS[@]}"; then
+  echo "::git-push-wrapper:: git push 失败" >&2
+  exit 1
+fi
+
+# ── 5. push 成功 → 为 agent/* 分支自动创建 PR ──
+# 跳过 --dry-run 等非实际推送场景
+DO_DRY_RUN=false
+for arg in "${ARGS[@]}"; do
+  [[ "$arg" == "--dry-run" ]] && DO_DRY_RUN=true
+done
+
+if [[ "$CURRENT_BRANCH" == agent/* ]] && [ "$DO_DRY_RUN" = false ]; then
+  # 用最近的 commit message 作为 PR 标题
+  PR_TITLE="$(git log -1 --format='%s' 2>/dev/null || echo "")"
+
+  if [ -n "$PR_TITLE" ] && [ -x "$ROOT_DIR/scripts/pr-create.sh" ]; then
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║  🔄 推送成功，自动创建 PR...                                 ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    # pr-create.sh 内部会检测远端是否已有同源 PR，有则跳过
+    bash "$ROOT_DIR/scripts/pr-create.sh" "$PR_TITLE" <<< ""
+  fi
+fi
