@@ -195,7 +195,7 @@ git push origin --delete agent/<name>/<task>
 
 ### 4. 文件锁门禁
 - **锁机制**：已改为 per-task 文件模式（`.agent-locks/<task-slug>.yml`），详情见 CLAUDE.md §5.2。
-- **严禁绕过**：任何 `git push --no-verify` / `git commit --no-verify` 已被 `scripts/git` 包装器在系统层面禁止（见 CLAUDE.md §5 Git 安全规则 + `npm run agent:git-safe-check`）。
+- **严禁绕过**：`git push --no-verify` / `git commit --no-verify` 已被两层防线禁止：① `scripts/git` 包装器（系统级拦截）；② git alias 强制走 `.githooks/git-push-wrapper.sh` / `.githooks/git-commit-wrapper.sh`（过滤 `--no-verify`）。由 `agent-start-task.sh` 自动配置。
 - **自动合并**：1 个 required review 批准后，`.github/workflows/auto-enable-merge-on-approved.yml` 会自动为 PR 开启 GitHub auto-merge（--squash）。真正合并仍需所有门禁（agent-locks、line-budget、frontend/backend/e2e + strict）通过。详见 CLAUDE.md §6。
 
 ## 审计与质量门禁
@@ -204,6 +204,28 @@ git push origin --delete agent/<name>/<task>
 - **架构测试**：后端必须通过 ArchUnit 门禁，确保包依赖、异常处理和 FP-Java 约束不被破坏。主要测试类包括 `FPJavaArchitectureTest`、`MaintainabilityArchitectureTest`、`ProjectAccessGuardCoverageTest`。
 - **TDD 覆盖率**：核心业务逻辑（后端 domain/core 层、前端业务组件）的单元测试覆盖率目标为 80% 以上。
 - **E2E 验证**：涉及 UI 交互的变更必须包含对应的 Playwright 脚本验证。
+
+### 本地门禁（GitHub CI 替代方案）
+
+当前 GitHub CI 不可用，门禁完全依赖本地 git hooks + alias 双防线：
+
+| 层次 | 机制 | 触发时机 | 能否绕过 |
+|------|------|---------|---------|
+| 1 | `scripts/git` 包装器（需 `source dev-env.sh` 激活） | 每次 `git` 命令 | 系统级拦截 `--no-verify` |
+| 2 | `.githooks/pre-push` + `pre-push-gate.sh`（14 道门禁） | `git push` | hook 自动触发，别名拦截 `--no-verify` |
+| 3 | `.githooks/pre-commit`（15+ 项检查） | `git commit` | hook 自动触发，别名拦截 `--no-verify` |
+| 4 | **git alias**（`.githooks/git-push-wrapper.sh`） | `git push` | 过滤 `--no-verify`，门禁强制跑 |
+| 5 | **git alias**（`.githooks/git-commit-wrapper.sh`） | `git commit` | 过滤 `--no-verify`，hook 强制跑 |
+
+第 4/5 层 alias 是**不依赖 shell PATH 的硬防线**——由 `agent-start-task.sh` 在创建 worktree 时自动配置，
+每次 `git push` / `git commit` 无论是否带 `--no-verify`，都强制走包装器脚本，门禁不可绕过。
+
+完整本地门禁（手动触发）：
+- `npm run ci:local:quick` — 快速预检（编译 + 架构门禁）
+- `npm run ci:local` — 完整本地 CI 模拟（需本地 Docker）
+- `npm run agent:pre-push-dry-run` — 模拟推送前 14 道门禁
+- `bash scripts/ci-pre-pr.sh` — 提交 PR 前一站式门禁
+
 
 
 

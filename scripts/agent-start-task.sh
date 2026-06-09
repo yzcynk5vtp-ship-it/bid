@@ -320,6 +320,16 @@ EOF
     (cd "$WORKTREE_PATH" && bash scripts/install-githooks.sh && bash scripts/install-java-standards-hook.sh) || true
   fi
 
+  # 配置 git alias，防止 --no-verify 绕过门禁（仅首次设置）
+  if ! git config alias.push 2>/dev/null | grep -q 'git-push-wrapper'; then
+    git config alias.push '!bash .githooks/git-push-wrapper.sh'
+    echo "agent-start-task: git alias push → .githooks/git-push-wrapper.sh (门禁强制)"
+  fi
+  if ! git config alias.commit 2>/dev/null | grep -q 'git-commit-wrapper'; then
+    git config alias.commit '!bash .githooks/git-commit-wrapper.sh'
+    echo "agent-start-task: git alias commit → .githooks/git-commit-wrapper.sh (门禁强制)"
+  fi
+
   # 增量安装 node 依赖（检查 node_modules 是否存在）
   if [[ -f "$WORKTREE_PATH/package.json" && ! -d "$WORKTREE_PATH/node_modules" ]]; then
     echo "agent-start-task: package.json detected, running fast offline-first pnpm install..."
@@ -426,6 +436,16 @@ fi
 
 # 安装 git hooks（本地 CI 门禁），新 worktree 自动激活
 (cd "$WORKTREE_PATH" && bash scripts/install-githooks.sh && bash scripts/install-java-standards-hook.sh)
+
+# 配置 git alias，防止 --no-verify 绕过门禁（仅首次设置）
+if ! git -C "$WORKTREE_PATH" config alias.push 2>/dev/null | grep -q 'git-push-wrapper'; then
+  git -C "$WORKTREE_PATH" config alias.push '!bash .githooks/git-push-wrapper.sh'
+  echo "agent-start-task: git alias push → .githooks/git-push-wrapper.sh (门禁强制)"
+fi
+if ! git -C "$WORKTREE_PATH" config alias.commit 2>/dev/null | grep -q 'git-commit-wrapper'; then
+  git -C "$WORKTREE_PATH" config alias.commit '!bash .githooks/git-commit-wrapper.sh'
+  echo "agent-start-task: git alias commit → .githooks/git-commit-wrapper.sh (门禁强制)"
+fi
 
 # 自动检测并以离线优先方式安装 node 依赖，缩减冷启动时间
 if [[ -f "$WORKTREE_PATH/package.json" ]]; then

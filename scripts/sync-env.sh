@@ -394,5 +394,9 @@ divergence_warning() {
 forgetfulness_check
 divergence_warning
 
+# ── 本地门禁自检（嵌入早操，Agent 无需额外操作） ──
+if [[ -f "$(dirname "${BASH_SOURCE[0]}")/check-local-gates.sh" ]]; then
+  bash "$(dirname "${BASH_SOURCE[0]}")/check-local-gates.sh" 2>/dev/null && info "✅ 本地门禁就绪"
+fi
 
 info "=== sync-env done ==="
