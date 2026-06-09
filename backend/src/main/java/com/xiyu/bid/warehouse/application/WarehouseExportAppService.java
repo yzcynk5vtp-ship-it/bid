@@ -73,6 +73,61 @@ public class WarehouseExportAppService {
     }
 
     /**
+     * 创建按 ID 批量导出的任务。
+     */
+    @Transactional
+    public ExportTaskResult exportByIds(List<Long> ids, Long operatorId) {
+        String filterSnapshot;
+        try {
+            filterSnapshot = objectMapper.writeValueAsString(Map.of("ids", ids));
+        } catch (JsonProcessingException e) {
+            filterSnapshot = "{\"ids\":" + ids + "}";
+        }
+
+        WarehouseExportTaskEntity task = WarehouseExportTaskEntity.builder()
+                .status(ExportStatus.PENDING)
+                .filterSnapshot(filterSnapshot)
+                .createdBy(operatorId)
+                .createdAt(LocalDateTime.now())
+                .build();
+        exportTaskRepo.save(task);
+
+        executeExportByIdsAsync(task.getId(), ids, operatorId);
+
+        return new ExportTaskResult(task.getId());
+    }
+
+    @Async("warehouseExportExecutor")
+    public void executeExportByIdsAsync(Long taskId, List<Long> ids, Long operatorId) {
+        try {
+            WarehouseExportTaskEntity task = exportTaskRepo.findById(taskId).orElseThrow();
+            task.setStatus(ExportStatus.PROCESSING);
+            exportTaskRepo.save(task);
+
+            List<WarehouseEntity> entities = filterService.findAllByIds(ids);
+            int totalCount = entities.size();
+            List<String[]> rows = WarehouseExportPolicy.buildRows(entities);
+            byte[] excelBytes = excelWriter.write(WarehouseExportPolicy.HEADERS, rows);
+
+            String filePath = saveFile(taskId, excelBytes);
+            LocalDateTime now = LocalDateTime.now();
+            task.setStatus(ExportStatus.COMPLETED);
+            task.setTotalCount(totalCount);
+            task.setStoredFilePath(filePath);
+            task.setDownloadUrl("/api/knowledge/warehouses/export/tasks/" + taskId + "/download");
+            task.setExpiresAt(now.plusHours(24));
+            task.setCompletedAt(now);
+            exportTaskRepo.save(task);
+        } catch (RuntimeException e) {
+            log.error("仓库按ID批量导出任务执行失败: taskId={}", taskId, e);
+            failTask(taskId, truncate(e.getMessage(), 500));
+        } catch (IOException e) {
+            log.error("仓库按ID批量导出文件IO异常: taskId={}", taskId, e);
+            failTask(taskId, "文件写入失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 异步执行导出流程：查询 → 构建行数据 → 写 Excel → 保存文件 → 更新状态。
      */
     @Async("warehouseExportExecutor")

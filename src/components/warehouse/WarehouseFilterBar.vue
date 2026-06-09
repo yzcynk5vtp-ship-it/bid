@@ -40,7 +40,12 @@
     </el-form>
     <div class="filter-bar-right">
       <span class="total-tip">共 <strong>{{ total }}</strong> 条</span>
-      <el-button type="success" @click="$emit('export')"><el-icon><Download /></el-icon> 导出台账</el-button>
+      <el-button @click="$emit('download-template')"><el-icon><DocumentCopy /></el-icon> 下载批量导入模板</el-button>
+      <el-button type="warning" @click="$emit('import')"><el-icon><Upload /></el-icon> 批量导入</el-button>
+      <el-button v-if="selectedCount > 0" type="success" @click="$emit('batch-export')">
+        <el-icon><Download /></el-icon> 批量导出 ({{ selectedCount }})
+      </el-button>
+      <el-button v-else type="success" @click="$emit('export')"><el-icon><Download /></el-icon> 导出台账</el-button>
       <el-button type="primary" @click="$emit('create')"><el-icon><Plus /></el-icon> 新增仓库</el-button>
     </div>
   </div>
@@ -48,13 +53,14 @@
 
 <script setup>
 import { reactive, watch } from 'vue'
-import { Search, RefreshRight, Plus, Download } from '@element-plus/icons-vue'
+import { Search, RefreshRight, Plus, Download, Upload, DocumentCopy } from '@element-plus/icons-vue'
 
 const props = defineProps({
   filters: { type: Object, default: () => ({}) },
-  total: { type: Number, default: 0 }
+  total: { type: Number, default: 0 },
+  selectedCount: { type: Number, default: 0 }
 })
-const emit = defineEmits(['update:filters', 'search', 'reset', 'create', 'export'])
+const emit = defineEmits(['update:filters', 'search', 'reset', 'create', 'export', 'import', 'download-template', 'batch-export'])
 
 const localFilters = reactive({
   keyword: props.filters.keyword || '',

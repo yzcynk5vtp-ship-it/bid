@@ -20,6 +20,8 @@ public record WarehouseDetailDTO(
         String lessor,
         String lessee,
         String invoicePeriod,
+        LocalDate invoicePeriodStart,
+        LocalDate invoicePeriodEnd,
         String closePlan,
         String closeReason,
         Boolean hasPropertyCert,

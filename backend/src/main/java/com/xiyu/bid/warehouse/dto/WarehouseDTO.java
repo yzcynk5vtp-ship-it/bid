@@ -22,6 +22,8 @@ public class WarehouseDTO {
     @NotBlank private String lessor;
     @NotBlank private String lessee;
     private String invoicePeriod;
+    private LocalDate invoicePeriodStart;
+    private LocalDate invoicePeriodEnd;
     private String closePlan;
 
     private Boolean hasPropertyCert;
