@@ -106,7 +106,7 @@
           v-else
           ref="certUploadRef"
           :auto-upload="false"
-          :limit="1"
+          :limit="5"
           accept=".pdf,.jpg,.jpeg,.png"
           :on-change="onCertFileChange"
           :on-remove="() => certFile = null"
@@ -115,7 +115,7 @@
           data-testid="qf-attachment-upload"
         >
           <el-button type="primary" plain>{{ editingId ? '选择新文件' : '选择文件' }}</el-button>
-          <template #tip><div class="el-upload__tip">仅支持 PDF/JPG/PNG，≤10MB</div></template>
+          <template #tip><div class="el-upload__tip">仅支持 PDF/JPG/PNG，≤50MB，最多5个</div></template>
         </el-upload>
         <div v-if="certFile" class="new-file-tag">
           <el-tag closable size="small" type="info" @close="clearCertFile">{{ certFile.name }}</el-tag>
@@ -214,7 +214,7 @@ function initForm() {
 }
 
 const onCertFileChange = (f) => {
-  if (f.raw?.size > 10485760) { ElMessage.error('附件不能超过10MB'); certFileList.value = []; return }
+  if (f.raw?.size > 52428800) { ElMessage.error('附件不能超过50MB'); certFileList.value = []; return }
   certFile.value = f.raw
   certFileList.value = [{ name: f.raw.name, uid: f.raw.name + Date.now() }]
 }
