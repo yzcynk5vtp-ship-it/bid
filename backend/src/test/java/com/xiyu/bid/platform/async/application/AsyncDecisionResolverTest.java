@@ -121,6 +121,21 @@ class AsyncDecisionResolverTest {
     }
 
     @Test
+    void shouldDeadLetterDataCorruption() {
+        AsyncHandlingDecision decision = resolver.resolve(
+                AsyncFailureKind.DATA_CORRUPTION,
+                1,
+                3,
+                schedule,
+                true
+        );
+
+        assertEquals(AsyncAction.DEAD_LETTER, decision.action());
+        assertEquals("DATA_CORRUPTION", decision.reasonCode());
+        assertTrue(decision.alertRequired());
+    }
+
+    @Test
     void shouldFailMainTransactionWhenRequired() {
         AsyncHandlingDecision decision = resolver.resolve(
                 AsyncFailureKind.MAIN_TRANSACTION_REQUIRED,
