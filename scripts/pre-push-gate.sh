@@ -32,7 +32,7 @@ for arg in "$@"; do
 done
 
 # ── 完全绕过 ────────────────────────────────────────────────
-if [ "${PRE_PUSH_GATE:-0}" = "0" ]; then
+if [ "${PRE_PUSH_GATE:-1}" = "0" ]; then
   echo "⚠  PRE_PUSH_GATE=0 — 跳过全部推送前门禁检查"
   exit 0
 fi
