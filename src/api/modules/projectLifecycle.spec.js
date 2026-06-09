@@ -34,7 +34,7 @@ describe('projectLifecycleApi', () => {
     await projectLifecycleApi.submitInitiation(1, { ownerUnit: 'A' })
     await projectLifecycleApi.updateInitiation(1, { ownerUnit: 'B' })
 
-    expect(httpClient.get).toHaveBeenCalledWith('/api/projects/1/initiation')
+    expect(httpClient.get).toHaveBeenCalledWith('/api/projects/1/initiation', { skipGlobalErrorMessage: true })
     expect(httpClient.post).toHaveBeenCalledWith('/api/projects/1/initiation', { ownerUnit: 'A' })
     expect(httpClient.patch).toHaveBeenCalledWith('/api/projects/1/initiation', { ownerUnit: 'B' })
   })

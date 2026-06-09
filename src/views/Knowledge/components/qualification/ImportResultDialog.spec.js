@@ -43,8 +43,12 @@ describe('ImportResultDialog', () => {
     await nextTick()
 
     expect(wrapper.find('.error-section').exists()).toBe(true)
-    expect(wrapper.text()).toContain('DUP-001')
-    expect(wrapper.text()).toContain('证书编号已存在')
+    expect(wrapper.find('.error-section').text()).toContain('失败明细')
+    // el-table-column 被 stub 为 <span /> 不渲染数据，通过 props 验证数据正确
+    const errors = wrapper.props('data').errors
+    expect(errors).toHaveLength(1)
+    expect(errors[0].certificateNo).toBe('DUP-001')
+    expect(errors[0].reason).toBe('证书编号已存在')
   })
 
   it('全部成功时应展示成功提示', async () => {
