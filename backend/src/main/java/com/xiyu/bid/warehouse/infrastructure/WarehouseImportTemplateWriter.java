@@ -84,4 +84,32 @@ public class WarehouseImportTemplateWriter {
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         return style;
     }
+
+    /**
+     * 将任意表头 + 数据行写入 Excel，用于生成修正文件等场景。
+     */
+    public byte[] writeWithExtraColumns(String[] headers, List<String[]> rows) throws IOException {
+        try (Workbook wb = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            CellStyle headerStyle = createHeaderStyle(wb);
+            Sheet sheet = wb.createSheet(SHEET_NAME);
+            Row hr = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                Cell c = hr.createCell(i);
+                c.setCellValue(headers[i]);
+                c.setCellStyle(headerStyle);
+                sheet.setColumnWidth(i, 18 * 256);
+            }
+            int rowNum = 1;
+            for (String[] row : rows) {
+                Row r = sheet.createRow(rowNum++);
+                for (int i = 0; i < headers.length; i++) {
+                    String val = (row != null && i < row.length && row[i] != null) ? row[i] : "";
+                    r.createCell(i).setCellValue(val);
+                }
+            }
+            wb.write(out);
+            return out.toByteArray();
+        }
+    }
 }
