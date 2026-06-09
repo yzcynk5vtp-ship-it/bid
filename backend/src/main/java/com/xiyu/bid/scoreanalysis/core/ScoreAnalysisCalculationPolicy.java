@@ -4,19 +4,18 @@ import com.xiyu.bid.scoreanalysis.RiskLevel;
 import com.xiyu.bid.scoreanalysis.dto.DimensionScoreDTO;
 import com.xiyu.bid.scoreanalysis.entity.DimensionScore;
 
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
 /**
- * 评分计算策略 (Pure Core)
+ * 评分计算策略 (Pure Core — no Spring dependencies)
  */
-@Component
-public class ScoreAnalysisCalculationPolicy {
+public final class ScoreAnalysisCalculationPolicy {
 
-    public BigDecimal calculateWeightedScoreFromDTOs(List<DimensionScoreDTO> dimensions) {
+    public ScoreAnalysisCalculationPolicy() {}
+
+    public static BigDecimal calculateWeightedScoreFromDTOs(List<DimensionScoreDTO> dimensions) {
         BigDecimal totalScore = BigDecimal.ZERO;
         BigDecimal totalWeight = BigDecimal.ZERO;
 
@@ -30,7 +29,7 @@ public class ScoreAnalysisCalculationPolicy {
         return normalize(totalScore, totalWeight);
     }
 
-    public BigDecimal calculateWeightedScoreFromEntities(List<DimensionScore> dimensions) {
+    public static BigDecimal calculateWeightedScoreFromEntities(List<DimensionScore> dimensions) {
         BigDecimal totalScore = BigDecimal.ZERO;
         BigDecimal totalWeight = BigDecimal.ZERO;
 
@@ -44,14 +43,14 @@ public class ScoreAnalysisCalculationPolicy {
         return normalize(totalScore, totalWeight);
     }
 
-    public RiskLevel determineRiskLevel(Integer score) {
+    public static RiskLevel determineRiskLevel(Integer score) {
         if (score == null) return RiskLevel.MEDIUM;
         if (score >= 80) return RiskLevel.LOW;
         if (score >= 60) return RiskLevel.MEDIUM;
         return RiskLevel.HIGH;
     }
 
-    private BigDecimal normalize(BigDecimal totalScore, BigDecimal totalWeight) {
+    private static BigDecimal normalize(BigDecimal totalScore, BigDecimal totalWeight) {
         if (totalWeight.compareTo(BigDecimal.ZERO) > 0 && totalWeight.compareTo(BigDecimal.ONE) != 0) {
             return totalScore.divide(totalWeight, 2, RoundingMode.HALF_UP);
         }

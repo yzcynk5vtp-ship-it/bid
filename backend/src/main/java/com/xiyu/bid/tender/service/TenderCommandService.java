@@ -65,7 +65,6 @@ public class TenderCommandService {
     private final AiService aiService;
     private final TenderMapper tenderMapper;
     private final TenderProjectAccessGuard accessGuard;
-    private final com.xiyu.bid.batch.core.TenderStatusTransitionPolicy statusTransitionPolicy;
     private final TaskService taskService;
     private final TenderAssignmentPermissions permissions;
     private final TenderCommandAccessGuard commandAccessGuard;
@@ -167,7 +166,7 @@ public class TenderCommandService {
         try {
             if (autoAssignmentService.autoAssignIfPossible(tender)) {
                 // 匹配成功，更新状态为 TRACKING
-                statusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.TRACKING);
+                com.xiyu.bid.batch.core.TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.TRACKING);
                 tender.setStatus(Tender.Status.TRACKING);
                 eventPublisher.publishEvent(TenderStatusChangedEvent.of(tender.getId(), tender.getExternalId(), Tender.Status.PENDING_ASSIGNMENT, Tender.Status.TRACKING, tender.getTitle()));
                 tenderRepository.save(tender);
@@ -188,7 +187,7 @@ public class TenderCommandService {
                 .orElseThrow(() -> new ResourceNotFoundException("Tender", id.toString()));
         accessGuard.assertCanAccessTender(tender);
 
-        statusTransitionPolicy.assertTransition(tender.getStatus(), targetStatus);
+        com.xiyu.bid.batch.core.TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), targetStatus);
         Tender.Status previousStatus = tender.getStatus();
 
         tender.setStatus(targetStatus);

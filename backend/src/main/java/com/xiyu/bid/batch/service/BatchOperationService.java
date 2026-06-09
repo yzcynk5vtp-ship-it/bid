@@ -31,7 +31,6 @@ public class BatchOperationService {
     private final BatchTaskCommandService taskCommandService;
     private final BatchProjectCommandService projectCommandService;
     private final BatchFeeCommandService feeCommandService;
-    private final BatchValidationPolicy validationPolicy;
 
     @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     @PreAuthorize("hasAuthority('CLAIM_TENDER')")
@@ -60,7 +59,7 @@ public class BatchOperationService {
     @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
     @PreAuthorize("hasAuthority('DELETE_PROJECT')")
     public BatchOperationResponse batchDeleteProjects(BatchDeleteRequest request) {
-        validationPolicy.requireNonNull(request, "Batch delete request cannot be null");
+        BatchValidationPolicy.requireNonNull(request, "Batch delete request cannot be null");
         throw new IllegalStateException("Use the authenticated batchDeleteProjects overload with the current user context");
     }
 
@@ -69,9 +68,9 @@ public class BatchOperationService {
         if (itemType == null || itemType.trim().isEmpty()) {
             throw new IllegalArgumentException("Item type cannot be null or empty");
         }
-        validationPolicy.validateBatchInput(ids, "Item IDs");
-        validationPolicy.validateUserId(userId);
-        validationPolicy.validateUserRole(userRole);
+        BatchValidationPolicy.validateBatchInput(ids, "Item IDs");
+        BatchValidationPolicy.validateUserId(userId);
+        BatchValidationPolicy.validateUserRole(userRole);
 
         if (itemType.trim().equalsIgnoreCase("TENDER") && userRole != User.Role.ADMIN) {
             throw new org.springframework.security.access.AccessDeniedException("Only ADMIN is allowed to delete tenders");

@@ -27,14 +27,13 @@ import java.util.List;
 public class BatchFeeCommandService {
 
     private final com.xiyu.bid.fees.repository.FeeRepository feeRepository;
-    private final BatchValidationPolicy validationPolicy;
     private final BatchOperationLogService logService;
     private final ProjectAccessScopeService projectAccessScopeService;
 
     public BatchOperationResponse batchApproveFees(BatchApproveFeesRequest request, Long userId) {
-        validationPolicy.requireNonNull(request, "Batch approve fees request cannot be null");
-        validationPolicy.validateBatchInput(request.getFeeIds(), "Fee IDs");
-        validationPolicy.validateUserId(userId);
+        BatchValidationPolicy.requireNonNull(request, "Batch approve fees request cannot be null");
+        BatchValidationPolicy.validateBatchInput(request.getFeeIds(), "Fee IDs");
+        BatchValidationPolicy.validateUserId(userId);
         log.info("Batch approving fees: count={}, userId={}, paidBy={}",
                 request.getFeeIds().size(), userId, request.getPaidBy());
 

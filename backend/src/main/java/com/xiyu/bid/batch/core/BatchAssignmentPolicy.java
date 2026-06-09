@@ -1,30 +1,28 @@
 package com.xiyu.bid.batch.core;
-import org.springframework.stereotype.Component;
 
 import com.xiyu.bid.entity.User;
-import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.task.dto.TaskAssignmentRequest;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 /**
- * 任务批量分配规则
+ * 任务批量分配规则 (Pure Core — no Spring dependencies)
+ * 部门访问断言逻辑通过 supplier 函数注入，避免 core 依赖 application/service 层。
  */
-@Component
-public class BatchAssignmentPolicy {
+public final class BatchAssignmentPolicy {
 
-    private final ProjectAccessScopeService projectAccessScopeService;
+    private BatchAssignmentPolicy() {}
 
-    public BatchAssignmentPolicy(ProjectAccessScopeService pProjectAccessScopeService) {
-        this.projectAccessScopeService = pProjectAccessScopeService;
-    }
-
-    public BatchAssignmentSnapshot resolveDepartmentAssignment(TaskAssignmentRequest request, User currentUser) {
+    public static BatchAssignmentSnapshot resolveDepartmentAssignment(
+            TaskAssignmentRequest request, User currentUser,
+            BiFunction<User, String, List<String>> deptCodesSupplier) {
         if (request == null || !request.hasAssignmentTarget()) {
             throw new IllegalArgumentException("Assignment target cannot be empty");
         }
-        assertDeptAccess(currentUser, request.getAssigneeDeptCode(), Boolean.TRUE.equals(request.getAllowCrossDeptCollaboration()));
+        assertDeptAccess(currentUser, request.getAssigneeDeptCode(),
+                Boolean.TRUE.equals(request.getAllowCrossDeptCollaboration()), deptCodesSupplier);
         return new BatchAssignmentSnapshot(
                 null,
                 normalizeText(request.getAssigneeDeptCode()),
@@ -34,19 +32,22 @@ public class BatchAssignmentPolicy {
         );
     }
 
-    public BatchAssignmentSnapshot resolveUserAssignment(User assignee, User currentUser, boolean allowCrossDeptCollaboration) {
+    public static BatchAssignmentSnapshot resolveUserAssignment(User assignee, User currentUser,
+                                                                boolean allowCrossDeptCollaboration,
+                                                                BiFunction<User, String, List<String>> deptCodesSupplier) {
         if (!Boolean.TRUE.equals(assignee.getEnabled())) {
             throw new IllegalArgumentException("目标责任人已停用，无法分配");
         }
-        assertDeptAccess(currentUser, assignee.getDepartmentCode(), allowCrossDeptCollaboration);
+        assertDeptAccess(currentUser, assignee.getDepartmentCode(), allowCrossDeptCollaboration, deptCodesSupplier);
         return BatchAssignmentSnapshot.fromUser(assignee);
     }
 
-    private void assertDeptAccess(User currentUser, String targetDeptCode, boolean allowCrossDeptCollaboration) {
+    private static void assertDeptAccess(User currentUser, String targetDeptCode, boolean allowCrossDeptCollaboration,
+                                          BiFunction<User, String, List<String>> deptCodesSupplier) {
         if (currentUser == null || isAdmin(currentUser)) {
             return;
         }
-        List<String> allowedDeptCodes = new ArrayList<>(projectAccessScopeService.getAllowedDepartmentCodes(currentUser));
+        List<String> allowedDeptCodes = new ArrayList<>(deptCodesSupplier.apply(currentUser, "READ"));
         if (currentUser.getDepartmentCode() != null && !currentUser.getDepartmentCode().isBlank()) {
             allowedDeptCodes.add(currentUser.getDepartmentCode().trim());
         }
@@ -61,15 +62,15 @@ public class BatchAssignmentPolicy {
         }
     }
 
-    private boolean isAdmin(User user) {
+    private static boolean isAdmin(User user) {
         return user != null && "admin".equalsIgnoreCase(user.getRoleCode());
     }
 
-    private String normalizeText(String value) {
+    private static String normalizeText(String value) {
         return normalizeText(value, null);
     }
 
-    private String normalizeText(String value, String fallback) {
+    private static String normalizeText(String value, String fallback) {
         if (value == null || value.isBlank()) {
             return fallback;
         }

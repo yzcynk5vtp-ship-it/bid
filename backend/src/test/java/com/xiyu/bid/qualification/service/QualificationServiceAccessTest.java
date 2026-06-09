@@ -161,8 +161,7 @@ class QualificationServiceAccessTest {
                 importQualificationAppService,
                 new QualificationDtoMapper(),
                 projectAccessScopeService,
-                businessQualificationRepository,
-                new QualificationExcelSupport()
+                businessQualificationRepository
         );
     }
 
