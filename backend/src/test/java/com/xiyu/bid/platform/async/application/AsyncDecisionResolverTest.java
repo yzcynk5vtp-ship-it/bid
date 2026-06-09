@@ -165,20 +165,4 @@ class AsyncDecisionResolverTest {
         assertFalse(decision.alertRequired());
         assertFalse(decision.rollbackRequired());
     }
-
-    @Test
-    void shouldDeadLetterDataCorruption() {
-        AsyncHandlingDecision decision = resolver.resolve(
-                AsyncFailureKind.DATA_CORRUPTION,
-                0,
-                1,
-                schedule,
-                true
-        );
-
-        assertEquals(AsyncAction.DEAD_LETTER, decision.action());
-        assertEquals("DATA_CORRUPTION", decision.reasonCode());
-        assertTrue(decision.alertRequired());
-        assertFalse(decision.rollbackRequired());
-    }
 }

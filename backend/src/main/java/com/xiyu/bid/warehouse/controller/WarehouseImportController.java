@@ -4,6 +4,7 @@ import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.warehouse.application.WarehouseImportAppService;
+import com.xiyu.bid.warehouse.application.WarehouseImportQueryService;
 import com.xiyu.bid.warehouse.infrastructure.WarehouseImportTaskEntity;
 import com.xiyu.bid.warehouse.infrastructure.WarehouseImportTemplateWriter;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class WarehouseImportController {
     private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final WarehouseImportAppService importAppService;
+    private final WarehouseImportQueryService importQueryService;
     private final WarehouseImportTemplateWriter templateWriter;
     private final UserResolver userResolver;
 
@@ -80,7 +82,7 @@ public class WarehouseImportController {
         if (user == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("未登录"));
         }
-        Page<WarehouseImportTaskEntity> tasks = importAppService.listTasks(
+        Page<WarehouseImportTaskEntity> tasks = importQueryService.listTasks(
                 user.getId(), PageRequest.of(page, size, Sort.by("createdAt").descending()));
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "content", tasks.getContent().stream().map(this::toTaskMap).toList(),
@@ -99,7 +101,7 @@ public class WarehouseImportController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error("未登录"));
         }
         try {
-            WarehouseImportTaskEntity task = importAppService.getTask(taskId, user.getId());
+            WarehouseImportTaskEntity task = importQueryService.getTask(taskId, user.getId());
             return ResponseEntity.ok(ApiResponse.success(toTaskMap(task)));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
