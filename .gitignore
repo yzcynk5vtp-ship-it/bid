@@ -98,3 +98,4 @@ test-output/
 .playwright-mcp/
 dist/
 docker-compose.yml.bak
+.session-active
