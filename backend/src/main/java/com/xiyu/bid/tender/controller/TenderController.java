@@ -21,6 +21,8 @@ import com.xiyu.bid.tender.service.TenderImportService;
 import com.xiyu.bid.tender.service.TenderMapper;
 import com.xiyu.bid.tender.service.TenderQueryService;
 import com.xiyu.bid.tender.service.TenderSearchCriteria;
+import com.xiyu.bid.tender.service.TenderSubmissionService;
+import com.xiyu.bid.tender.service.TenderAiAnalysisService;
 import com.xiyu.bid.util.InputSanitizer;
 import com.xiyu.bid.annotation.DataScope;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,6 +69,8 @@ public class TenderController {
 
     private final TenderQueryService tenderQueryService;
     private final TenderCommandService tenderCommandService;
+    private final TenderSubmissionService tenderSubmissionService;
+    private final TenderAiAnalysisService tenderAiAnalysisService;
     private final TenderMapper tenderMapper;
     private final TenderImportService tenderImportService;
     private final AiDeepCapabilityService aiDeepCapabilityService;
@@ -230,7 +234,7 @@ public class TenderController {
     public ResponseEntity<ApiResponse<TenderDTO>> analyzeTender(@PathVariable Long id) {
         log.info("POST /api/tenders/{}/analyze - Analyzing tender", id);
         rejectDemoMutation(id);
-        return ResponseEntity.ok(ApiResponse.success("分析完成", tenderCommandService.analyzeTender(id)));
+        return ResponseEntity.ok(ApiResponse.success("分析完成", tenderAiAnalysisService.analyzeTender(id)));
     }
 
     @PostMapping("/{id}/participate")
@@ -239,7 +243,7 @@ public class TenderController {
             @PathVariable Long id, @AuthenticationPrincipal UserDetails userDetails) {
         log.info("POST /api/tenders/{}/participate - Participating bid", id);
         rejectDemoMutation(id);
-        TenderBidResponse response = tenderCommandService.participateBid(id, resolveUserId(userDetails));
+        TenderBidResponse response = tenderSubmissionService.participateBid(id, resolveUserId(userDetails));
         return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
     }
 
@@ -250,7 +254,7 @@ public class TenderController {
             @AuthenticationPrincipal UserDetails userDetails) {
         log.info("POST /api/tenders/{}/abandon - Abandoning tender", id);
         rejectDemoMutation(id);
-        TenderBidResponse response = tenderCommandService.abandonBid(id, req, resolveUserId(userDetails));
+        TenderBidResponse response = tenderSubmissionService.abandonBid(id, req, resolveUserId(userDetails));
         return ResponseEntity.ok(ApiResponse.success(response.getMessage(), response));
     }
 

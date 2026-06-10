@@ -19,6 +19,8 @@ public class TenderService {
 
     private final TenderQueryService tenderQueryService;
     private final TenderCommandService tenderCommandService;
+    private final TenderSubmissionService tenderSubmissionService;
+    private final TenderAiAnalysisService tenderAiAnalysisService;
 
     public List<TenderDTO> getAllTenders() {
         return tenderQueryService.searchTenders(TenderSearchCriteria.empty());
@@ -53,7 +55,7 @@ public class TenderService {
     }
 
     public TenderDTO analyzeTender(Long id) {
-        return tenderCommandService.analyzeTender(id);
+        return tenderAiAnalysisService.analyzeTender(id);
     }
 
     public Map<Tender.Status, Long> getTenderStatistics() {
