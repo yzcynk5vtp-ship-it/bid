@@ -10,7 +10,7 @@
 UPDATE projects SET status = 'BIDDING'    WHERE status = 'PREPARING';
 UPDATE projects SET status = 'EVALUATING' WHERE status = 'REVIEWING';
 UPDATE projects SET status = 'BIDDING'    WHERE status = 'SEALING';
-UPDATE projects SET status = 'ABANDONED'  WHERE status = 'ARCHIVED';
+UPDATE projects SET status = 'WON'        WHERE status = 'ARCHIVED';
 
 -- Step 2: 如果列仍然是 enum 类型，改为 VARCHAR(32)
 -- 使用 IF 判断避免重复执行时报错

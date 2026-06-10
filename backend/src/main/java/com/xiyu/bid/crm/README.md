@@ -13,7 +13,6 @@
 | `config/CrmProperties.java` | Config | CRM 连接与策略配置参数 |
 | `domain/CrmToken.java` | Domain | Token 值对象（含过期/续约判断） |
 | `domain/CrmTokenCache.java` | Domain | 内存缓存 + 单飞锁机制 |
-| `domain/CrmMessageRouter.java` | Domain | 消息批量拆分策略 |
 | `application/CrmAuthService.java` | Service | Token 申请/续约/登出/401 清理 |
 | `application/CrmCustomerService.java` | Service | 客户搜索 + 负责人批量查询 |
 | `application/CrmMenuService.java` | Service | 菜单树查询 |
