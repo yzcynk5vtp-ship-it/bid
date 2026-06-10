@@ -27,7 +27,7 @@ final class MarginQuerySupport {
     private static final int C_RET_AMT = 12;
     private static final int C_SVC_FEE = 13;
     private static final int C_ACT_RETURN = 14;
-    private static final int C_STATUS = 16;
+    private static final int C_STATUS = 15;
 
     private MarginQuerySupport() {
     }
