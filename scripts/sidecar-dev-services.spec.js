@@ -24,7 +24,7 @@ function run(command, args) {
 function detectedSidecarPort() {
   const result = run('bash', [
     '-lc',
-    'source scripts/dev-env.sh >/dev/null 2>&1; printf "%s" "$SIDECAR_PORT"'
+    'CHAT_ONLY=1 source scripts/dev-env.sh >/dev/null 2>&1; printf "%s" "$SIDECAR_PORT"'
   ])
 
   expect(result.status).toBe(0)

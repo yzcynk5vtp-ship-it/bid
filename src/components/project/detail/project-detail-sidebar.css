@@ -36,7 +36,7 @@
   align-items: center;
   margin-bottom: 16px;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--brand-xiyu-logo) 0%, var(--brand-xiyu-logo-hover) 100%);
   border-radius: 8px;
   color: white;
 }
@@ -65,33 +65,10 @@
   color: var(--text-secondary-ui);
 }
 
-@media (max-width: 1280px) {
-  .right-sidebar {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
-    gap: 16px;
-  }
-
-  .right-sidebar .ai-check-card {
-    grid-row: span 2;
-  }
-
-  .right-sidebar .ai-check-card,
-  .right-sidebar .action-card,
-  .right-sidebar .timeline-card {
-    margin-bottom: 0;
-    min-width: 0;
-  }
-}
-
-@media (max-width: 900px) {
-  .right-sidebar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .right-sidebar .ai-check-card {
-    grid-row: auto;
-  }
+.right-sidebar .ai-check-card,
+.right-sidebar .action-card,
+.right-sidebar .timeline-card {
+  margin-bottom: 20px;
 }
 
 @media (max-width: 640px) {

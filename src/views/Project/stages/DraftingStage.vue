@@ -62,8 +62,8 @@
         </el-button>
       </template>
 
-      <!-- 标书审核人：驳回 + 审核通过 -->
-      <template v-if="perm.canReviewBid && reviewState === 'reviewing'">
+      <!-- 仅当前用户是被指定的审核人时显示审核按钮（审核状态为审核中） -->
+      <template v-if="isCurrentUserReviewer && reviewState === 'reviewing'">
         <el-button type="danger" @click="handleReviewBid">驳回</el-button>
         <el-button type="success" :loading="reviewApproving" @click="confirmReviewBid('approve')">审核通过</el-button>
       </template>
@@ -143,6 +143,13 @@ const reviewerSearching = ref(false)
 const reviewerName = ref('')
 const reviewState = ref(null)        // null | 'reviewing' | 'rejected' | 'approved'
 const rejectReasonText = ref('')
+
+// 当前用户是否为该项目指定的审核人（id 必须一致，类型安全比较）
+const isCurrentUserReviewer = computed(() => {
+  const uid = ctx.userStore?.currentUser?.id
+  if (!uid || !bidReviewerId.value) return false
+  return String(uid) === String(bidReviewerId.value)
+})
 const uploadUrl = computed(() => getApiUrl(`/api/projects/${props.projectId}/documents`))
 const uploadHeaders = computed(() => { const t = userStore?.token; return t ? { Authorization: 'Bearer ' + t } : {} })
 
