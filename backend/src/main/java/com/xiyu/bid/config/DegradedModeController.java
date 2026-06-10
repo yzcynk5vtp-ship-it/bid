@@ -45,6 +45,7 @@ public class DegradedModeController {
     /**
      * Redis 连接失败时的降级响应。
      */
+    @Profile("dev")
     @RestControllerAdvice
     public static class DegradedExceptionHandler {
 
