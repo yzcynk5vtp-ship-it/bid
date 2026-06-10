@@ -108,7 +108,7 @@ abstract class AbstractExcelExportServiceTest {
                 .id(1L)
                 .name("建筑工程施工总承包资质")
                 .type(Qualification.Type.CONSTRUCTION)
-                .level(Qualification.Level.FIRST)
+                .level("FIRST")
                 .issueDate(LocalDate.of(2020, 1, 1))
                 .expiryDate(LocalDate.of(2025, 12, 31))
                 .fileUrl("/files/qualification.pdf")

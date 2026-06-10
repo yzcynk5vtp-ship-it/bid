@@ -269,8 +269,6 @@ run_checkstyle_gate() {
     -Djacoco.skip=true \
     -P"java-quality" \
     -Dquality.skip=false \
-    -Dquality.includes="$QUALITY_INCLUDES" \
-    -Dquality.onlyAnalyze="$QUALITY_ONLY_ANALYZE" \
     -Dcheckstyle.config.location="config/checkstyle/checkstyle.xml" \
     checkstyle:check)
 }

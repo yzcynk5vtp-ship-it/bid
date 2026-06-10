@@ -213,7 +213,7 @@ public class ExcelExportService {
                 page -> qualificationRepository.findAll(page),
                 exportConfig.getMaxRecords(),
                 new String[]{"ID", "资质名称", "类型", "级别", "发证日期", "有效期至", "文件路径"},
-                (row, q) -> { row.createCell(0).setCellValue(q.getId() != null ? q.getId() : 0); row.createCell(1).setCellValue(safeStr(q.getName())); row.createCell(2).setCellValue(q.getType() != null ? q.getType().name() : ""); row.createCell(3).setCellValue(q.getLevel() != null ? q.getLevel().name() : ""); row.createCell(4).setCellValue(formatDateOnly(q.getIssueDate())); row.createCell(5).setCellValue(formatDateOnly(q.getExpiryDate())); row.createCell(6).setCellValue(safeStr(q.getFileUrl())); },
+                (row, q) -> { row.createCell(0).setCellValue(q.getId() != null ? q.getId() : 0); row.createCell(1).setCellValue(safeStr(q.getName())); row.createCell(2).setCellValue(q.getType() != null ? q.getType().name() : ""); row.createCell(3).setCellValue(safeStr(q.getLevel())); row.createCell(4).setCellValue(formatDateOnly(q.getIssueDate())); row.createCell(5).setCellValue(formatDateOnly(q.getExpiryDate())); row.createCell(6).setCellValue(safeStr(q.getFileUrl())); },
                 (q) -> true
         ).export("资质列表");
     }

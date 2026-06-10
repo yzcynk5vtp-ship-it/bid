@@ -67,7 +67,7 @@ public class QualificationExcelSupport {
     private void writeLedgerRow(org.apache.poi.ss.usermodel.Sheet sh, QualificationDTO q, int rowIdx) {
         var row = sh.createRow(rowIdx);
         row.createCell(0).setCellValue(nullToEmpty(q.getName()));
-        row.createCell(1).setCellValue(q.getLevel() != null ? q.getLevel().name() : "");
+        row.createCell(1).setCellValue(nullToEmpty(q.getLevel()));
         row.createCell(2).setCellValue(nullToEmpty(q.getIssuer()));
         row.createCell(3).setCellValue(nullToEmpty(q.getCertificateNo()));
         row.createCell(4).setCellValue(q.getIssueDate() != null ? q.getIssueDate().toString() : "");

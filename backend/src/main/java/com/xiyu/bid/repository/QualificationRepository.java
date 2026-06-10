@@ -23,7 +23,7 @@ public interface QualificationRepository extends JpaRepository<Qualification, Lo
     /**
      * 根据级别查找资质（分页）
      */
-    Page<Qualification> findByLevel(Qualification.Level level, Pageable pageable);
+    Page<Qualification> findByLevel(String level, Pageable pageable);
 
     /**
      * 根据名称查找资质（模糊查询，分页）
@@ -43,7 +43,7 @@ public interface QualificationRepository extends JpaRepository<Qualification, Lo
     /**
      * 根据类型和级别查找资质（分页）
      */
-    Page<Qualification> findByTypeAndLevel(Qualification.Type type, Qualification.Level level, Pageable pageable);
+    Page<Qualification> findByTypeAndLevel(Qualification.Type type, String level, Pageable pageable);
 
     /**
      * 统计类型的资质数量
@@ -58,5 +58,5 @@ public interface QualificationRepository extends JpaRepository<Qualification, Lo
     /**
      * 根据级别查找资质（限制返回数量）
      */
-    List<Qualification> findByLevel(Qualification.Level level);
+    List<Qualification> findByLevel(String level);
 }
