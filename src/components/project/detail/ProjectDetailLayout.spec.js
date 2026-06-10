@@ -115,7 +115,7 @@ describe('ProjectDetail layout', () => {
       'utf8',
     )
 
-    expect(shellCss).toContain('grid-template-columns: minmax(0, 1fr) 320px')
+    expect(shellCss).toContain('grid-template-columns: minmax(0, 1fr) minmax(320px, 380px)')
     expect(shellCss).toContain('@media (max-width: 1280px)')
     expect(shellCss).toContain('grid-template-columns: minmax(0, 1fr)')
     expect(shellCss).toContain('width: 100% !important')

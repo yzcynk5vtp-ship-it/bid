@@ -69,10 +69,12 @@
   --text-slate: #64748B;
   --text-light: #888888;
   --text-lighter: #9CA3AF;
-  
-  /* 禁用态文字颜色覆盖 — Element Plus 默认将禁用态文字色设为占位符色(#a8abb2)，过浅难以阅读 */
-  --el-disabled-text-color: var(--el-text-color-regular);
 
+  /* 禁用态文字颜色覆盖 — Element Plus 默认将禁用态文字色设为占位符色(#a8abb2)，过浅难以阅读 */
+  --el-disabled-text-color: var(--el-text-color-primary);
+
+  /* 只读态文字颜色覆盖 — Element Plus 只读时不改文字色，此处强制为深色确保可读性 */
+  --el-input-readonly-text-color: var(--el-text-color-primary);
 
   /* 侧边栏专用颜色 */
   --sidebar-bg: #FFFFFF;
@@ -94,7 +96,7 @@
   --accent-blue-light: var(--brand-xiyu-logo-light);
 
   /* 焦点状态颜色 */
-  --focus-primary: rgba(0, 102, 204, 0.4);
+  --focus-primary: rgba(46, 118, 89, 0.4);
   --focus-success: rgba(0, 170, 68, 0.4);
   --focus-warning: rgba(255, 136, 0, 0.4);
   --focus-danger: rgba(221, 34, 0, 0.4);
@@ -195,4 +197,39 @@
   --z-popover: 1060;
   --z-tooltip: 1070;
   --z-sidebar: 100;
+}
+
+/* ========== EP 禁用/只读态颜色覆盖 ==========
+ * 根本修复：覆盖 EP CSS 变量，一次性让所有表单禁用态显示正常深色。
+ * EP 默认禁用色 #a8abb2 太浅看不清，统一替换为 #303133。
+ */
+:root {
+  --el-disabled-text-color: #303133 !important;
+  --el-text-color-placeholder: #303133 !important;
+  --el-input-placeholder-color: #303133 !important;
+}
+
+/* === 补充规则：CSS 变量无法覆盖的 opacity 和 cursor ===
+ * textarea ::placeholder 伪元素也通过变量覆盖。
+ */
+.el-input.is-disabled,
+.el-textarea.is-disabled,
+.el-select.is-disabled,
+.el-input.is-readonly,
+.el-textarea.is-readonly {
+  opacity: 1 !important;
+}
+
+.el-input.is-disabled input,
+.el-textarea.is-disabled textarea,
+.el-select.is-disabled,
+.el-input.is-readonly input,
+.el-textarea.is-readonly textarea {
+  cursor: default !important;
+}
+
+/* 禁用态 placeholder 双重保险：变量 + 显式规则 */
+.el-textarea.is-disabled .el-textarea__inner::placeholder,
+.el-input.is-disabled .el-input__inner::placeholder {
+  color: #303133 !important;
 }

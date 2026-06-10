@@ -74,8 +74,8 @@ body, .text-body, .el-main, .el-card__body {
   /* Focus Ring */
   --focus-ring-width: 2px;
   --focus-ring-offset: 2px;
-  --focus-ring-color: rgba(3, 105, 161, 0.5);
-  --focus-ring-color-hover: rgba(3, 105, 161, 0.7);
+  --focus-ring-color: rgba(46, 118, 89, 0.4); /* brand-xiyu-logo */
+  --focus-ring-color-hover: rgba(46, 118, 89, 0.6);
 
   /* Elevation */
   --elevation-0: none;

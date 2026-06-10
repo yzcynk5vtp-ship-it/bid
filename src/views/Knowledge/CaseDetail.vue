@@ -138,8 +138,6 @@ const {
 }
 
 .detail-content {
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .section-card {

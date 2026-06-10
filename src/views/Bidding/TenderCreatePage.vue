@@ -857,8 +857,6 @@ async function handleEvaluationSaveDraft() {
 .bidding-create-page {
   padding: 24px;
   padding-bottom: 80px;
-  max-width: 960px;
-  margin: 0 auto;
 }
 
 .create-breadcrumb {
@@ -963,8 +961,6 @@ async function handleEvaluationSaveDraft() {
 }
 
 .bottom-action-bar-inner {
-  max-width: 960px;
-  margin: 0 auto;
   display: flex;
   justify-content: flex-end;
   align-items: center;

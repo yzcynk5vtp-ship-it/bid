@@ -133,8 +133,6 @@ onMounted(fetchData)
 
 <style scoped>
 .notification-inbox {
-  max-width: 800px;
-  margin: 0 auto;
 }
 
 .inbox-header {

@@ -48,8 +48,6 @@ const icons = { edit: Edit }
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
 .bottom-action-bar-inner {
-  max-width: 1200px;
-  margin: 0 auto;
   display: flex;
   justify-content: flex-end;
   align-items: center;
