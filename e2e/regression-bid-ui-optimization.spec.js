@@ -4,6 +4,7 @@
 //   BUI-2 — 交付物上传后文件不闪烁（IJT3OY）
 //   BUI-3 — 提交审核后状态变更、内容保存（IJT3OP）
 //   BUI-4 — 完成投标区域权限正确（IJSZSG）
+//   BUI-5 — 标书审核权限：提交人不见审核按钮，审核人可见（IJSTZG）
 // Pos: e2e/ - Playwright E2E regression coverage for Issues batch fix
 // 运行: PLAYWRIGHT_API_BASE_URL=http://127.0.0.1:18080 PLAYWRIGHT_BASE_URL=http://127.0.0.1:1314 npx playwright test e2e/regression-bid-ui-optimization.spec.js
 
@@ -404,5 +405,129 @@ test.describe('BUI-4: 完成投标权限', () => {
     // bid_specialist 不应看到"完成投标"按钮
     const completeBidBtn = page.getByRole('button', { name: /完成投标/ })
     await expect(completeBidBtn).toHaveCount(0)
+  })
+})
+
+// =========================================================================
+// BUI-5: 标书审核权限：提交人不见审核按钮，审核人可见（IJSTZG）
+// =========================================================================
+
+/**
+ * 通过 HTTP 直接提交标书审核（绕过 UI 选择流程）
+ * 用于 E2E 中精确控制 reviewerId
+ */
+async function apiSubmitBidForReview(session, projectId, reviewerId) {
+  const response = await fetch(`${apiBaseUrl}/api/projects/${projectId}/drafting/submit-review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+    body: JSON.stringify({ reviewerId }),
+  })
+  const data = await response.json()
+  if (!response.ok) throw new Error(`submit-review failed: ${response.status} - ${JSON.stringify(data)}`)
+  return data
+}
+
+/**
+ * 通过 HTTP 直接审核通过
+ */
+async function apiApproveBidReview(session, projectId) {
+  const response = await fetch(`${apiBaseUrl}/api/projects/${projectId}/drafting/approve`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+    body: JSON.stringify({}),
+  })
+  const data = await response.json()
+  if (!response.ok) throw new Error(`approve failed: ${response.status} - ${JSON.stringify(data)}`)
+  return data
+}
+
+/**
+ * 导航到项目标书制作 tab，等待 DraftingStage 渲染完毕
+ */
+async function gotoProjectDraftingTab(page, projectId) {
+  await page.goto(`/project/${projectId}`)
+  await expect(page.locator('.project-detail').first()).toBeAttached({ timeout: 15000 })
+  const draftingTab = page.getByRole('tab', { name: /标书制作|标书编制/ })
+  if (await draftingTab.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await draftingTab.click()
+  }
+  await page.waitForSelector('.bid-actions, .bid-reviewer-row, .bid-upload-area', { timeout: 10000 }).catch(() => null)
+}
+
+test.describe('BUI-5: 标书审核权限', () => {
+  let adminSession, auditorSession, projectId
+
+  test.beforeEach(async ({ page }) => {
+    adminSession = await loginAsRole(page, 'bid_admin')
+    auditorSession = await loginAsRole(page, 'auditor')
+
+    const tender = await apiCreateTender(adminSession, { status: 'TRACKING' })
+    expect(tender?.id).toBeTruthy()
+
+    const projectRes = await fetch(`${apiBaseUrl}/api/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminSession.token}`,
+      },
+      body: JSON.stringify({
+        name: `E2E-BUI5-${Date.now()}`,
+        tenderId: tender.id,
+        status: 'BIDDING',
+        managerId: adminSession.user.id,
+        teamMembers: [adminSession.user.id, auditorSession.user.id],
+        startDate: toLocalDateTimeString(new Date()),
+        endDate: toLocalDateTimeString(new Date(Date.now() + 10 * 86400000)),
+      }),
+    })
+    const projectPayload = await projectRes.json()
+    projectId = projectPayload?.data?.id
+    expect(projectId).toBeTruthy()
+  })
+
+  test('BUI-5.1: 提交审核后提交人不看见审核按钮', async ({ page }) => {
+    // 以 admin 身份提交审核（指定 auditor 为审核人）
+    await injectSession(page, adminSession)
+    await apiSubmitBidForReview(adminSession, projectId, auditorSession.user.id)
+
+    // 以 admin 身份访问标书制作页
+    await gotoProjectDraftingTab(page, projectId)
+
+    // admin 不是审核人，驳回和审核通过按钮都不应出现
+    await expect(page.getByRole('button', { name: '驳回' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '审核通过' })).toHaveCount(0)
+  })
+
+  test('BUI-5.2: 审核人能看到审核按钮', async ({ page }) => {
+    // 以 admin 身份提交审核（指定 auditor 为审核人）
+    await injectSession(page, adminSession)
+    await apiSubmitBidForReview(adminSession, projectId, auditorSession.user.id)
+
+    // 以 auditor 身份访问标书制作页
+    await injectSession(page, auditorSession)
+    await gotoProjectDraftingTab(page, projectId)
+
+    // auditor 是被指定的审核人，驳回和审核通过按钮都应出现
+    await expect(page.getByRole('button', { name: '驳回' })).toHaveCount(1)
+    await expect(page.getByRole('button', { name: '审核通过' })).toHaveCount(1)
+  })
+
+  test('BUI-5.3: 审核通过后审核按钮消失', async ({ page }) => {
+    // 以 admin 身份提交审核（指定 auditor 为审核人）
+    await injectSession(page, adminSession)
+    await apiSubmitBidForReview(adminSession, projectId, auditorSession.user.id)
+
+    // 以 auditor 身份点击审核通过
+    await injectSession(page, auditorSession)
+    await gotoProjectDraftingTab(page, projectId)
+    await page.getByRole('button', { name: '审核通过' }).click()
+    // 等待成功提示
+    await expect(page.locator('.el-message--success')).toBeVisible({ timeout: 5000 })
+
+    // 刷新页面后，审核状态已变为 APPROVED，审核按钮不再出现
+    await page.reload()
+    await page.waitForSelector('.bid-actions, .bid-reviewer-row', { timeout: 10000 }).catch(() => null)
+    await expect(page.getByRole('button', { name: '驳回' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: '审核通过' })).toHaveCount(0)
   })
 })
