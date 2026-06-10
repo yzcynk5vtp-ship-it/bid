@@ -13,6 +13,10 @@ import com.xiyu.bid.tender.service.TenderCommandService;
 import com.xiyu.bid.tender.service.TenderImportService;
 import com.xiyu.bid.tender.service.TenderMapper;
 import com.xiyu.bid.tender.service.TenderQueryService;
+import com.xiyu.bid.tender.service.TenderSubmissionService;
+import com.xiyu.bid.tender.service.TenderAiAnalysisService;
+import com.xiyu.bid.tender.service.TenderImportService;
+import com.xiyu.bid.tender.service.TenderMapper;
 import com.xiyu.bid.ai.service.AiDeepCapabilityService;
 import com.xiyu.bid.demo.service.DemoDataProvider;
 import com.xiyu.bid.demo.service.DemoFusionService;
@@ -71,6 +75,8 @@ class TenderControllerUpdateTest {
         TenderController controller = new TenderController(
                 tenderQueryService,
                 tenderCommandService,
+                null, // tenderSubmissionService
+                null, // tenderAiAnalysisService
                 tenderMapper,
                 tenderImportService,
                 aiDeepCapabilityService,
