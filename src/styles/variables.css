@@ -191,4 +191,42 @@
   --z-popover: 1060;
   --z-tooltip: 1070;
   --z-sidebar: 100;
+
+  /* ========== EP 禁用/只读态颜色覆盖 ==========
+   * 根本修复：覆盖 EP CSS 变量，一次性让所有表单禁用态显示正常深色。
+   * EP 默认禁用色 #a8abb2 太浅看不清，统一替换为 #303133。
+   * 仅覆盖文字颜色变量，不影响 EP 的 disabled 背景色等其它样式。
+   */
+  --el-disabled-text-color: #303133;
+  --el-text-color-placeholder: #303133;
+  --el-input-placeholder-color: #303133;
+}
+
+/* === 禁用/只读态文字颜色覆盖 ===
+ * EP CSS 变量已在 :root 中统一覆盖（见上方）。
+ * 此处只保留 CSS 变量覆盖不了的补充规则：opacity 和 cursor。
+ * textarea ::placeholder 伪元素也通过变量覆盖，无需单独写规则。
+ */
+
+/* opacity 和 cursor：CSS 变量无法覆盖这两个属性 */
+.el-input.is-disabled,
+.el-textarea.is-disabled,
+.el-select.is-disabled,
+.el-input.is-readonly,
+.el-textarea.is-readonly {
+  opacity: 1 !important;
+}
+
+.el-input.is-disabled input,
+.el-textarea.is-disabled textarea,
+.el-select.is-disabled,
+.el-input.is-readonly input,
+.el-textarea.is-readonly textarea {
+  cursor: default !important;
+}
+
+/* 禁用态 placeholder 仍用深色（双重保险：变量 + 显式规则） */
+.el-textarea.is-disabled .el-textarea__inner::placeholder,
+.el-input.is-disabled .el-input__inner::placeholder {
+  color: #303133 !important;
 }
