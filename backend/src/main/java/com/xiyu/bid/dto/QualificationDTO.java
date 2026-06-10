@@ -21,7 +21,7 @@ public class QualificationDTO {
     private Long id;
     private String name;
     private Qualification.Type type;
-    private Qualification.Level level;
+    private String level;
     private LocalDate issueDate;
     private LocalDate expiryDate;
     private String fileUrl;

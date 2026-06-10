@@ -24,7 +24,7 @@ public class QualificationDTO {
     private Long id;
     private String name;
     private Qualification.Type type;
-    private Qualification.Level level;
+    private String level;
     private QualificationSubjectType subjectType;
     private String subjectName;
     private QualificationCategory category;

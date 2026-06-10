@@ -110,7 +110,7 @@ public class QualificationDtoMapper {
                 .id(qualification.id())
                 .name(qualification.name())
                 .type(toLegacyType(qualification.category()))
-                .level(Qualification.Level.OTHER)
+                .level(qualification.level())
                 .subjectType(qualification.subject().getType())
                 .subjectName(qualification.subject().getName())
                 .category(qualification.category())

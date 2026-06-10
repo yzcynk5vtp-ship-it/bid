@@ -31,9 +31,8 @@ public class Qualification {
     @Column(nullable = false)
     private Type type;
 
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Level level;
+    private String level;
 
     @Column(name = "issue_date")
     private LocalDate issueDate;
