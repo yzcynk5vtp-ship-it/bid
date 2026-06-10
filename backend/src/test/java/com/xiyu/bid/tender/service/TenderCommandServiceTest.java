@@ -2,17 +2,14 @@ package com.xiyu.bid.tender.service;
 
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.batch.repository.TenderAssignmentRecordRepository;
+import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
 import com.xiyu.bid.entity.Tender;
-import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.task.service.TaskService;
 import com.xiyu.bid.tender.dto.TenderDTO;
-import com.xiyu.bid.tender.repository.TenderEvaluationRepository;
-import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
-import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,12 +52,6 @@ class TenderCommandServiceTest {
     @Mock
     private TenderDeduplicationService tenderDeduplicationService;
     @Mock
-    private TenderEvaluationRepository tenderEvaluationRepository;
-    @Mock
-    private ProjectInitiationDetailsRepository initiationDetailsRepository;
-    @Mock
-    private com.fasterxml.jackson.databind.ObjectMapper objectMapper;
-    @Mock
     private com.xiyu.bid.notification.service.NotificationApplicationService notificationAppService;
 
     private TenderCommandService tenderCommandService;
@@ -76,9 +67,9 @@ class TenderCommandServiceTest {
         accessGuard = new TenderProjectAccessGuard(projectRepository, projectAccessScopeService, dataScopeConfigService, userRepository);
         statusTransitionPolicy = new TenderStatusTransitionPolicy();
         tenderCommandService = new TenderCommandService(
-                tenderDeduplicationService, tenderRepository, tenderEvaluationRepository, initiationDetailsRepository,
-                objectMapper, tenderMapper, accessGuard, taskService, tenderAssignmentPermissions,
-                commandAccessGuard, autoAssignmentService, eventPublisher, userRepository, notificationAppService);
+                tenderDeduplicationService, tenderRepository, projectRepository,
+                tenderMapper, accessGuard, taskService, commandAccessGuard,
+                autoAssignmentService, eventPublisher, userRepository, notificationAppService);
 
         tender = Tender.builder()
                 .id(1L)
