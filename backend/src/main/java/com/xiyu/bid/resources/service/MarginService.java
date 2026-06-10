@@ -2,7 +2,6 @@ package com.xiyu.bid.resources.service;
 
 import com.xiyu.bid.resources.dto.MarginDTO;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,7 +16,6 @@ import java.util.Map;
 public class MarginService {
 
     /** JPA entity manager. */
-    @PersistenceContext
     private final EntityManager em;
 
     /**

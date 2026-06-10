@@ -217,6 +217,10 @@ const handleReturnFromDetail = () => {
 }
 
 const handleBorrow = (row) => {
+  currentAccount.value = row
+  showBorrowDialog.value = true
+}
+
 const handleReturn = (row) => {
   currentReturnAccount.value = row?.raw || row
   showReturnDialog.value = true
@@ -226,9 +230,6 @@ const onAccountReturned = () => {
   showReturnDialog.value = false
   showDetailDialog.value = false
   loadAccounts()
-}
-  currentAccount.value = row
-  showBorrowDialog.value = true
 }
 
 const handleCopyPassword = async (row) => {

@@ -14,6 +14,7 @@ import com.xiyu.bid.platform.dto.PlatformAccountDTO;
 import com.xiyu.bid.platform.dto.PlatformAccountStatisticsDTO;
 import com.xiyu.bid.platform.dto.ReturnAccountRequest;
 import com.xiyu.bid.platform.service.PlatformAccountService;
+import com.xiyu.bid.repository.UserRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,14 +41,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class PlatformAccountController {
 
     private final PlatformAccountService platformAccountService;
+    private final UserRepository userRepository;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> createAccount(
             @Valid @RequestBody PlatformAccountCreateRequest request,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
         log.info("Creating platform account: {}", request.getAccountName());
-        PlatformAccountDTO created = platformAccountService.createAccount(request, currentUser);
+        PlatformAccountDTO created = platformAccountService.createAccount(request, resolveUser(currentUser));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("账号创建成功", created));
     }
@@ -70,9 +73,9 @@ public class PlatformAccountController {
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> updateAccount(
             @PathVariable Long id,
             @Valid @RequestBody PlatformAccountCreateRequest request,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
         log.info("Updating platform account with id: {}", id);
-        PlatformAccountDTO updated = platformAccountService.updateAccount(id, request, currentUser);
+        PlatformAccountDTO updated = platformAccountService.updateAccount(id, request, resolveUser(currentUser));
         return ResponseEntity.ok(ApiResponse.success("账号更新成功", updated));
     }
 
@@ -80,9 +83,9 @@ public class PlatformAccountController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAccount(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
         log.info("Deleting platform account with id: {}", id);
-        platformAccountService.deleteAccount(id, currentUser);
+        platformAccountService.deleteAccount(id, resolveUser(currentUser));
         return ResponseEntity.ok(ApiResponse.success("账号删除成功", null));
     }
 
@@ -91,9 +94,9 @@ public class PlatformAccountController {
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> borrowAccount(
             @PathVariable Long id,
             @Valid @RequestBody BorrowAccountRequest request,
-            @AuthenticationPrincipal User currentUser) {
-        log.info("Borrowing platform account with id: {} by user: {}", id, currentUser.getUsername());
-        PlatformAccountDTO updated = platformAccountService.borrowAccount(id, request, currentUser);
+            @AuthenticationPrincipal UserDetails currentUser) {
+        log.info("Borrowing platform account with id: {}", id);
+        PlatformAccountDTO updated = platformAccountService.borrowAccount(id, request, resolveUser(currentUser));
         return ResponseEntity.ok(ApiResponse.success("账号借用成功", updated));
     }
 
@@ -101,9 +104,9 @@ public class PlatformAccountController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> returnAccount(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser) {
-        log.info("Returning platform account with id: {} by user: {}", id, currentUser.getUsername());
-        PlatformAccountDTO updated = platformAccountService.returnAccount(id, currentUser);
+            @AuthenticationPrincipal UserDetails currentUser) {
+        log.info("Returning platform account with id: {}", id);
+        PlatformAccountDTO updated = platformAccountService.returnAccount(id, resolveUser(currentUser));
         return ResponseEntity.ok(ApiResponse.success("账号归还成功", updated));
     }
 
@@ -111,9 +114,9 @@ public class PlatformAccountController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<String>> getPassword(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
         log.warn("User {} is viewing password for account id: {}", currentUser.getUsername(), id);
-        String password = platformAccountService.getPassword(id, currentUser);
+        String password = platformAccountService.getPassword(id, resolveUser(currentUser));
         return ResponseEntity.ok(ApiResponse.success(password));
     }
 
@@ -138,9 +141,15 @@ public class PlatformAccountController {
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> returnAccountWithPassword(
             @PathVariable Long id,
             @Valid @RequestBody ReturnAccountRequest request,
-            @AuthenticationPrincipal User currentUser) {
-        log.info("Returning platform account with id: {} and password change by user: {}", id, currentUser.getUsername());
-        PlatformAccountDTO updated = platformAccountService.returnAccount(id, request, currentUser);
+            @AuthenticationPrincipal UserDetails currentUser) {
+        log.info("Returning platform account with id: {} and password change", id);
+        PlatformAccountDTO updated = platformAccountService.returnAccount(id, request, resolveUser(currentUser));
         return ResponseEntity.ok(ApiResponse.success("账号归还成功（密码已更新）", updated));
+    }
+
+    /** Resolve User entity from UserDetails principal. */
+    private User resolveUser(UserDetails userDetails) {
+        return userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalStateException("Current user not found: " + userDetails.getUsername()));
     }
 }
