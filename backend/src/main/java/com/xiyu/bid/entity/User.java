@@ -69,6 +69,9 @@ public class User {
     @Column(name = "department_name", length = 100)
     private String departmentName;
 
+    @Column(name = "employee_number", length = 32)
+    private String employeeNumber;
+
     @Column(name = "wecom_user_id", length = 64)
     private String wecomUserId;
 

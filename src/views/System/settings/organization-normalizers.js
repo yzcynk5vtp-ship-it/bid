@@ -2,6 +2,8 @@
 // Output: normalized organization rows and save payload builders
 // Pos: frontend pure normalization helpers for Settings organization panels
 
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
+
 export const normalizeDeptCode = (value) => String(value || '').trim()
 
 export const normalizeDeptTree = (items = []) => (Array.isArray(items) ? items : [])
@@ -32,7 +34,7 @@ export const normalizeUsers = (items = []) => (Array.isArray(items) ? items : []
   .map((user) => ({
     id: user.id,
     username: user.username || '',
-    fullName: user.fullName || user.name || '',
+    fullName: formatDisplayName(user.fullName || user.name, user.employeeNumber) || '',
     email: user.email || '',
     departmentCode: normalizeDeptCode(user.departmentCode || user.deptCode),
     departmentName: user.departmentName || user.dept || '未配置部门',

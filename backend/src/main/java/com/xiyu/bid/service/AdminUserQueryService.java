@@ -40,6 +40,7 @@ public class AdminUserQueryService {
                 || u.getUsername() != null && u.getUsername().toLowerCase(Locale.ROOT).contains(kw)
                 || u.getEmail() != null && u.getEmail().toLowerCase(Locale.ROOT).contains(kw)
                 || u.getPhone() != null && u.getPhone().contains(kw)
+                || u.getEmployeeNumber() != null && u.getEmployeeNumber().toLowerCase(Locale.ROOT).contains(kw)
             );
         }
         if (enabled != null) {
@@ -72,6 +73,7 @@ public class AdminUserQueryService {
                 .phone(user.getPhone())
                 .departmentCode(user.getDepartmentCode())
                 .departmentName(user.getDepartmentName())
+                .employeeNumber(user.getEmployeeNumber())
                 .roleId(user.getRoleProfile() == null ? null : user.getRoleProfile().getId())
                 .roleCode(user.getRoleCode())
                 .roleName(user.getRoleName())

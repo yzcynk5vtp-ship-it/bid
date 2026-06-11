@@ -70,8 +70,8 @@ class UserSearchServiceTest {
         List<UserSearchResult> results = service.search("ali", 5);
 
         assertThat(results).hasSize(2);
-        assertThat(results.get(0)).isEqualTo(new UserSearchResult(3L, "Alice Smith", "STAFF", null));
-        assertThat(results.get(1)).isEqualTo(new UserSearchResult(4L, "Bob Lee", "MANAGER", null));
+        assertThat(results.get(0)).isEqualTo(new UserSearchResult(3L, "Alice Smith", null, "STAFF", null));
+        assertThat(results.get(1)).isEqualTo(new UserSearchResult(4L, "Bob Lee", null, "MANAGER", null));
     }
 
     @Test
@@ -114,7 +114,7 @@ class UserSearchServiceTest {
         assertThat(r.name()).isEqualTo("Alice");
         assertThat(r.role()).isEqualTo("ADMIN");
         // Record has exactly 3 components; no email/password accessor exists.
-        assertThat(UserSearchResult.class.getRecordComponents()).hasSize(4);
+        assertThat(UserSearchResult.class.getRecordComponents()).hasSize(5);
         long leaky = IntStream.range(0, UserSearchResult.class.getRecordComponents().length)
             .filter(i -> {
                 String n = UserSearchResult.class.getRecordComponents()[i].getName();

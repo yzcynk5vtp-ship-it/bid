@@ -22,6 +22,7 @@ const normalizeAllowedDepts = (allowedDepts) => {
 export const normalizeUser = (authPayload) => ({
   id: authPayload?.id,
   name: authPayload?.fullName || authPayload?.name || authPayload?.username,
+  employeeNumber: authPayload?.employeeNumber || '',
   username: authPayload?.username,
   email: authPayload?.email,
   phone: authPayload?.phone || authPayload?.mobile,

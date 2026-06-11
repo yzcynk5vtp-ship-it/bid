@@ -30,6 +30,9 @@ public class AdminUserUpdateRequest {
     @Size(max = 100, message = "Department name must not exceed 100 characters")
     private String departmentName;
 
+    @Size(max = 32, message = "Employee number must not exceed 32 characters")
+    private String employeeNumber;
+
     @NotNull(message = "Role is required")
     private Long roleId;
 

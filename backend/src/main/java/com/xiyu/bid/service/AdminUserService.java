@@ -58,6 +58,7 @@ public class AdminUserService {
         String phone = sanitizePhone(request.getPhone());
         String departmentCode = sanitize(request.getDepartmentCode(), 100);
         String departmentName = sanitize(request.getDepartmentName(), 100);
+        String employeeNumber = sanitize(request.getEmployeeNumber(), 32);
 
         validateNewUser(username, email, request.getPassword(), phone);
 
@@ -69,6 +70,7 @@ public class AdminUserService {
                 .phone(phone)
                 .departmentCode(departmentCode)
                 .departmentName(departmentName)
+                .employeeNumber(employeeNumber)
                 .enabled(Boolean.TRUE.equals(request.getEnabled()))
                 .build();
         applyRole(user, roleProfileService.requireRoleProfile(request.getRoleId()));
@@ -88,6 +90,7 @@ public class AdminUserService {
         String phone = sanitizePhone(request.getPhone());
         String departmentCode = sanitize(request.getDepartmentCode(), 100);
         String departmentName = sanitize(request.getDepartmentName(), 100);
+        String employeeNumber = sanitize(request.getEmployeeNumber(), 32);
         boolean enabled = Boolean.TRUE.equals(request.getEnabled());
         RoleProfile nextRoleProfile = roleProfileService.requireRoleProfile(request.getRoleId());
 
@@ -100,6 +103,7 @@ public class AdminUserService {
         user.setPhone(phone);
         user.setDepartmentCode(departmentCode);
         user.setDepartmentName(departmentName);
+        user.setEmployeeNumber(employeeNumber);
         user.setEnabled(enabled);
         applyRole(user, nextRoleProfile);
 

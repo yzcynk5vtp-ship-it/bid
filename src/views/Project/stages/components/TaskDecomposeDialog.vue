@@ -74,6 +74,7 @@ import { ElMessage } from 'element-plus'
 import { projectsApi } from '@/api/modules/projects.js'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 import { usersApi } from '@/api/modules/users.js'
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
 
 const props = defineProps({ projectId: { type: [String, Number], required: true } })
 const emit = defineEmits(['tasksAdded'])
@@ -104,7 +105,7 @@ function searchUsers(query, row) {
   if (!query) return
   row._searching = true
   usersApi.search(query).then(list => {
-    row._userOptions = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: u.name || u.fullName || u.username })) : []
+      row._userOptions = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: formatDisplayName(u.fullName || u.name, u.employeeNumber) })) : []
   }).catch(() => { row._userOptions = [] }).finally(() => { row._searching = false })
 }
 
