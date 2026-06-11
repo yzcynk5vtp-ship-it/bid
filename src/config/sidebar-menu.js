@@ -103,6 +103,11 @@ export const sidebarMenuConfig = [
         meta: { title: '组织设置', permissionKeys: ['settings'] }
       },
       {
+        path: '/settings/organization',
+        name: 'OrganizationManagement',
+        meta: { title: '组织架构', permissionKeys: ['settings'] }
+      },
+      {
         path: '/settings/workflow-forms',
         name: 'WorkflowFormDesigner',
         meta: { title: '流程表单配置', permissionKeys: ['settings', 'settings-workflow-forms'] }
