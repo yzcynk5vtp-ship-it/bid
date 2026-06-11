@@ -129,7 +129,7 @@ public class QualificationDtoMapper {
                 .remainingDays((int) qualification.remainingDays())
                 .alertLevel(expiryPolicy.alertLevel(qualification.status()))
                 .borrowed(qualification.currentBorrowStatus() == LoanStatus.BORROWED)
-                .currentBorrowStatus(qualification.currentBorrowStatus().name().toLowerCase())
+                .currentBorrowStatus(qualification.currentBorrowStatus() == null ? null : qualification.currentBorrowStatus().name().toLowerCase())
                 .currentBorrower(qualification.currentBorrower())
                 .currentBorrowDepartment(qualification.currentDepartment())
                 .currentDepartment(qualification.currentDepartment())
@@ -164,7 +164,7 @@ public class QualificationDtoMapper {
                 .expectedReturnDate(loan.getExpectedReturnDate() == null ? null : loan.getExpectedReturnDate().toString())
                 .returnedAt(formatTime(loan.getReturnedAt()))
                 .returnRemark(loan.getReturnRemark())
-                .status(loan.getStatus().name().toLowerCase())
+                .status(loan.getStatus() == null ? null : loan.getStatus().name().toLowerCase())
                 .build();
     }
 
