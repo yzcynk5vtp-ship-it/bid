@@ -1,5 +1,5 @@
 // Input: props, emit
-// Output: crm opportunity search + manual fallback state/actions
+// Output: crm opportunity search state/actions
 // Pos: src/views/Bidding/detail/components/ - CRM opportunity selector composable
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
@@ -18,14 +18,8 @@ export function useCrmOpportunitySelector(props, emit) {
   const totalCount = ref(0)
   const currentPage = ref(1)
   const pageSize = ref(10)
-  const showManualForm = ref(false)
-  const manualConfirmed = ref(false)
 
   const searchForm = reactive({ name: '', code: '', projectStatus: [] })
-  const manualForm = reactive({
-    name: '', code: '', projectLeaderName: '', evaluationTime: '',
-    projectStatusText: '', projectRiskText: '', remark: '',
-  })
 
   const linkedOpportunity = ref(
     props.alreadyLinkedName ? { name: props.alreadyLinkedName } : null
@@ -76,36 +70,11 @@ export function useCrmOpportunitySelector(props, emit) {
     selectedChance.value = row
   }
 
-  function confirmManual() {
-    if (!manualForm.name?.trim()) { ElMessage.warning('请输入商机名称'); return }
-    manualConfirmed.value = true
-    ElMessage.success('商机信息已确认')
-  }
-
   function confirmLink() {
-    if (!selectedChance.value && !manualConfirmed.value) {
-      ElMessage.warning('请先选择或输入商机')
+    if (!selectedChance.value) {
+      ElMessage.warning('请先选择商机')
       return
     }
-    // 手动输入模式
-    if (manualConfirmed.value && !selectedChance.value) {
-      const mf = manualForm
-      linkedOpportunity.value = { name: mf.name, code: mf.code || '', id: null }
-      emit('linked', {
-        opportunityId: null,
-        opportunityName: mf.name,
-        evaluationData: {
-          opportunityId: null, basic: { projectBackground: mf.remark || '', competitorAnalysis: '',
-            contractPeriodStart: mf.evaluationTime || '', contractPeriodEnd: '',
-            shortlistedCount: 0, platformServiceFee: 0 },
-          customerInfos: [], recommendation: { shouldBid: true, reason: '' },
-        },
-      })
-      showDialog.value = false
-      ElMessage.success('已手动关联商机')
-      return
-    }
-    // CRM选择模式
     const chance = selectedChance.value
     linkedOpportunity.value = { name: chance.name, code: chance.code, id: chance.id }
     emit('linked', {
@@ -129,12 +98,4 @@ export function useCrmOpportunitySelector(props, emit) {
     ElMessage.success('CRM商机已关联，评估表已回填')
   }
 
-  function resetSearch() { showManualForm.value = false; manualConfirmed.value = false }
-
-  return {
-    showDialog, searching, loading, searchPerformed, results, selectedId,
-    selectedChance, totalCount, currentPage, pageSize, showManualForm,
-    manualConfirmed, searchForm, manualForm, linkedOpportunity,
-    openSearch, doSearch, onSelect, confirmManual, confirmLink, resetSearch,
-  }
 }
