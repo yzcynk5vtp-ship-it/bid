@@ -34,20 +34,18 @@ public class SystemsExternalMenuController {
     /**
      * 获取本系统完整菜单列表（含系统标识）.
      *
-     * <p>返回 structure：</p>
-     * <pre>
-     * {
-     *   "systemCode": "bid-platform",
-     *   "systemName": "西域数智化投标管理平台",
-     *   "menus": [ ... ]
-     * }
-     * </pre>
-     *
      * @return 菜单列表响应
      */
     @GetMapping
     public ResponseEntity<ApiResponse<ExternalMenuResponse>> getMenus() {
-        ExternalMenuResponse response = menuService.getMenus();
-        return ResponseEntity.ok(ApiResponse.success("ok", response));
+        ExternalMenuResponse data = menuService.getMenus();
+        // 外部系统要求返回 code=0 表示成功
+        ApiResponse<ExternalMenuResponse> resp = ApiResponse.<ExternalMenuResponse>builder()
+                .success(true)
+                .code(0)
+                .message("ok")
+                .data(data)
+                .build();
+        return ResponseEntity.ok(resp);
     }
 }
