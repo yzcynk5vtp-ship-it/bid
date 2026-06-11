@@ -47,7 +47,7 @@ public class QualificationController {
     private final QualificationAiParserService qualificationAiParserService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
     @Auditable(action = "CREATE", entityType = "Qualification", description = "创建资质")
     public ResponseEntity<ApiResponse<QualificationDTO>> createQualification(@Valid @RequestBody QualificationDTO dto) {
         sanitizeQualificationDTO(dto);
@@ -56,7 +56,7 @@ public class QualificationController {
     }
 
     @PostMapping("/upload-parse")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
     @Auditable(action = "CREATE", entityType = "Qualification", description = "AI解析资质证书")
     public ResponseEntity<ApiResponse<QualificationDTO>> uploadAndParse(@RequestParam("file") MultipartFile file) {
         QualificationDTO dto = qualificationAiParserService.extractFromPdf(file);
@@ -64,7 +64,7 @@ public class QualificationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "READ", entityType = "Qualification", description = "获取资质列表")
     public ResponseEntity<ApiResponse<List<QualificationDTO>>> getAllQualifications(
             @RequestParam(required = false) String subjectType,
@@ -84,7 +84,7 @@ public class QualificationController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "READ", entityType = "Qualification", description = "获取资质详情")
     public ResponseEntity<ApiResponse<QualificationDTO>> getQualificationById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Qualification retrieved successfully",
@@ -92,7 +92,7 @@ public class QualificationController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
     @Auditable(action = "UPDATE", entityType = "Qualification", description = "更新资质")
     public ResponseEntity<ApiResponse<QualificationDTO>> updateQualification(@PathVariable Long id, @Valid @RequestBody QualificationDTO dto) {
         sanitizeQualificationDTO(dto);
@@ -101,7 +101,7 @@ public class QualificationController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
     @Auditable(action = "DELETE", entityType = "Qualification", description = "删除资质")
     public ResponseEntity<Void> deleteQualification(@PathVariable Long id) {
         qualificationService.deleteQualification(id);
@@ -109,7 +109,7 @@ public class QualificationController {
     }
 
     @GetMapping("/{id}/borrow-records")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "READ", entityType = "QualificationBorrow", description = "查看资质借阅记录")
     public ResponseEntity<ApiResponse<List<QualificationBorrowRecordDTO>>> getBorrowRecords(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Borrow records retrieved successfully",
@@ -117,7 +117,7 @@ public class QualificationController {
     }
 
     @GetMapping("/borrow-records")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "READ", entityType = "QualificationBorrow", description = "查看资质借阅记录")
     public ResponseEntity<ApiResponse<List<QualificationBorrowRecordDTO>>> getBorrowRecordsByQuery(
             @RequestParam(required = false) Long qualificationId
@@ -127,7 +127,7 @@ public class QualificationController {
     }
 
     @PostMapping("/{id}/borrow")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "BORROW", entityType = "Qualification", description = "借阅资质")
     public ResponseEntity<ApiResponse<QualificationBorrowRecordDTO>> borrowQualification(
             @PathVariable Long id,
@@ -139,7 +139,7 @@ public class QualificationController {
     }
 
     @PostMapping("/{id}/return")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "RETURN", entityType = "Qualification", description = "归还资质")
     public ResponseEntity<ApiResponse<QualificationBorrowRecordDTO>> returnQualification(
             @PathVariable Long id,
@@ -150,7 +150,7 @@ public class QualificationController {
     }
 
     @PostMapping("/borrow-records/{id}/return")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "RETURN", entityType = "QualificationBorrow", description = "兼容归还资质")
     public ResponseEntity<ApiResponse<QualificationBorrowRecordDTO>> returnQualificationByRecord(
             @PathVariable Long id,
@@ -161,7 +161,7 @@ public class QualificationController {
     }
 
     @GetMapping("/overview")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "READ", entityType = "Qualification", description = "资质概览")
     public ResponseEntity<ApiResponse<QualificationOverviewDTO>> getOverview() {
         return ResponseEntity.ok(ApiResponse.success("Qualification overview retrieved successfully",
@@ -169,21 +169,21 @@ public class QualificationController {
     }
 
     @PostMapping("/scan-expiring")
-    @PreAuthorize("hasAnyRole('BID_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_ADMIN')")
     public ResponseEntity<ApiResponse<Integer>> scanExpiringQualifications(@RequestParam(defaultValue = "90") Integer thresholdDays) {
         return ResponseEntity.ok(ApiResponse.success("Qualification scan completed",
                 qualificationService.scanExpiringQualifications(thresholdDays)));
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<List<QualificationDTO>>> getQualificationsByType(@PathVariable com.xiyu.bid.entity.Qualification.Type type) {
         return ResponseEntity.ok(ApiResponse.success("Qualifications retrieved successfully",
                 qualificationService.getQualificationsByType(type)));
     }
 
     @GetMapping("/valid")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<List<QualificationDTO>>> getValidQualifications() {
         return ResponseEntity.ok(ApiResponse.success("Valid qualifications retrieved successfully",
                 qualificationService.getValidQualifications()));
@@ -211,7 +211,7 @@ public class QualificationController {
     }
 
     @PostMapping("/{id}/retire")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
     @Auditable(action = "UPDATE", entityType = "Qualification", description = "下架资质证书")
     public ResponseEntity<ApiResponse<QualificationDTO>> retire(
             @PathVariable Long id, @RequestBody Map<String, String> body) {
@@ -226,14 +226,14 @@ public class QualificationController {
     }
 
     @PostMapping("/{id}/restore")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
     @Auditable(action = "UPDATE", entityType = "Qualification", description = "恢复资质证书")
     public ResponseEntity<ApiResponse<QualificationDTO>> restore(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("恢复成功", qualificationService.restoreQualification(id)));
     }
 
     @GetMapping("/levels")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Auditable(action = "READ", entityType = "Qualification", description = "获取资质等级列表")
     public ResponseEntity<ApiResponse<List<String>>> getAllLevels() {
         return ResponseEntity.ok(ApiResponse.success("Levels retrieved successfully", qualificationService.getAllLevels()));
