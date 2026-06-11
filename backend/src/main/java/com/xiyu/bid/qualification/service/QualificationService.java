@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -135,7 +136,7 @@ public class QualificationService {
         if (id == null) {
             Map<Long, String> qualificationNameById = listQualificationsAppService.list(mapper.toCriteria(
                             null, null, null, null, null, null, null, null, null, null)).stream()
-                    .collect(Collectors.toMap(BusinessQualification::id, BusinessQualification::name, (l, r) -> l));
+                    .collect(HashMap::new, (map, q) -> map.put(q.id(), q.name() == null ? "资质文件" : q.name()), HashMap::putAll);
             return filterVisibleLoans(getQualificationBorrowRecordsAppService.getBorrowRecords()).stream()
                     .map(loan -> mapper.toBorrowRecordDto(loan, qualificationNameById.getOrDefault(loan.getQualificationId(), "资质文件")))
                     .toList();
