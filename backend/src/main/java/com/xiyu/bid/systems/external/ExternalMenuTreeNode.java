@@ -1,7 +1,5 @@
 package com.xiyu.bid.systems.external;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -9,31 +7,26 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 外部系统菜单树节点.
+ * 外部系统菜单节点.
  *
- * <p>供统一组织架构系统拉取菜单列表。
- * 结构为扁平/树形两层（父菜单 + 子菜单），child 最多一级。</p>
+ * <p>符合客户方统一组织架构系统的菜单结构规范。</p>
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ExternalMenuTreeNode {
 
-    /** 菜单 code. */
-    private String code;
+    /** 菜单 id（等同 menuCode）. */
+    private String id;
 
     /** 菜单名称. */
-    private String name;
+    private String menuName;
 
-    /** 前端路由路径. */
-    private String path;
+    /** 父级菜单 id（0 表示根节点）. */
+    private String parentId;
 
-    /** 图标标识. */
-    private String icon;
-
-    /** 权限键列表. */
-    private List<String> permissionKeys;
+    /** 菜单 code. */
+    private String menuCode;
 
     /** 子菜单. */
     private List<ExternalMenuTreeNode> children;
