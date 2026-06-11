@@ -15,6 +15,7 @@ import {
 } from '@/api/session.js'
 import { navigateToLogin } from '@/router/sessionNavigation.js'
 import { resolveLoginFailureMessage } from './loginFailureMessage.js'
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
 
 export const useUserStore = defineStore('user', {
   state: () => {
@@ -32,7 +33,7 @@ export const useUserStore = defineStore('user', {
   getters: {
     isLoggedIn: (state) => !!state.currentUser && !!state.token,
     userRole: (state) => state.currentUser?.role || 'staff',
-    userName: (state) => state.currentUser?.name || '用户',
+    userName: (state) => formatDisplayName(state.currentUser?.name, state.currentUser?.employeeNumber) || '用户',
     allowedProjectIds: (state) => state.currentUser?.allowedProjectIds || [],
     allowedDepts: (state) => state.currentUser?.allowedDepts || [],
     menuPermissions: (state) => Array.isArray(state.currentUser?.menuPermissions) ? state.currentUser.menuPermissions : [],

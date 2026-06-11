@@ -1,3 +1,5 @@
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
+
 function asText(value) {
   return String(value ?? '').trim()
 }
@@ -90,7 +92,7 @@ export function mergeSectionSourceMetadata(section, sourceEntry) {
 }
 
 export function buildReferencePayload(match = {}, currentUser = {}, section = {}, projectInfo = {}) {
-  const userName = currentUser?.name || currentUser?.fullName || currentUser?.username || '当前用户'
+  const userName = formatDisplayName(currentUser?.name || currentUser?.fullName || currentUser?.username, currentUser?.employeeNumber) || '当前用户'
 
   return {
     referencedBy: currentUser?.id ?? null,

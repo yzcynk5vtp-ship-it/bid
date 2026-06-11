@@ -38,6 +38,7 @@ public class UserSearchService {
             .map(u -> new UserSearchResult(
                 u.getId(),
                 u.getFullName(),
+                u.getEmployeeNumber(),
                 u.getRole() == null ? null : u.getRole().name(),
                 u.getDepartmentName()))
             .toList();

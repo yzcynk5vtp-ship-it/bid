@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class TaskAssignmentCandidateDTO {
     private Long userId;
     private String name;
+    private String employeeNumber;
     private String roleCode;
     private String roleName;
     private String deptCode;

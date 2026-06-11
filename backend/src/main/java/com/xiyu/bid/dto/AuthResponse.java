@@ -21,6 +21,7 @@ public class AuthResponse {
     private String email;
     private String phone;
     private String fullName;
+    private String employeeNumber;
     private String role;
     private String roleCode;
     private String roleName;
@@ -59,6 +60,7 @@ public class AuthResponse {
                 .email(user.getEmail())
                 .phone(user.getPhone())
                 .fullName(user.getFullName())
+                .employeeNumber(user.getEmployeeNumber())
                 .role(user.getRoleCode())
                 .roleCode(user.getRoleCode())
                 .roleName(user.getRoleName())

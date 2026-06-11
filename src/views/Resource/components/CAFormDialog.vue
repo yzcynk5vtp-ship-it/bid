@@ -147,6 +147,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { usersApi } from '@/api/modules/users.js'
 import { usePlatformAccountSearch } from '@/composables/usePlatformAccountSearch.js'
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -192,7 +193,7 @@ async function searchCustodian(query) {
   custodianSearching.value = true
   try {
     const list = await usersApi.search(query)
-    custodianOptions.value = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: u.name || u.fullName || u.username })) : []
+    custodianOptions.value = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: formatDisplayName(u.fullName || u.name, u.employeeNumber) })) : []
   } catch { custodianOptions.value = [] }
   finally { custodianSearching.value = false }
 }

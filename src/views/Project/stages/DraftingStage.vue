@@ -112,6 +112,7 @@ import PerformanceRecommendDrawer from './components/PerformanceRecommendDrawer.
 import QualityCheckDialog from './components/QualityCheckDialog.vue'
 import { useProjectDetailContext } from '@/composables/projectDetail/context.js'
 import { useProjectDraftingPermissions } from '@/composables/projectDetail/useProjectDraftingPermissions.js'
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
 
 const userStore = useUserStore()
 const ctx = useProjectDetailContext()
@@ -201,7 +202,7 @@ async function searchReviewer(query) {
   reviewerSearching.value = true
   try {
     const list = await usersApi.search(query)
-    reviewerOptions.value = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: u.name || u.fullName || u.username })) : []
+    reviewerOptions.value = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: formatDisplayName(u.fullName || u.name, u.employeeNumber) })) : []
   } catch { reviewerOptions.value = [] }
   finally { reviewerSearching.value = false }
 }

@@ -86,6 +86,7 @@ public class TaskAssignmentSupport {
                 .map(user -> TaskAssignmentCandidateDTO.builder()
                         .userId(user.getId())
                         .name(user.getFullName())
+                        .employeeNumber(user.getEmployeeNumber())
                         .roleCode(user.getRoleCode())
                         .roleName(user.getRoleName())
                         .deptCode(defaultText(user.getDepartmentCode(), "UNASSIGNED"))

@@ -20,6 +20,7 @@ public class AdminUserDTO {
     private String phone;
     private String departmentCode;
     private String departmentName;
+    private String employeeNumber;
     private Long roleId;
     private String roleCode;
     private String roleName;

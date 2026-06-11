@@ -5,6 +5,7 @@
 
 import { ref } from 'vue'
 import { usersApi } from '@/api/modules/users.js'
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
 
 export function useTaskAssigneeOptions({ localValue, isCreateMode, userStore }) {
   const assigneeOptions = ref([])
@@ -58,7 +59,7 @@ export function useTaskAssigneeOptions({ localValue, isCreateMode, userStore }) 
     if (id == null) return null
     return {
       userId: Number(id),
-      name: candidate.name || candidate.fullName || candidate.username || `用户#${id}`,
+      name: formatDisplayName(candidate.name || candidate.fullName || candidate.username, candidate.employeeNumber) || `用户#${id}`,
       deptCode: candidate.deptCode || candidate.departmentCode || '',
       deptName: candidate.deptName || candidate.departmentName || '',
       roleCode: candidate.roleCode || '',
@@ -72,7 +73,7 @@ export function useTaskAssigneeOptions({ localValue, isCreateMode, userStore }) 
     if (!user?.id) return null
     return normalizeCandidate({
       userId: user.id,
-      name: user.name || user.fullName || userStore.userName,
+      name: formatDisplayName(user.name || user.fullName || userStore.userName, user.employeeNumber),
       deptCode: user.departmentCode,
       deptName: user.departmentName,
       roleCode: user.roleCode || user.role,

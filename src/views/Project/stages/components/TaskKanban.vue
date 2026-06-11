@@ -125,7 +125,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { projectsApi } from '@/api/modules/projects.js'
 import { usersApi } from '@/api/modules/users.js'
-
+import { formatDisplayName } from '@/utils/formatDisplayName.js'
 const props = defineProps({
   projectId: { type: [String, Number], required: true },
   canUseAI: Boolean,
@@ -155,7 +155,7 @@ async function searchUsers(query) {
   searching.value = true
   try {
     const list = await usersApi.search(query)
-    userOptions.value = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: u.name || u.fullName || u.username })) : []
+    userOptions.value = Array.isArray(list) ? list.map(u => ({ id: Number(u.id), name: formatDisplayName(u.fullName || u.name, u.employeeNumber) })) : []
   } catch { userOptions.value = [] }
   finally { searching.value = false }
 }
