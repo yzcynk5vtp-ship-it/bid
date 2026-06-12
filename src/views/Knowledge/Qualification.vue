@@ -7,7 +7,12 @@
           <el-icon><Plus /></el-icon> 新增资质
         </el-button>
         <el-button v-if="canManageQualification" @click="downloadTemplate">下载导入模板</el-button>
-        <el-button v-if="canViewQualification" @click="window.open('/api/knowledge/qualifications/export')">导出台账</el-button>
+        <el-button v-if="canManageQualification" @click="handleImportLedgerClick">
+          <el-icon><Upload /></el-icon> 导入台账
+        </el-button>
+        <el-button v-if="canManageQualification" @click="batchUploadVisible = true">
+          <el-icon><Document /></el-icon> 批量上传附件
+        </el-button>
         <el-button v-if="canAdminQualificationAlert" @click="alertConfigVisible = true">告警配置</el-button>
         <el-button v-if="canAdminQualificationAlert" :loading="scanningExpiring" @click="handleScanExpiring">扫描到期</el-button>
       </div>
@@ -56,9 +61,6 @@
       </div>
       <el-upload v-show="false" ref="importUploadRef" action="" :auto-upload="false" :on-change="handleImportChange" accept=".xlsx,.xls">
         <template #trigger><span ref="importTriggerRef" /></template>
-      </el-upload>
-      <el-upload v-show="false" ref="batchAttachUploadRef" action="" :auto-upload="false" multiple :on-change="handleBatchAttachChange">
-        <template #trigger><span ref="batchAttachTriggerRef" /></template>
       </el-upload>
       <el-table ref="tableRef" :data="qualifications" v-loading="loading" style="width:100%" @row-click="handleRowClick" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" fixed="left" />
@@ -132,9 +134,9 @@
       :data="importResultData"
       @closed="fetchQualifications"
     />
-    <BatchAttachResultDialog
-      v-model="attachResultVisible"
-      :data="attachResultData"
+    <QualBatchUploadDialog
+      v-model="batchUploadVisible"
+      
       @closed="fetchQualifications"
     />
     <RetireConfirmDialog
@@ -159,7 +161,7 @@ import QualFormDialog from './components/qualification/QualFormDialog.vue'
 import AlertConfigDialog from './components/qualification/AlertConfigDialog.vue'
 import AttachmentReplaceDialog from './components/qualification/AttachmentReplaceDialog.vue'
 import ImportResultDialog from './components/qualification/ImportResultDialog.vue'
-import BatchAttachResultDialog from './components/qualification/BatchAttachResultDialog.vue'
+import QualBatchUploadDialog from "./components/qualification/QualBatchUploadDialog.vue"
 import { useQualificationPermissionMatrix, useQualificationBorrowSection } from './components/qualification/useQualificationBorrowSection.js'
 import QualDetailDrawer from './components/qualification/QualDetailDrawer.vue'
 import RetireConfirmDialog from './components/qualification/RetireConfirmDialog.vue'
@@ -181,6 +183,7 @@ const STATUS_LABELS ={ in_stock:'在库', valid:'在库', expiring:'即将到期
 
 const hasFilterActive = computed(() => filters.keyword || filters.issuer || filters.expiryRange || filters.statuses.length || filters.level)
 const formVisible = ref(false); const editData = ref(null)
+const batchUploadVisible = ref(false)
 const retireDialogVisible = ref(false)
 const retireTarget = ref(null)
 const {
@@ -238,13 +241,6 @@ const {
   handleImportLedgerClick,
   handleImportChange,
   handleImportResultClosed,
-  batchAttachUploadRef,
-  batchAttachTriggerRef,
-  handleBatchUploadClick,
-  handleBatchAttachChange,
-  attachResultVisible,
-  attachResultData,
-  handleAttachResultClosed,
   handleBatchExport,
   handleBatchDownload
 } = useQualificationBatch({ fetchQualifications })
