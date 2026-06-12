@@ -7,7 +7,12 @@
           <el-icon><Plus /></el-icon> 新增资质
         </el-button>
         <el-button v-if="canManageQualification" @click="downloadTemplate">下载导入模板</el-button>
-        <el-button v-if="canViewQualification" @click="window.open('/api/knowledge/qualifications/export')">导出台账</el-button>
+        <el-button v-if="canManageQualification" @click="handleImportLedgerClick">
+          <el-icon><Upload /></el-icon> 导入台账
+        </el-button>
+        <el-button v-if="canManageQualification" @click="batchUploadVisible = true">
+          <el-icon><Document /></el-icon> 批量上传附件
+        </el-button>
         <el-button v-if="canAdminQualificationAlert" @click="alertConfigVisible = true">告警配置</el-button>
         <el-button v-if="canAdminQualificationAlert" :loading="scanningExpiring" @click="handleScanExpiring">扫描到期</el-button>
       </div>
@@ -40,12 +45,6 @@
 
     <el-card class="data-card" shadow="never">
       <div v-if="hasSelection" class="batch-toolbar">
-        <el-button type="primary" size="small" @click="handleImportLedgerClick">
-          <el-icon><Upload /></el-icon> 导入台账
-        </el-button>
-        <el-button type="primary" size="small" @click="handleBatchUploadClick">
-          <el-icon><Document /></el-icon> 批量上传附件
-        </el-button>
         <el-button type="success" size="small" @click="handleBatchExport">
           <el-icon><Download /></el-icon> 导出台账
         </el-button>
@@ -57,20 +56,11 @@
       <el-upload v-show="false" ref="importUploadRef" action="" :auto-upload="false" :on-change="handleImportChange" accept=".xlsx,.xls">
         <template #trigger><span ref="importTriggerRef" /></template>
       </el-upload>
-      <el-upload v-show="false" ref="batchAttachUploadRef" action="" :auto-upload="false" multiple :on-change="handleBatchAttachChange">
-        <template #trigger><span ref="batchAttachTriggerRef" /></template>
-      </el-upload>
       <el-table ref="tableRef" :data="qualifications" v-loading="loading" style="width:100%" @row-click="handleRowClick" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" fixed="left" />
         <el-table-column type="index" label="序号" width="110" align="center" fixed="left" />
         <el-table-column prop="name" label="证书名称" min-width="180" fixed="left" show-overflow-tooltip>
           <template #default="scope"><span class="cert-name">{{ scope.row.name }}</span></template>
-        </el-table-column>
-        <el-table-column label="证书附件" width="120" align="center">
-          <template #default="scope">
-            <el-button v-if="scope.row.fileUrl && canViewQualification" link type="primary" size="small" @click.stop="handleDownload(scope.row)">下载</el-button>
-            <span v-else class="text-muted">—</span>
-          </template>
         </el-table-column>
         <el-table-column prop="level" label="等级" width="80" align="center" />
         <el-table-column prop="issuer" label="认证机构" min-width="150" show-overflow-tooltip />
@@ -84,9 +74,9 @@
             <el-tag :type="getStatusTagType(scope.row)" :class="{ 'retired-tag': (scope.row.status || '').toLowerCase() === 'retired' }">{{ statusLabel(scope.row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right" align="center">
+        <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="scope">
-            <el-button v-if="scope.row.fileUrl" link type="primary" size="small" @click.stop="handleDownload(scope.row)">下载</el-button>
+            <el-button v-if="scope.row.fileUrl" link type="primary" size="small" @click.stop="handleDownloadFile(scope.row)">下载</el-button>
             <el-button v-if="canManageQualification && (scope.row.status || '').toLowerCase() !== 'retired'" link type="primary" size="small" @click.stop="openEdit(scope.row)">编辑</el-button>
             <el-button v-if="canManageQualification && (scope.row.status || '').toLowerCase() !== 'retired'" link type="danger" size="small" @click.stop="handleRetire(scope.row)">下架</el-button>
             <el-button v-if="canManageQualification && (scope.row.status || '').toLowerCase() === 'retired'" link type="success" size="small" @click.stop="handleRestore(scope.row)">恢复</el-button>
@@ -132,9 +122,9 @@
       :data="importResultData"
       @closed="fetchQualifications"
     />
-    <BatchAttachResultDialog
-      v-model="attachResultVisible"
-      :data="attachResultData"
+    <QualBatchUploadDialog
+      v-model="batchUploadVisible"
+      
       @closed="fetchQualifications"
     />
     <RetireConfirmDialog
@@ -159,7 +149,7 @@ import QualFormDialog from './components/qualification/QualFormDialog.vue'
 import AlertConfigDialog from './components/qualification/AlertConfigDialog.vue'
 import AttachmentReplaceDialog from './components/qualification/AttachmentReplaceDialog.vue'
 import ImportResultDialog from './components/qualification/ImportResultDialog.vue'
-import BatchAttachResultDialog from './components/qualification/BatchAttachResultDialog.vue'
+import QualBatchUploadDialog from "./components/qualification/QualBatchUploadDialog.vue"
 import { useQualificationPermissionMatrix, useQualificationBorrowSection } from './components/qualification/useQualificationBorrowSection.js'
 import QualDetailDrawer from './components/qualification/QualDetailDrawer.vue'
 import RetireConfirmDialog from './components/qualification/RetireConfirmDialog.vue'
@@ -181,6 +171,7 @@ const STATUS_LABELS ={ in_stock:'在库', valid:'在库', expiring:'即将到期
 
 const hasFilterActive = computed(() => filters.keyword || filters.issuer || filters.expiryRange || filters.statuses.length || filters.level)
 const formVisible = ref(false); const editData = ref(null)
+const batchUploadVisible = ref(false)
 const retireDialogVisible = ref(false)
 const retireTarget = ref(null)
 const {
@@ -238,13 +229,6 @@ const {
   handleImportLedgerClick,
   handleImportChange,
   handleImportResultClosed,
-  batchAttachUploadRef,
-  batchAttachTriggerRef,
-  handleBatchUploadClick,
-  handleBatchAttachChange,
-  attachResultVisible,
-  attachResultData,
-  handleAttachResultClosed,
   handleBatchExport,
   handleBatchDownload
 } = useQualificationBatch({ fetchQualifications })
@@ -346,8 +330,18 @@ const handleAttachmentUpload = () => {
   replaceDialogVisible.value = true
 }
 
-const handleDownload = (row) => {
-  if (row?.fileUrl) window.open(row.fileUrl)
+const handleDownloadFile = async (row) => {
+  try {
+    const res = await http.get(row.fileUrl, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = row.name || '资质附件'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch { ElMessage.error('下载失败') }
 }
 
 onMounted(async () => {
