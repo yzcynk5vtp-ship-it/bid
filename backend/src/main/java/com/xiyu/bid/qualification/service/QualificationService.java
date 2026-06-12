@@ -28,6 +28,8 @@ import com.xiyu.bid.qualification.dto.QualificationOverviewDTO;
 import com.xiyu.bid.qualification.dto.QualificationReturnRequest;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +46,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class QualificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(QualificationService.class);
 
     private final CreateQualificationAppService createQualificationAppService;
     private final UpdateQualificationAppService updateQualificationAppService;
@@ -152,17 +156,22 @@ public class QualificationService {
 
     @Transactional(readOnly = true)
     public List<QualificationBorrowRecordDTO> getBorrowRecords(Long id) {
-        if (id == null) {
-            Map<Long, String> qualificationNameById = listQualificationsAppService.list(mapper.toCriteria(
-                            null, null, null, null, null, null, null, null, null, null)).stream()
-                    .collect(HashMap::new, (map, q) -> map.put(q.id(), q.name() == null ? "资质文件" : q.name()), HashMap::putAll);
-            return filterVisibleLoans(getQualificationBorrowRecordsAppService.getBorrowRecords()).stream()
-                    .map(loan -> mapper.toBorrowRecordDto(loan, qualificationNameById.getOrDefault(loan.getQualificationId(), "资质文件")))
-                    .toList();
+        try {
+            if (id == null) {
+                Map<Long, String> qualificationNameById = listQualificationsAppService.list(mapper.toCriteria(
+                                null, null, null, null, null, null, null, null, null, null)).stream()
+                        .collect(HashMap::new, (map, q) -> map.put(q.id(), q.name() == null ? "资质文件" : q.name()), HashMap::putAll);
+                return filterVisibleLoans(getQualificationBorrowRecordsAppService.getBorrowRecords()).stream()
+                        .map(loan -> mapper.toBorrowRecordDto(loan, qualificationNameById.getOrDefault(loan.getQualificationId(), "资质文件")))
+                        .toList();
+            }
+            BusinessQualification qualification = findQualification(id);
+            return filterVisibleLoans(getQualificationBorrowRecordsAppService.getBorrowRecords(id)).stream()
+                    .map(item -> mapper.toBorrowRecordDto(item, qualification)).toList();
+        } catch (Exception e) {
+            log.error("Failed to load borrow records (qualificationId={}): {}", id, e.getMessage(), e);
+            throw e;
         }
-        BusinessQualification qualification = findQualification(id);
-        return filterVisibleLoans(getQualificationBorrowRecordsAppService.getBorrowRecords(id)).stream()
-                .map(item -> mapper.toBorrowRecordDto(item, qualification)).toList();
     }
 
     @Transactional(readOnly = true)
