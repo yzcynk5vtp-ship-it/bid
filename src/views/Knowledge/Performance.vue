@@ -71,10 +71,10 @@
           <el-input v-model="searchForm.territory" placeholder="省/市关键词" clearable style="width: 140px" />
         </el-form-item>
         <el-form-item label="签约日期">
-          <el-date-picker v-model="searchForm.signingDateRange" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width: 220px" />
+          <el-date-picker v-model="searchForm.signingDateRange" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width: 260px" />
         </el-form-item>
         <el-form-item label="截止日期">
-          <el-date-picker v-model="searchForm.expiryDateRange" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width: 220px" />
+          <el-date-picker v-model="searchForm.expiryDateRange" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width: 260px" />
         </el-form-item>
         <el-form-item label="中标通知书">
           <el-select v-model="searchForm.hasBidNotice" placeholder="全部" clearable style="width: 100px">
@@ -94,7 +94,8 @@
     <!-- 数据表格 -->
     <el-card class="table-card border-glow" v-loading="loading">
       <el-table :data="records" stripe style="width: 100%" @row-click="openDetail" class="custom-table">
-        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column type="selection" width="55" />
+        <el-table-column type="index" label="序号" width="110" align="center" />
         <el-table-column prop="contractName" label="合同名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="signingEntity" label="签约单位" min-width="160" show-overflow-tooltip />
         <el-table-column prop="customerType" label="客户类型" width="120">
@@ -103,17 +104,17 @@
           </template>
         </el-table-column>
         <el-table-column prop="groupCompany" label="集团公司" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="projectType" label="项目类型" width="90" align="center">
+        <el-table-column prop="projectType" label="项目类型" width="120" align="center">
           <template #default="{ row }"><el-tag type="info" size="small">{{ row.projectTypeLabel }}</el-tag></template>
         </el-table-column>
-        <el-table-column prop="customerLevel" label="客户级别" width="90" align="center">
+        <el-table-column prop="customerLevel" label="客户级别" width="120" align="center">
           <template #default="{ row }"><el-tag type="warning" size="small">{{ row.customerLevelLabel }}</el-tag></template>
         </el-table-column>
-        <el-table-column prop="signingDate" label="签约日期" width="105" align="center" />
-        <el-table-column prop="expiryDate" label="截止日期" width="105" align="center">
+        <el-table-column prop="signingDate" label="签约日期" width="140" align="center" />
+        <el-table-column prop="expiryDate" label="截止日期" width="120" align="center">
           <template #default="{ row }"><span :class="getExpiryDateClass(row)">{{ row.expiryDate }}</span></template>
         </el-table-column>
-        <el-table-column prop="daysRemaining" label="到期天数" width="100" align="center">
+        <el-table-column prop="daysRemaining" label="到期天数" width="120" align="center">
           <template #default="{ row }">
             <span :class="getDaysRemainingClass(row)" style="font-weight: 600">{{ formatDaysRemaining(row.daysRemaining) }}</span>
           </template>

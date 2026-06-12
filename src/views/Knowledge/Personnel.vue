@@ -91,7 +91,8 @@
     <el-card class="table-card" v-loading="loading">
       <el-table :data="records" stripe style="width:100%" @row-click="openDetail">
         <!-- 序号 -->
-        <el-table-column type="index" label="序号" width="60" align="center" />
+        <el-table-column type="selection" width="55" />
+        <el-table-column type="index" label="序号" width="110" align="center" />
         <!-- 工号（加粗） -->
         <el-table-column prop="employeeNumber" label="工号" width="90" align="center">
           <template #default="{row}">
@@ -106,11 +107,11 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column label="入职时间" width="110" align="center">
+        <el-table-column label="入职时间" width="120" align="center">
           <template #default="{row}">{{ row.entryDate || '-' }}</template>
         </el-table-column>
         <!-- 入职年限（自动计算） -->
-        <el-table-column label="入职年限" width="90" align="center">
+        <el-table-column label="入职年限" width="120" align="center">
           <template #default="{row}">
             <span v-if="row.yearsOfService != null">{{ row.yearsOfService }} 年</span>
             <span v-else>-</span>
@@ -118,14 +119,14 @@
         </el-table-column>
         <el-table-column prop="phone" label="手机号码" width="120" />
         <!-- 最高学历 Tag -->
-        <el-table-column label="最高学历" width="90" align="center">
+        <el-table-column label="最高学历" width="120" align="center">
           <template #default="{row}">
             <el-tag v-if="row.highestEducation && row.highestEducation !== '-'" size="small" type="info">{{ row.highestEducation }}</el-tag>
             <span v-else>-</span>
           </template>
         </el-table-column>
         <!-- 证书数量（可点击跳转证书 Tab） -->
-        <el-table-column label="证书数量" width="100" align="center">
+        <el-table-column label="证书数量" width="120" align="center">
           <template #default="{row}">
             <el-tag
               :type="row.certificateCount > 0 ? 'success' : 'info'"
@@ -137,7 +138,7 @@
           </template>
         </el-table-column>
         <!-- 即将到期（红色数字 + 警示图标） -->
-        <el-table-column label="即将到期" width="100" align="center">
+        <el-table-column label="即将到期" width="120" align="center">
           <template #default="{row}">
             <span v-if="row.expiringCertificatesCount > 0" class="expiry-warn" @click.stop="openDetail(row, 'certificate')">
               <el-icon><Warning /></el-icon> {{ row.expiringCertificatesCount }}
@@ -1374,7 +1375,6 @@ onMounted(loadData)
 </script>
 
 <style scoped lang="scss">
-.personnel-container { padding: 24px; }
 .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; h2{font-weight:600;color:var(--el-text-color-primary);margin:0} }
 .header-actions { display: flex; gap: 12px; align-items: center; }
 .primary-actions, .batch-actions { display: flex; gap: 8px; }

@@ -17,8 +17,8 @@
       <el-table :data="records" v-loading="loading" style="width:100%" @row-click="openDrawer"
         :row-class-name="({row}) => newlyCreatedIds.has(row.id) ? 'row-newly-created' : ''"
         @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="48" :selectable="r => r.status !== 'CLOSED'" />
-        <el-table-column type="index" label="序号" width="100" />
+        <el-table-column type="selection" width="55" :selectable="r => r.status !== 'CLOSED'" />
+        <el-table-column type="index" label="序号" width="110" />
         <el-table-column prop="name" label="仓库名称" min-width="160" show-overflow-tooltip>
           <template #default="s"><span class="warehouse-name">{{ s.row.name }}</span></template>
         </el-table-column>
@@ -288,7 +288,6 @@ onMounted(load)
 </script>
 
 <style scoped lang="scss">
-.warehouse-container { padding: 24px; }
 .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; h2 { font-weight:600; color:#1f2937; margin:0 } }
 .data-card { border-radius:8px; border:1px solid var(--el-border-color-lighter); box-shadow:0 2px 8px rgba(0,0,0,.05) }
 .pagination-wrap { display:flex; justify-content:flex-end; margin-top:16px }

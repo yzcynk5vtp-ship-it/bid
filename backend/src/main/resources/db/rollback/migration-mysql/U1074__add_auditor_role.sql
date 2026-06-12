@@ -1,3 +1,4 @@
+-- Input: V1074__add_auditor_role.sql
 -- PR: 当前分支
 -- 回滚：删除补充的角色（仅当无关联用户时）
 
