@@ -67,11 +67,12 @@
         <template #trigger><span ref="batchAttachTriggerRef" /></template>
       </el-upload>
       <el-table ref="tableRef" :data="qualifications" v-loading="loading" style="width:100%" @row-click="handleRowClick" @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" />
+        <el-table-column type="selection" width="55" fixed="left" />
+        <el-table-column type="index" label="序号" width="110" align="center" fixed="left" />
         <el-table-column prop="name" label="证书名称" min-width="180" fixed="left" show-overflow-tooltip>
           <template #default="scope"><span class="cert-name">{{ scope.row.name }}</span></template>
         </el-table-column>
-        <el-table-column label="证书附件" width="100" align="center">
+        <el-table-column label="证书附件" width="120" align="center">
           <template #default="scope">
             <el-button v-if="scope.row.fileUrl && canViewQualification" link type="primary" size="small" @click.stop="handleDownload(scope.row)">下载</el-button>
             <span v-else class="text-muted">—</span>
@@ -80,11 +81,11 @@
         <el-table-column prop="level" label="等级" width="80" align="center" />
         <el-table-column prop="issuer" label="认证机构" min-width="150" show-overflow-tooltip />
         <el-table-column prop="certificateNo" label="证书编号" width="150" show-overflow-tooltip />
-        <el-table-column prop="issueDate" label="发证日期" width="110" />
-        <el-table-column prop="expiryDate" label="证书有效期" width="120">
+        <el-table-column prop="issueDate" label="发证日期" width="120" />
+        <el-table-column prop="expiryDate" label="证书有效期" width="130">
           <template #default="scope"><el-tag :type="getStatusTagType(scope.row)">{{ scope.row.expiryDate || '—' }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="借阅状态" width="110" align="center">
+        <el-table-column label="借阅状态" width="120" align="center">
           <template #default="scope">
             <el-tag :type="getBorrowStatusTagType(scope.row.currentBorrowStatus)">{{ getBorrowStatusLabel(scope.row.currentBorrowStatus) }}</el-tag>
           </template>
@@ -447,7 +448,6 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .qualification-container {
-  padding: 24px;
   background: var(--bg-page);
   min-height: 100vh;
 }
