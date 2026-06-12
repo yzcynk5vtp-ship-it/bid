@@ -111,7 +111,7 @@ class QualificationServiceTest {
         var returned = qualificationService.returnQualification(1L, QualificationReturnRequest.builder().returnRemark("已归档").build());
 
         assertThat(borrowed.getBorrower()).isEqualTo("小王");
-        assertThat(returned.getStatus()).isEqualTo("RETURNED");
+        assertThat(returned.getStatus()).isEqualTo("returned");
         verify(borrowQualificationAppService).borrow(eq(1L), any());
         verify(returnQualificationAppService).returnLoan(eq(1L), any());
     }
