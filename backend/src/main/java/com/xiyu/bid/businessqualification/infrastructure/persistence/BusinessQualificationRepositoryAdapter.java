@@ -130,7 +130,7 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
                 predicates.add(cb.equal(cb.upper(root.get("subjectType")), criteria.getSubjectType().toUpperCase(Locale.ROOT)));
             }
             if (criteria.getSubjectName() != null && !criteria.getSubjectName().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("subjectName")), "%" + criteria.getSubjectName().toLowerCase(Locale.ROOT) + "%"));
+                predicates.add(cb.like(cb.lower(root.get("subjectName")), "%" + escapeSqlWildcards(criteria.getSubjectName().toLowerCase(Locale.ROOT)) + "%"));
             }
             if (criteria.getCategory() != null && !criteria.getCategory().isBlank()) {
                 predicates.add(cb.equal(cb.upper(root.get("category")), criteria.getCategory().toUpperCase(Locale.ROOT)));
@@ -145,10 +145,10 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
                 predicates.add(cb.lessThanOrEqualTo(root.get("expiryDate"), criteria.getExpiringTo()));
             }
             if (criteria.getIssuer() != null && !criteria.getIssuer().isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("issuer")), "%" + criteria.getIssuer().toLowerCase(Locale.ROOT) + "%"));
+                predicates.add(cb.like(cb.lower(root.get("issuer")), "%" + escapeSqlWildcards(criteria.getIssuer().toLowerCase(Locale.ROOT)) + "%"));
             }
             if (criteria.getKeyword() != null && !criteria.getKeyword().isBlank()) {
-                String kw = "%" + criteria.getKeyword().toLowerCase(Locale.ROOT) + "%";
+                String kw = "%" + escapeSqlWildcards(criteria.getKeyword().toLowerCase(Locale.ROOT)) + "%";
                 predicates.add(cb.or(
                         cb.like(cb.lower(root.get("name")), kw),
                         cb.like(cb.lower(cb.coalesce(root.get("certificateNo"), "")), kw),
@@ -158,6 +158,14 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    /**
+     * Escape SQL wildcards (% and _) to prevent injection in LIKE queries.
+     */
+    private String escapeSqlWildcards(String input) {
+        if (input == null) return null;
+        return input.replace("%", "\\%").replace("_", "\\_");
     }
 
     /**
@@ -171,7 +179,7 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
             return true;
         }
         if (criteria.getStatus() != null && !criteria.getStatus().isEmpty()
-                && criteria.getStatus().stream().noneMatch(s -> item.status().name().equalsIgnoreCase(s))) {
+                && (item.status() == null || criteria.getStatus().stream().noneMatch(s -> item.status().name().equalsIgnoreCase(s)))) {
             return false;
         }
         if (criteria.getExpiringWithinDays() != null && item.remainingDays() > criteria.getExpiringWithinDays()) {

@@ -9,6 +9,31 @@ import { apiBaseUrl, ensureApiSession, injectSession } from './auth-helpers.js'
  *   2. 领域(category) 下拉过滤生效，后端分页接口支持 ?category=
  *   3. 附件上传限值 50MB（与 PR 680122945 对齐，不再是 10MB）
  */
+
+// Helper: 清理测试数据
+async function cleanupTestQualifications(token, suffix) {
+  try {
+    // 获取所有测试创建的记录
+    const listRes = await fetch(`${apiBaseUrl}/api/knowledge/qualifications?page=0&size=100`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!listRes.ok) return
+    const body = await listRes.json()
+    const items = body.data?.content || []
+    // 删除包含 suffix 的记录
+    for (const item of items) {
+      if (item.name && item.name.includes(suffix)) {
+        await fetch(`${apiBaseUrl}/api/knowledge/qualifications/${item.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` }
+        }).catch(() => {})
+      }
+    }
+  } catch {
+    // 清理失败不影响测试结果
+  }
+}
+
 test.describe('CO-155 资质证书三连故障修复', () => {
 
   test('保存后能立刻在列表第一页看到（page 重置）', async ({ page }) => {
@@ -18,6 +43,8 @@ test.describe('CO-155 资质证书三连故障修复', () => {
       role: 'bid_admin',
       fullName: 'E2E CO-155 测试'
     })
+
+    try {
 
     // 通过 API 预置 20 条记录，让前端分页有意义
     for (let i = 0; i < 20; i++) {
@@ -78,6 +105,9 @@ test.describe('CO-155 资质证书三连故障修复', () => {
     // 关键断言：新记录应可见（且在第一页）
     const newRow = page.locator('.el-table__body-wrapper tbody tr', { hasText: uniqueName })
     await expect(newRow).toBeVisible({ timeout: 10000 })
+    } finally {
+      await cleanupTestQualifications(session.token, `E2E-CO155-${suffix}`)
+    }
   })
 
   test('领域(category) 下拉过滤生效', async ({ page }) => {
@@ -87,6 +117,8 @@ test.describe('CO-155 资质证书三连故障修复', () => {
       role: 'bid_admin',
       fullName: 'E2E CO-155 category 测试'
     })
+
+    try {
 
     // 创建一条 category=PRODUCT 的记录
     const productName = `E2E 产品资质 ${suffix}`
@@ -150,6 +182,10 @@ test.describe('CO-155 资质证书三连故障修复', () => {
     await expect(productRow).toBeVisible({ timeout: 5000 })
     const licenseRow = page.locator('.el-table__body-wrapper tbody tr', { hasText: licenseName })
     await expect(licenseRow).toHaveCount(0)
+    } finally {
+      await cleanupTestQualifications(session.token, `CO155-PROD-${suffix}`)
+      await cleanupTestQualifications(session.token, `CO155-LIC-${suffix}`)
+    }
   })
 
   test('后端分页接口响应含 totalElements + content 字段', async ({ page }) => {
