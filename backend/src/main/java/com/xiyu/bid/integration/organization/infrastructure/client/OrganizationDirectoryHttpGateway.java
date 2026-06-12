@@ -7,9 +7,6 @@ import com.xiyu.bid.integration.organization.application.OrganizationDirectoryGa
 import com.xiyu.bid.integration.organization.application.OrganizationIntegrationProperties;
 import com.xiyu.bid.integration.organization.domain.OrganizationDepartmentSnapshot;
 import com.xiyu.bid.integration.organization.domain.OrganizationDirectoryLookupContext;
-import com.xiyu.bid.integration.organization.domain.OrganizationDirectoryResponseDecision;
-import com.xiyu.bid.integration.organization.domain.OrganizationDirectoryResponseOutcome;
-import com.xiyu.bid.integration.organization.domain.OrganizationDirectoryResponsePolicy;
 import com.xiyu.bid.integration.organization.domain.OrganizationUserSnapshot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -151,6 +148,7 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
         List<T> allResults = new ArrayList<>();
         int index = 0;
         int maxPages = 100; // safety limit to prevent infinite loops
+        int initialTotal = Integer.MAX_VALUE;
         for (int page = 0; page < maxPages; page++) {
             Map<String, Object> body = Map.of(
                     "startTime", startAt.format(ORG_API_DTF),
@@ -167,13 +165,39 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
                 break;
             }
             allResults.addAll(pageResults);
-            // Check for next page index
+            // Use total field from response to determine stop condition
+            JsonNode totalNode = root.path("total");
+            if (totalNode.isInt()) {
+                if (initialTotal == Integer.MAX_VALUE) {
+                    initialTotal = totalNode.asInt();
+                }
+                if (initialTotal != Integer.MAX_VALUE && allResults.size() >= initialTotal) {
+                    break;
+                }
+            }
+            // Calculate next page index: try object format first, then fallback to offset-based
             JsonNode data = root.path("data");
             JsonNode nextIndex = data.path("index");
-            if (!nextIndex.isInt() || nextIndex.asInt() <= index) {
-                break;
+            if (nextIndex.isInt() && nextIndex.asInt() > index) {
+                index = nextIndex.asInt();
+            } else {
+                // Fallback: use last record's internal ID from the data array as next cursor
+                JsonNode dataArray = root.path("data");
+                if (dataArray.isArray() && dataArray.size() > 0) {
+                    JsonNode lastElement = dataArray.get(dataArray.size() - 1);
+                    int lastId = lastElement.path("id").asInt();
+                    if (lastId == 0) {
+                        lastId = lastElement.path("userId").asInt();
+                    }
+                    if (lastId > index) {
+                        index = lastId;
+                    } else {
+                        break; /* no progress */
+                    }
+                } else {
+                    break; /* no data array found */
+                }
             }
-            index = nextIndex.asInt();
         }
         return allResults;
     }
@@ -223,7 +247,7 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
             }
             log.info("组织架构回查成功: url={}, status={}, response={}",
                 url, response.getStatusCode(), preview);
-            return parseResponse(response.getBody());
+            return OrganizationDirectoryHttpResponseHandler.parseResponse(objectMapper, response.getBody());
         } catch (HttpClientErrorException.NotFound ex) {
             return Optional.empty();
         } catch (HttpStatusCodeException ex) {
@@ -234,39 +258,6 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
         } catch (JsonProcessingException | RestClientException ex) {
             throw OrganizationDirectoryHttpGatewayException.retryable("组织架构主数据接口调用失败", ex);
         }
-    }
-
-    private Optional<JsonNode> parseResponse(String body) throws JsonProcessingException {
-        if (body == null || body.isBlank()) {
-            return Optional.empty();
-        }
-        JsonNode root = objectMapper.readTree(body);
-        return classify(root).outcome() == OrganizationDirectoryResponseOutcome.SUCCESS
-                ? Optional.of(root)
-                : Optional.empty();
-    }
-
-    private OrganizationDirectoryResponseDecision classify(JsonNode root) {
-        JsonNode code = root.path("code");
-        if (!code.isValueNode() || code.isNull()) {
-            return new OrganizationDirectoryResponseDecision(OrganizationDirectoryResponseOutcome.SUCCESS, false, "success");
-        }
-        OrganizationDirectoryResponseDecision decision = OrganizationDirectoryResponsePolicy.classify(code.asText(), hasData(root));
-        if (decision.retryable()) {
-            throw OrganizationDirectoryHttpGatewayException.retryable(decision.message(), null);
-        }
-        if (decision.outcome() == OrganizationDirectoryResponseOutcome.NON_RETRYABLE_FAILURE) {
-            throw OrganizationDirectoryHttpGatewayException.nonRetryable(decision.message(), null);
-        }
-        return decision;
-    }
-
-    private boolean hasData(JsonNode root) {
-        return hasPayload(root.path("data")) || hasPayload(root.path("result"));
-    }
-
-    private boolean hasPayload(JsonNode data) {
-        return !data.isMissingNode() && !data.isNull() && (!data.isContainerNode() || data.size() > 0);
     }
 
     private String buildUrl(String path) {
