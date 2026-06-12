@@ -32,6 +32,10 @@ node "$ROOT_DIR/scripts/check-e2e-selectors.mjs"
 # Flyway 迁移回滚脚本完整性检查：确保 V*.sql 有对应的 U*.sql 回滚脚本（2026-06-05 skill-progression-map）
 "$ROOT_DIR/scripts/check-flyway-rollback.sh"
 
+# TDD 测试先行门禁：检测到 staged 业务代码变更但没有对应的测试文件时，直接阻断提交，以确保 fix/test 比例（2026-06-12 gemini/enforce-tdd-precommit）
+"$ROOT_DIR/scripts/check-tdd-coverage.sh" --ci
+
+
 # 分支卫生提醒：检查是否已 push + 是否有 PR（不阻断提交）
 "$ROOT_DIR/scripts/check-branch-hygiene.sh" || true
 

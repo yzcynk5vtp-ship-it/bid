@@ -121,8 +121,12 @@ while IFS= read -r file; do
 
   # 后端 Java
   if [[ "$file" == src/main/java/*.java ]]; then
-    # 排除非业务类（配置、实体等可豁免）
-    # 但 domain / core / policy / service 等应有测试
+    # 豁免不需要直接单测的纯配置类、数据结构、实体、工具常数或异常定义包
+    if [[ "$file" =~ /(config|entity|model|dto|exception|constant|mapper|support|infrastructure)/ ]]; then
+      SKIPPED=$((SKIPPED + 1))
+      continue
+    fi
+    # 仅在 domain / core / policy / service / controller / listener 等关键业务逻辑包上强制推行
     TEST_FILE=$(java_to_test "$file")
     if [ ! -f "$TEST_FILE" ]; then
       MISSING_TESTS+=("$file  →  预期测试: $TEST_FILE（不存在）")
