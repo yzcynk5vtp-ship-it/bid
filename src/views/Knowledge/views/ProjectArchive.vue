@@ -46,8 +46,8 @@
             <el-option label="评标中" value="EVALUATING" />
             <el-option label="已中标" value="WON" />
             <el-option label="未中标" value="LOST" />
-            <el-option label="已流标" value="FAILED" />
-            <el-option label="已放弃" value="ABANDONED" />
+            <el-option label="流标" value="FAILED" />
+            <el-option label="弃标" value="ABANDONED" />
           </el-select>
         </el-form-item>
         <el-form-item label="项目类型">
@@ -158,7 +158,7 @@ const getProjectTypeLabel = (type) => {
 }
 
 const getBidResultLabel = (result) => {
-  const map = { WON: '已中标', LOST: '未中标', FAILED: '已流标', ABANDONED: '已放弃', IN_PROGRESS: '进行中', OTHER: '其他' }
+  const map = { WON: '已中标', LOST: '未中标', FAILED: '流标', ABANDONED: '弃标', IN_PROGRESS: '进行中', OTHER: '其他' }
   return map[result] || result || '-'
 }
 
