@@ -88,6 +88,7 @@ public class QualificationController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expiringTo,
             @RequestParam(required = false) String issuer,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String level,
             // CO-155 fix: pagination params. Frontend default page=0, size=15
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "15") int size
@@ -98,7 +99,7 @@ public class QualificationController {
         int safePage = Math.max(0, page);
         return ResponseEntity.ok(ApiResponse.success("Qualifications retrieved successfully",
                 qualificationService.getAllQualifications(
-                        subjectType, subjectName, category, status, borrowStatus,
+                        subjectType, subjectName, category, level, status, borrowStatus,
                         expiringWithinDays, expiringFrom, expiringTo, sanitizedIssuer, keyword,
                         safePage, safeSize)));
     }

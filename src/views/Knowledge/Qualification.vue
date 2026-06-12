@@ -15,8 +15,8 @@
 
     <el-card class="filter-card" shadow="never">
       <el-form :inline="true" :model="filters" size="default">
-        <el-form-item label="证书名称">
-          <el-input v-model="filters.keyword" placeholder="模糊搜索" clearable style="width:160px" />
+        <el-form-item label="关键词">
+          <el-input v-model="filters.keyword" placeholder="证书名称/编号/机构/持有人" clearable style="width:200px" />
         </el-form-item>
         <el-form-item label="认证机构">
           <el-input v-model="filters.issuer" placeholder="模糊搜索" clearable style="width:160px" />
