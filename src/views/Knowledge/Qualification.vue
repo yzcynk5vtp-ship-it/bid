@@ -45,12 +45,6 @@
 
     <el-card class="data-card" shadow="never">
       <div v-if="hasSelection" class="batch-toolbar">
-        <el-button type="primary" size="small" @click="handleImportLedgerClick">
-          <el-icon><Upload /></el-icon> 导入台账
-        </el-button>
-        <el-button type="primary" size="small" @click="handleBatchUploadClick">
-          <el-icon><Document /></el-icon> 批量上传附件
-        </el-button>
         <el-button type="success" size="small" @click="handleBatchExport">
           <el-icon><Download /></el-icon> 导出台账
         </el-button>
@@ -68,12 +62,6 @@
         <el-table-column prop="name" label="证书名称" min-width="180" fixed="left" show-overflow-tooltip>
           <template #default="scope"><span class="cert-name">{{ scope.row.name }}</span></template>
         </el-table-column>
-        <el-table-column label="证书附件" width="120" align="center">
-          <template #default="scope">
-            <el-button v-if="scope.row.fileUrl && canViewQualification" link type="primary" size="small" @click.stop="handleDownload(scope.row)">下载</el-button>
-            <span v-else class="text-muted">—</span>
-          </template>
-        </el-table-column>
         <el-table-column prop="level" label="等级" width="80" align="center" />
         <el-table-column prop="issuer" label="认证机构" min-width="150" show-overflow-tooltip />
         <el-table-column prop="certificateNo" label="证书编号" width="150" show-overflow-tooltip />
@@ -86,9 +74,9 @@
             <el-tag :type="getStatusTagType(scope.row)" :class="{ 'retired-tag': (scope.row.status || '').toLowerCase() === 'retired' }">{{ statusLabel(scope.row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="260" fixed="right" align="center">
+        <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="scope">
-            <el-button v-if="scope.row.fileUrl" link type="primary" size="small" @click.stop="handleDownload(scope.row)">下载</el-button>
+            <el-button v-if="scope.row.fileUrl" link type="primary" size="small" @click.stop="handleDownloadFile(scope.row)">下载</el-button>
             <el-button v-if="canManageQualification && (scope.row.status || '').toLowerCase() !== 'retired'" link type="primary" size="small" @click.stop="openEdit(scope.row)">编辑</el-button>
             <el-button v-if="canManageQualification && (scope.row.status || '').toLowerCase() !== 'retired'" link type="danger" size="small" @click.stop="handleRetire(scope.row)">下架</el-button>
             <el-button v-if="canManageQualification && (scope.row.status || '').toLowerCase() === 'retired'" link type="success" size="small" @click.stop="handleRestore(scope.row)">恢复</el-button>
@@ -342,8 +330,18 @@ const handleAttachmentUpload = () => {
   replaceDialogVisible.value = true
 }
 
-const handleDownload = (row) => {
-  if (row?.fileUrl) window.open(row.fileUrl)
+const handleDownloadFile = async (row) => {
+  try {
+    const res = await http.get(row.fileUrl, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = row.name || '资质附件'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch { ElMessage.error('下载失败') }
 }
 
 onMounted(async () => {
