@@ -136,6 +136,9 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
             if (criteria.getCategory() != null && !criteria.getCategory().isBlank()) {
                 predicates.add(cb.equal(cb.upper(root.get("category")), criteria.getCategory().toUpperCase(Locale.ROOT)));
             }
+            if (criteria.getLevel() != null && !criteria.getLevel().isBlank()) {
+                predicates.add(cb.equal(cb.upper(root.get("level")), criteria.getLevel().toUpperCase(Locale.ROOT)));
+            }
             if (criteria.getBorrowStatus() != null && !criteria.getBorrowStatus().isBlank()) {
                 predicates.add(cb.equal(cb.upper(root.get("currentBorrowStatus")), criteria.getBorrowStatus().toUpperCase(Locale.ROOT)));
             }

@@ -85,6 +85,7 @@ public class QualificationDtoMapper {
             String subjectType,
             String subjectName,
             String category,
+            String level,
             java.util.List<String> status,
             String borrowStatus,
             Integer expiringWithinDays,
@@ -97,6 +98,7 @@ public class QualificationDtoMapper {
                 .subjectType(subjectType)
                 .subjectName(subjectName)
                 .category(category)
+                .level(level)
                 .status(status)
                 .borrowStatus(borrowStatus)
                 .expiringWithinDays(expiringWithinDays)

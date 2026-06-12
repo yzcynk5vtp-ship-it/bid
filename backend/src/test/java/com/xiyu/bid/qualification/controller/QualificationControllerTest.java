@@ -167,7 +167,7 @@ class QualificationControllerTest {
                 .build();
         Page<QualificationDTO> mockPage = new PageImpl<>(List.of(dto), PageRequest.of(0, 15), 1);
         when(qualificationService.getAllQualifications(
-                isNull(), isNull(), eq("LICENSE"), anyList(), isNull(),
+                isNull(), isNull(), eq("LICENSE"), isNull(), anyList(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 anyInt(), anyInt()
         )).thenReturn(mockPage);
@@ -188,7 +188,7 @@ class QualificationControllerTest {
                 .andExpect(jsonPath("$.data.number").value(0));
 
         verify(qualificationService).getAllQualifications(
-                isNull(), isNull(), eq("LICENSE"), anyList(), isNull(),
+                isNull(), isNull(), eq("LICENSE"), isNull(), anyList(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 anyInt(), anyInt()
         );
@@ -199,7 +199,7 @@ class QualificationControllerTest {
     void getAllQualifications_ShouldClampSizeAt200() throws Exception {
         Page<QualificationDTO> mockPage = new PageImpl<>(List.of(), PageRequest.of(0, 200), 0);
         when(qualificationService.getAllQualifications(
-                isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(0), eq(200)
         )).thenReturn(mockPage);
@@ -210,7 +210,7 @@ class QualificationControllerTest {
                 .andExpect(status().isOk());
 
         verify(qualificationService).getAllQualifications(
-                isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(0), eq(200)
         );
@@ -221,7 +221,7 @@ class QualificationControllerTest {
     void getAllQualifications_ShouldClampInvalidPaginationToDefaults() throws Exception {
         Page<QualificationDTO> mockPage = new PageImpl<>(List.of(), PageRequest.of(0, 15), 0);
         when(qualificationService.getAllQualifications(
-                isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(0), eq(15)
         )).thenReturn(mockPage);
@@ -232,7 +232,7 @@ class QualificationControllerTest {
                 .andExpect(status().isOk());
 
         verify(qualificationService).getAllQualifications(
-                isNull(), isNull(), isNull(), isNull(), isNull(),
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
                 isNull(), isNull(), isNull(), isNull(), isNull(),
                 eq(0), eq(15)
         );

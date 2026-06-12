@@ -70,11 +70,11 @@ public class QualificationService {
 
     @Transactional(readOnly = true)
     public List<QualificationDTO> getAllQualifications(
-            String subjectType, String subjectName, String category, List<String> status, String borrowStatus,
+            String subjectType, String subjectName, String category, String level, List<String> status, String borrowStatus,
             Integer expiringWithinDays, LocalDate expiringFrom, LocalDate expiringTo, String issuer, String keyword
     ) {
         return listQualificationsAppService.list(mapper.toCriteria(
-                        subjectType, subjectName, category, status, borrowStatus,
+                        subjectType, subjectName, category, level, status, borrowStatus,
                         expiringWithinDays, expiringFrom, expiringTo, issuer, keyword))
                 .stream().map(mapper::toDto).toList();
     }
@@ -85,13 +85,13 @@ public class QualificationService {
      */
     @Transactional(readOnly = true)
     public Page<QualificationDTO> getAllQualifications(
-            String subjectType, String subjectName, String category, List<String> status, String borrowStatus,
+            String subjectType, String subjectName, String category, String level, List<String> status, String borrowStatus,
             Integer expiringWithinDays, LocalDate expiringFrom, LocalDate expiringTo, String issuer, String keyword,
             int page, int size
     ) {
         // application service translates domain QualificationPage -> Spring Page
         return listQualificationsAppService.list(
-                mapper.toCriteria(subjectType, subjectName, category, status, borrowStatus,
+                mapper.toCriteria(subjectType, subjectName, category, level, status, borrowStatus,
                         expiringWithinDays, expiringFrom, expiringTo, issuer, keyword),
                 page, size
         ).map(mapper::toDto);
@@ -114,12 +114,12 @@ public class QualificationService {
     public List<QualificationDTO> getQualificationsByType(com.xiyu.bid.entity.Qualification.Type type) {
         String category = type == null ? null : mapper.toUpsertCommand(QualificationDTO.builder().type(type).build())
                 .getCategory().name();
-        return getAllQualifications(null, null, category, null, null, null, null, null, null, null);
+        return getAllQualifications(null, null, category, null, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public List<QualificationDTO> getValidQualifications() {
-        return getAllQualifications(null, null, null, null, null, null, null, null, null, null).stream()
+        return getAllQualifications(null, null, null, null, null, null, null, null, null, null, null).stream()
                 .filter(item -> !"expired".equals(item.getStatus()))
                 .toList();
     }
@@ -159,7 +159,7 @@ public class QualificationService {
         try {
             if (id == null) {
                 Map<Long, String> qualificationNameById = listQualificationsAppService.list(mapper.toCriteria(
-                                null, null, null, null, null, null, null, null, null, null)).stream()
+                                null, null, null, null, null, null, null, null, null, null, null)).stream()
                         .collect(HashMap::new, (map, q) -> map.put(q.id(), q.name() == null ? "资质文件" : q.name()), HashMap::putAll);
                 return filterVisibleLoans(getQualificationBorrowRecordsAppService.getBorrowRecords()).stream()
                         .map(loan -> mapper.toBorrowRecordDto(loan, qualificationNameById.getOrDefault(loan.getQualificationId(), "资质文件")))
@@ -176,7 +176,7 @@ public class QualificationService {
 
     @Transactional(readOnly = true)
     public QualificationOverviewDTO getOverview() {
-        return mapper.toOverview(getAllQualifications(null, null, null, null, null, null, null, null, null, null));
+        return mapper.toOverview(getAllQualifications(null, null, null, null, null, null, null, null, null, null, null));
     }
 
     @Transactional
