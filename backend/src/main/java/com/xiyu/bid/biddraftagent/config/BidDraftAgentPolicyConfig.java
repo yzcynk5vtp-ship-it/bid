@@ -16,7 +16,7 @@ public final class BidDraftAgentPolicyConfig {
 
     static {
         com.xiyu.bid.common.display.EnumDisplayRegistry.register(
-                com.xiyu.bid.biddraftagent.domain.validation.QualificationMatchStatus.class
+                "com.xiyu.bid.biddraftagent.domain.validation.QualificationMatchStatus"
         );
     }
 
