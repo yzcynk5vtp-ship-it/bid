@@ -199,11 +199,11 @@ const createdAtRange = computed({
 </script>
 
 <style scoped>
-.tender-search-card { border: 1px solid var(--gray-100, #E8E8E8); border-radius: var(--radius-md, 8px); overflow-x: auto; }
+.tender-search-card { border: 1px solid var(--gray-100, #E8E8E8); border-radius: var(--radius-md, 8px); }
 .tender-search-card :deep(.el-card__body) { padding: var(--space-lg, 24px); }
-.tender-search-form { display: flex; flex-wrap: nowrap; align-items: flex-end; gap: var(--space-md, 16px); min-width: 0; }
+.tender-search-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-md, 16px); min-width: 0; }
 .tender-search-form :deep(.el-form-item) { margin: 0; }
-.tender-search-form :deep(.el-form-item__label) { margin-bottom: var(--space-xs, 4px); color: var(--text-secondary, #666); font-size: var(--font-size-xs, 12px); font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.tender-search-form :deep(.el-form-item__label) { margin-bottom: var(--space-xs, 4px); color: var(--text-secondary, #666); font-size: var(--font-size-xs, 12px); font-weight: 600; line-height: 1.4; }
 /* .search-field / .search-field--keyword / .search-field--date / .search-field--datetime / .search-actions
    已抽取到 src/styles/form-controls.css（全局复用） */
 .search-input, .filter-select { width: 100%; --focus-ring-color: transparent; --focus-ring-width: 0; --el-input-hover-border-color: var(--gray-200, #D0D0D0); }
