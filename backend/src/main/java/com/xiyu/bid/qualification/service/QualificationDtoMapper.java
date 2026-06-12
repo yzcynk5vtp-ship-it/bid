@@ -10,6 +10,7 @@ import com.xiyu.bid.businessqualification.domain.model.QualificationLoan;
 import com.xiyu.bid.businessqualification.domain.service.QualificationExpiryPolicy;
 import com.xiyu.bid.businessqualification.domain.valueobject.LoanStatus;
 import com.xiyu.bid.businessqualification.domain.valueobject.QualificationCategory;
+import com.xiyu.bid.businessqualification.domain.valueobject.QualificationStatus;
 import com.xiyu.bid.businessqualification.domain.valueobject.QualificationSubjectType;
 import com.xiyu.bid.entity.Qualification;
 import com.xiyu.bid.qualification.dto.QualificationAttachmentDTO;
@@ -125,7 +126,7 @@ public class QualificationDtoMapper {
                 .holder(qualification.holderName())
                 .issueDate(qualification.validityPeriod().getIssueDate())
                 .expiryDate(qualification.validityPeriod().getExpiryDate())
-                .status(qualification.status().name())
+                .status(normalizeStatus(qualification.status()))
                 .remainingDays((int) qualification.remainingDays())
                 .alertLevel(expiryPolicy.alertLevel(qualification.status()))
                 .borrowed(qualification.currentBorrowStatus() == LoanStatus.BORROWED)
@@ -166,6 +167,15 @@ public class QualificationDtoMapper {
                 .returnRemark(loan.getReturnRemark())
                 .status(loan.getStatus() == null ? null : loan.getStatus().name().toLowerCase())
                 .build();
+    }
+
+    /**
+     * CO-155 fix: normalize deprecated VALID to in_stock for frontend compatibility.
+     */
+    private String normalizeStatus(QualificationStatus status) {
+        if (status == null) return null;
+        if (status == QualificationStatus.VALID) return "in_stock";
+        return status.name().toLowerCase();
     }
 
     public QualificationOverviewDTO toOverview(List<QualificationDTO> items) {
