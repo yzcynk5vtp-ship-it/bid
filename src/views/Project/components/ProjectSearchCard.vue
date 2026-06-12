@@ -129,11 +129,11 @@ const regionValue = computed({
 })
 </script>
 <style scoped>
-.project-search-card { border: 1px solid var(--gray-100, #E8E8E8); border-radius: var(--radius-md, 8px); overflow-x: auto; }
+.project-search-card { border: 1px solid var(--gray-100, #E8E8E8); border-radius: var(--radius-md, 8px); }
 .project-search-card :deep(.el-card__body) { padding: var(--space-lg, 24px); }
-.project-search-form { display: flex; flex-wrap: nowrap; align-items: flex-end; gap: var(--space-md, 16px); min-width: 0; }
+.project-search-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-md, 16px); min-width: 0; }
 .project-search-form :deep(.el-form-item) { margin: 0; }
-.project-search-form :deep(.el-form-item__label) { margin-bottom: var(--space-xs, 4px); color: var(--text-secondary, #666); font-size: var(--font-size-xs, 12px); font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.project-search-form :deep(.el-form-item__label) { margin-bottom: var(--space-xs, 4px); color: var(--text-secondary, #666); font-size: var(--font-size-xs, 12px); font-weight: 600; line-height: 1.4; }
 .search-input, .filter-select { width: 100%; --focus-ring-color: transparent; --focus-ring-width: 0; --el-input-hover-border-color: var(--gray-200, #D0D0D0); }
 .filter-select { --el-color-primary: var(--gray-200, #D0D0D0); --el-color-primary-light-3: var(--gray-200, #D0D0D0); --el-color-primary-light-5: var(--gray-200, #D0D0D0); --el-color-primary-light-7: var(--gray-100, #E8E8E8); --el-select-input-focus-border-color: var(--gray-200, #D0D0D0); }
 .search-actions { flex: 0 0 auto; }
