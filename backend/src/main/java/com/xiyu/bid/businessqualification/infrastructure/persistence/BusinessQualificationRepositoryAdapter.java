@@ -84,7 +84,7 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
         return qualificationJpaRepository.findAll(toSpecification(criteria)).stream()
                 .map(this::toDomain)
                 .filter(item -> matchesDerived(item, criteria))
-                .sorted(Comparator.comparing(BusinessQualification::id).reversed())
+                .sorted(Comparator.comparing(BusinessQualification::id, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .collect(Collectors.toList());
     }
 
