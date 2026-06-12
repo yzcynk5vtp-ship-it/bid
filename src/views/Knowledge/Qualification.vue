@@ -6,7 +6,7 @@
         <el-button v-if="canManageQualification" type="primary" class="premium-btn" @click="formVisible=true; editData=null">
           <el-icon><Plus /></el-icon> 新增资质
         </el-button>
-        <el-button v-if="canManageQualification" @click="window.open('/api/knowledge/qualifications/template')">下载导入模板</el-button>
+        <el-button v-if="canManageQualification" @click="downloadTemplate">下载导入模板</el-button>
         <el-button v-if="canViewQualification" @click="window.open('/api/knowledge/qualifications/export')">导出台账</el-button>
         <el-button v-if="canAdminQualificationAlert" @click="alertConfigVisible = true">告警配置</el-button>
         <el-button v-if="canAdminQualificationAlert" :loading="scanningExpiring" @click="handleScanExpiring">扫描到期</el-button>
@@ -444,6 +444,18 @@ onMounted(async () => {
   await fetchQualifications()
   await loadBorrowRecords()
 })
+
+const downloadTemplate = async () => {
+  try {
+    const resp = await http.get('/api/knowledge/qualifications/template', { responseType: 'blob' })
+    const url = URL.createObjectURL(resp.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = '资质证书导入模板.xlsx'
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch { ElMessage.warning('模板下载失败，请稍后重试') }
+}
 </script>
 
 <style scoped lang="scss">
