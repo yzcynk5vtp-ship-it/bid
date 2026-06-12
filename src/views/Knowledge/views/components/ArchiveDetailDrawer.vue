@@ -91,7 +91,7 @@ const getProjectTypeLabel = (type) => {
 }
 
 const getBidResultLabel = (result) => {
-  const map = { WON: '已中标', LOST: '未中标', FAILED: '已流标', ABANDONED: '已放弃', IN_PROGRESS: '进行中', OTHER: '其他' }
+  const map = { WON: '已中标', LOST: '未中标', FAILED: '流标', ABANDONED: '弃标', IN_PROGRESS: '进行中', OTHER: '其他' }
   return map[result] || result || '-'
 }
 
