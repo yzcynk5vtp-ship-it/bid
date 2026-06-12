@@ -5,6 +5,7 @@ import com.xiyu.bid.businessqualification.domain.model.BusinessQualification;
 import com.xiyu.bid.businessqualification.domain.model.QualificationAttachment;
 import com.xiyu.bid.businessqualification.domain.model.QualificationPage;
 import com.xiyu.bid.businessqualification.domain.port.BusinessQualificationRepository;
+import com.xiyu.bid.businessqualification.domain.valueobject.QualificationStatus;
 import com.xiyu.bid.businessqualification.domain.valueobject.QualificationSubject;
 import com.xiyu.bid.businessqualification.domain.valueobject.ReminderPolicy;
 import com.xiyu.bid.businessqualification.domain.valueobject.ValidityPeriod;
@@ -179,13 +180,24 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
             return true;
         }
         if (criteria.getStatus() != null && !criteria.getStatus().isEmpty()
-                && (item.status() == null || criteria.getStatus().stream().noneMatch(s -> item.status().name().equalsIgnoreCase(s)))) {
+                && (item.status() == null || criteria.getStatus().stream().noneMatch(s -> statusMatches(item.status(), s)))) {
             return false;
         }
         if (criteria.getExpiringWithinDays() != null && item.remainingDays() > criteria.getExpiringWithinDays()) {
             return false;
         }
         return true;
+    }
+
+    /**
+     * CO-155 fix: handle VALID/IN_STOCK equivalence for filter compatibility.
+     */
+    private boolean statusMatches(QualificationStatus status, String filter) {
+        if (status == null || filter == null) return false;
+        String statusName = status.name();
+        // VALID (deprecated) should match IN_STOCK filter
+        if (status == QualificationStatus.VALID && "IN_STOCK".equalsIgnoreCase(filter)) return true;
+        return statusName.equalsIgnoreCase(filter);
     }
 
     private BusinessQualificationEntity toEntity(BusinessQualification qualification) {
