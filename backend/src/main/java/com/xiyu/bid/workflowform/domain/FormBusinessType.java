@@ -2,5 +2,6 @@ package com.xiyu.bid.workflowform.domain;
 
 public enum FormBusinessType {
     
-    GENERAL_WORKFLOW
+    GENERAL_WORKFLOW,
+    QUALIFICATION_BORROW
 }
