@@ -20,6 +20,18 @@ public class OrganizationDepartmentSyncWriter {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrganizationDepartmentEntity upsert(String sourceApp, String eventKey, OrganizationDepartmentSnapshot snapshot) {
         OrganizationDepartmentSyncPlan plan = OrganizationSyncPolicy.planDepartmentSync(snapshot);
+
+        // API 返回 parentId（externalDeptId）但不返回 parentCode，
+        // 导致 parentDepartmentCode 始终为空。从数据库反查已同步的父级部门来补全。
+        String resolvedParentDeptCode = plan.parentDepartmentCode();
+        if ((resolvedParentDeptCode == null || resolvedParentDeptCode.isBlank())
+                && plan.parentExternalDeptId() != null && !plan.parentExternalDeptId().isBlank()) {
+            resolvedParentDeptCode = departmentRepository
+                    .findBySourceAppAndExternalDeptId(sourceApp, plan.parentExternalDeptId())
+                    .map(OrganizationDepartmentEntity::getDepartmentCode)
+                    .orElse("");
+        }
+
         OrganizationDepartmentEntity department = departmentRepository
                 .findBySourceAppAndExternalDeptId(sourceApp, plan.externalDeptId())
                 .orElseGet(OrganizationDepartmentEntity::new);
@@ -27,7 +39,7 @@ public class OrganizationDepartmentSyncWriter {
         department.setExternalDeptId(plan.externalDeptId());
         department.setDepartmentName(plan.departmentName());
         department.setParentExternalDeptId(plan.parentExternalDeptId());
-        department.setParentDepartmentCode(plan.parentDepartmentCode());
+        department.setParentDepartmentCode(resolvedParentDeptCode);
         department.setSourceApp(sourceApp);
         department.setLastEventKey(eventKey);
         department.setLastSyncedAt(LocalDateTime.now());
