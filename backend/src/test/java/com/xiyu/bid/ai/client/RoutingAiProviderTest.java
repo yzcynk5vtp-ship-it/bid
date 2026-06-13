@@ -4,7 +4,7 @@ import com.xiyu.bid.ai.dto.AiAnalysisResponse;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.settings.dto.SettingsResponse;
 import com.xiyu.bid.settings.service.AiProviderCatalog;
-import com.xiyu.bid.settings.service.SettingsService;
+import com.xiyu.bid.settings.service.AiConfigService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 class RoutingAiProviderTest {
 
     @Mock
-    private SettingsService settingsService;
+    private AiConfigService aiConfigService;
 
     @Mock
     private OpenAiCompatibleClient openAiCompatibleClient;
@@ -44,9 +44,9 @@ class RoutingAiProviderTest {
     void analyzeTender_ShouldRouteToActiveProviderFromSettings() {
         RoutingAiProvider provider = providerWithLegacyMode("openai");
         AiAnalysisResponse expected = response(88);
-        when(settingsService.isAiEnabled()).thenReturn(true);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(config("deepseek"));
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn("sk-configured");
+        when(aiConfigService.isAiEnabled()).thenReturn(true);
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(config("deepseek"));
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn("sk-configured");
         when(openAiCompatibleClient.analyzeTender(any(AiProviderRuntimeConfig.class), eq("content"), eq(Map.of())))
                 .thenReturn(expected);
 
@@ -60,9 +60,9 @@ class RoutingAiProviderTest {
     void analyzeProject_ShouldUseEnvironmentFallbackWhenSettingsKeyMissing() {
         RoutingAiProvider provider = providerWithLegacyMode("openai");
         AiAnalysisResponse expected = response(77);
-        when(settingsService.isAiEnabled()).thenReturn(true);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(config("qwen"));
-        when(settingsService.resolveAiApiKey("qwen")).thenReturn(null);
+        when(aiConfigService.isAiEnabled()).thenReturn(true);
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(config("qwen"));
+        when(aiConfigService.resolveAiApiKey("qwen")).thenReturn(null);
         when(environment.getProperty("DASHSCOPE_API_KEY")).thenReturn("sk-env");
         when(openAiCompatibleClient.analyzeProject(any(AiProviderRuntimeConfig.class), eq(9L), eq(Map.of())))
                 .thenReturn(expected);
@@ -77,7 +77,7 @@ class RoutingAiProviderTest {
     void analyzeTender_WhenLegacyModeMockAndNoRealKey_ShouldUseMockProvider() {
         RoutingAiProvider provider = providerWithLegacyMode("mock");
         AiAnalysisResponse expected = response(66);
-        when(settingsService.isAiEnabled()).thenReturn(true);
+        when(aiConfigService.isAiEnabled()).thenReturn(true);
         when(mockAiProvider.analyzeTender("content", Map.of())).thenReturn(expected);
 
         AiAnalysisResponse actual = provider.analyzeTender("content", Map.of());
@@ -90,7 +90,7 @@ class RoutingAiProviderTest {
     @Test
     void analyzeTender_WhenAiDisabled_ShouldRejectWithoutCallingRealOrMockProvider() {
         RoutingAiProvider provider = providerWithLegacyMode("mock");
-        when(settingsService.isAiEnabled()).thenReturn(false);
+        when(aiConfigService.isAiEnabled()).thenReturn(false);
 
         assertThatThrownBy(() -> provider.analyzeTender("content", Map.of()))
                 .isInstanceOf(IllegalStateException.class)
@@ -103,8 +103,8 @@ class RoutingAiProviderTest {
     @Test
     void analyzeTender_WhenActiveProviderDisabled_ShouldRejectWithoutCallingProvider() {
         RoutingAiProvider provider = providerWithLegacyMode("openai");
-        when(settingsService.isAiEnabled()).thenReturn(true);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(configWithProviderEnabled("openai", false));
+        when(aiConfigService.isAiEnabled()).thenReturn(true);
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(configWithProviderEnabled("openai", false));
 
         assertThatThrownBy(() -> provider.analyzeTender("content", Map.of()))
                 .isInstanceOf(IllegalStateException.class)
@@ -116,7 +116,7 @@ class RoutingAiProviderTest {
 
     private RoutingAiProvider providerWithLegacyMode(String legacyMode) {
         RoutingAiProvider provider = new RoutingAiProvider(
-                settingsService,
+                aiConfigService,
                 openAiCompatibleClient,
                 mockAiProvider,
                 environment,

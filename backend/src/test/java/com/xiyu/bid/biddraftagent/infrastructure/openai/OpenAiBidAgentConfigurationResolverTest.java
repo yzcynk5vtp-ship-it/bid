@@ -2,7 +2,7 @@ package com.xiyu.bid.biddraftagent.infrastructure.openai;
 
 import com.xiyu.bid.settings.dto.SettingsResponse;
 import com.xiyu.bid.settings.service.AiProviderCatalog;
-import com.xiyu.bid.settings.service.SettingsService;
+import com.xiyu.bid.settings.service.AiConfigService;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
 
@@ -22,12 +22,12 @@ class OpenAiBidAgentConfigurationResolverTest {
 
     @Test
     void resolve_shouldUseDeepSeekEnvironmentKeyBeforeLegacySpringOpenAiKey() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(null);
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(null);
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(null);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(null);
         when(environment.getProperty("DEEPSEEK_API_KEY")).thenReturn(" sk-deepseek ");
-        OpenAiBidAgentConfigurationResolver resolver = resolver(settingsService, environment);
+        OpenAiBidAgentConfigurationResolver resolver = resolver(aiConfigService, environment);
 
         OpenAiBidAgentRequestConfig config = resolver.resolve("bid draft generation");
 
@@ -40,16 +40,16 @@ class OpenAiBidAgentConfigurationResolverTest {
 
     @Test
     void resolve_shouldUseActiveProviderConfigAndEnvironmentKeyWhenSpringKeyMissing() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
                 "deepseek",
                 "https://api.deepseek.com/chat/completions",
                 "deepseek-chat"
         ));
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(null);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(null);
         when(environment.getProperty("DEEPSEEK_API_KEY")).thenReturn(" sk-deepseek ");
-        OpenAiBidAgentConfigurationResolver resolver = resolver(settingsService, environment);
+        OpenAiBidAgentConfigurationResolver resolver = resolver(aiConfigService, environment);
 
         OpenAiBidAgentRequestConfig config = resolver.resolve("tender document analysis");
 
@@ -57,21 +57,21 @@ class OpenAiBidAgentConfigurationResolverTest {
         assertThat(config.baseUrl()).isEqualTo("https://api.deepseek.com");
         assertThat(config.model()).isEqualTo("deepseek-chat");
         assertThat(config.apiStyle()).isEqualTo(OpenAiBidAgentApiStyle.CHAT_COMPLETIONS);
-        verify(settingsService, never()).getSettings();
+        verify(aiConfigService, never()).getSettings();
     }
 
     @Test
     void resolve_shouldRaiseTimeoutFloorForChatCompletionProviders() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
                 "deepseek",
                 "https://api.deepseek.com/chat/completions",
                 "deepseek-chat"
         ));
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(" sk-deepseek ");
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(" sk-deepseek ");
         OpenAiBidAgentConfigurationResolver resolver = new OpenAiBidAgentConfigurationResolver(
-                settingsService,
+                aiConfigService,
                 new AiProviderCatalog(),
                 environment,
                 Duration.ofSeconds(30),
@@ -85,60 +85,60 @@ class OpenAiBidAgentConfigurationResolverTest {
 
     @Test
     void resolve_shouldIgnoreActiveOpenAiProviderAndUseDeepSeekKey() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
                 "openai",
                 "https://api.openai.com/v1/chat/completions",
                 "gpt-4o-mini"
         ));
-        when(settingsService.resolveAiApiKey("openai")).thenReturn(" sk-openai ");
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(null);
+        when(aiConfigService.resolveAiApiKey("openai")).thenReturn(" sk-openai ");
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(null);
         when(environment.getProperty("DEEPSEEK_API_KEY")).thenReturn(" sk-deepseek ");
-        OpenAiBidAgentConfigurationResolver resolver = resolver(settingsService, environment);
+        OpenAiBidAgentConfigurationResolver resolver = resolver(aiConfigService, environment);
 
         OpenAiBidAgentRequestConfig config = resolver.resolve("tender document analysis");
 
         assertThat(config.apiKey()).isEqualTo("sk-deepseek");
         assertThat(config.apiStyle()).isEqualTo(OpenAiBidAgentApiStyle.CHAT_COMPLETIONS);
         assertThat(config.baseUrl()).isEqualTo("https://api.deepseek.com");
-        verify(settingsService, never()).resolveAiApiKey("openai");
+        verify(aiConfigService, never()).resolveAiApiKey("openai");
     }
 
     @Test
     void resolve_shouldUseDeepSeekProviderSettingsKeyWhenLegacyIntegrationKeyExists() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getSettings()).thenReturn(settingsWithApiKey(" sk-system "));
-        when(settingsService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(settingsWithApiKey(" sk-system "));
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
                 "deepseek",
                 "https://api.deepseek.com/chat/completions",
                 "deepseek-chat"
         ));
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(" sk-deepseek ");
-        OpenAiBidAgentConfigurationResolver resolver = resolver(settingsService, environment);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(" sk-deepseek ");
+        OpenAiBidAgentConfigurationResolver resolver = resolver(aiConfigService, environment);
 
         OpenAiBidAgentRequestConfig config = resolver.resolve("tender document analysis");
 
         assertThat(config.apiKey()).isEqualTo("sk-deepseek");
         assertThat(config.apiStyle()).isEqualTo(OpenAiBidAgentApiStyle.CHAT_COMPLETIONS);
-        verify(settingsService, never()).getSettings();
+        verify(aiConfigService, never()).getSettings();
     }
 
     @Test
     void resolve_shouldUseDeepSeekDefaultsWhenLegacyIntegrationGatewayExists() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getSettings()).thenReturn(settingsWithAiConfig(
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(settingsWithAiConfig(
                 "sk-system",
                 " https://gateway.example.test/v1 ",
                 " gpt-system "
         ));
-        when(settingsService.getInternalAiModelConfig()).thenReturn(null);
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(null);
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(null);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(null);
         when(environment.getProperty("DEEPSEEK_API_KEY")).thenReturn(" sk-deepseek ");
         OpenAiBidAgentConfigurationResolver resolver = new OpenAiBidAgentConfigurationResolver(
-                settingsService,
+                aiConfigService,
                 new AiProviderCatalog(),
                 environment,
                 Duration.ofSeconds(90),
@@ -150,37 +150,37 @@ class OpenAiBidAgentConfigurationResolverTest {
         assertThat(config.baseUrl()).isEqualTo("https://api.deepseek.com");
         assertThat(config.model()).isEqualTo("deepseek-chat");
         assertThat(config.apiStyle()).isEqualTo(OpenAiBidAgentApiStyle.CHAT_COMPLETIONS);
-        verify(settingsService, never()).getSettings();
+        verify(aiConfigService, never()).getSettings();
     }
 
     @Test
     void resolve_shouldRejectMissingDeepSeekKey() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getSettings()).thenReturn(settingsWithApiKey("sk_xiyu_bid_server_default"));
-        when(settingsService.getInternalAiModelConfig()).thenReturn(null);
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(null);
-        OpenAiBidAgentConfigurationResolver resolver = resolver(settingsService, environment);
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(settingsWithApiKey("sk_xiyu_bid_server_default"));
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(null);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(null);
+        OpenAiBidAgentConfigurationResolver resolver = resolver(aiConfigService, environment);
 
         assertThatThrownBy(() -> resolver.resolve("bid draft generation"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("DeepSeek API key must be configured for bid draft generation")
                 .hasMessageContaining("DEEPSEEK_API_KEY");
-        verify(settingsService, never()).getSettings();
+        verify(aiConfigService, never()).getSettings();
     }
 
     @Test
     void resolveTenderIntake_shouldUseDeepSeekProviderSettingsAndSettingsApiKey() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
                 "openai",
                 "deepseek",
                 "https://api.deepseek.com/chat/completions",
                 "deepseek-reasoner"
         ));
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(" sk-deepseek-settings ");
-        OpenAiBidAgentConfigurationResolver resolver = resolver(settingsService, environment);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(" sk-deepseek-settings ");
+        OpenAiBidAgentConfigurationResolver resolver = resolver(aiConfigService, environment);
 
         OpenAiBidAgentRequestConfig config = resolver.resolveTenderIntake();
 
@@ -189,18 +189,18 @@ class OpenAiBidAgentConfigurationResolverTest {
         assertThat(config.model()).isEqualTo("deepseek-reasoner");
         assertThat(config.timeout()).isEqualTo(Duration.ofSeconds(45));
         assertThat(config.apiStyle()).isEqualTo(OpenAiBidAgentApiStyle.CHAT_COMPLETIONS);
-        verify(settingsService, never()).resolveAiApiKey("openai");
-        verify(settingsService, never()).getSettings();
+        verify(aiConfigService, never()).resolveAiApiKey("openai");
+        verify(aiConfigService, never()).getSettings();
     }
 
     @Test
     void resolveTenderIntake_shouldUseDeepSeekEnvAndDefaultsWhenSettingsProviderMissing() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
-        when(settingsService.getInternalAiModelConfig()).thenReturn(null);
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(null);
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(null);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(null);
         when(environment.getProperty("DEEPSEEK_API_KEY")).thenReturn(" sk-deepseek-env ");
-        OpenAiBidAgentConfigurationResolver resolver = resolver(settingsService, environment);
+        OpenAiBidAgentConfigurationResolver resolver = resolver(aiConfigService, environment);
 
         OpenAiBidAgentRequestConfig config = resolver.resolveTenderIntake();
 
@@ -213,19 +213,19 @@ class OpenAiBidAgentConfigurationResolverTest {
 
     @Test
     void resolveTenderIntake_missingKey_shouldMentionDeepSeekEnvironmentKey() {
-        SettingsService settingsService = mock(SettingsService.class);
+        AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
         AiProviderCatalog aiProviderCatalog = mock(AiProviderCatalog.class);
         when(aiProviderCatalog.normalize("deepseek")).thenReturn("deepseek");
         when(aiProviderCatalog.environmentKeys("deepseek")).thenReturn(List.of("DEEPSEEK_API_KEY_MISSING_TEST"));
-        when(settingsService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
+        when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
                 "deepseek",
                 "https://api.deepseek.com/chat/completions",
                 "deepseek-chat"
         ));
-        when(settingsService.resolveAiApiKey("deepseek")).thenReturn(null);
+        when(aiConfigService.resolveAiApiKey("deepseek")).thenReturn(null);
         OpenAiBidAgentConfigurationResolver resolver = new OpenAiBidAgentConfigurationResolver(
-                settingsService,
+                aiConfigService,
                 aiProviderCatalog,
                 environment,
                 Duration.ofSeconds(90),
@@ -237,15 +237,15 @@ class OpenAiBidAgentConfigurationResolverTest {
                 .hasMessageContaining("DeepSeek")
                 .hasMessageContaining("DEEPSEEK_API_KEY");
 
-        verify(settingsService, never()).getSettings();
+        verify(aiConfigService, never()).getSettings();
     }
 
     private OpenAiBidAgentConfigurationResolver resolver(
-            SettingsService settingsService,
+            AiConfigService aiConfigService,
             Environment environment
     ) {
         return new OpenAiBidAgentConfigurationResolver(
-                settingsService,
+                aiConfigService,
                 new AiProviderCatalog(),
                 environment,
                 Duration.ofSeconds(90),
