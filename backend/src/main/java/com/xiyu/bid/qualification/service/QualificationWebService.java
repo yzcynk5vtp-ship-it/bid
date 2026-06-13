@@ -9,6 +9,7 @@ import com.xiyu.bid.businessqualification.application.service.ImportQualificatio
 import com.xiyu.bid.exception.InvalidArgumentException;
 import com.xiyu.bid.qualification.dto.QualificationAttachmentDTO;
 import com.xiyu.bid.qualification.dto.QualificationDTO;
+import com.xiyu.bid.qualification.application.QualificationQueryService;
 import com.xiyu.bid.util.InputSanitizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
