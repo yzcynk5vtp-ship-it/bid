@@ -5,16 +5,13 @@
 
 import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { isBidManager, isBidAdminOrSenior } from '@/utils/permission'
 
 export function useQualificationPermissionMatrix(userStore) {
-  const MANAGED_ROLES = ['admin_staff', 'bid_admin', 'bid_lead', 'bid_senior']
-  const VIEW_ROLES = ['admin_staff', 'bid_admin', 'bid_lead', 'bid_senior', 'bid_specialist']
-  const ALERT_ADMIN_ROLES = ['bid_admin', 'bid_senior']
-
   const currentRoleCode = computed(() => userStore?.currentUser?.roleCode || userStore?.currentUser?.role || userStore?.userRole || '')
-  const canManageQualification = computed(() => MANAGED_ROLES.includes(currentRoleCode.value))
-  const canViewQualification = computed(() => VIEW_ROLES.includes(currentRoleCode.value))
-  const canAdminQualificationAlert = computed(() => ALERT_ADMIN_ROLES.includes(currentRoleCode.value))
+  const canManageQualification = computed(() => isBidManager(currentRoleCode.value) || currentRoleCode.value === 'admin_staff')
+  const canViewQualification = computed(() => isBidManager(currentRoleCode.value) || ['admin_staff', 'bid_specialist'].includes(currentRoleCode.value))
+  const canAdminQualificationAlert = computed(() => isBidAdminOrSenior(currentRoleCode.value))
 
   return {
     currentRoleCode,

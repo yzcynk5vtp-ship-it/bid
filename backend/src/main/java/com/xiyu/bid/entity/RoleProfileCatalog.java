@@ -184,6 +184,15 @@ public final class RoleProfileCatalog {
         };
     }
 
+    public static User.Role securityCompatLegacyRole(String roleCode) {
+        String normalizedCode = roleCode == null ? STAFF_CODE : roleCode.trim().toLowerCase(Locale.ROOT);
+        return switch (normalizedCode) {
+            case ADMIN_CODE, BID_ADMIN_CODE -> User.Role.ADMIN;
+            case MANAGER_CODE, BID_LEAD_CODE, BID_SENIOR_CODE, SALES_CODE -> User.Role.MANAGER;
+            default -> User.Role.STAFF;
+        };
+    }
+
     public record SeedDefinition(
             String code,
             String name,

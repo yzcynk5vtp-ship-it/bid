@@ -3,7 +3,6 @@
 // Pos: scripts/ - Source-level composable placement lint
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
-#!/usr/bin/env node
 /**
  * check-composable-placement.mjs
  *

@@ -92,13 +92,13 @@ import { ElMessage } from 'element-plus'
 import httpClient from '@/api/client.js'
 import { casesApi } from '@/api/modules/knowledge.js'
 import { useUserStore } from '@/stores/user'
+import { isBidManager } from '@/utils/permission'
 import CaseCard from './components/CaseCard.vue'
 import CaseDetailDrawer from './components/CaseDetailDrawer.vue'
 import { PROJECT_TYPE_LABELS, CUSTOMER_TYPE_LABELS, SCORING_CATEGORIES, STATUS_LABELS } from './caseLabels.js'
 
 const userStore = useUserStore()
-const canManage = computed(() => { const r = userStore.currentUser?.roleCode || userStore.currentUser?.role; return r === 'admin' || r === 'bid_admin' || r === 'bid_lead' || r === 'bid_senior' })
-
+const canManage = computed(() => isBidManager(userStore.userRole))
 const filters = reactive({ keyword: '', scoringCategory: '', customerType: '', projectTypes: [], statuses: [], sortBy: 'created', uploadDateRange: [], closeDateRange: [] })
 const loading = ref(false); const cases = ref([]); const page = ref(1); const pageSize = ref(16); const totalElements = ref(0)
 const drawerVisible = ref(false); const drawerLoading = ref(false); const selectedCase = ref(null); const relatedCases = ref([]); const reuseHistory = ref([])

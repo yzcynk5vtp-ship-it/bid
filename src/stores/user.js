@@ -41,6 +41,22 @@ export const useUserStore = defineStore('user', {
       const perms = Array.isArray(state.currentUser?.menuPermissions) ? state.currentUser.menuPermissions : []
       if (perms.includes('all')) return true
       return perms.includes(permissionKey)
+    },
+    isBidAdmin: (state) => {
+      const r = state.currentUser?.roleCode || state.currentUser?.role || ''
+      return r === 'admin' || r === 'bid_admin'
+    },
+    isBidLead: (state) => {
+      const r = state.currentUser?.roleCode || state.currentUser?.role || ''
+      return r === 'bid_lead'
+    },
+    isBidSenior: (state) => {
+      const r = state.currentUser?.roleCode || state.currentUser?.role || ''
+      return r === 'bid_senior'
+    },
+    isBidManager: (state) => {
+      const r = state.currentUser?.roleCode || state.currentUser?.role || ''
+      return ['admin', 'bid_admin', 'bid_lead', 'bid_senior'].includes(r)
     }
   },
 

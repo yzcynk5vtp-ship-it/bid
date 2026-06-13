@@ -27,16 +27,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
 
-    private static final Map<String, User.Role> ROLE_CODE_TO_LEGACY = Map.ofEntries(
-            Map.entry("admin", User.Role.ADMIN),
-            Map.entry("bid_admin", User.Role.ADMIN),
-            Map.entry("bid_lead", User.Role.MANAGER),
-            Map.entry("sales", User.Role.MANAGER),
-            Map.entry("bid_specialist", User.Role.STAFF),
-            Map.entry("admin_staff", User.Role.STAFF),
-            Map.entry("task_executor", User.Role.STAFF),
-            Map.entry("bid_senior", User.Role.MANAGER)
-    );
+
 
     @Override
     @Transactional(readOnly = true)
@@ -64,9 +55,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (roleCode != null && !roleCode.isBlank()) {
             authorities.add(roleCode);
             authorities.add("ROLE_" + roleCode.toUpperCase(Locale.ROOT));
-            // 新角色 (roleCode) → 旧角色 (User.Role) 兼容：
-            // bid_admin/bid_lead/sales 也获得 ROLE_MANAGER 权限
-            User.Role compatLegacy = ROLE_CODE_TO_LEGACY.get(roleCode.trim().toLowerCase(Locale.ROOT));
+            // 新角色 (roleCode) → 旧角色 (User.Role) 兼容层代理：
+            User.Role compatLegacy = RoleProfileCatalog.securityCompatLegacyRole(roleCode);
             if (compatLegacy != null) {
                 authorities.add("ROLE_" + compatLegacy.name());
             }

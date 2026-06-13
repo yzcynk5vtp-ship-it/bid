@@ -234,6 +234,7 @@ import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 import { getApiUrl } from '@/api/config.js'
 import { casesApi } from '@/api/modules/knowledge.js'
 import { useUserStore } from '@/stores/user'
+import { isBidManager as isBidManagerHelper } from '@/utils/permission'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'  
 import '@wangeditor/editor/dist/css/style.css'
 import { useRouter } from 'vue-router'
@@ -291,7 +292,7 @@ const form = reactive({
 })
 
 const isProjectLeader = computed(() => userRole.value === 'sales')
-const isBidManager = computed(() => userRole.value === 'bid_admin' || userRole.value === 'bid_lead' || userRole.value === 'bid_senior' || userRole.value === 'bid_staff')
+const isBidManager = computed(() => isBidManagerHelper(userRole.value) || userRole.value === 'bid_staff')
 
 const canEditDeposit = computed(() => {
   if (!isProjectLeader.value) return false
