@@ -204,8 +204,8 @@
    * 仅覆盖文字颜色变量，不影响 EP 的 disabled 背景色等其它样式。
    */
   --el-disabled-text-color: #303133;
-  --el-text-color-placeholder: #303133;
-  --el-input-placeholder-color: #303133;
+  --el-text-color-placeholder: #C0C4CC;
+  --el-input-placeholder-color: #C0C4CC;
 }
 
 /* === 禁用/只读态文字颜色覆盖 ===
@@ -243,8 +243,8 @@
  */
 :root {
   --el-disabled-text-color: #303133 !important;
-  --el-text-color-placeholder: #303133 !important;
-  --el-input-placeholder-color: #303133 !important;
+  --el-text-color-placeholder: #C0C4CC !important;
+  --el-input-placeholder-color: #C0C4CC !important;
 }
 
 /* === 补充规则：CSS 变量无法覆盖的 opacity 和 cursor ===
