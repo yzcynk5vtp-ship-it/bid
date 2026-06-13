@@ -195,20 +195,23 @@ class OrganizationDirectoryHttpGatewayTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andRespond(withSuccess("""
                         {
-                          "data": {
-                            "index": 0,
-                            "list": [
-                              { "userId": 720518523, "jobNumber": "wangwu", "name": "王五" }
-                            ]
-                          }
+                          "total": 3,
+                          "code": 0,
+                          "data": [
+                            { "userId": 720518523, "jobNumber": "wangwu", "name": "王五" },
+                            { "userId": 820518524, "jobNumber": "zhangsan", "name": "张三" },
+                            { "userId": 920518525, "jobNumber": "lisi", "name": "李四" }
+                          ]
                         }
                         """, MediaType.APPLICATION_JSON));
 
         List<OrganizationUserSnapshot> snapshots = gateway(restTemplate, properties)
                 .listUsersByWindow(LocalDateTime.parse("2026-05-01T10:00"), LocalDateTime.parse("2026-05-02T10:30"));
 
-        assertThat(snapshots).hasSize(1);
+        assertThat(snapshots).hasSize(3);
         assertThat(snapshots.get(0).externalUserId()).isEqualTo("720518523");
+        assertThat(snapshots.get(1).externalUserId()).isEqualTo("820518524");
+        assertThat(snapshots.get(2).externalUserId()).isEqualTo("920518525");
         server.verify();
     }
 
@@ -221,24 +224,70 @@ class OrganizationDirectoryHttpGatewayTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andRespond(withSuccess("""
                         {
-                          "data": {
-                            "index": 0,
-                            "list": [
-                              { "deptId": 3730158, "name": "销售部", "parentId": 1000 }
-                            ]
-                          }
+                          "total": 2,
+                          "code": 0,
+                          "data": [
+                            { "deptId": 3730158, "name": "销售部", "parentId": 1000 },
+                            { "deptId": 4730159, "name": "研发部", "parentId": 1000 }
+                          ]
                         }
                         """, MediaType.APPLICATION_JSON));
 
         List<OrganizationDepartmentSnapshot> snapshots = gateway(restTemplate, properties)
                 .listDepartmentsByWindow(LocalDateTime.parse("2026-05-01T10:00"), LocalDateTime.parse("2026-05-02T10:30"));
 
-        assertThat(snapshots).hasSize(1);
+        assertThat(snapshots).hasSize(2);
         assertThat(snapshots.get(0).externalDeptId()).isEqualTo("3730158");
         assertThat(snapshots.get(0).parentExternalDeptId()).isEqualTo("1000");
+        assertThat(snapshots.get(1).externalDeptId()).isEqualTo("4730159");
+        assertThat(snapshots.get(1).parentExternalDeptId()).isEqualTo("1000");
         server.verify();
     }
 
+
+    @Test
+    @DisplayName("aggregates records across multiple paginated pages using offset fallback")
+    void listUsersByWindow_multiPage_aggregatesAllPages() {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        /* First page: total=5, batch of 2 */
+        server.expect(requestTo("https://oss.example.test/subscription/msg/getUserByTimeWindow"))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andRespond(withSuccess("""
+                        {"total":5,"code":0,"data":[
+                          {"userId":"1","jobNumber":"u1","name":"User1","email":"u1@t.com","mobilePhone":"111"},
+                          {"userId":"2","jobNumber":"u2","name":"User2","email":"u2@t.com","mobilePhone":"222"}
+                        ]}
+                        """, MediaType.APPLICATION_JSON));
+        /* Second page: offset=2, next batch of 2 */
+        server.expect(requestTo("https://oss.example.test/subscription/msg/getUserByTimeWindow"))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andRespond(withSuccess("""
+                        {"total":5,"code":0,"data":[
+                          {"userId":"3","jobNumber":"u3","name":"User3","email":"u3@t.com","mobilePhone":"333"},
+                          {"userId":"4","jobNumber":"u4","name":"User4","email":"u4@t.com","mobilePhone":"444"}
+                        ]}
+                        """, MediaType.APPLICATION_JSON));
+        /* Third page: offset=4, last single record */
+        server.expect(requestTo("https://oss.example.test/subscription/msg/getUserByTimeWindow"))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andRespond(withSuccess("""
+                        {"total":5,"code":0,"data":[
+                          {"userId":"5","jobNumber":"u5","name":"User5","email":"u5@t.com","mobilePhone":"555"}
+                        ]}
+                        """, MediaType.APPLICATION_JSON));
+
+        List<OrganizationUserSnapshot> snapshots = gateway(restTemplate, properties)
+                .listUsersByWindow(LocalDateTime.parse("2026-05-01T10:00"), LocalDateTime.parse("2026-05-02T10:30"));
+
+        assertThat(snapshots).hasSize(5);
+        assertThat(snapshots.get(0).externalUserId()).isEqualTo("1");
+        assertThat(snapshots.get(1).externalUserId()).isEqualTo("2");
+        assertThat(snapshots.get(2).externalUserId()).isEqualTo("3");
+        assertThat(snapshots.get(3).externalUserId()).isEqualTo("4");
+        assertThat(snapshots.get(4).externalUserId()).isEqualTo("5");
+        server.verify();
+    }
     private static OrganizationDirectoryHttpGateway gateway(
             RestTemplate restTemplate,
             OrganizationIntegrationProperties props) {
