@@ -18,7 +18,7 @@ health_checked: 2026-06-13
 
 ## 快速入口
 
-- 规则协议：`WIKI.md`
+- 规则协议：`docs/specs/WIKI.md`
 - 源文档编目：`.wiki/INDEX.md`
 - 页面索引：`.wiki/PAGE_INDEX.md`
 - 抽取中间层：`.wiki/extracts/`

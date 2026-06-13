@@ -7,6 +7,7 @@ sources:
   - .wiki/sources/implementation/西域数智化投标管理平台实施计划书SOW2026V1.4(格式校准).docx
   - docs/specs/启动会项目组织架构与沟通矩阵.md
   - docs/specs/项目启动会PPT大纲与核心内容.md
+  - .wiki/extracts/contract__西域数智化投标管理平台建设项目合同-V1_0420.docx.md
 backlinks:
   - _index
   - contract-constraints
@@ -19,8 +20,8 @@ backlinks:
   - overview
   - requirements
 created: 2026-04-15
-updated: 2026-06-13
-health_checked: 2026-06-13
+updated: 2026-05-28
+health_checked: 2026-06-05
 ---
 # 团队与排期
 

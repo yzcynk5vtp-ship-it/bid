@@ -13,6 +13,7 @@ sources:
   - README.md
   - backend/src/main/resources/application.yml
   - docs/plans/2026-03-10-go-live-execution-plan.md
+  - .wiki/extracts/contract__西域数智化投标管理平台建设项目合同-V1_0420.docx.md
 backlinks:
   - _index
   - api-openapi
@@ -30,8 +31,8 @@ backlinks:
   - requirements
   - team-and-timeline
 created: 2026-04-15
-updated: 2026-06-13
-health_checked: 2026-06-13
+updated: 2026-05-28
+health_checked: 2026-06-05
 ---
 # 部署与上线
 
