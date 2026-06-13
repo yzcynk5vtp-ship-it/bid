@@ -186,6 +186,7 @@ import { useEvaluationReview } from './useEvaluationReview.js'
 import { useDetailTabs } from './useDetailTabs.js'
 import { useDetailActions } from './useDetailActions.js'
 import { useUserStore } from '@/stores/user'
+import { isBidManager } from '@/utils/permission'
 const TenderEvaluationForm = defineAsyncComponent(() => import('./TenderEvaluationForm.vue'))
 const OperationLogTimeline = defineAsyncComponent(() => import('./components/OperationLogTimeline.vue'))
 const AssignDialog = defineAsyncComponent(() => import('../list/components/AssignDialog.vue'))
@@ -236,7 +237,7 @@ const canFillEvaluation = computed(() => {
   if (tender.value?.crmOpportunityName) return false
   // TRACKING（跟踪中/待评估）状态下，bid_lead 或 sales 角色可以填写评估表字段
   if (!tender.value || !userRole.value) return false
-  return tender.value.status === 'TRACKING' && ['bid_lead', 'sales'].includes(userRole.value)
+  return tender.value.status === 'TRACKING' && (isBidManager(userRole.value) || userRole.value === 'sales')
 })
 
 const hideEvaluationActions = computed(
