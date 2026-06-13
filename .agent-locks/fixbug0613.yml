@@ -1,0 +1,9 @@
+version: 1
+task: "fixbug0613"
+locks:
+  - path: "backend/src/main/resources/application.yml"
+    scope: "file"
+    owner: "qoder"
+    branch: "qoder/fixbug0613"
+    expiresAt: "2026-06-15T23:59:59Z"
+    reason: "Fix CO-188: 资质附件上传与安全修复，配置全局文件上传大小限制 spring.servlet.multipart"
