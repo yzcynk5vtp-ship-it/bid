@@ -12,7 +12,7 @@ import com.xiyu.bid.qualification.dto.QualificationDTO;
 import com.xiyu.bid.qualification.dto.QualificationOverviewDTO;
 import com.xiyu.bid.qualification.service.BatchAttachmentService;
 import com.xiyu.bid.qualification.service.QualificationService;
-import com.xiyu.bid.qualification.service.QualificationQueryService;
+import com.xiyu.bid.qualification.application.QualificationQueryService;
 import com.xiyu.bid.qualification.service.QualificationWebService;
 import com.xiyu.bid.qualification.service.QualificationAiParserService;
 import com.xiyu.bid.util.InputSanitizer;
