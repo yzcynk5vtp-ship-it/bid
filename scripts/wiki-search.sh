@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Input: search query as CLI argument
+# Output: print matched markdown files in console
+# Pos: scripts/ - Document Search tool
+# 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 #=============================================================================
 # wiki-search.sh — 西域投标平台项目文档轻量全文搜索
 #

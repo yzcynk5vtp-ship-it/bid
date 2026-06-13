@@ -128,6 +128,7 @@ import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 import { useUserStore } from '@/stores/user'
+import { isBidManager } from '@/utils/permission'
 import { lossReasonOptions } from './retrospectiveLossReasons.js'
 import { getApiUrl } from '@/api/config.js'
 const props = defineProps({
@@ -139,7 +140,7 @@ const userStore = useUserStore()
 const isAdmin = computed(() => userStore.hasPermission('project:retrospective:review'))
 const canEdit = computed(() => {
   const role = userStore.userRole || userStore.currentUser?.role || ''
-  return ['bid_admin', 'bid_lead', 'bid_senior', 'bid_specialist', 'admin'].includes(role)
+  return isBidManager(role) || role === 'bid_specialist'
 })
 const isApplicable = computed(() => props.resultType === 'WON' || props.resultType === 'LOST')
 const form = reactive({

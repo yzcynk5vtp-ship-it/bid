@@ -223,6 +223,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { useCaStore } from '@/stores/ca'
 import { caApi } from '@/api/modules/ca'
+import { isBidManager } from '@/utils/permission'
 import CADetailDrawer from './components/CADetailDrawer.vue'
 import CAFormDialog from './components/CAFormDialog.vue'
 import CABorrowDialog from './components/CABorrowDialog.vue'
@@ -233,8 +234,8 @@ const caStore = useCaStore()
 
 // Role-based view determination
 const isManagerView = computed(() => {
-  const role = userStore.userRole?.toLowerCase()
-  return role === 'bid_admin' || role === 'bid_lead' || role === 'bid_senior' || userStore.hasPermission('resource-ca')
+  const role = userStore.userRole
+  return isBidManager(role) || userStore.hasPermission('resource-ca')
 })
 
 // Loading states

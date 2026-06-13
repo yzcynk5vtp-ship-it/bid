@@ -2,6 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { tendersApi } from '@/api'
+import { isBidManagerExcludeAdmin } from '@/utils/permission'
 
 /**
  * V130: Evaluation API orchestration composable.
@@ -31,8 +32,7 @@ export function useEvaluationReview(tenderRef) {
   // ---- requires_review flag + canReview gate ----
   const requiresReview = computed(() => Boolean(tenderEvaluation.value?.requiresReview))
   const canReview = computed(() => {
-    const role = currentUserRole.value?.toLowerCase()
-    return (role === 'bid_admin' || role === 'bid_lead' || role === 'bid_senior') && requiresReview.value
+    return isBidManagerExcludeAdmin(currentUserRole.value) && requiresReview.value
   })
 
   // ---- load evaluation when tender resolves ----

@@ -30,9 +30,9 @@ describe('TenderCreatePage button state machine', () => {
     expect(tenderActionBarSource).toMatch(vElsePattern)
   })
 
-  it('has isAdminOrLead computed from userRole', () => {
+  it('has isAdminOrLead computed using isBidManager', () => {
     expect(tenderCreateSource).toContain('const isAdminOrLead = computed')
-    expect(tenderCreateSource).toContain("role === 'bid_admin' || role === 'bid_lead' || role === 'bid_senior' || role === 'admin'")
+    expect(tenderCreateSource).toContain('isBidManager')
   })
 
   it('has canProceedToNext checking TRACKING + project leader match only', () => {

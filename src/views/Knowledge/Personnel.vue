@@ -182,6 +182,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user.js'
+import { isBidManager } from '@/utils/permission'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Warning, Download, Upload, Link } from '@element-plus/icons-vue'
 import personnelApi from '@/api/modules/personnel.js'
@@ -217,10 +218,10 @@ const exportDialogVisible = ref(false)
 const attachDialogVisible = ref(false)
 
 const userRole = computed(() => userStore.userRole || (userStore.currentUser && userStore.currentUser.role) || '')
-const canAdd = computed(() => ['bid_admin', 'bid_lead', 'bid_senior', 'bid_specialist'].includes(userRole.value))
-const canImportExport = computed(() => ['bid_admin', 'bid_lead', 'bid_senior'].includes(userRole.value))
-const canBatch = computed(() => ['bid_admin', 'bid_lead', 'bid_senior', 'bid_specialist'].includes(userRole.value))
-const canEdit = computed(() => ['bid_admin', 'bid_lead', 'bid_senior', 'bid_specialist'].includes(userRole.value))
+const canAdd = computed(() => isBidManager(userRole.value) || userRole.value === 'bid_specialist')
+const canImportExport = computed(() => isBidManager(userRole.value))
+const canBatch = computed(() => isBidManager(userRole.value) || userRole.value === 'bid_specialist')
+const canEdit = computed(() => isBidManager(userRole.value) || userRole.value === 'bid_specialist')
 
 async function handleDownloadTemplate() {
   try {

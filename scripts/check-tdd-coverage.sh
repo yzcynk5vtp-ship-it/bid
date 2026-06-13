@@ -84,7 +84,7 @@ frontend_to_test() {
       # 排除 .spec / .test 文件本身
       echo "$basename" | grep -qE '\.(spec|test)\.' && return 1
       local name="${basename%.*}"
-      for ext in spec.js spec.ts; do
+      for ext in spec.js spec.ts test.js; do
         if [ -f "${dir}/${name}.${ext}" ]; then
           echo "${dir}/${name}.${ext}"
           return

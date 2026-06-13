@@ -64,6 +64,7 @@ import { ElMessage } from 'element-plus'
 import { tendersApi } from '@/api/modules/tenders.js'
 import { batchTendersApi } from '@/api/modules/tenders/batch.js'
 import { useUserStore } from '@/stores/user'
+import { isBidManager } from '@/utils/permission'
 import { buildManualTenderPayload } from './list/helpers.js'
 import TenderEvaluationForm from './detail/TenderEvaluationForm.vue'
 import AssignDialog from './list/components/AssignDialog.vue'
@@ -98,10 +99,7 @@ const currentTenderForDuplicate = ref({})
 
 const tenderDetail = ref(null)
 const tenderStatus = computed(() => tenderDetail.value?.status || null)
-const isAdminOrLead = computed(() => {
-  const role = (userStore.userRole || '').toLowerCase().replace(/^role_/, '')
-  return role === 'bid_admin' || role === 'bid_lead' || role === 'bid_senior' || role === 'admin'
-})
+const isAdminOrLead = computed(() => isBidManager(userStore.userRole))
 const currentUserId = computed(() => userStore.currentUser?.id)
 const canProceedToNext = computed(() => tenderStatus.value === 'TRACKING' && tenderDetail.value?.projectManagerId === currentUserId.value)
 const canFillEvaluation = computed(() => Boolean(createdTenderId.value))
