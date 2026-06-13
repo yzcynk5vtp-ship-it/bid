@@ -235,6 +235,15 @@ git push origin --delete agent/<name>/<task>
 - `npm run agent:pre-push-dry-run` — 模拟推送前 14 道门禁
 - `npm run ci:pre-pr` / `bash scripts/ci-pre-pr.sh` — 提交 PR 前一站式门禁
 
+### Gitee CI（远端门禁）
+
+仓库根目录 `.gitlab-ci.yml` 提供 Gitee 社区版可用的远端流水线，覆盖：
+- 治理门禁：agent-locks、line-budget、front-data-boundaries、doc-governance、token-governance
+- 前端：单元测试、API 模式构建、ESLint
+- 后端：编译、ArchUnit 架构测试、项目权限守卫覆盖、Checkstyle/PMD/SpotBugs
+
+E2E 与 Flyway 容器测试因共享 Runner 资源限制，默认设为手动触发；接入 Gitee 私有 Runner 后可改为自动执行。
+
 
 
 

@@ -234,7 +234,7 @@ import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 import { getApiUrl } from '@/api/config.js'
 import { casesApi } from '@/api/modules/knowledge.js'
 import { useUserStore } from '@/stores/user'
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue' // eslint-disable-line import/no-unresolved
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'  
 import '@wangeditor/editor/dist/css/style.css'
 import { useRouter } from 'vue-router'
 import { readinessToTooltip } from './readinessTooltip.js'

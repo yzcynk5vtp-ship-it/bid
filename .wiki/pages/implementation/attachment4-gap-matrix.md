@@ -4,7 +4,6 @@ space: implementation
 category: reference
 tags: [附件4, 差距矩阵, 验收证据, 需求追溯, UAT]
 sources:
-  - .wiki/sources/contract/附件4：西域数智化投标管理平台建设项目需求任务书.docx
   - .wiki/sources/bidding/附件6：需求功能清单.md
   - .wiki/sources/bidding/附件6：需求功能清单.xlsx
   - .wiki/pages/implementation/attachment4-requirement-task-book.md

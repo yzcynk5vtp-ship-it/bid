@@ -4,7 +4,6 @@ space: implementation
 category: reference
 tags: [文档交付, 台账, 验收证据, 签字, 付款门禁]
 sources:
-  - .wiki/sources/contract/附件4：西域数智化投标管理平台建设项目需求任务书.docx
   - .wiki/sources/bidding/附件6：需求功能清单.md
   - .wiki/sources/bidding/附件6：需求功能清单.xlsx
 backlinks:

@@ -3,8 +3,7 @@ title: 附件4需求任务书交付基线
 space: implementation
 category: reference
 tags: [附件4, 需求任务书, 交付基线, 验收, 非功能, 文档清单]
-sources:
-  - .wiki/sources/contract/附件4：西域数智化投标管理平台建设项目需求任务书.docx
+sources: []
 backlinks:
   - _index
   - contract-constraints
