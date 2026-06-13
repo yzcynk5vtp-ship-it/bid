@@ -57,6 +57,7 @@
       "notes": ""
     }
   ],
+  "systemName": "西域数智化投标管理平台",
   "operatorName": "张三",
   "operatorEmployeeId": "EMP001",
   "operatedAt": "2026-06-11T14:30:00+08:00"
@@ -82,6 +83,7 @@
 |------|------|:---:|------|
 | `tenderId` | Long | ✅ | 投标系统内部标讯ID |
 | `projectId` | Long | ✅ | 投标系统内部项目ID |
+| `systemName` | String | ✅ | 调用方系统名称，固定值 `西域数智化投标管理平台` |
 | `crmOpportunityId` | String | ✅ | CRM 推送标讯时的商机ID（VARCHAR 64），用于 CRM 侧关联回对应的商机 |
 | `bidResult` | Enum | ✅ | 投标结果：`WON` / `LOST` / `FAILED` / `ABANDONED` |
 | `evidenceFiles` | Array\<FileInfo\> | ✅ | 凭证文件列表，每个结果类型至少 1 个 |
@@ -157,6 +159,7 @@
       "notes": "含仓储托管服务"
     }
   ],
+  "systemName": "西域数智化投标管理平台",
   "operatorName": "张三",
   "operatorEmployeeId": "EMP001",
   "operatedAt": "2026-06-11T14:30:00+08:00"
@@ -178,6 +181,7 @@
       "fileSize": 512000
     }
   ],
+  "systemName": "西域数智化投标管理平台",
   "competitors": [],
   "operatorName": "李四",
   "operatorEmployeeId": "EMP042",
