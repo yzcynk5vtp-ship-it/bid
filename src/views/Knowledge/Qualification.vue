@@ -269,7 +269,25 @@ const openDetailDrawer = (row) => {
 const handleDetailEdit = (row) => { detailDrawerVisible.value = false; openEdit(row) }
 const handleDetailRetire = (row) => { detailDrawerVisible.value = false; handleRetire(row) }
 const handleDetailRestore = (row) => { detailDrawerVisible.value = false; handleRestore(row) }
-const handleDetailDownload = (att) => { ElMessage.success(`已下载：${att.fileName || '附件'}`) }
+const handleDetailDownload = async (att) => {
+  const qId = detailQualification.value?.id
+  const attId = att?.id
+  if (!qId || !attId) {
+    ElMessage.warning('附件信息不完整，请刷新后重试')
+    return
+  }
+  try {
+    const res = await http.get(`/api/knowledge/qualifications/${qId}/attachments/${attId}`, { responseType: 'blob' })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = att.fileName || '附件'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch { ElMessage.error('下载失败') }
+}
 const handleRowClick = (row) => { if (row) openDetailDrawer(row) }
 
 // 4.2.1.3 编辑资质 - 附件管理
@@ -331,17 +349,39 @@ const handleAttachmentUpload = () => {
 }
 
 const handleDownloadFile = async (row) => {
-  try {
-    const res = await http.get(row.fileUrl, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([res.data]))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = row.name || '资质附件'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    window.URL.revokeObjectURL(url)
-  } catch { ElMessage.error('下载失败') }
+  const att = row.attachments?.[0]
+  const qId = row.id
+  const attId = att?.id
+  if (qId && attId) {
+    try {
+      const res = await http.get(`/api/knowledge/qualifications/${qId}/attachments/${attId}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = att.fileName || row.name || '资质附件'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      return
+    } catch { /* fall through to legacy fallback */ }
+  }
+  // 兜底：旧数据直接使用 fileUrl
+  if (row.fileUrl) {
+    try {
+      const res = await http.get(row.fileUrl, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = row.name || '资质附件'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch { ElMessage.error('下载失败') }
+  } else {
+    ElMessage.error('下载失败')
+  }
 }
 
 onMounted(async () => {
