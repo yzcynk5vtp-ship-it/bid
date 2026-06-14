@@ -4,18 +4,14 @@
 // 维护声明: e2e 与 Redis 缺席环境兜底；生产请用 RedisTokenRevocationService.
 package com.xiyu.bid.auth;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Service("inMemoryTokenRevocationService")
-@ConditionalOnProperty(
-        name = "app.auth.token-revocation.store",
-        havingValue = "in-memory",
-        matchIfMissing = false)
+/**
+ * Token 撤销的进程内兜底实现。
+ * 在 {@link com.xiyu.bid.config.TokenRevocationConfig} 中按条件注册为 fallback bean。
+ */
 public class InMemoryTokenRevocationService implements TokenRevocationService {
 
     private static final int CLEANUP_THRESHOLD = 1024;
