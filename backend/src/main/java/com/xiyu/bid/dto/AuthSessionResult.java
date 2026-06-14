@@ -11,7 +11,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AuthSessionResult {
 
+    /** 认证响应. */
     private AuthResponse authResponse;
+    /** 刷新令牌. */
     private String refreshToken;
     /**
      * H13 根治 (2026-06-14): access token 不再放 {@link AuthResponse#getToken()} (响应 body),
