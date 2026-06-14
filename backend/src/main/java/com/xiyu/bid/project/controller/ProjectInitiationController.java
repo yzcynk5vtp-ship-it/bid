@@ -72,9 +72,9 @@ public class ProjectInitiationController {
         return ResponseEntity.ok(ApiResponse.success("ok", dto));
     }
 
-    /** 审核通过：ADMIN/MANAGER 限定。分配团队后推进 INITIATED→DRAFTING。 */
+    /** 审核通过：管理员/组长限定。分配团队后推进 INITIATED→DRAFTING。 */
     @PostMapping("/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable Long projectId,
             @Valid @RequestBody InitiationApprovalRequest req,
@@ -84,9 +84,9 @@ public class ProjectInitiationController {
         return ResponseEntity.ok(ApiResponse.success("Initiation approved", null));
     }
 
-    /** 审核驳回：ADMIN/MANAGER 限定。必须填写驳回原因。 */
+    /** 审核驳回：管理员/组长限定。必须填写驳回原因。 */
     @PostMapping("/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable Long projectId,
             @Valid @RequestBody InitiationRejectionRequest req,

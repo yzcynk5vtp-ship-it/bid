@@ -37,9 +37,9 @@ public class ProjectDraftingController {
     private final ProjectDraftingService service;
     private final AuthService authService;
 
-    /** PRD §3.2 分配主/副投标负责人：BID_ADMIN（映射到 ADMIN）。 */
+    /** 分配投标团队（管理员/组长）。 */
     @PatchMapping("/leads")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     public ResponseEntity<ApiResponse<ProjectDraftingViewDto>> assignLeads(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectLeadAssignmentRequest req,

@@ -46,9 +46,9 @@ public class ProjectClosureController {
         return ResponseEntity.ok(ApiResponse.success("ok", dto));
     }
 
-    /** 提交结项申请（项目负责人提交给投标团队审核）。 */
+    /** 提交结项申请：管理员/组长/项目负责人/投标负责人/投标辅助（任务执行人不可提交）。 */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<ClosureDTO>> submit(
             @PathVariable Long projectId,
             @Valid @RequestBody ClosureSubmitRequest req,
@@ -63,9 +63,9 @@ public class ProjectClosureController {
                 .body(ApiResponse.success("结项申请已提交，等待审核", dto));
     }
 
-    /** 审核通过（投标管理员/组长，对应 ADMIN/MANAGER 角色）。 */
+    /** 审核通过：管理员/组长/投标负责人/投标辅助（项目负责人不可审核）。 */
     @PostMapping("/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<ClosureDTO>> approve(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -74,9 +74,9 @@ public class ProjectClosureController {
         return ResponseEntity.ok(ApiResponse.success("项目结项审核通过", dto));
     }
 
-    /** 审核驳回（投标管理员/组长）。 */
+    /** 审核驳回：管理员/组长/投标负责人/投标辅助。 */
     @PostMapping("/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<ClosureDTO>> reject(
             @PathVariable Long projectId,
             @Valid @RequestBody ClosureReviewRequest req,
@@ -90,9 +90,9 @@ public class ProjectClosureController {
         return ResponseEntity.ok(ApiResponse.success("项目结项申请已驳回", dto));
     }
 
-    /** 二次招标（审核通过后，项目负责人可操作）。 */
+    /** 二次招标：管理员/组长/项目负责人/投标负责人/投标辅助。 */
     @PostMapping("/rebid")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<Object>> rebid(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
