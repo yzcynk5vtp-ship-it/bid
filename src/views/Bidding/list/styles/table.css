@@ -42,7 +42,7 @@
   flex: 1;
   min-width: 0;
   font-weight: 650;
-  color: #1f3a5f;
+  color: var(--text-primary);
 }
 
 .tender-title-link .el-link__inner {

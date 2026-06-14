@@ -134,7 +134,7 @@ body, .text-body, .el-main, .el-card__body {
 }
 
 .el-button span {
-  text-box: trim-both cap alphabetic;
+  line-height: var(--line-height-xs, 1);
 }
 
 /* Primary button */
@@ -1044,5 +1044,12 @@ button[class*="icon"]:not(.el-button),
 
   .el-input .el-input__wrapper {
     border-width: 2px;
+  }
+}
+
+/* text-box: 未来 CSS 标准特性，浏览器支持有限，用 @supports 渐进增强 */
+@supports (text-box: trim-both cap alphabetic) {
+  .el-button span {
+    text-box: trim-both cap alphabetic;
   }
 }
