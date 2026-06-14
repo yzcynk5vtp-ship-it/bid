@@ -5,7 +5,7 @@
 
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
 
 const { mockAccountsList, mockPasswordResponse } = vi.hoisted(() => ({
   mockAccountsList: [
@@ -120,6 +120,7 @@ const mountAccount = () =>
 
 describe('Account.vue — password column security (contract tests)', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     resourcesApiMock.accounts.getList.mockReset()
     resourcesApiMock.accounts.getPassword.mockReset()
   })
@@ -188,12 +189,11 @@ describe('Account.vue — password column security (contract tests)', () => {
     // We assert the contract indirectly:
     // 1. The component loads the list response (which has no password).
     // 2. The mock list shape is verified safe above.
-    // 3. The Account.vue template renders passwordVisible[row.id] ? row.password : '••••••'
-    //    so un-toggled rows always show the mask string. Since the list response
-    //    has no password property, even toggled rows would render '••••••'
-    //    unless getPassword is called separately to populate decryptedPasswords.
+    // 3. Account.vue delegates password display to usePasswordReveal —
+    //    displayText() returns '••••••' until toggle() fetches via getPassword.
+    //    So un-toggled rows always show the mask string.
     //
-    // We document the mask string here so any regression in the template that
+    // We document the mask string here so any regression in the composable that
     // changes it is caught at code review.
     const MASK_PLACEHOLDER = '••••••'
     expect(MASK_PLACEHOLDER.length).toBeGreaterThan(0)
