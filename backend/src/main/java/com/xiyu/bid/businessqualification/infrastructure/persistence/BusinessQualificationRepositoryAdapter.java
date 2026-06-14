@@ -191,12 +191,15 @@ public class BusinessQualificationRepositoryAdapter implements BusinessQualifica
 
     /**
      * CO-155 fix: handle VALID/IN_STOCK equivalence for filter compatibility.
+     * VALID (deprecated) records are converted to IN_STOCK by the domain model,
+     * so filter "VALID" should also match IN_STOCK status.
      */
     private boolean statusMatches(QualificationStatus status, String filter) {
         if (status == null || filter == null) return false;
         String statusName = status.name();
-        // VALID (deprecated) should match IN_STOCK filter
-        if (status == QualificationStatus.IN_STOCK && "IN_STOCK".equalsIgnoreCase(filter)) return true;
+        // IN_STOCK status matches both IN_STOCK and VALID (deprecated) filters
+        if (status == QualificationStatus.IN_STOCK
+                && ("IN_STOCK".equalsIgnoreCase(filter) || "VALID".equalsIgnoreCase(filter))) return true;
         return statusName.equalsIgnoreCase(filter);
     }
 

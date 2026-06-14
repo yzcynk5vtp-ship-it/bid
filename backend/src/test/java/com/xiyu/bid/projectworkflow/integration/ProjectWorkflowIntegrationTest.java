@@ -39,7 +39,7 @@ class ProjectWorkflowIntegrationTest extends AbstractProjectWorkflowIntegrationT
     private com.xiyu.bid.repository.TaskRepository taskRepositorySpy;
 
     @Test
-    @WithMockUser(roles = {"ADMIN"})
+    @WithMockUser(username = "lizong-test", roles = {"ADMIN"})
     void projectWorkflowEndpoints_ShouldPersistTasksDocumentsRemindersAndShareLinks() throws Exception {
         ProjectTaskCreateRequest taskRequest = ProjectTaskCreateRequest.builder()
                 .title("准备商务应答")
@@ -143,7 +143,7 @@ class ProjectWorkflowIntegrationTest extends AbstractProjectWorkflowIntegrationT
     }
 
     @Test
-    @WithMockUser(roles = {"ADMIN"})
+    @WithMockUser(username = "lizong-test", roles = {"ADMIN"})
     void decomposeProjectTasks_ShouldCreateTasksFromParsedTenderRequirements() throws Exception {
         bidTenderDocumentSnapshotRepository.save(BidTenderDocumentSnapshot.builder()
                 .projectId(project.getId())
@@ -178,7 +178,7 @@ class ProjectWorkflowIntegrationTest extends AbstractProjectWorkflowIntegrationT
     }
 
     @Test
-    @WithMockUser(roles = {"ADMIN"})
+    @WithMockUser(username = "lizong-test", roles = {"ADMIN"})
     void decomposeProjectTasks_ShouldRollbackAllTasksWhenSavingFailsMidway() throws Exception {
         bidTenderDocumentSnapshotRepository.save(BidTenderDocumentSnapshot.builder()
                 .projectId(project.getId())
