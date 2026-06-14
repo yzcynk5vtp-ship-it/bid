@@ -1,6 +1,6 @@
 <template>
   <el-card class="search-card tender-search-card" shadow="never">
-    <el-form :model="modelValue" class="tender-search-form" label-position="top">
+    <el-form :model="modelValue" class="tender-search-form el-form--inline">
       <el-form-item label="关键词" class="search-field search-field--keyword">
         <el-input v-model="modelValue.keyword" placeholder="搜索项目名称、招标主体" clearable class="search-input">
           <template #prefix><el-icon><Search /></el-icon></template>
@@ -201,8 +201,17 @@ const createdAtRange = computed({
 <style scoped>
 .tender-search-card { border: 1px solid var(--gray-100, #E8E8E8); border-radius: var(--radius-md, 8px); }
 .tender-search-card :deep(.el-card__body) { padding: var(--space-lg, 24px); }
-.tender-search-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-md, 16px); min-width: 0; }
-.tender-search-form :deep(.el-form-item) { margin: 0; }
+.tender-search-form { 
+  display: flex; 
+  flex-wrap: nowrap; 
+  align-items: flex-end; 
+  gap: var(--space-md, 16px); 
+  min-width: 0; 
+  overflow-x: auto;
+  padding-bottom: 8px; /* 为滚动条预留空间 */
+  -webkit-overflow-scrolling: touch;
+}
+.tender-search-form :deep(.el-form-item) { margin: 0; flex-shrink: 0; }
 .tender-search-form :deep(.el-form-item__label) { margin-bottom: var(--space-xs, 4px); color: var(--text-secondary, #666); font-size: var(--font-size-xs, 12px); font-weight: 600; line-height: 1.4; }
 /* .search-field / .search-field--keyword / .search-field--date / .search-field--datetime / .search-actions
    已抽取到 src/styles/form-controls.css（全局复用） */

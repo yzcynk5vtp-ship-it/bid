@@ -128,6 +128,13 @@ body, .text-body, .el-main, .el-card__body {
   transition: all var(--transition-base);
   font-weight: 500;
   letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.el-button span {
+  line-height: var(--line-height-xs, 1);
 }
 
 /* Primary button */
@@ -1037,5 +1044,12 @@ button[class*="icon"]:not(.el-button),
 
   .el-input .el-input__wrapper {
     border-width: 2px;
+  }
+}
+
+/* text-box: 未来 CSS 标准特性，浏览器支持有限，用 @supports 渐进增强 */
+@supports (text-box: trim-both cap alphabetic) {
+  .el-button span {
+    text-box: trim-both cap alphabetic;
   }
 }

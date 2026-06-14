@@ -42,7 +42,7 @@
   flex: 1;
   min-width: 0;
   font-weight: 650;
-  color: #1f3a5f;
+  color: var(--text-primary);
 }
 
 .tender-title-link .el-link__inner {
@@ -55,7 +55,7 @@
 .tender-title-text {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: normal;
+  white-space: nowrap;
   word-break: break-all;
   line-height: 1.4;
 }
