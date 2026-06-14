@@ -92,7 +92,7 @@ public class TenderController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST')")
     @Idempotent
     @Operation(summary = "创建标讯")
     public ResponseEntity<ApiResponse<TenderDTO>> createTender(@Valid @RequestBody TenderRequest req, @AuthenticationPrincipal UserDetails user) {
@@ -152,7 +152,7 @@ public class TenderController {
     }
 
     @GetMapping("/import-template")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SPECIALIST', 'TASK_EXECUTOR', 'ADMIN_STAFF')")
     @Operation(summary = "下载标讯批量导入模板")
     public ResponseEntity<byte[]> downloadImportTemplate() {
         byte[] body = tenderImportService.generateTemplate();
@@ -162,7 +162,7 @@ public class TenderController {
     }
 
     @PostMapping(path = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
     @Idempotent
     @Operation(summary = "批量导入标讯")
     public ResponseEntity<ApiResponse<com.xiyu.bid.tender.dto.TenderImportResultDTO>> importTenders(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal UserDetails user) {

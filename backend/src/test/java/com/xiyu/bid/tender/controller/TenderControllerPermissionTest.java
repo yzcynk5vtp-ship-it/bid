@@ -15,6 +15,6 @@ class TenderControllerPermissionTest {
                         org.springframework.security.core.userdetails.UserDetails.class)
                 .getAnnotation(PreAuthorize.class);
 
-        assertThat(annotation.value()).isEqualTo("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')");
+        assertThat(annotation.value()).isEqualTo("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST')");
     }
 }
