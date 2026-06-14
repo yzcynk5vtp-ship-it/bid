@@ -148,10 +148,16 @@ management:
       group:
         readiness:
           include: readinessState,db
+    env:
+      enabled: false
+    heapdump:
+      enabled: false
+    threaddump:
+      enabled: false
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,metrics
+        include: health,prometheus,metrics
   health:
     livenessstate:
       enabled: true
