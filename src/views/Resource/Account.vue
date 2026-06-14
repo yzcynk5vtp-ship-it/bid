@@ -84,13 +84,14 @@
             <template #default="{ row }">
               <div class="password-cell">
                 <div class="password-row">
-                  <span class="password-text">{{ passwordVisible[row.id] ? row.password : '••••••' }}</span>
+                  <span class="password-text">{{ password.displayText(row.id) }}</span>
                 </div>
                 <button
                   class="password-toggle-btn"
-                  @click.stop="togglePasswordVisibility(row.id)">
+                  :disabled="password.isLoading(row.id)"
+                  @click.stop="password.toggle(row.id)">
                   <el-icon size="14">
-                    <component :is="passwordVisible[row.id] ? Hide : View" />
+                    <component :is="password.isVisible(row.id) ? Hide : View" />
                   </el-icon>
                 </button>
               </div>
@@ -134,9 +135,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Platform, View, Edit, Delete, CopyDocument, MoreFilled, Key, RefreshLeft, Hide, CircleCheck, Download } from '@element-plus/icons-vue'
+import { Search, Plus, Platform, View, Edit, Delete, Key, Hide, CircleCheck, Download } from '@element-plus/icons-vue'
 import { resourcesApi } from '@/api'
 import { useUserStore } from '@/stores/user'
+import { usePasswordReveal } from './composables/usePasswordReveal.js'
 import AccountFormDialog from './AccountFormDialog.vue'
 import AccountDetailDialog from './AccountDetailDialog.vue'
 import AccountBorrowDialog from './AccountBorrowDialog.vue'
@@ -161,8 +163,7 @@ const isProjectLeader = computed(() => {
   return userStore.userRole === 'sales'
 })
 
-// 密码显示状态
-const passwordVisible = ref({})
+const password = usePasswordReveal((id) => resourcesApi.accounts.getPassword(id))
 
 const accounts = ref([])
 const showBorrowDialog = ref(false)
@@ -234,25 +235,6 @@ const onAccountReturned = () => {
   showReturnDialog.value = false
   showDetailDialog.value = false
   loadAccounts()
-}
-
-const handleCopyPassword = async (row) => {
-  let password = row.password || ''
-
-  if (!password && true) {
-    const response = await resourcesApi.accounts.getPassword(row.id)
-    if (!response?.success || !response?.data?.password) {
-      ElMessage.info(response?.msg || '当前账号密码不可直接查看')
-      return
-    }
-    password = response.data.password
-  }
-
-  navigator.clipboard.writeText(password || '').then(() => {
-    ElMessage.success('密码已复制到剪贴板')
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
 }
 
 // 批量操作
@@ -368,11 +350,6 @@ const handleMoreAction = async (command, row) => {
       }
       break
   }
-}
-
-// 切换密码可见性
-const togglePasswordVisibility = (accountId) => {
-  passwordVisible.value[accountId] = !passwordVisible.value[accountId]
 }
 
 onMounted(() => {
