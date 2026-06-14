@@ -5,18 +5,12 @@
 package com.xiyu.bid.auth;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
 
 @Slf4j
-@Service
-@Primary
-@ConditionalOnBean(StringRedisTemplate.class)
 public class RedisTokenRevocationService implements TokenRevocationService {
 
     private static final String KEY_PREFIX = "revoked:jwt:";
