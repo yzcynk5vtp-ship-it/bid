@@ -26,7 +26,7 @@ public class BatchTenderController {
     private final AuthService authService;
 
     @PostMapping("/claim")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     public ResponseEntity<ApiResponse<BatchOperationResponse>> batchClaimTenders(
             @Valid @RequestBody BatchClaimRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -50,7 +50,7 @@ public class BatchTenderController {
     }
 
     @PostMapping("/assign")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     public ResponseEntity<ApiResponse<BatchOperationResponse>> batchAssignTenders(
             @Valid @RequestBody BatchTenderAssignRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
