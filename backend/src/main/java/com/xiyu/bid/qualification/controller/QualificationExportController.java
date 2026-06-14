@@ -8,6 +8,7 @@ import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.qualification.dto.BatchAttachResultDTO;
 import com.xiyu.bid.qualification.service.BatchAttachmentService;
+import com.xiyu.bid.qualification.service.QualificationExcelSupport;
 import com.xiyu.bid.qualification.service.QualificationExportService;
 import com.xiyu.bid.qualification.service.QualificationWebService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -37,10 +39,11 @@ public class QualificationExportController {
 
     private final QualificationWebService qualificationWebService;
     private final QualificationExportService qualificationExportService;
+    private final QualificationExcelSupport qualificationExcelSupport;
     private final BatchAttachmentService batchAttachmentService;
 
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
     @Auditable(action = "EXPORT", entityType = "Qualification", description = "导出资质证书")
     public void exportQualifications(
             @RequestParam(required = false) String keyword,
@@ -53,15 +56,15 @@ public class QualificationExportController {
     }
 
     @GetMapping("/template")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     public void downloadTemplate(HttpServletResponse response) throws IOException {
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=资质证书导入模板.xlsx");
-        qualificationExportService.generateTemplate(response.getOutputStream());
+        qualificationExcelSupport.writeTemplate(response.getOutputStream());
     }
 
     @PostMapping("/batch-export")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
     @Auditable(action = "EXPORT", entityType = "Qualification", description = "批量导出资质台账")
     public ResponseEntity<byte[]> batchExport(@RequestBody Map<String, List<Long>> body) throws IOException {
         List<Long> ids = body.get("ids");
@@ -73,7 +76,7 @@ public class QualificationExportController {
     }
 
     @PostMapping("/batch-download")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
     @Auditable(action = "EXPORT", entityType = "Qualification", description = "批量下载资质附件")
     public ResponseEntity<byte[]> batchDownload(@RequestBody Map<String, List<Long>> body) throws IOException {
         List<Long> ids = body.get("ids");
@@ -85,7 +88,7 @@ public class QualificationExportController {
     }
 
     @PostMapping("/import")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     @Auditable(action = "CREATE", entityType = "Qualification", description = "导入资质台账")
     public ResponseEntity<ApiResponse<Map<String, Object>>> importQualifications(@RequestParam("file") MultipartFile file) throws IOException {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -107,8 +110,47 @@ public class QualificationExportController {
         return ResponseEntity.ok(ApiResponse.success("Import completed", result));
     }
 
+    @PostMapping("/import-combined")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+    @Auditable(action = "CREATE", entityType = "Qualification", description = "导入资质台账并关联附件")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> importCombined(
+            @RequestParam("file") MultipartFile excelFile,
+            @RequestParam(value = "attachments", required = false) List<MultipartFile> attachments
+    ) throws IOException {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String operatorName = auth != null ? auth.getName() : "系统导入";
+
+        // Step 1: Import Excel ledger
+        var importSummary = qualificationWebService.importFromExcel(excelFile, operatorName);
+        Map<String, Object> importResult = Map.of(
+                "total", importSummary.total(),
+                "success", importSummary.success(),
+                "failed", importSummary.failed(),
+                "errors", importSummary.results().stream()
+                        .filter(r -> !r.isSuccess())
+                        .map(r -> Map.of(
+                                "row", r.getRowNumber(),
+                                "certificateNo", r.getCertificateNo(),
+                                "reason", r.getFailureReason()
+                        ))
+                        .toList()
+        );
+
+        // Step 2: Process attachments if provided
+        Object attachResult = null;
+        if (attachments != null && !attachments.isEmpty()) {
+            attachResult = batchAttachmentService.process(attachments);
+        }
+
+        Map<String, Object> combined = new LinkedHashMap<>();
+        combined.put("import", importResult);
+        combined.put("attachments", attachResult);
+
+        return ResponseEntity.ok(ApiResponse.success("导入完成", combined));
+    }
+
     @PostMapping("/batch-attach")
-    @PreAuthorize("hasAnyRole('ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     @Auditable(action = "UPDATE", entityType = "Qualification", description = "批量关联资质附件")
     public ResponseEntity<ApiResponse<BatchAttachResultDTO>> batchAttach(@RequestParam("files") List<MultipartFile> files) {
         BatchAttachResultDTO result = batchAttachmentService.process(files);

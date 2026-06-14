@@ -10,67 +10,6 @@ export function useQualificationBatch({ fetchQualifications }) {
 
   const handleSelectionChange = (rows) => { selectedRows.value = rows || [] }
 
-  // 导入结果报告
-  const importResultVisible = ref(false)
-  const importResultData = ref({ total: 0, success: 0, failed: 0, errors: [] })
-
-  const importUploadRef = ref(null)
-  const importTriggerRef = ref(null)
-  const handleImportLedgerClick = () => { importTriggerRef.value?.$el?.click() }
-  const handleImportChange = (file) => {
-    const formData = new FormData()
-    formData.append('file', file.raw)
-    http.post('/api/knowledge/qualifications/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-      .then((res) => {
-        const data = res?.data?.data || {}
-        importResultData.value = {
-          total: data.total || 0,
-          success: data.success || 0,
-          failed: data.failed || 0,
-          errors: Array.isArray(data.errors) ? data.errors : []
-        }
-        importResultVisible.value = true
-        if (data.success > 0) fetchQualifications()
-      })
-      .catch(() => ElMessage.error('导入台账失败'))
-  }
-  const handleImportResultClosed = () => {
-    importResultVisible.value = false
-    fetchQualifications()
-  }
-
-  // 批量关联附件结果
-  const attachResultVisible = ref(false)
-  const attachResultData = ref({ total: 0, success: 0, failed: 0, matched: [], unmatched: [] })
-
-  const batchAttachUploadRef = ref(null)
-  const batchAttachTriggerRef = ref(null)
-  const handleBatchUploadClick = () => { batchAttachTriggerRef.value?.$el?.click() }
-  const handleBatchAttachChange = (file) => {
-    const files = file.raw ? [file.raw] : []
-    if (!files.length) return
-    const formData = new FormData()
-    files.forEach((f) => formData.append('files', f))
-    http.post('/api/knowledge/qualifications/batch-attach', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-      .then((res) => {
-        const data = res?.data?.data || {}
-        attachResultData.value = {
-          total: data.total || 0,
-          success: data.success || 0,
-          failed: data.failed || 0,
-          matched: Array.isArray(data.matched) ? data.matched : [],
-          unmatched: Array.isArray(data.unmatched) ? data.unmatched : []
-        }
-        attachResultVisible.value = true
-        if (data.success > 0) fetchQualifications()
-      })
-      .catch(() => ElMessage.error('批量关联附件失败'))
-  }
-  const handleAttachResultClosed = () => {
-    attachResultVisible.value = false
-    fetchQualifications()
-  }
-
   const handleBatchExport = () => {
     const ids = selectedRows.value.map(r => r.id)
     http.post('/api/knowledge/qualifications/batch-export', { ids }, { responseType: 'blob' })
@@ -109,20 +48,6 @@ export function useQualificationBatch({ fetchQualifications }) {
     selectedCount,
     hasSelection,
     handleSelectionChange,
-    importResultVisible,
-    importResultData,
-    importUploadRef,
-    importTriggerRef,
-    handleImportLedgerClick,
-    handleImportChange,
-    handleImportResultClosed,
-    batchAttachUploadRef,
-    batchAttachTriggerRef,
-    handleBatchUploadClick,
-    handleBatchAttachChange,
-    attachResultVisible,
-    attachResultData,
-    handleAttachResultClosed,
     handleBatchExport,
     handleBatchDownload
   }

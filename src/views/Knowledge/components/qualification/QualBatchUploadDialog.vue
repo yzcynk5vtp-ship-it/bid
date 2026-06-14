@@ -4,6 +4,7 @@
     title="批量上传附件"
     width="560px"
     :close-on-click-modal="false"
+    :append-to-body="false"
     @closed="handleClosed"
   >
     <template v-if="!result">
@@ -71,7 +72,7 @@ import { UploadFilled, InfoFilled } from '@element-plus/icons-vue'
 import http from '@/api/client'
 
 const props = defineProps({ modelValue: { type: Boolean, default: false } })
-const emit = defineEmits(['update:modelValue', 'uploaded'])
+const emit = defineEmits(['update:modelValue', 'uploaded', 'closed'])
 
 const visible = ref(props.modelValue)
 watch(() => props.modelValue, v => { visible.value = v })
@@ -106,7 +107,7 @@ const handleUpload = async () => {
 }
 
 const handleDone = () => { visible.value = false }
-const handleClosed = () => { fileList.value = []; result.value = null }
+const handleClosed = () => { fileList.value = []; result.value = null; emit('closed') }
 </script>
 
 <style scoped>

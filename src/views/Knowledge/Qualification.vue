@@ -6,8 +6,7 @@
         <el-button v-if="canManageQualification" type="primary" class="premium-btn" @click="formVisible=true; editData=null">
           <el-icon><Plus /></el-icon> 新增资质
         </el-button>
-        <el-button v-if="canManageQualification" @click="downloadTemplate">下载导入模板</el-button>
-        <el-button v-if="canManageQualification" @click="handleImportLedgerClick">
+        <el-button v-if="canManageQualification" @click="importCombinedVisible = true">
           <el-icon><Upload /></el-icon> 导入台账
         </el-button>
         <el-button v-if="canManageQualification" @click="batchUploadVisible = true">
@@ -53,9 +52,6 @@
         </el-button>
         <span class="batch-info">已选 {{ selectedCount }} 项</span>
       </div>
-      <el-upload v-show="false" ref="importUploadRef" action="" :auto-upload="false" :on-change="handleImportChange" accept=".xlsx,.xls">
-        <template #trigger><span ref="importTriggerRef" /></template>
-      </el-upload>
       <el-table ref="tableRef" :data="qualifications" v-loading="loading" style="width:100%" @row-click="handleRowClick" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55" fixed="left" />
         <el-table-column type="index" label="序号" width="110" align="center" fixed="left" />
@@ -117,9 +113,8 @@
       @success="handleAttachmentActionSuccess"
     />
 
-    <ImportResultDialog
-      v-model="importResultVisible"
-      :data="importResultData"
+    <QualImportCombinedDialog
+      v-model="importCombinedVisible"
       @closed="fetchQualifications"
     />
     <QualBatchUploadDialog
@@ -148,7 +143,7 @@ import { useUserStore } from '@/stores/user.js'
 import QualFormDialog from './components/qualification/QualFormDialog.vue'
 import AlertConfigDialog from './components/qualification/AlertConfigDialog.vue'
 import AttachmentReplaceDialog from './components/qualification/AttachmentReplaceDialog.vue'
-import ImportResultDialog from './components/qualification/ImportResultDialog.vue'
+import QualImportCombinedDialog from './components/qualification/QualImportCombinedDialog.vue'
 import QualBatchUploadDialog from "./components/qualification/QualBatchUploadDialog.vue"
 import { useQualificationPermissionMatrix, useQualificationBorrowSection } from './components/qualification/useQualificationBorrowSection.js'
 import QualDetailDrawer from './components/qualification/QualDetailDrawer.vue'
@@ -172,6 +167,7 @@ const STATUS_LABELS ={ in_stock:'在库', valid:'在库', expiring:'即将到期
 const hasFilterActive = computed(() => filters.keyword || filters.issuer || filters.expiryRange || filters.statuses.length || filters.level)
 const formVisible = ref(false); const editData = ref(null)
 const batchUploadVisible = ref(false)
+const importCombinedVisible = ref(false)
 const retireDialogVisible = ref(false)
 const retireTarget = ref(null)
 const {
@@ -222,13 +218,6 @@ const {
   hasSelection,
   selectedCount,
   handleSelectionChange,
-  importResultVisible,
-  importResultData,
-  importUploadRef,
-  importTriggerRef,
-  handleImportLedgerClick,
-  handleImportChange,
-  handleImportResultClosed,
   handleBatchExport,
   handleBatchDownload
 } = useQualificationBatch({ fetchQualifications })
@@ -391,12 +380,14 @@ onMounted(async () => {
 const downloadTemplate = async () => {
   try {
     const resp = await http.get('/api/knowledge/qualifications/template', { responseType: 'blob' })
-    const url = URL.createObjectURL(resp.data)
+    const url = window.URL.createObjectURL(new Blob([resp.data]))
     const a = document.createElement('a')
     a.href = url
     a.download = '资质证书导入模板.xlsx'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    a.remove()
+    window.URL.revokeObjectURL(url)
   } catch { ElMessage.warning('模板下载失败，请稍后重试') }
 }
 </script>
