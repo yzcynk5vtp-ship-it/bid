@@ -1,5 +1,5 @@
 // Input: 文档正文 + 由 sidecar 提供的结构化元数据（章节偏移）
-// Output: 按章节切分 + 溢出子切分 + 边界 overlap 的分块文本列表；解析失败时降级到 TenderDocumentTextChunker
+// Output: 按章节切分 + 溢出子切分 + 边界 overlap 的分块文本列表
 // Pos: biddraftagent/infrastructure/openai — LLM 分析前的分块适配器
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
