@@ -22,33 +22,34 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin/project-groups")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AdminProjectGroupController {
 
     private final ProjectGroupService projectGroupService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectGroupConfigResponse>> getProjectGroups() {
         log.info("GET /api/admin/project-groups - fetching project groups");
         return ResponseEntity.ok(ApiResponse.success("Successfully retrieved project groups", projectGroupService.getProjectGroups()));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectGroupConfigResponse.ProjectGroupItem>> createProjectGroup(@RequestBody ProjectGroupConfigRequest.ProjectGroupItem request) {
         log.info("POST /api/admin/project-groups - creating project group");
         return ResponseEntity.ok(ApiResponse.success("Project group created successfully", projectGroupService.createProjectGroup(request)));
     }
 
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectGroupConfigResponse>> saveProjectGroups(@RequestBody ProjectGroupConfigRequest request) {
         log.info("PUT /api/admin/project-groups - saving project groups");
         return ResponseEntity.ok(ApiResponse.success("Project groups saved successfully", projectGroupService.saveProjectGroups(request)));
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectGroupConfigResponse.ProjectGroupItem>> updateProjectGroup(
             @PathVariable Long id,
             @RequestBody ProjectGroupConfigRequest.ProjectGroupItem request
@@ -58,7 +59,7 @@ public class AdminProjectGroupController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deleteProjectGroup(@PathVariable Long id) {
         log.info("DELETE /api/admin/project-groups/{} - deleting project group", id);
         projectGroupService.deleteProjectGroup(id);

@@ -39,6 +39,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/cases")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class KnowledgeCaseController {
 
     private final KnowledgeCaseQueryAppService queryAppService;
@@ -51,7 +52,7 @@ public class KnowledgeCaseController {
     private final ProjectAccessScopeService projectAccessScopeService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<KnowledgeCaseResponse>> queryCases(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String scoringCategory,
@@ -72,7 +73,7 @@ public class KnowledgeCaseController {
     }
 
     @GetMapping("/recommend")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<KnowledgeCaseMatchScore>> recommendCases(
             @RequestParam Long projectId,
             @RequestParam(required = false) String scoringItem,
@@ -83,7 +84,7 @@ public class KnowledgeCaseController {
     }
 
     @GetMapping("/recommend/project")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<KnowledgeCaseMatchScore>> recommendForProject(
             @RequestParam Long projectId,
             @RequestParam(required = false) String keyword) {
@@ -92,13 +93,13 @@ public class KnowledgeCaseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<KnowledgeCase> getCaseDetail(@PathVariable Long id) {
         return ResponseEntity.ok(queryAppService.getCaseDetail(id));
     }
 
     @PostMapping("/{id}/reuse")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> reuseCase(@PathVariable Long id) {
         String userName = resolveCurrentUserName();
         return ResponseEntity.ok(commandAppService.reuseCase(id, userName));
@@ -123,7 +124,7 @@ public class KnowledgeCaseController {
     }
 
     @GetMapping("/precipitation-readiness")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CasePrecipitationAppService.ReadinessResult> getPrecipitationReadiness(
             @RequestParam Long projectId) {
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
@@ -140,13 +141,13 @@ public class KnowledgeCaseController {
     }
 
     @GetMapping("/{id}/references")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<CaseReferenceRecordDTO>> getReferenceRecords(@PathVariable Long id) {
         return ResponseEntity.ok(caseReferenceAppService.getReferenceRecords(id));
     }
 
     @PostMapping("/export-excel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public void exportCasesAsExcel(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String scoringCategory,
@@ -171,7 +172,7 @@ public class KnowledgeCaseController {
     }
 
     @PostMapping("/export-zip")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<byte[]> exportCasesAsZip(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String scoringCategory,

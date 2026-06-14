@@ -17,18 +17,19 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TenderAssignmentQueryController {
 
     private final BatchTenderAssignmentService batchTenderAssignmentService;
 
     @GetMapping("/{id}/assignment")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderAssignmentResponse>> getTenderAssignment(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(batchTenderAssignmentService.getAssignment(id)));
     }
 
     @GetMapping("/assignment-candidates")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<TenderAssignmentCandidateResponse>>> getTenderAssignmentCandidates() {
         return ResponseEntity.ok(ApiResponse.success(batchTenderAssignmentService.getCandidates()));
     }

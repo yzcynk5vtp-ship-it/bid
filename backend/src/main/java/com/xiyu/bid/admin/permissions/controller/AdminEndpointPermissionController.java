@@ -18,11 +18,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/permissions")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AdminEndpointPermissionController {
     private final EndpointPermissionCatalogAppService catalogAppService;
 
     @GetMapping("/endpoints")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<EndpointPermissionItem>>> listEndpointPermissions() {
         return ResponseEntity.ok(ApiResponse.success(
                 "Endpoint permissions retrieved successfully",

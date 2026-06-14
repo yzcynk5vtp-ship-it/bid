@@ -46,6 +46,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/approvals")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ApprovalController {
 
     private final ApprovalWorkflowService approvalWorkflowService;

@@ -30,6 +30,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/compliance")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ComplianceController {
 
     private final ComplianceCheckService complianceCheckService;
@@ -42,7 +43,7 @@ public class ComplianceController {
      * @return 合规检查结果
      */
     @PostMapping("/check/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "ComplianceCheck", description = "Perform project compliance check")
     public ResponseEntity<ApiResponse<ComplianceCheckResultDTO>> checkProjectCompliance(
             @PathVariable Long projectId) {
@@ -58,7 +59,7 @@ public class ComplianceController {
      * @return 合规检查结果
      */
     @PostMapping("/check/tender/{tenderId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "ComplianceCheck", description = "Perform tender compliance check")
     public ResponseEntity<ApiResponse<ComplianceCheckResultDTO>> checkTenderCompliance(
             @PathVariable Long tenderId) {
@@ -74,7 +75,7 @@ public class ComplianceController {
      * @return 合规检查结果详情
      */
     @GetMapping("/results/{resultId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ComplianceCheckResult>> getCheckResult(
             @PathVariable Long resultId) {
 
@@ -89,7 +90,7 @@ public class ComplianceController {
      * @return 合规检查结果列表
      */
     @GetMapping("/project/{projectId}/results")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ComplianceCheckResult>>> getProjectCheckResults(
             @PathVariable Long projectId) {
 
@@ -104,7 +105,7 @@ public class ComplianceController {
      * @return 风险评估结果
      */
     @GetMapping("/assess-risk/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RiskAssessmentDTO>> assessProjectRisk(
             @PathVariable Long projectId) {
 
@@ -119,7 +120,7 @@ public class ComplianceController {
      * @return 质量核查结果
      */
     @PostMapping("/bid-document/check/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "BidDocumentQualityCheck",
             description = "Perform bid document quality check")
     public ResponseEntity<ApiResponse<ComplianceCheckResultDTO>>
@@ -138,7 +139,7 @@ public class ComplianceController {
      * @return 质量核查结果
      */
     @GetMapping("/bid-document/results/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ComplianceCheckResultDTO>>
         getBidDocumentQualityResult(@PathVariable final Long projectId) {
         ComplianceCheckResultDTO result =

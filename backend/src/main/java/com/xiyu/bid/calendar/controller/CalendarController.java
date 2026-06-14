@@ -40,6 +40,7 @@ import java.util.List;
 @RequestMapping("/api/calendar")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class CalendarController {
 
     private final CalendarService calendarService;
@@ -51,7 +52,7 @@ public class CalendarController {
      * @return 事件列表
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CalendarEventDTO>>> getEventsByDateRange(
             @RequestParam LocalDate start,
             @RequestParam LocalDate end) {
@@ -71,7 +72,7 @@ public class CalendarController {
      * @return 事件列表
      */
     @GetMapping("/month/{year}/{month}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CalendarEventDTO>>> getEventsByMonth(
             @PathVariable int year,
             @PathVariable int month) {
@@ -90,7 +91,7 @@ public class CalendarController {
      * @return 事件列表
      */
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CalendarEventDTO>>> getEventsByProject(
             @PathVariable Long projectId) {
         log.info("GET /api/calendar/project/{} - Fetching events", projectId);
@@ -107,7 +108,7 @@ public class CalendarController {
      * @return 紧急事件列表
      */
     @GetMapping("/urgent")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CalendarEventDTO>>> getUrgentEvents() {
         log.info("GET /api/calendar/urgent - Fetching urgent events");
 

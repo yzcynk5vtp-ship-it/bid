@@ -35,12 +35,13 @@ import java.util.Map;
 @RequestMapping("/api/form-definitions")
 @RequiredArgsConstructor
 @Tag(name = "表单运行时", description = "动态表单运行时 API")
+@PreAuthorize("isAuthenticated()")
 public class FormDefinitionController {
 
     private final AdaptiveFormService adaptiveFormService;
 
     @GetMapping("/{scope}/active")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "获取激活的表单定义", description = "根据 scope 返回已解析的表单定义，包含可见性规则处理后的字段")
     public ResponseEntity<ApiResponse<ResolvedForm>> getActiveForm(
             @PathVariable String scope,
@@ -54,7 +55,7 @@ public class FormDefinitionController {
     }
 
     @PostMapping("/{scope}/validate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "验证表单数据", description = "在不保存的情况下验证表单数据是否满足字段定义和验证规则")
     public ResponseEntity<ApiResponse<ValidationResult>> validateForm(
             @PathVariable String scope,
@@ -68,7 +69,7 @@ public class FormDefinitionController {
     }
 
     @PostMapping("/{scope}/submit")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "提交表单数据", description = "验证并提交表单数据")
     public ResponseEntity<ApiResponse<SubmitResult>> submitForm(
             @PathVariable String scope,

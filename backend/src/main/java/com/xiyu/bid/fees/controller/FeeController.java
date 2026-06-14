@@ -41,6 +41,7 @@ import java.util.List;
 @RequestMapping("/api/fees")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class FeeController {
 
     private final FeeService feeService;
@@ -61,7 +62,7 @@ public class FeeController {
      * 获取所有费用（分页）
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<FeeDTO>>> getAllFees(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -86,7 +87,7 @@ public class FeeController {
      * 根据ID获取费用
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FeeDTO>> getFeeById(@PathVariable Long id) {
         log.info("GET /api/fees/{} - Fetching fee", id);
         FeeDTO fee = feeService.getFeeById(id);
@@ -97,7 +98,7 @@ public class FeeController {
      * 根据项目ID获取费用列表
      */
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<FeeDTO>>> getFeesByProjectId(@PathVariable Long projectId) {
         log.info("GET /api/fees/project/{} - Fetching fees for project", projectId);
         List<FeeDTO> fees = feeService.getFeesByProjectId(projectId);
@@ -108,7 +109,7 @@ public class FeeController {
      * 根据状态获取费用列表
      */
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<FeeDTO>>> getFeesByStatus(@PathVariable FeeDTO.Status status) {
         log.info("GET /api/fees/status/{} - Fetching fees by status", status);
         List<FeeDTO> fees = feeService.getFeesByStatus(status);

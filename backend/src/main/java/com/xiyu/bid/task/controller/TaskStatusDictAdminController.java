@@ -40,13 +40,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/task-status-dict")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TaskStatusDictAdminController {
 
     private final TaskStatusDictAdminService service;
 
     /** 列出全部字典项（含已停用），按 sortOrder 升序。 */
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "TaskStatusDict",
             description = "列出全部任务状态字典")
     public ResponseEntity<ApiResponse<List<TaskStatusDictAdminDTO>>> list() {
@@ -55,7 +56,7 @@ public class TaskStatusDictAdminController {
 
     /** 新建字典项。 */
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "TaskStatusDict",
             description = "新增任务状态字典")
     public ResponseEntity<ApiResponse<TaskStatusDictAdminDTO>> create(
@@ -66,7 +67,7 @@ public class TaskStatusDictAdminController {
 
     /** 更新字典项（PATCH 语义：null 字段保持原值）。 */
     @PutMapping("/{code}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "UPDATE", entityType = "TaskStatusDict",
             description = "更新任务状态字典")
     public ResponseEntity<ApiResponse<TaskStatusDictAdminDTO>> update(
@@ -78,7 +79,7 @@ public class TaskStatusDictAdminController {
 
     /** 停用字典项（service 层保证不能停用初始/唯一终态）。 */
     @PatchMapping("/{code}/disable")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "DISABLE", entityType = "TaskStatusDict",
             description = "停用任务状态字典")
     public ResponseEntity<ApiResponse<TaskStatusDictAdminDTO>> disable(@PathVariable String code) {
@@ -87,7 +88,7 @@ public class TaskStatusDictAdminController {
 
     /** 启用字典项。 */
     @PatchMapping("/{code}/enable")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "ENABLE", entityType = "TaskStatusDict",
             description = "启用任务状态字典")
     public ResponseEntity<ApiResponse<TaskStatusDictAdminDTO>> enable(@PathVariable String code) {
@@ -96,7 +97,7 @@ public class TaskStatusDictAdminController {
 
     /** 批量重排（单事务）。 */
     @PatchMapping("/reorder")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "REORDER", entityType = "TaskStatusDict",
             description = "批量重排任务状态字典")
     public ResponseEntity<ApiResponse<Void>> reorder(@Valid @RequestBody TaskStatusDictReorderRequest req) {

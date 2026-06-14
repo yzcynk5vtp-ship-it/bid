@@ -31,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/projects/{projectId}/retrospective")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectRetrospectiveController {
 
     private final ProjectRetrospectiveService service;

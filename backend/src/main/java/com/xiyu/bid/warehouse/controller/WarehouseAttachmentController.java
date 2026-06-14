@@ -35,6 +35,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/knowledge/warehouses/{id}/attachments")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class WarehouseAttachmentController {
 
     private static final String PERM = RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION;

@@ -43,6 +43,7 @@ import java.util.List;
 @RequestMapping("/api/documents/{projectId}/editor")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class DocumentEditorController {
 
     private final DocumentEditorService documentEditorService;
@@ -54,7 +55,7 @@ public class DocumentEditorController {
      * @return 文档结构
      */
     @GetMapping("/structure")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentStructureDTO>> getStructure(
             @PathVariable Long projectId) {
         DocumentStructureDTO structure = documentEditorService.getStructure(projectId);
@@ -86,7 +87,7 @@ public class DocumentEditorController {
      * @return 章节树
      */
     @GetMapping("/sections/tree")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<DocumentSectionDTO>>> getSectionTree(
             @PathVariable Long projectId) {
         List<DocumentSectionDTO> tree = documentEditorService.getSectionTree(projectId);
@@ -101,7 +102,7 @@ public class DocumentEditorController {
      * @return 导入结果
      */
     @PostMapping("/draft-tree")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DraftTreeUpsertResultDTO>> upsertDraftTree(
             @PathVariable Long projectId,
             @Valid @RequestBody DraftTreeUpsertRequest request) {
@@ -117,7 +118,7 @@ public class DocumentEditorController {
      * @return 创建的章节
      */
     @PostMapping("/sections")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentSectionDTO>> addSection(
             @PathVariable Long projectId,
             @Valid @RequestBody SectionCreateRequest request) {
@@ -134,7 +135,7 @@ public class DocumentEditorController {
      * @return 更新后的章节
      */
     @PutMapping("/sections/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentSectionDTO>> updateSection(
             @PathVariable Long projectId,
             @PathVariable Long id,
@@ -144,7 +145,7 @@ public class DocumentEditorController {
     }
 
     @PostMapping("/assignments")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentSectionDTO>> assignSection(
             @PathVariable Long projectId,
             @Valid @RequestBody SectionAssignmentRequest request) {
@@ -153,7 +154,7 @@ public class DocumentEditorController {
     }
 
     @PostMapping("/locks")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentSectionDTO>> updateLock(
             @PathVariable Long projectId,
             @Valid @RequestBody SectionLockRequest request) {
@@ -162,7 +163,7 @@ public class DocumentEditorController {
     }
 
     @PostMapping("/reminders")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentReminderDTO>> createReminder(
             @PathVariable Long projectId,
             @Valid @RequestBody SectionReminderRequest request) {
@@ -195,7 +196,7 @@ public class DocumentEditorController {
      * @return 成功响应
      */
     @PutMapping("/sections/reorder")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> reorderSections(
             @PathVariable Long projectId,
             @Valid @RequestBody SectionReorderRequest request) {

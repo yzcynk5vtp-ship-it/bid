@@ -29,36 +29,37 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/workflow-forms")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class WorkflowFormAdminController {
 
     private final WorkflowFormAdminService adminService;
 
     @GetMapping("/business-types")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> businessTypes() {
         return ResponseEntity.ok(ApiResponse.success(Arrays.stream(FormBusinessType.values()).map(Enum::name).toList()));
     }
 
     @GetMapping("/templates")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> templates() {
         return ResponseEntity.ok(ApiResponse.success(adminService.listTemplates()));
     }
 
     @GetMapping("/templates/{templateCode}/versions")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> versions(@PathVariable String templateCode) {
         return ResponseEntity.ok(ApiResponse.success(adminService.listVersions(templateCode)));
     }
 
     @PostMapping("/templates")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> createDraft(@Valid @RequestBody WorkflowFormTemplateDraftRequest request) {
         return ResponseEntity.ok(ApiResponse.success("流程表单草稿已保存", adminService.saveDraft(toCommand(request))));
     }
 
     @PutMapping("/templates/{templateCode}/draft")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> updateDraft(
             @PathVariable String templateCode,
             @Valid @RequestBody WorkflowFormTemplateDraftRequest request
@@ -69,14 +70,14 @@ public class WorkflowFormAdminController {
     }
 
     @PostMapping("/templates/{templateCode}/publish")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> publish(@PathVariable String templateCode, Authentication authentication) {
         String operator = authentication == null ? "system" : authentication.getName();
         return ResponseEntity.ok(ApiResponse.success("流程表单已发布", adminService.publish(templateCode, operator)));
     }
 
     @PostMapping("/templates/{templateCode}/versions/{version}/rollback")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> rollback(
             @PathVariable String templateCode,
             @PathVariable int version,
@@ -87,7 +88,7 @@ public class WorkflowFormAdminController {
     }
 
     @PutMapping("/templates/{templateCode}/oa-binding")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> saveBinding(
             @PathVariable String templateCode,
             @Valid @RequestBody WorkflowFormOaBindingRequest request
@@ -98,7 +99,7 @@ public class WorkflowFormAdminController {
     }
 
     @PostMapping("/templates/{templateCode}/oa/test-submit")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<?>> previewTrialSubmit(
             @PathVariable String templateCode,
             @Valid @RequestBody WorkflowFormTrialSubmitRequest request

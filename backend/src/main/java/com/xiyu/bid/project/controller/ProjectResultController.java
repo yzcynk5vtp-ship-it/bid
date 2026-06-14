@@ -29,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/projects/{projectId}/result")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectResultController {
 
     /** 注册结果登记服务。 */

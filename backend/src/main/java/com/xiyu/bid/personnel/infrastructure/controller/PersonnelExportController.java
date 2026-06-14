@@ -32,6 +32,7 @@ import java.util.List;
 @RequestMapping("/api/knowledge/personnel")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class PersonnelExportController {
 
     private final ExportPersonnelAppService exportAppService;

@@ -21,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/alerts/rules")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AlertRuleController {
 
     private final AlertRuleService alertRuleService;
@@ -34,28 +35,28 @@ public class AlertRuleController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AlertRule>> getAlertRuleById(@PathVariable Long id) {
         AlertRule alertRule = alertRuleService.getAlertRuleById(id);
         return ResponseEntity.ok(ApiResponse.success(alertRule));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<AlertRule>>> getAllAlertRules() {
         List<AlertRule> alertRules = alertRuleService.getAllAlertRules();
         return ResponseEntity.ok(ApiResponse.success(alertRules));
     }
 
     @GetMapping("/enabled")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<AlertRule>>> getEnabledAlertRules() {
         List<AlertRule> alertRules = alertRuleService.getEnabledAlertRules();
         return ResponseEntity.ok(ApiResponse.success(alertRules));
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<AlertRule>>> getAlertRulesByType(@PathVariable AlertRule.AlertType type) {
         List<AlertRule> alertRules = alertRuleService.getAlertRulesByType(type);
         return ResponseEntity.ok(ApiResponse.success(alertRules));

@@ -33,6 +33,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/workflow-forms")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class WorkflowFormController {
 
     private final WorkflowFormSubmissionService submissionService;
@@ -41,13 +42,13 @@ public class WorkflowFormController {
     private final WorkflowFormAttachmentUploadService attachmentUploadService;
 
     @GetMapping("/templates/{templateCode}/active")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> activeTemplate(@PathVariable String templateCode) {
         return ResponseEntity.ok(ApiResponse.success(templateQueryService.getActiveSchema(templateCode)));
     }
 
     @PostMapping("/instances")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<WorkflowFormInstanceView>> submit(@Valid @RequestBody WorkflowFormSubmitRequest request) {
         accessGuard.assertCanAccessProject(request.projectId());
         WorkflowFormInstanceView view = submissionService.submit(new WorkflowFormSubmitCommand(
@@ -56,7 +57,7 @@ public class WorkflowFormController {
     }
 
     @PostMapping(value = "/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<WorkflowFormAttachmentView>> uploadAttachment(
             @RequestParam("templateCode") String templateCode,
             @RequestParam("fieldKey") String fieldKey,

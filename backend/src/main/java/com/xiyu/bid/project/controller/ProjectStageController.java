@@ -22,6 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/projects/{projectId}/stage")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectStageController {
 
     private final ProjectStageService service;

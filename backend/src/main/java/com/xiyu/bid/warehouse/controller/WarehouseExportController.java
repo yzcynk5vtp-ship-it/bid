@@ -40,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/api/knowledge/warehouses/export")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class WarehouseExportController {
 
     private static final String PERM = RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION;

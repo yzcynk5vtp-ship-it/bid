@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 @RestController
 @RequestMapping("/api/doc-insight")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class DocInsightController {
 
     /** 上传文件大小上限（MB），通过 app.docinsight.max-upload-mb 配置，默认 50 MB。 */
@@ -52,7 +53,7 @@ public class DocInsightController {
     private final DocumentIntelligenceService docInsightService;
 
     @PostMapping("/parse")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentAnalysisResult>> parse(
             @RequestParam("profile") String profileCode,
             @RequestParam("entityId") String entityId,

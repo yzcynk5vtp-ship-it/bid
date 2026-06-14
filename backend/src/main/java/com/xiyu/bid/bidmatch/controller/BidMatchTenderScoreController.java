@@ -18,25 +18,26 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/tenders/{tenderId}/match-score")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BidMatchTenderScoreController {
 
     private final BidMatchEvaluationAppService evaluationAppService;
 
     @PostMapping("/evaluate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidMatchEvaluationResponse>> evaluate(@PathVariable Long tenderId) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("标讯匹配评分已生成", evaluationAppService.evaluate(tenderId)));
     }
 
     @GetMapping("/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidMatchEvaluationResponse>> latest(@PathVariable Long tenderId) {
         return ResponseEntity.ok(ApiResponse.success(evaluationAppService.latest(tenderId)));
     }
 
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BidMatchEvaluationResponse>>> history(@PathVariable Long tenderId) {
         return ResponseEntity.ok(ApiResponse.success(evaluationAppService.history(tenderId)));
     }

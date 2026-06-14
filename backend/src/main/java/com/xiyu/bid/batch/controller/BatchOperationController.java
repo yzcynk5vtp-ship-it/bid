@@ -21,6 +21,7 @@ import java.util.*;
 @RequestMapping("/api/batch")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class BatchOperationController {
 
     private static final String ADMIN_MANAGER_EXPR = "hasAnyRole('ADMIN', 'MANAGER')";
@@ -69,7 +70,7 @@ public class BatchOperationController {
     }
 
     @GetMapping("/status/{operationId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BatchOperationResponse>> getBatchOperationStatus(@PathVariable String operationId) {
         return ResponseEntity.ok(ApiResponse.success("Status query (placeholder)", BatchOperationResponse.builder().success(true).successCount(0).failureCount(0).totalCount(0).operationType("STATUS_QUERY").build()));
     }

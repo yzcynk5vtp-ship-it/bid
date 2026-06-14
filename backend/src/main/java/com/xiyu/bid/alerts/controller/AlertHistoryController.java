@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/alerts/history")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AlertHistoryController {
 
     private final AlertHistoryService alertHistoryService;
@@ -41,7 +42,7 @@ public class AlertHistoryController {
     private final AlertHistoryCommandService alertHistoryCommandService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "AlertHistory", description = "Create alert history record")
     public ResponseEntity<ApiResponse<AlertHistoryResponse>> createAlertHistory(@Valid @RequestBody AlertHistoryCreateRequest request) {
         AlertHistory alertHistory = alertHistoryService.createAlertHistory(request);
@@ -52,7 +53,7 @@ public class AlertHistoryController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AlertHistoryResponse>>> getAllAlertHistories(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -74,13 +75,13 @@ public class AlertHistoryController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AlertHistoryResponse>> getAlertHistoryById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(alertHistoryQueryService.getAlertHistoryResponseById(id)));
     }
 
     @GetMapping("/unresolved")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AlertHistoryResponse>>> getUnresolvedAlertHistories(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -89,20 +90,20 @@ public class AlertHistoryController {
     }
 
     @PatchMapping("/{id}/acknowledge")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AlertHistoryResponse>> acknowledgeAlertHistory(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Alert history acknowledged successfully", alertHistoryCommandService.acknowledgeAlertHistory(id)));
     }
 
     @PostMapping("/{id}/resolve")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "RESOLVE", entityType = "AlertHistory", description = "Resolve alert history")
     public ResponseEntity<ApiResponse<AlertHistoryResponse>> resolveAlertHistory(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Alert history resolved successfully", alertHistoryCommandService.resolveAlertHistory(id)));
     }
 
     @GetMapping("/statistics")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AlertStatisticsResponse>> getAlertStatistics() {
         return ResponseEntity.ok(ApiResponse.success(alertHistoryQueryService.getAlertStatistics()));
     }

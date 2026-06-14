@@ -32,6 +32,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
+@PreAuthorize("hasRole('ADMIN')")
 public class NotificationController {
 
     private final NotificationApplicationService service;

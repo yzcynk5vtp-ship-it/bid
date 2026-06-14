@@ -32,19 +32,20 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/contract-borrows")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ContractBorrowController {
 
     private final ContractBorrowQueryAppService queryService;
     private final ContractBorrowCommandAppService commandService;
 
     @GetMapping("/overview")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractBorrowOverviewView>> overview() {
         return ResponseEntity.ok(ApiResponse.success(queryService.overview()));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractBorrowPageView>> list(
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) String status,
@@ -57,13 +58,13 @@ public class ContractBorrowController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractBorrowView>> detail(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(queryService.detail(id)));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractBorrowView>> create(@Valid @RequestBody CreateContractBorrowRequest request) {
         ContractBorrowView view = commandService.create(toCommand(request));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(view));
@@ -90,7 +91,7 @@ public class ContractBorrowController {
     }
 
     @PostMapping("/{id}/return")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractBorrowView>> returnBack(
         @PathVariable Long id,
         @Valid @RequestBody ContractBorrowActionRequest request,
@@ -100,7 +101,7 @@ public class ContractBorrowController {
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ContractBorrowView>> cancel(
         @PathVariable Long id,
         @Valid @RequestBody ContractBorrowActionRequest request,
@@ -110,7 +111,7 @@ public class ContractBorrowController {
     }
 
     @GetMapping("/{id}/events")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ContractBorrowEventView>>> events(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(queryService.events(id)));
     }

@@ -43,6 +43,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/knowledge/brand-auth")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class ManufacturerAuthorizationController {
 
     /** Create service. */

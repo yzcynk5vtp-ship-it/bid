@@ -36,12 +36,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/resources/bar-assets")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BarAssetController {
 
     private final BarAssetService barAssetService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "BarAsset", description = "Create bar asset record")
     public ResponseEntity<ApiResponse<BarAssetResponseDTO>> createBarAsset(@Valid @RequestBody BarAssetCreateRequest request) {
         BarAssetResponseDTO asset = barAssetService.createBarAsset(request);
@@ -49,14 +50,14 @@ public class BarAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BarAssetResponseDTO>> getBarAssetById(@PathVariable Long id) {
         BarAssetResponseDTO asset = barAssetService.getBarAssetById(id);
         return ResponseEntity.ok(ApiResponse.success(asset));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<BarAssetResponseDTO>>> getAllBarAssets(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -74,7 +75,7 @@ public class BarAssetController {
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<BarAssetResponseDTO>>> getBarAssetsByType(
             @PathVariable String type,
             @RequestParam(defaultValue = "0") int page,
@@ -90,7 +91,7 @@ public class BarAssetController {
     }
 
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<BarAssetResponseDTO>>> getBarAssetsByStatus(
             @PathVariable String status,
             @RequestParam(defaultValue = "0") int page,
@@ -106,7 +107,7 @@ public class BarAssetController {
     }
 
     @GetMapping("/value-range")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<BarAssetResponseDTO>>> getBarAssetsByValueRange(
             @RequestParam BigDecimal minValue,
             @RequestParam BigDecimal maxValue,
@@ -123,7 +124,7 @@ public class BarAssetController {
     }
 
     @GetMapping("/acquire-date-range")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<BarAssetResponseDTO>>> getBarAssetsByAcquireDateRange(
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
@@ -140,7 +141,7 @@ public class BarAssetController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<BarAssetResponseDTO>>> searchBarAssets(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -175,14 +176,14 @@ public class BarAssetController {
     }
 
     @GetMapping("/total-value")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalAssetValue() {
         BigDecimal total = barAssetService.getTotalAssetValue();
         return ResponseEntity.ok(ApiResponse.success(total));
     }
 
     @GetMapping("/statistics")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAssetStatistics() {
         Map<String, Object> statistics = barAssetService.getAssetStatistics();
         return ResponseEntity.ok(ApiResponse.success(statistics));

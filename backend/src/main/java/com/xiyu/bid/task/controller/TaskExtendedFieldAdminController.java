@@ -41,6 +41,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/task-extended-fields")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TaskExtendedFieldAdminController {
 
     private final TaskExtendedFieldAdminService service;

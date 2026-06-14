@@ -22,6 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/resource/margin")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class MarginController {
 
     /** Default page size. */
@@ -39,7 +40,7 @@ public class MarginController {
      * @return summary map with totalPaid, totalPending, etc.
      */
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSummary(
             final Authentication auth) {
         Long uid = userId(auth);
@@ -56,7 +57,7 @@ public class MarginController {
      * @return paginated data with total
      */
     @GetMapping("/list")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getList(
             final Authentication auth,
             @RequestParam final Map<String, String> params) {

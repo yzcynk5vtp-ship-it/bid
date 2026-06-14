@@ -21,6 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bid-results")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BidResultQueryController {
 
     private static final String ADMIN_MANAGER_STAFF_EXPR = "hasAnyRole('ADMIN', 'MANAGER', 'STAFF')";

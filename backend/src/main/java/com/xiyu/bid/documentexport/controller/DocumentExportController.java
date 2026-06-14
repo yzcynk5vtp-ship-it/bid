@@ -28,18 +28,19 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/documents/{projectId}")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class DocumentExportController {
 
     private final DocumentExportService documentExportService;
 
     @GetMapping("/exports")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<DocumentExportDTO>>> getExports(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(documentExportService.getExports(projectId)));
     }
 
     @PostMapping("/exports")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentExportDTO>> createExport(
             @PathVariable Long projectId,
             @Valid @RequestBody DocumentExportCreateRequest request) {
@@ -48,19 +49,19 @@ public class DocumentExportController {
     }
 
     @GetMapping("/archive-records")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<DocumentArchiveRecordDTO>>> getArchiveRecords(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(documentExportService.getArchiveRecords(projectId)));
     }
 
     @GetMapping("/case-snapshot")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentCaseSnapshotDTO>> getCaseSnapshot(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(documentExportService.getCaseSnapshot(projectId)));
     }
 
     @PostMapping("/archive")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentArchiveRecordDTO>> archiveDocument(
             @PathVariable Long projectId,
             @Valid @RequestBody DocumentArchiveRecordCreateRequest request) {

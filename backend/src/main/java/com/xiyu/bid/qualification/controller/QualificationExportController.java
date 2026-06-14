@@ -37,6 +37,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/knowledge/qualifications")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class QualificationExportController {
 
     private final QualificationWebService qualificationWebService;
@@ -45,7 +46,7 @@ public class QualificationExportController {
     private final BatchAttachmentService batchAttachmentService;
 
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "EXPORT", entityType = "Qualification", description = "导出资质证书")
     public void exportQualifications(
             @RequestParam(required = false) String keyword,
@@ -66,7 +67,7 @@ public class QualificationExportController {
     }
 
     @PostMapping("/batch-export")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "EXPORT", entityType = "Qualification", description = "批量导出资质台账")
     public ResponseEntity<byte[]> batchExport(@RequestBody Map<String, List<Long>> body) throws IOException {
         List<Long> ids = body.get("ids");
@@ -78,7 +79,7 @@ public class QualificationExportController {
     }
 
     @PostMapping("/batch-download")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ADMIN_STAFF', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "EXPORT", entityType = "Qualification", description = "批量下载资质附件")
     public ResponseEntity<byte[]> batchDownload(@RequestBody Map<String, List<Long>> body) throws IOException {
         List<Long> ids = body.get("ids");

@@ -32,6 +32,7 @@ import java.util.Map;
 @RequestMapping("/api/projects/{projectId}/drafting")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectDraftingController {
 
     private final ProjectDraftingService service;

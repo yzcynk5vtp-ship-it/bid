@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/audit")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AuditLogController {
 
     private final IAuditLogService auditLogService;

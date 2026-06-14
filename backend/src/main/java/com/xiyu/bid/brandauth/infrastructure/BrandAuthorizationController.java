@@ -27,6 +27,7 @@ import java.util.List;
 // @RestController
 // @RequestMapping("/api/knowledge/brand-auth")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BrandAuthorizationController {
 
     private final CreateBrandAuthAppService createService;
@@ -43,21 +44,21 @@ public class BrandAuthorizationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "BrandAuthorization", description = "获取品牌授权列表")
     public ResponseEntity<ApiResponse<List<BrandAuthorizationDTO>>> list() {
         return ResponseEntity.ok(ApiResponse.success("品牌授权列表获取成功", listService.list()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "BrandAuthorization", description = "获取品牌授权详情")
     public ResponseEntity<ApiResponse<BrandAuthorizationDTO>> get(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("品牌授权详情获取成功", listService.get(id)));
     }
 
     @GetMapping("/brand/{brandName}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BrandAuthorizationDTO>>> byBrand(@PathVariable String brandName) {
         return ResponseEntity.ok(ApiResponse.success("按品牌查询成功", listService.byBrand(brandName)));
     }

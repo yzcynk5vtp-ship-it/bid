@@ -46,6 +46,7 @@ import java.util.Arrays;
 @RestController
 @RequestMapping("/api/knowledge/warehouses")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class WarehouseController {
 
     private static final String PERM = RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION;

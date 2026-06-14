@@ -18,12 +18,13 @@ import java.time.LocalDate;
 @RequestMapping("/api/workbench")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class WorkbenchScheduleController {
 
     private final WorkbenchScheduleQueryService workbenchScheduleQueryService;
 
     @GetMapping("/schedule-overview")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ScheduleOverviewDTO>> getScheduleOverview(
             @RequestParam LocalDate start,
             @RequestParam LocalDate end,

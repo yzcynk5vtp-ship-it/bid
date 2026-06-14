@@ -49,6 +49,7 @@ import java.util.*;
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST', 'TASK_EXECUTOR', 'ADMIN_STAFF')")
 public class TenderController {
 
     private final TenderQueryService tenderQueryService;

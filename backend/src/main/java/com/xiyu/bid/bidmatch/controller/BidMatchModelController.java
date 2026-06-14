@@ -22,12 +22,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bid-match/models")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BidMatchModelController {
 
     private final BidMatchModelAppService modelAppService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BidMatchModelResponse>>> listModels() {
         return ResponseEntity.ok(ApiResponse.success(modelAppService.listModels()));
     }

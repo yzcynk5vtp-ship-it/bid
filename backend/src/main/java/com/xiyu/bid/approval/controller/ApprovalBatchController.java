@@ -19,6 +19,7 @@ import java.util.*;
 @Tag(name = "审批批量操作", description = "批量审批通过/驳回")
 @RequestMapping("/api/approvals/batch")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ApprovalBatchController {
 
     private final ApprovalWorkflowService approvalWorkflowService;

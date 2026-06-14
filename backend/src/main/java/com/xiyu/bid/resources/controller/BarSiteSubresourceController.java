@@ -35,12 +35,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/resources/bar-assets/{assetId}")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BarSiteSubresourceController {
 
     private final BarSiteSubresourceService barSiteSubresourceService;
 
     @GetMapping("/accounts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BarSiteAccountDTO>>> getAccounts(@PathVariable Long assetId) {
         return ResponseEntity.ok(ApiResponse.success(barSiteSubresourceService.getAccounts(assetId)));
     }
@@ -85,7 +86,7 @@ public class BarSiteSubresourceController {
     }
 
     @PostMapping("/verify")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "VERIFY", entityType = "BarAsset", description = "Verify BAR site")
     public ResponseEntity<ApiResponse<BarSiteVerificationDTO>> verify(
             @PathVariable Long assetId,
@@ -96,13 +97,13 @@ public class BarSiteSubresourceController {
     }
 
     @GetMapping("/verification-records")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BarSiteVerificationDTO>>> getVerificationRecords(@PathVariable Long assetId) {
         return ResponseEntity.ok(ApiResponse.success(barSiteSubresourceService.getVerificationRecords(assetId)));
     }
 
     @GetMapping("/sop")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BarSiteSopRequest>> getSop(@PathVariable Long assetId) {
         return ResponseEntity.ok(ApiResponse.success(barSiteSubresourceService.getSop(assetId)));
     }
@@ -118,13 +119,13 @@ public class BarSiteSubresourceController {
     }
 
     @GetMapping("/attachments")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BarSiteAttachmentDTO>>> getAttachments(@PathVariable Long assetId) {
         return ResponseEntity.ok(ApiResponse.success(barSiteSubresourceService.getAttachments(assetId)));
     }
 
     @PostMapping("/attachments")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "BarSiteAttachment", description = "Create BAR site attachment")
     public ResponseEntity<ApiResponse<BarSiteAttachmentDTO>> createAttachment(
             @PathVariable Long assetId,

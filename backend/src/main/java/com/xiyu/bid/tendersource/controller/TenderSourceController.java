@@ -34,6 +34,7 @@ import java.util.List;
 @RequestMapping("/api/tender-sources")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TenderSourceController {
 
     private final TenderSourceConnectionTestService tenderSourceConnectionTestService;
@@ -43,7 +44,7 @@ public class TenderSourceController {
      * 获取标讯源配置。
      */
     @GetMapping("/config")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderSourceConfigResponse>> getConfig() {
         log.info("GET /api/tender-sources/config - Fetching source configuration");
         TenderSourceConfig config = tenderSourceConfigService.getConfig();
@@ -60,7 +61,7 @@ public class TenderSourceController {
      * 仅 bid_admin 可写（通过菜单权限校验）。
      */
     @PutMapping("/config")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderSourceConfigResponse>> saveConfig(
             @Valid @RequestBody TenderSourceConfigSaveRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -87,7 +88,7 @@ public class TenderSourceController {
      * 测试标讯源连接。
      */
     @PostMapping("/test-connection")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderSourceTestResponse>> testConnection(
             @Valid @RequestBody TenderSourceTestRequest request) {
         log.info("POST /api/tender-sources/test-connection - Testing connection for platform: {}",

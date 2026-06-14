@@ -33,12 +33,13 @@ import java.util.Locale;
 @RequestMapping("/api/customer-opportunities")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class CustomerOpportunityController {
 
     private final CustomerOpportunityAppService customerOpportunityAppService;
 
     @GetMapping("/insights")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CustomerInsightDTO>>> getCustomerInsights(@ModelAttribute CustomerInsightQuery query) {
         log.info("GET /api/customer-opportunities/insights - Fetching customer insights with filters");
         List<CustomerInsightDTO> insights = customerOpportunityAppService.getCustomerInsights(query);
@@ -46,14 +47,14 @@ public class CustomerOpportunityController {
     }
 
     @GetMapping("/{purchaserHash}/purchases")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CustomerPurchaseDTO>>> getCustomerPurchases(@PathVariable String purchaserHash) {
         List<CustomerPurchaseDTO> purchases = customerOpportunityAppService.getCustomerPurchases(purchaserHash);
         return ResponseEntity.ok(ApiResponse.success("Successfully retrieved customer purchases", purchases));
     }
 
     @GetMapping("/{purchaserHash}/predictions")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CustomerPredictionDTO>>> getCustomerPredictions(@PathVariable String purchaserHash) {
         List<CustomerPredictionDTO> predictions = customerOpportunityAppService.getCustomerPredictions(purchaserHash);
         return ResponseEntity.ok(ApiResponse.success("Successfully retrieved customer predictions", predictions));

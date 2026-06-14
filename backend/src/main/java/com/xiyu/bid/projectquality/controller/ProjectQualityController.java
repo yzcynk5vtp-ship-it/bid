@@ -15,24 +15,25 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/projects/{projectId}/quality-checks")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectQualityController {
 
     private final ProjectQualityService projectQualityService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectQualityCheckResponse>> runQualityCheck(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(projectQualityService.runQualityCheck(projectId)));
     }
 
     @GetMapping("/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectQualityCheckResponse>> getLatest(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(projectQualityService.getLatest(projectId)));
     }
 
     @PostMapping("/{checkId}/issues/{issueId}/adopt")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectQualityCheckResponse>> adoptIssue(
             @PathVariable Long projectId,
             @PathVariable Long checkId,
@@ -41,7 +42,7 @@ public class ProjectQualityController {
     }
 
     @PostMapping("/{checkId}/issues/{issueId}/ignore")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectQualityCheckResponse>> ignoreIssue(
             @PathVariable Long projectId,
             @PathVariable Long checkId,

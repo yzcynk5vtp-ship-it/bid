@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/settings")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class SettingsController {
 
     private final SettingsService settingsService;

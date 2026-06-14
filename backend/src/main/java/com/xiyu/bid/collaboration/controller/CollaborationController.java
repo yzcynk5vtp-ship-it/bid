@@ -38,6 +38,7 @@ import java.util.List;
 @RequestMapping("/api/collaboration")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class CollaborationController {
 
     private final CollaborationService collaborationService;
@@ -46,7 +47,7 @@ public class CollaborationController {
      * 根据项目ID获取讨论线程列表
      */
     @GetMapping("/threads")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CollaborationThreadDTO>>> getThreads(
             @RequestParam(required = false) Long projectId) {
 
@@ -66,7 +67,7 @@ public class CollaborationController {
      * 根据ID获取讨论线程
      */
     @GetMapping("/threads/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CollaborationThreadDTO>> getThreadById(
             @PathVariable Long id) {
         log.info("GET /api/collaboration/threads/{} - Fetching thread", id);
@@ -114,7 +115,7 @@ public class CollaborationController {
      * 添加评论
      */
     @PostMapping("/threads/{id}/comments")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CommentDTO>> addComment(
             @PathVariable Long id,
             @Valid @RequestBody CommentCreateRequest request) {
@@ -132,7 +133,7 @@ public class CollaborationController {
      * 更新评论
      */
     @PutMapping("/comments/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CommentDTO>> updateComment(
             @PathVariable Long id,
             @Valid @RequestBody CommentUpdateRequest request) {
@@ -149,7 +150,7 @@ public class CollaborationController {
      * 删除评论（软删除）
      */
     @DeleteMapping("/comments/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
             @PathVariable Long id) {
         log.info("DELETE /api/collaboration/comments/{} - Deleting comment", id);
@@ -162,7 +163,7 @@ public class CollaborationController {
      * 获取提及特定用户的评论
      */
     @GetMapping("/mentions")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CommentDTO>>> getMentions(
             @RequestParam(required = false) Long userId) {
 
