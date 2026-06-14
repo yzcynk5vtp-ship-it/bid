@@ -27,6 +27,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.xiyu.bid.businessqualification.application.service.ImportQualificationAppService.ImportSummary;
+
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -94,20 +96,7 @@ public class QualificationExportController {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String operatorName = auth != null ? auth.getName() : "系统导入";
         var summary = qualificationWebService.importFromExcel(file, operatorName);
-        Map<String, Object> result = Map.of(
-                "total", summary.total(),
-                "success", summary.success(),
-                "failed", summary.failed(),
-                "errors", summary.results().stream()
-                        .filter(r -> !r.isSuccess())
-                        .map(r -> Map.of(
-                                "row", r.getRowNumber(),
-                                "certificateNo", r.getCertificateNo(),
-                                "reason", r.getFailureReason()
-                        ))
-                        .toList()
-        );
-        return ResponseEntity.ok(ApiResponse.success("Import completed", result));
+        return ResponseEntity.ok(ApiResponse.success("Import completed", toImportResult(summary)));
     }
 
     @PostMapping("/import-combined")
@@ -122,19 +111,7 @@ public class QualificationExportController {
 
         // Step 1: Import Excel ledger
         var importSummary = qualificationWebService.importFromExcel(excelFile, operatorName);
-        Map<String, Object> importResult = Map.of(
-                "total", importSummary.total(),
-                "success", importSummary.success(),
-                "failed", importSummary.failed(),
-                "errors", importSummary.results().stream()
-                        .filter(r -> !r.isSuccess())
-                        .map(r -> Map.of(
-                                "row", r.getRowNumber(),
-                                "certificateNo", r.getCertificateNo(),
-                                "reason", r.getFailureReason()
-                        ))
-                        .toList()
-        );
+        Map<String, Object> importResult = toImportResult(importSummary);
 
         // Step 2: Process attachments if provided
         Object attachResult = null;
@@ -147,6 +124,22 @@ public class QualificationExportController {
         combined.put("attachments", attachResult);
 
         return ResponseEntity.ok(ApiResponse.success("导入完成", combined));
+    }
+
+    private Map<String, Object> toImportResult(ImportSummary summary) {
+        return Map.of(
+                "total", summary.total(),
+                "success", summary.success(),
+                "failed", summary.failed(),
+                "errors", summary.results().stream()
+                        .filter(r -> !r.isSuccess())
+                        .map(r -> Map.of(
+                                "row", r.getRowNumber(),
+                                "certificateNo", r.getCertificateNo(),
+                                "reason", r.getFailureReason()
+                        ))
+                        .toList()
+        );
     }
 
     @PostMapping("/batch-attach")

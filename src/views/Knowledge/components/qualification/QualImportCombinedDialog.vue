@@ -47,7 +47,7 @@
         </el-upload>
         <div class="attach-naming-guide">
           <p class="guide-title"><el-icon><InfoFilled /></el-icon> 文件命名规范</p>
-          <p class="guide-format"><code>QUAL_{{'{'}}证书编号{{'}'}}_{'{'}}序号{{'}'}}_{'{'}}文件名{{'}'}}.{{'{'}}扩展名{{'}'}}</code></p>
+          <p class="guide-format"><code>QUAL_{证书编号}_{序号}_{文件名}.{扩展名}</code></p>
           <p class="guide-example">示例：<code>QUAL_QC-2023-08812_01_ISO认证.pdf</code></p>
           <p class="guide-zip">支持上传 <code>.zip</code> 压缩包，包内文件按上述规范命名，系统自动解压匹配</p>
         </div>
@@ -203,27 +203,27 @@ const handleClosed = () => {
 
 <style scoped>
 .upload-section { margin-bottom: 20px; }
-.section-title { font-weight: 600; margin: 0 0 10px; color: #1f2937; display: flex; align-items: center; gap: 8px; }
-.step-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--el-color-primary); color: #fff; font-size: 12px; font-weight: 700; }
+.section-title { font-weight: 600; margin: 0 0 10px; color: var(--gray-900); display: flex; align-items: center; gap: 8px; }
+.step-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--el-color-primary); color: var(--el-bg-color); font-size: 12px; font-weight: 700; }
 .required { color: var(--el-color-danger); }
 .optional { color: var(--el-text-color-secondary); font-weight: 400; font-size: 12px; }
 .upload-area { margin-bottom: 8px; }
 .upload-hint { font-size: 12px; color: var(--el-text-color-secondary); }
 
 .attach-naming-guide {
-  background: var(--el-color-primary-light-9, #ecf5ff);
-  border: 1px solid var(--el-color-primary-light-5, #a0cfff);
+  background: var(--el-color-primary-light-9);
+  border: 1px solid var(--el-color-primary-light-5);
   border-radius: 8px;
   padding: 12px 14px;
 }
 .guide-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--el-color-primary); margin: 0 0 6px; font-size: 13px; }
 .guide-format { margin: 0 0 4px; }
-.guide-format code, .guide-example code { background: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--gray-750); }
+.guide-format code, .guide-example code { background: var(--el-bg-color); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--gray-750); }
 .guide-example { margin: 0; font-size: 12px; color: var(--gray-550); }
 .guide-zip { margin: 6px 0 0; font-size: 12px; color: var(--gray-550); }
 
 .result-section { margin-bottom: 24px; }
-.result-heading { margin: 0 0 12px; font-weight: 600; color: #1f2937; }
+.result-heading { margin: 0 0 12px; font-weight: 600; color: var(--gray-900); }
 .result-summary { display: flex; gap: 24px; justify-content: center; padding: 12px 0; }
 .result-stat { text-align: center; }
 .stat-num { display: block; font-size: 32px; font-weight: 700; color: var(--gray-750); }

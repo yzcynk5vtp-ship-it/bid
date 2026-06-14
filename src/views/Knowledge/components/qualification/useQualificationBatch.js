@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '@/api/client'
 
-export function useQualificationBatch({ fetchQualifications }) {
+export function useQualificationBatch() {
   const tableRef = ref(null)
   const selectedRows = ref([])
   const selectedCount = computed(() => selectedRows.value.length)

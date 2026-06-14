@@ -119,7 +119,6 @@
     />
     <QualBatchUploadDialog
       v-model="batchUploadVisible"
-      
       @closed="fetchQualifications"
     />
     <RetireConfirmDialog
@@ -138,7 +137,6 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Document, Download } from '@element-plus/icons-vue'
 import http from '@/api/client'
 import { useQualificationBatch } from './components/qualification/useQualificationBatch.js'
-import { useQualificationStore } from '@/stores/qualification'
 import { useUserStore } from '@/stores/user.js'
 import QualFormDialog from './components/qualification/QualFormDialog.vue'
 import AlertConfigDialog from './components/qualification/AlertConfigDialog.vue'
@@ -150,10 +148,8 @@ import QualDetailDrawer from './components/qualification/QualDetailDrawer.vue'
 import RetireConfirmDialog from './components/qualification/RetireConfirmDialog.vue'
 
 const userStore = useUserStore()
-const qualificationStore = useQualificationStore()
 const {
   canManageQualification,
-  canViewQualification,
   canAdminQualificationAlert
 } = useQualificationPermissionMatrix(userStore)
 
@@ -220,7 +216,7 @@ const {
   handleSelectionChange,
   handleBatchExport,
   handleBatchDownload
-} = useQualificationBatch({ fetchQualifications })
+} = useQualificationBatch()
 
 const resetFilters = () => { Object.assign(filters, { keyword:'', issuer:'', expiryRange:null, statuses:[], level:'' }); page.value = 1; fetchQualifications() }
 const getStatusTagType = (row) => { const s = (row.status || '').toLowerCase(); if (s === 'in_stock' || s === 'valid') return 'success'; if (s === 'expiring') return 'warning'; if (s === 'expired') return 'danger'; return 'info' }
@@ -376,20 +372,6 @@ const handleDownloadFile = async (row) => {
 onMounted(async () => {
   await fetchQualifications()
 })
-
-const downloadTemplate = async () => {
-  try {
-    const resp = await http.get('/api/knowledge/qualifications/template', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([resp.data]))
-    const a = document.createElement('a')
-    a.href = url
-    a.download = '资质证书导入模板.xlsx'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    window.URL.revokeObjectURL(url)
-  } catch { ElMessage.warning('模板下载失败，请稍后重试') }
-}
 </script>
 
 <style scoped lang="scss">
