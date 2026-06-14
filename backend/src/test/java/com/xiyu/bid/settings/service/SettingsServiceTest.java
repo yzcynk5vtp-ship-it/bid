@@ -2,8 +2,8 @@ package com.xiyu.bid.settings.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.platform.util.PasswordEncryptionUtil;
+import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.settings.dto.SettingsResponse;
 import com.xiyu.bid.settings.dto.SettingsUpdateRequest;
 import com.xiyu.bid.settings.repository.SystemSettingRepository;
@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
@@ -24,10 +25,14 @@ import static org.mockito.Mockito.mock;
 
 @DataJpaTest
 @ActiveProfiles("test")
+@Import({AiConfigService.class, PasswordEncryptionUtil.class, AiProviderCatalog.class})
 class SettingsServiceTest {
 
     @Autowired
     private SystemSettingRepository systemSettingRepository;
+
+    @Autowired
+    private AiConfigService aiConfigService;
 
     private UserRepository userRepository;
     private ObjectMapper objectMapper;
@@ -40,9 +45,7 @@ class SettingsServiceTest {
         userRepository = mock(UserRepository.class);
         objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
-        aiProviderCatalog = new AiProviderCatalog();
         payloadMapper = new SettingsPayloadMapper(new SettingsDefaultPayloadFactory());
-        AiConfigService aiConfigService = mock(AiConfigService.class);
         settingsService = new SettingsService(
                 systemSettingRepository,
                 userRepository,
@@ -92,13 +95,12 @@ class SettingsServiceTest {
                         .build())
                 .build());
 
-        AiConfigService reloadedAiConfigService = mock(AiConfigService.class);
         SettingsService reloadedService = new SettingsService(
                 systemSettingRepository,
                 userRepository,
                 objectMapper,
                 payloadMapper,
-                reloadedAiConfigService
+                aiConfigService  // 使用同一个真实实例
         );
         SettingsResponse reloaded = reloadedService.getSettings();
 
