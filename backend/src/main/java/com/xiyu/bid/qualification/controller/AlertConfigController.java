@@ -24,19 +24,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/qualifications/alert-config")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AlertConfigController {
 
     private final AlertConfigAppService alertConfigAppService;
 
     @GetMapping
-    @PreAuthorize("hasRole('BID_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AlertConfig>> getConfig() {
         AlertConfig config = alertConfigAppService.getConfig();
         return ResponseEntity.ok(ApiResponse.success("Alert config retrieved successfully", config));
     }
 
     @PutMapping
-    @PreAuthorize("hasRole('BID_ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AlertConfig>> updateConfig(
             @RequestBody @NotNull UpdateAlertConfigRequest request) {
         AlertConfig config = alertConfigAppService.updateConfig(request.getAlertDays(), request.isEnabled());

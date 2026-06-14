@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/bid-results")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BidResultCommandController {
 
     private static final String ADMIN_MANAGER_STAFF_EXPR = "hasAnyRole('ADMIN', 'MANAGER', 'STAFF')";

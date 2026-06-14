@@ -33,6 +33,7 @@ import java.util.List;
 @RequestMapping("/api/ai/competition")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class CompetitionIntelController {
 
     private final CompetitionIntelService competitionIntelService;
@@ -41,7 +42,7 @@ public class CompetitionIntelController {
      * 获取所有竞争对手
      */
     @GetMapping("/competitors")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CompetitorDTO>>> getAllCompetitors() {
         log.info("GET /api/ai/competition/competitors - Fetching all competitors");
         List<CompetitorDTO> competitors = competitionIntelService.getAllCompetitors();
@@ -65,7 +66,7 @@ public class CompetitionIntelController {
      * 获取项目的竞争分析
      */
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CompetitionAnalysisDTO>>> getAnalysisByProject(
             @PathVariable Long projectId) {
         log.info("GET /api/ai/competition/project/{} - Fetching competition analysis", projectId);
@@ -102,7 +103,7 @@ public class CompetitionIntelController {
      * 获取竞争对手历史表现
      */
     @GetMapping("/competitor/{id}/history")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<CompetitionAnalysisDTO>>> getHistoricalPerformance(
             @PathVariable Long id) {
         log.info("GET /api/ai/competition/competitor/{}/history - Fetching historical performance", id);

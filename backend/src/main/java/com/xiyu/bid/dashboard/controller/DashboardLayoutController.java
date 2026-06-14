@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/dashboard/layout")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class DashboardLayoutController {
 
     private final DashboardLayoutService dashboardLayoutService;

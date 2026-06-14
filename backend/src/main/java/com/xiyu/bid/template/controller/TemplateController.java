@@ -42,12 +42,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/knowledge/templates")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TemplateController {
 
     private final TemplateService templateService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Template", description = "创建模板")
     public ResponseEntity<ApiResponse<TemplateDTO>> createTemplate(@Valid @RequestBody TemplateMutationRequest request) {
         sanitizeTemplateMutationRequest(request);
@@ -56,7 +57,7 @@ public class TemplateController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Template", description = "获取所有模板")
     public ResponseEntity<ApiResponse<List<TemplateDTO>>> getAllTemplates(
             @RequestParam(required = false) String name,
@@ -82,7 +83,7 @@ public class TemplateController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Template", description = "根据ID获取模板")
     public ResponseEntity<ApiResponse<TemplateDTO>> getTemplateById(@PathVariable Long id) {
         TemplateDTO template = templateService.getTemplateById(id);
@@ -90,7 +91,7 @@ public class TemplateController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "UPDATE", entityType = "Template", description = "更新模板")
     public ResponseEntity<ApiResponse<TemplateDTO>> updateTemplate(@PathVariable Long id, @Valid @RequestBody TemplateMutationRequest request) {
         sanitizeTemplateMutationRequest(request);
@@ -99,7 +100,7 @@ public class TemplateController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "DELETE", entityType = "Template", description = "删除模板")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long id) {
         templateService.deleteTemplate(id);
@@ -107,7 +108,7 @@ public class TemplateController {
     }
 
     @GetMapping("/category/{category}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Template", description = "根据类别获取模板")
     public ResponseEntity<ApiResponse<List<TemplateDTO>>> getTemplatesByCategory(@PathVariable com.xiyu.bid.entity.Template.Category category) {
         List<TemplateDTO> templates = templateService.getTemplatesByCategory(category);
@@ -115,7 +116,7 @@ public class TemplateController {
     }
 
     @GetMapping("/creator/{createdBy}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Template", description = "根据创建者获取模板")
     public ResponseEntity<ApiResponse<List<TemplateDTO>>> getTemplatesByCreator(@PathVariable Long createdBy) {
         List<TemplateDTO> templates = templateService.getTemplatesByCreatedBy(createdBy);
@@ -123,7 +124,7 @@ public class TemplateController {
     }
 
     @PostMapping("/{id}/copy")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Template", description = "复制模板")
     public ResponseEntity<ApiResponse<TemplateDTO>> copyTemplate(@PathVariable Long id, @Valid @RequestBody TemplateCopyRequest request) {
         request.setName(InputSanitizer.sanitizeString(request.getName(), 200));
@@ -132,7 +133,7 @@ public class TemplateController {
     }
 
     @GetMapping("/{id}/versions")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Template", description = "获取模板版本历史")
     public ResponseEntity<ApiResponse<List<TemplateVersionDTO>>> getTemplateVersions(@PathVariable Long id) {
         List<TemplateVersionDTO> versions = templateService.getTemplateVersions(id);
@@ -140,7 +141,7 @@ public class TemplateController {
     }
 
     @PostMapping("/{id}/use-records")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Template", description = "记录模板使用")
     public ResponseEntity<ApiResponse<TemplateUseRecordDTO>> createTemplateUseRecord(@PathVariable Long id, @Valid @RequestBody TemplateUseRecordRequest request) {
         request.setDocumentName(InputSanitizer.sanitizeString(request.getDocumentName(), 255));
@@ -150,7 +151,7 @@ public class TemplateController {
     }
 
     @PostMapping("/{id}/downloads")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Template", description = "记录模板下载")
     public ResponseEntity<ApiResponse<TemplateDTO>> createTemplateDownloadRecord(@PathVariable Long id, @RequestBody(required = false) TemplateDownloadRecordRequest request) {
         TemplateDTO updated = templateService.createTemplateDownloadRecord(id, request);

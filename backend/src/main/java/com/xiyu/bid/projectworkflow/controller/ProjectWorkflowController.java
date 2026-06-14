@@ -48,6 +48,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/projects/{projectId}")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectWorkflowController {
 
     private static final int MAX_TASK_CONTENT_CHARS = 20_000;
@@ -58,13 +59,13 @@ public class ProjectWorkflowController {
     private final BidProcessService bidProcessService;
 
     @GetMapping("/tasks")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectTaskViewDTO>>> getProjectTasks(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(projectWorkflowService.getProjectTasks(projectId)));
     }
 
     @PostMapping("/tasks")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectTaskViewDTO>> createProjectTask(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectTaskCreateRequest request,
@@ -76,7 +77,7 @@ public class ProjectWorkflowController {
     }
 
     @PostMapping("/tasks/decompose")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectTaskViewDTO>>> decomposeProjectTasks(@PathVariable Long projectId) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Project tasks decomposed from tender breakdown successfully",
@@ -84,7 +85,7 @@ public class ProjectWorkflowController {
     }
 
     @PatchMapping("/tasks/{taskId}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectTaskViewDTO>> updateProjectTaskStatus(
             @PathVariable Long projectId,
             @PathVariable Long taskId,
@@ -95,13 +96,13 @@ public class ProjectWorkflowController {
     }
 
     @GetMapping("/reminders")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectReminderDTO>>> getProjectReminders(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(projectWorkflowService.getProjectReminders(projectId)));
     }
 
     @PostMapping("/reminders")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectReminderDTO>> createProjectReminder(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectReminderCreateRequest request) {
@@ -112,13 +113,13 @@ public class ProjectWorkflowController {
     }
 
     @GetMapping("/share-links")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectShareLinkDTO>>> getProjectShareLinks(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(projectWorkflowService.getProjectShareLinks(projectId)));
     }
 
     @PostMapping("/share-links")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectShareLinkDTO>> createProjectShareLink(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectShareLinkCreateRequest request) {
@@ -129,7 +130,7 @@ public class ProjectWorkflowController {
     }
 
     @PostMapping("/score-drafts/parse")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectScoreDraftParseResponse>> parseProjectScoreDrafts(
             @PathVariable Long projectId,
             @RequestParam("file") MultipartFile file) {
@@ -139,13 +140,13 @@ public class ProjectWorkflowController {
     }
 
     @GetMapping("/score-drafts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectScoreDraftDTO>>> getProjectScoreDrafts(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(projectWorkflowService.getProjectScoreDrafts(projectId)));
     }
 
     @PatchMapping("/score-drafts/{draftId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectScoreDraftDTO>> updateProjectScoreDraft(
             @PathVariable Long projectId,
             @PathVariable Long draftId,
@@ -156,7 +157,7 @@ public class ProjectWorkflowController {
     }
 
     @PostMapping("/score-drafts/generate-tasks")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectTaskViewDTO>>> generateProjectTasksFromScoreDrafts(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectScoreDraftGenerateRequest request) {
@@ -166,7 +167,7 @@ public class ProjectWorkflowController {
     }
 
     @DeleteMapping("/score-drafts")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> clearProjectScoreDrafts(@PathVariable Long projectId) {
         projectWorkflowService.clearNonGeneratedDrafts(projectId);
         return ResponseEntity.ok(ApiResponse.success("Project score drafts cleared successfully", null));
@@ -175,7 +176,7 @@ public class ProjectWorkflowController {
     // --- Deliverable endpoints ---
 
     @GetMapping("/tasks/{taskId}/deliverables")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<TaskDeliverableDTO>>> getTaskDeliverables(
             @PathVariable Long projectId,
             @PathVariable Long taskId) {
@@ -184,7 +185,7 @@ public class ProjectWorkflowController {
     }
 
     @PostMapping("/tasks/{taskId}/deliverables")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TaskDeliverableDTO>> createTaskDeliverable(
             @PathVariable Long projectId,
             @PathVariable Long taskId,
@@ -195,7 +196,7 @@ public class ProjectWorkflowController {
     }
 
     @DeleteMapping("/tasks/{taskId}/deliverables/{deliverableId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deleteTaskDeliverable(
             @PathVariable Long projectId,
             @PathVariable Long taskId,
@@ -205,7 +206,7 @@ public class ProjectWorkflowController {
     }
 
     @GetMapping("/tasks/{taskId}/deliverables/coverage")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DeliverableCoverageDTO>> getDeliverableCoverage(
             @PathVariable Long projectId,
             @PathVariable Long taskId) {
@@ -224,7 +225,7 @@ public class ProjectWorkflowController {
     }
 
     @GetMapping("/bid-process-status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidProcessService.BidProcessStatusDTO>> getBidProcessStatus(
             @PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success(

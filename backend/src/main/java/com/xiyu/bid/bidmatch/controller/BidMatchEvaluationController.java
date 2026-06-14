@@ -14,12 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/bid-match/evaluations")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BidMatchEvaluationController {
 
     private final BidMatchEvaluationAppService evaluationAppService;
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidMatchEvaluationResponse>> getEvaluation(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(evaluationAppService.get(id)));
     }

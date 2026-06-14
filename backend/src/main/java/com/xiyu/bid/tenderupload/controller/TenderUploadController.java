@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping({"/api/tenders", "/v1/tenders"})
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TenderUploadController {
 
     private static final String ACCESS_EXPR = "hasAnyRole('ADMIN', 'MANAGER', 'STAFF')";

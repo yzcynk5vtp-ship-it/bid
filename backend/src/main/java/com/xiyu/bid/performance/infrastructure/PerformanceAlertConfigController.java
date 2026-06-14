@@ -23,18 +23,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/knowledge/performance/alert-config")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class PerformanceAlertConfigController {
 
     private final PerformanceAlertConfigAppService service;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PerformanceAlertConfig>> getConfig() {
         return ResponseEntity.ok(ApiResponse.success("ok", service.getConfig()));
     }
 
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PerformanceAlertConfig>> updateConfig(
             @RequestBody @NotNull UpdateRequest request) {
         PerformanceAlertConfig config = service.updateConfig(

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/batch/tenders")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class BatchTenderController {
 
     private final BatchOperationService batchOperationService;
@@ -26,7 +27,7 @@ public class BatchTenderController {
     private final AuthService authService;
 
     @PostMapping("/claim")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BatchOperationResponse>> batchClaimTenders(
             @Valid @RequestBody BatchClaimRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -50,7 +51,7 @@ public class BatchTenderController {
     }
 
     @PostMapping("/assign")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BatchOperationResponse>> batchAssignTenders(
             @Valid @RequestBody BatchTenderAssignRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {

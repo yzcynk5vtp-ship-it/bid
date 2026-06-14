@@ -47,6 +47,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/knowledge/qualifications")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class QualificationController {
 
     private final QualificationService qualificationService;

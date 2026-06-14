@@ -41,6 +41,7 @@ import java.util.UUID;
 @RequestMapping("/api/export")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ExportController {
     private static final String ADMIN_MANAGER_STAFF_EXPR = "hasAnyRole('ADMIN', 'MANAGER', 'STAFF')";
 

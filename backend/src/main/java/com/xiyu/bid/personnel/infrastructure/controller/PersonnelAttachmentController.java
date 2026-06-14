@@ -25,6 +25,7 @@ import java.util.List;
 @RequestMapping("/api/knowledge/personnel")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class PersonnelAttachmentController {
 
     private final BatchAttachmentAppService batchAttachmentService;

@@ -17,6 +17,7 @@ import java.time.LocalDate;
 @RequestMapping("/api/workbench")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class WorkbenchDeadlineController {
 
     private final WorkbenchDeadlineQueryService deadlineQueryService;

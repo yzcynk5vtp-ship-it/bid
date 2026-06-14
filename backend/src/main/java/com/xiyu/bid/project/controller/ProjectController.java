@@ -44,13 +44,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Validated
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectController {
 
     private final ProjectService projectService;
     private final ProjectExportService projectExportService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'BID_ADMIN', 'BID_LEAD', 'SALES', 'BID_SPECIALIST', 'TASK_EXECUTOR', 'ADMIN_STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @DataScope(deptAlias = "department_id", userAlias = "manager_id")
     public ResponseEntity<ApiResponse<List<ProjectDTO>>> getAllProjects(
             @RequestParam(required = false) String name,

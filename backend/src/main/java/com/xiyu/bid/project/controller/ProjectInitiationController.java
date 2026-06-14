@@ -33,6 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/projects/{projectId}/initiation")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectInitiationController {
 
     private final ProjectInitiationService service;

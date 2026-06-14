@@ -17,18 +17,19 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/api/integrations/organization/operations")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class OrganizationOperationsController {
     private final OrganizationOperationsAppService operationsAppService;
     private final OrganizationEventRetryAppService retryAppService;
 
     @GetMapping("/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public OrganizationOperationsStatusResponse status() {
         return operationsAppService.status();
     }
 
     @PostMapping("/dead-letters/{eventKey}/replay")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public OrganizationEventWebhookResponse replayDeadLetter(@PathVariable String eventKey) {
         return retryAppService.replayDeadLetter(eventKey, LocalDateTime.now());
     }

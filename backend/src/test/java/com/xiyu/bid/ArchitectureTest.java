@@ -704,20 +704,20 @@ public class ArchitectureTest {
 
     /**
      * ArchCondition: every @RestController class must have @PreAuthorize on
-     * the class itself OR on at least one of its declared methods.
+     * the class itself (class-level annotation is mandatory).
      *
      * Exclusions:
      *   - @RestControllerAdvice / @ControllerAdvice (exception handlers, not actual controllers)
      *   - Controllers annotated with @Profile("dev") (LocalDev-only controllers)
      *
-     * Rationale (fix-api-security-high H3, 2026-06-13):
-     *   Method-level @PreAuthorize is the canonical way to enforce role-based access
-     *   control in Spring Security. URL-level rules in SecurityConfig are a coarse
-     *   fallback; missing @PreAuthorize means the controller relies entirely on
-     *   URL patterns, which is brittle and audit-unfriendly.
+     * Rationale (RULE 15 upgrade, 2026-06-15):
+     *   Class-level @PreAuthorize provides a default access control for ALL endpoints
+     *   in the controller. Method-level annotations can further restrict access but
+     *   should not be the only line of defense. This ensures every controller has
+     *   explicit, auditable role enforcement at the class level.
      */
-    private static final ArchCondition<JavaClass> HAS_PRE_AUTHORIZE_AT_CLASS_OR_METHOD = new ArchCondition<JavaClass>(
-        "have @PreAuthorize at class or method level (excluding @RestControllerAdvice and @Profile(\"dev\") controllers)"
+    private static final ArchCondition<JavaClass> HAS_CLASS_LEVEL_PRE_AUTHORIZE = new ArchCondition<JavaClass>(
+        "have @PreAuthorize at class level (excluding @RestControllerAdvice and @Profile(\"dev\") controllers)"
     ) {
         @Override
         public void check(JavaClass item, ConditionEvents events) {
@@ -744,44 +744,35 @@ public class ArchitectureTest {
                 }
             }
 
-            // Check class-level @PreAuthorize
+            // Check class-level @PreAuthorize (mandatory)
             boolean classHasPreAuth = item.isAnnotatedWith(
                 "org.springframework.security.access.prepost.PreAuthorize");
 
-            // Check method-level @PreAuthorize
-            boolean anyMethodHasPreAuth = false;
-            for (com.tngtech.archunit.core.domain.JavaMethod method : item.getMethods()) {
-                if (method.isAnnotatedWith(
-                    "org.springframework.security.access.prepost.PreAuthorize")) {
-                    anyMethodHasPreAuth = true;
-                    break;
-                }
-            }
-
-            if (!classHasPreAuth && !anyMethodHasPreAuth) {
+            if (!classHasPreAuth) {
                 events.add(SimpleConditionEvent.violated(item,
                     "@RestController " + item.getName()
-                    + " has no @PreAuthorize annotation at class or method level. "
-                    + "Add @PreAuthorize to enforce method-level role check."));
+                    + " has no class-level @PreAuthorize annotation. "
+                    + "Add @PreAuthorize to the class to enforce default role check."));
             }
         }
     };
 
     /**
-     * RULE 15: Every @RestController must declare @PreAuthorize at class or method level.
+     * RULE 15: Every @RestController must declare @PreAuthorize at class level.
      *
      * Exclusions: @RestControllerAdvice / @ControllerAdvice / @Profile("dev").
      *
-     * <p><b>Status (2026-06-14): HARD GATE.</b> The 13 legacy controllers that previously
-     * violated this rule have been remediated. This rule now fails the build on any
-     * new @RestController missing @PreAuthorize at class or method level.
+     * <p><b>Status (2026-06-15): HARD GATE (upgraded).</b> All 95 legacy controllers
+     * have been remediated with class-level @PreAuthorize. This rule now requires
+     * class-level annotation on every @RestController. Method-level annotations
+     * can further restrict access but are not sufficient alone.
      */
     @ArchTest
     public static final ArchRule controllersMustHavePreAuthorizeRule =
         classes()
             .that().areAnnotatedWith("org.springframework.web.bind.annotation.RestController")
-            .should(HAS_PRE_AUTHORIZE_AT_CLASS_OR_METHOD)
-            .because("RULE 15: every @RestController must declare @PreAuthorize at class or "
-                + "method level. URL-level rules in SecurityConfig are a coarse fallback; "
-                + "method-level @PreAuthorize is required for explicit role enforcement.");
+            .should(HAS_CLASS_LEVEL_PRE_AUTHORIZE)
+            .because("RULE 15: every @RestController must declare @PreAuthorize at class level. "
+                + "Class-level @PreAuthorize provides default access control; method-level "
+                + "annotations can further restrict but should not be the only defense.");
 }

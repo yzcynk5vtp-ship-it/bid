@@ -30,6 +30,7 @@ import java.util.List;
 @RequestMapping("/api/ai/score-analysis")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ScoreAnalysisController {
 
     private final ScoreAnalysisService scoreAnalysisService;
@@ -40,7 +41,7 @@ public class ScoreAnalysisController {
      * @return 评分分析
      */
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ScoreAnalysisDTO>> getAnalysisByProject(@PathVariable Long projectId) {
         log.info("获取项目{}的评分分析", projectId);
         return ResponseEntity.ok(scoreAnalysisService.getAnalysisByProject(projectId));
@@ -52,7 +53,7 @@ public class ScoreAnalysisController {
      * @return 历史分析列表
      */
     @GetMapping("/project/{projectId}/history")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ScoreAnalysisDTO>>> getAnalysisHistory(@PathVariable Long projectId) {
         log.info("获取项目{}的历史分析", projectId);
         return ResponseEntity.ok(scoreAnalysisService.getAnalysisHistory(projectId));
@@ -78,7 +79,7 @@ public class ScoreAnalysisController {
      * @return 两个项目的评分对比
      */
     @GetMapping("/compare/{id1}/{id2}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ScoreAnalysisDTO>>> compareProjects(
             @PathVariable Long id1, @PathVariable Long id2) {
         log.info("比较项目{}和项目{}的评分", id1, id2);

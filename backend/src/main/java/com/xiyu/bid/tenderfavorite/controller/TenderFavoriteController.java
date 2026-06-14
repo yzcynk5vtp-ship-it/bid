@@ -33,6 +33,7 @@ import java.util.Map;
 @RequestMapping("/api/tender-favorites")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TenderFavoriteController {
 
     private final TenderFavoriteService tenderFavoriteService;
@@ -46,7 +47,7 @@ public class TenderFavoriteController {
      * @return { favorited: true/false }
      */
     @PostMapping("/{tenderId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> toggleFavorite(
             @PathVariable Long tenderId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -65,7 +66,7 @@ public class TenderFavoriteController {
      * @return { ids: [1, 2, 3] }
      */
     @GetMapping("/ids")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, List<Long>>>> getFavoriteIds(
             @AuthenticationPrincipal UserDetails userDetails) {
         log.info("GET /api/tender-favorites/ids - Get favorite IDs");
@@ -81,7 +82,7 @@ public class TenderFavoriteController {
      * @param size 每页条数
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<TenderFavoriteDTO>>> getMyFavorites(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -97,7 +98,7 @@ public class TenderFavoriteController {
      * 取消收藏指定标讯
      */
     @DeleteMapping("/{tenderId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> removeFavorite(
             @PathVariable Long tenderId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -111,7 +112,7 @@ public class TenderFavoriteController {
      * 检查用户是否已收藏某标讯
      */
     @GetMapping("/check/{tenderId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Boolean>>> checkFavorited(
             @PathVariable Long tenderId,
             @AuthenticationPrincipal UserDetails userDetails) {

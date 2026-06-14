@@ -34,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/projects/{projectId}/bid-agent")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class BidDraftAgentController {
 
     private final BidDraftAgentAppService bidDraftAgentAppService;
@@ -47,7 +48,7 @@ public class BidDraftAgentController {
     private final FullAnalysisAppService fullAnalysisAppService;
 
     @PostMapping(value = "/tender-documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidTenderDocumentParseDTO>> importTenderDocument(
             @PathVariable Long projectId,
             @RequestParam("file") MultipartFile file) {
@@ -57,7 +58,7 @@ public class BidDraftAgentController {
     }
 
     @PostMapping("/runs")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidDraftAgentRunDTO>> createRun(
             @PathVariable Long projectId,
             @RequestBody(required = false) BidDraftAgentCreateRunRequest request) {
@@ -67,7 +68,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/runs/{runId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidDraftAgentRunDTO>> getRun(
             @PathVariable Long projectId,
             @PathVariable Long runId) {
@@ -75,7 +76,7 @@ public class BidDraftAgentController {
     }
 
     @PostMapping("/runs/{runId}/apply")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidDraftAgentApplyResponseDTO>> applyRun(
             @PathVariable Long projectId,
             @PathVariable Long runId) {
@@ -83,13 +84,13 @@ public class BidDraftAgentController {
     }
 
     @PostMapping("/reviews")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidDraftAgentReviewDTO>> reviewCurrentDraft(@PathVariable Long projectId) {
         return ResponseEntity.ok(ApiResponse.success("草稿审阅完成", bidDraftAgentAppService.reviewCurrentDraft(projectId)));
     }
 
     @PostMapping("/runs/{runId}/reviews")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidDraftAgentReviewDTO>> reviewRun(
             @PathVariable Long projectId,
             @PathVariable Long runId) {
@@ -97,7 +98,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/qualification-match")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<QualificationMatchResult>> getQualificationMatch(
             @PathVariable Long projectId) {
         QualificationMatchResult result = qualificationMatchAppService.matchForProject(projectId);
@@ -105,7 +106,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/technical-requirements")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TechnicalClassificationAppService.TechnicalClassificationResult>> getTechnicalRequirements(
             @PathVariable Long projectId) {
         var result = technicalClassificationAppService.classifyForProject(projectId);
@@ -113,7 +114,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/commercial-requirements")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CommercialClassificationAppService.CommercialClassificationResult>> getCommercialRequirements(
             @PathVariable Long projectId) {
         var result = commercialClassificationAppService.classifyForProject(projectId);
@@ -121,7 +122,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/risk-classification")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RiskClassificationAppService.RiskClassificationResult>> getRiskClassification(
             @PathVariable Long projectId) {
         var result = riskClassificationAppService.classifyForProject(projectId);
@@ -129,7 +130,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/scoring-criteria")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ScoringCriteriaClassificationAppService.ScoringCriteriaClassificationResult>> getScoringCriteria(
             @PathVariable Long projectId) {
         var result = scoringCriteriaClassificationAppService.classifyForProject(projectId);
@@ -137,7 +138,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/knowledge-base-match")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<KnowledgeBaseMatchResult>> getKnowledgeBaseMatch(
             @PathVariable Long projectId) {
         var result = knowledgeBaseMatchAppService.matchForProject(projectId);
@@ -145,7 +146,7 @@ public class BidDraftAgentController {
     }
 
     @GetMapping("/full-analysis")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FullAnalysisAppService.FullAnalysisResult>> getFullAnalysis(
             @PathVariable Long projectId) {
         var result = fullAnalysisAppService.analyzeForProject(projectId);

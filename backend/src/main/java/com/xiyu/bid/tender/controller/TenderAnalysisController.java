@@ -28,6 +28,7 @@ import java.util.Optional;
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TenderAnalysisController {
 
     private final AiDeepCapabilityService aiDeepCapabilityService;
@@ -36,7 +37,7 @@ public class TenderAnalysisController {
     private final DemoDataProvider demoDataProvider;
 
     @GetMapping("/{id}/ai-analysis")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "查询标讯 AI 分析结果")
     public ResponseEntity<ApiResponse<TenderAiAnalysisDTO>> getTenderAiAnalysis(@PathVariable Long id) {
         log.info("GET /api/tenders/{}/ai-analysis", id);
@@ -58,7 +59,7 @@ public class TenderAnalysisController {
     }
 
     @PostMapping("/{id}/ai-analysis")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "触发标讯 AI 分析")
     public ResponseEntity<ApiResponse<TenderAiAnalysisDTO>> createTenderAiAnalysis(@PathVariable Long id) {
         log.info("POST /api/tenders/{}/ai-analysis", id);
@@ -68,7 +69,7 @@ public class TenderAnalysisController {
     }
 
     @PostMapping("/{id}/analyze")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "触发标讯 AI 分析（旧接口）")
     public ResponseEntity<ApiResponse<TenderDTO>> analyzeTender(@PathVariable Long id) {
         log.info("POST /api/tenders/{}/analyze", id);

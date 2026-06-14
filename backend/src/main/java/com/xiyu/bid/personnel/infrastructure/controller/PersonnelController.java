@@ -52,6 +52,7 @@ import java.util.List;
 @RequestMapping("/api/knowledge/personnel")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class PersonnelController {
 
     private final CreatePersonnelAppService createService;

@@ -33,6 +33,7 @@ import java.math.BigDecimal;
 @RequestMapping("/api/projects/{projectId}/closure")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectClosureController {
 
     private final ProjectClosureService service;

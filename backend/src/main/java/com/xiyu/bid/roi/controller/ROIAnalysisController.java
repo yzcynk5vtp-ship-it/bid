@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/ai/roi")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ROIAnalysisController {
 
     private final ROIAnalysisService roiAnalysisService;
@@ -41,7 +42,7 @@ public class ROIAnalysisController {
      * GET /api/ai/roi/project/{projectId}
      */
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ROIAnalysisDTO>> getAnalysisByProject(@PathVariable Long projectId) {
         log.info("GET /api/ai/roi/project/{} - Fetching ROI analysis", projectId);
 
@@ -98,7 +99,7 @@ public class ROIAnalysisController {
      * POST /api/ai/roi/sensitivity
      */
     @PostMapping("/sensitivity")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<SensitivityAnalysisResult>> performSensitivityAnalysis(
             @Valid @RequestBody SensitivityAnalysisRequest request) {
         log.info("POST /api/ai/roi/sensitivity - Performing sensitivity analysis for project: {}",

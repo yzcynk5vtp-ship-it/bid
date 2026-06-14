@@ -18,26 +18,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin/settings")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AdminSettingsController {
 
     private final DataScopeConfigService dataScopeConfigService;
 
     @GetMapping("/data-scope")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DataScopeConfigResponse>> getDataScopeConfig() {
         log.info("GET /api/admin/settings/data-scope - fetching data scope config");
         return ResponseEntity.ok(ApiResponse.success("Successfully retrieved data scope config", dataScopeConfigService.getConfig()));
     }
 
     @PutMapping("/data-scope")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DataScopeConfigResponse>> saveDataScopeConfig(@RequestBody DataScopeConfigResponse request) {
         log.info("PUT /api/admin/settings/data-scope - saving data scope config");
         return ResponseEntity.ok(ApiResponse.success("Data scope config saved successfully", dataScopeConfigService.saveConfig(request)));
     }
 
     @PutMapping("/departments")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DataScopeConfigResponse>> saveDepartmentTree(@RequestBody DepartmentTreeUpdateRequest request) {
         log.info("PUT /api/admin/settings/departments - saving department tree");
         return ResponseEntity.ok(ApiResponse.success(

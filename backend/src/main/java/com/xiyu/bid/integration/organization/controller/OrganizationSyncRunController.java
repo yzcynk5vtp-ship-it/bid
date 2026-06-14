@@ -16,6 +16,7 @@ import java.util.Locale;
 @RestController
 @RequestMapping("/api/integrations/organization/sync-runs")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class OrganizationSyncRunController {
     private static final String DEFAULT_SOURCE_APP = "oss";
     private static final String DEFAULT_RUN_TYPE = "RECONCILIATION";
@@ -23,7 +24,7 @@ public class OrganizationSyncRunController {
     private final OrganizationSyncRunAppService syncRunAppService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public OrganizationSyncRunResponse startSyncRun(@RequestBody(required = false) OrganizationSyncRunRequest request) {
         LocalDateTime endAt = request == null || request.endAt() == null ? LocalDateTime.now() : request.endAt();
         LocalDateTime startAt = request == null || request.startAt() == null ? endAt.minusDays(3) : request.startAt();

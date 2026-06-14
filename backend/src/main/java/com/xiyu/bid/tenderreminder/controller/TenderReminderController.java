@@ -32,6 +32,7 @@ import java.util.List;
 @RequestMapping("/api/tenders/{tenderId}/reminders")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TenderReminderController {
 
     private final TenderReminderService reminderService;
@@ -41,7 +42,7 @@ public class TenderReminderController {
      * 获取标讯的所有提醒设置
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ReminderSettingDTO>>> getReminders(@PathVariable Long tenderId) {
         log.info("GET /api/tenders/{}/reminders - 获取提醒设置", tenderId);
         List<ReminderSettingDTO> reminders = reminderService.getRemindersByTenderId(tenderId);
@@ -52,7 +53,7 @@ public class TenderReminderController {
      * 获取单个提醒设置详情
      */
     @GetMapping("/{reminderId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ReminderSettingDTO>> getReminderById(
             @PathVariable Long tenderId,
             @PathVariable Long reminderId) {
@@ -67,7 +68,7 @@ public class TenderReminderController {
      * 创建提醒设置
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ReminderSettingDTO>> createReminder(
             @PathVariable Long tenderId,
             @Valid @RequestBody CreateReminderRequest request,
@@ -83,7 +84,7 @@ public class TenderReminderController {
      * 更新提醒设置
      */
     @PutMapping("/{reminderId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ReminderSettingDTO>> updateReminder(
             @PathVariable Long tenderId,
             @PathVariable Long reminderId,
@@ -112,7 +113,7 @@ public class TenderReminderController {
      * 切换提醒启用状态
      */
     @PostMapping("/{reminderId}/toggle")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ReminderSettingDTO>> toggleReminder(
             @PathVariable Long tenderId,
             @PathVariable Long reminderId) {

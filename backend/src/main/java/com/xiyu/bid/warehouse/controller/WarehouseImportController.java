@@ -39,6 +39,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/knowledge/warehouses/import")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class WarehouseImportController {
 
     private static final String PERM = RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION;

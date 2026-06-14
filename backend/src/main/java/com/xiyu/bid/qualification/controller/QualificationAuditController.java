@@ -28,6 +28,7 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/qualifications")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class QualificationAuditController {
 
     private static final String ENTITY_TYPE = "Qualification";

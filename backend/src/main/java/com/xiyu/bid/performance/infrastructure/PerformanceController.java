@@ -36,6 +36,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/knowledge/performance")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class PerformanceController {
 
     private final CreatePerformanceAppService createService;
@@ -53,7 +54,7 @@ public class PerformanceController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Performance", description = "获取业绩列表")
     public ResponseEntity<ApiResponse<List<PerformanceDTO>>> list(
             @RequestParam(required = false) String keyword,
@@ -81,7 +82,7 @@ public class PerformanceController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Performance", description = "获取业绩详情")
     public ResponseEntity<ApiResponse<PerformanceDTO>> get(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("业绩详情获取成功", listService.get(id)));

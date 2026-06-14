@@ -49,6 +49,7 @@ import java.util.List;
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TenderEvaluationController {
 
     private final TenderEvaluationService tenderEvaluationService;
@@ -62,7 +63,7 @@ public class TenderEvaluationController {
      * <p>已存在 → 返回当前记录；不存在 → 返回空白 DRAFT（不持久化）。
      */
     @GetMapping("/{tenderId}/evaluation")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderEvaluationDTO>> getEvaluation(
             @PathVariable Long tenderId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -76,7 +77,7 @@ public class TenderEvaluationController {
      * 保存评估草稿（V119）。
      */
     @PutMapping("/{tenderId}/evaluation")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderEvaluationDTO>> saveDraft(
             @PathVariable Long tenderId,
             @Valid @RequestBody TenderEvaluationSubmitRequest request,
@@ -91,7 +92,7 @@ public class TenderEvaluationController {
      * 提交评估表（V119）：经 Policy 校验后 DRAFT → SUBMITTED。
      */
     @PostMapping("/{tenderId}/evaluation/submit")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderEvaluationDTO>> submitDraft(
             @PathVariable Long tenderId,
             @Valid @RequestBody TenderEvaluationSubmitRequest request,
@@ -154,7 +155,7 @@ public class TenderEvaluationController {
      * V150: 上传评估表附件（如项目计划 GAP 相关文件）。
      */
     @PostMapping(value = "/{tenderId}/evaluation/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectDocumentDTO>> uploadEvaluationDocument(
             @PathVariable Long tenderId,
             @RequestParam("file") MultipartFile file,
@@ -173,7 +174,7 @@ public class TenderEvaluationController {
      * V150: 获取评估表附件列表。
      */
     @GetMapping("/{tenderId}/evaluation/documents")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectDocumentDTO>>> getEvaluationDocuments(
             @PathVariable Long tenderId) {
         log.info("GET /api/tenders/{}/evaluation/documents", tenderId);
@@ -185,7 +186,7 @@ public class TenderEvaluationController {
      * V150: 删除评估表附件。
      */
     @DeleteMapping("/{tenderId}/evaluation/documents/{documentId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Void>> deleteEvaluationDocument(
             @PathVariable Long tenderId,
             @PathVariable Long documentId) {

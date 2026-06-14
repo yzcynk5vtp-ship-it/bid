@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class TenderTransferController {
 
     private final TenderTransferService tenderTransferService;
@@ -40,7 +41,7 @@ public class TenderTransferController {
      * FR-009 ~ FR-014
      */
     @PostMapping("/{id}/transfer")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderTransferResponse>> transferTender(
             @PathVariable Long id,
             @Valid @RequestBody TenderTransferRequest request,

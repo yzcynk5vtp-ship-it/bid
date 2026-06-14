@@ -27,12 +27,13 @@ import java.util.List;
 @RequestMapping("/api/projects/{projectId}/members")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectMemberController {
 
     private final ProjectMemberService projectMemberService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectMemberDTO>>> getMembers(@PathVariable Long projectId) {
         log.info("GET /api/projects/{}/members - Fetching project members", projectId);
         return ResponseEntity.ok(ApiResponse.success(projectMemberService.getProjectMembers(projectId)));

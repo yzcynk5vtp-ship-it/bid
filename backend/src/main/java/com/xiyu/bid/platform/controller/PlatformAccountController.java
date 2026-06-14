@@ -43,6 +43,7 @@ import java.util.UUID;
 @RequestMapping("/api/platform/accounts")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
 public class PlatformAccountController {
 
     private final PlatformAccountService platformAccountService;

@@ -28,6 +28,7 @@ import java.util.List;
 @RequestMapping("/api/documents/assembly")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class DocumentAssemblyController {
 
     private final DocumentAssemblyService documentAssemblyService;
@@ -36,7 +37,7 @@ public class DocumentAssemblyController {
      * 获取所有模板（支持按分类过滤）
      */
     @GetMapping("/templates")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<AssemblyTemplateDTO>>> getTemplates(
             @RequestParam(required = false) String category) {
 
@@ -72,7 +73,7 @@ public class DocumentAssemblyController {
      * 获取项目的所有组装记录
      */
     @GetMapping("/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<DocumentAssemblyDTO>>> getAssembliesByProject(
             @PathVariable Long projectId) {
 
@@ -85,7 +86,7 @@ public class DocumentAssemblyController {
      * 组装新文档
      */
     @PostMapping("/{projectId}/assemble")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentAssemblyDTO>> assembleDocument(
             @PathVariable Long projectId,
             @Valid @RequestBody AssemblyRequest request) {
@@ -108,7 +109,7 @@ public class DocumentAssemblyController {
      * 重新生成组装文档
      */
     @PutMapping("/{id}/regenerate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentAssemblyDTO>> regenerateAssembly(
             @PathVariable Long id) {
 

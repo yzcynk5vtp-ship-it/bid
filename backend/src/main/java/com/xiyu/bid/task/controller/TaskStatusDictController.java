@@ -28,6 +28,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/task-status-dict")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TaskStatusDictController {
 
     private final TaskStatusDictService taskStatusDictService;
@@ -38,7 +39,7 @@ public class TaskStatusDictController {
      * @return 启用字典项列表，封装在 {@link ApiResponse} 中
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "TaskStatusDict", description = "获取任务状态字典")
     public ResponseEntity<ApiResponse<List<TaskStatusDictDTO>>> listEnabled() {
         List<TaskStatusDictDTO> statuses = taskStatusDictService.listEnabled();

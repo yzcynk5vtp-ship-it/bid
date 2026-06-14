@@ -33,6 +33,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/projects/{projectId}/evaluation")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class ProjectEvaluationController {
 
     private final ProjectEvaluationService service;

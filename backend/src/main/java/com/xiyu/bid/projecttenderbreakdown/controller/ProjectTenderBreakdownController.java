@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/projects/{projectId}/tender-breakdown")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectTenderBreakdownController {
 
     private final ProjectAccessScopeService projectAccessScopeService;
@@ -31,14 +32,14 @@ public class ProjectTenderBreakdownController {
     private final ProjectTenderBreakdownReadinessService readinessService;
 
     @GetMapping("/readiness")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderBreakdownReadiness>> readiness(@PathVariable Long projectId) {
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
         return ResponseEntity.ok(ApiResponse.success(readinessService.readiness(projectId)));
     }
 
     @GetMapping("/latest")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidTenderDocumentParseDTO>> latestParsedTenderBreakdown(
             @PathVariable Long projectId) {
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
@@ -48,7 +49,7 @@ public class ProjectTenderBreakdownController {
     }
 
     @PostMapping("/reuse-uploaded")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidTenderDocumentParseDTO>> reuseUploadedTenderBreakdown(
             @PathVariable Long projectId) {
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
@@ -59,7 +60,7 @@ public class ProjectTenderBreakdownController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BidTenderDocumentParseDTO>> parseTenderBreakdown(
             @PathVariable Long projectId,
             @RequestParam("file") MultipartFile file) {

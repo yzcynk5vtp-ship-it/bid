@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/market-insight")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class MarketInsightController {
 
     private final MarketInsightService marketInsightService;
@@ -31,7 +32,7 @@ public class MarketInsightController {
      * 获取市场洞察聚合数据
      */
     @GetMapping("/insight")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<MarketInsightDTO>> getMarketInsight() {
         log.info("GET /api/market-insight/insight - Fetching market insight");
         MarketInsightDTO insight = marketInsightService.getMarketInsight();

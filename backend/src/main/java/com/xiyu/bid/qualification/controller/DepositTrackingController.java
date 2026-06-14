@@ -16,12 +16,13 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/knowledge/deposit")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class DepositTrackingController {
 
     private final DepositTrackingRepository depositTrackingRepository;
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getDepositSummary() {
         BigDecimal totalPaid = depositTrackingRepository.sumTotalAmount();
         BigDecimal totalPending = depositTrackingRepository.sumPendingAmount();
@@ -37,7 +38,7 @@ public class DepositTrackingController {
     }
 
     @GetMapping("/list")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<DepositTracking>>> getDepositList() {
         return ResponseEntity.ok(ApiResponse.success("Success", depositTrackingRepository.findAllByOrderByPaymentDateDesc()));
     }

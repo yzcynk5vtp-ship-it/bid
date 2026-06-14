@@ -46,6 +46,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/resources/expenses")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ExpenseController {
 
     private final ExpenseService expenseService;
@@ -53,7 +54,7 @@ public class ExpenseController {
     private final SendExpenseReturnReminderAppService sendExpenseReturnReminderAppService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Expense", description = "Create expense record")
     public ResponseEntity<ApiResponse<ExpenseDTO>> createExpense(@Valid @RequestBody ExpenseCreateRequest request) {
         ExpenseDTO expense = expenseService.createExpense(request);
@@ -61,14 +62,14 @@ public class ExpenseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ExpenseDTO>> getExpenseById(@PathVariable Long id) {
         ExpenseDTO expense = expenseService.getExpenseById(id);
         return ResponseEntity.ok(ApiResponse.success(expense));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<ExpenseDTO>>> getAllExpenses(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -86,7 +87,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/ledger")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ExpenseLedgerResponse>> getExpenseLedger(
             @RequestParam(required = false) Long projectId,
             @RequestParam(required = false) String projectKeyword,
@@ -111,7 +112,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<ExpenseDTO>>> getExpensesByProjectId(
             @PathVariable Long projectId,
             @RequestParam(defaultValue = "0") int page,
@@ -127,7 +128,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/category/{category}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<ExpenseDTO>>> getExpensesByCategory(
             @PathVariable String category,
             @RequestParam(defaultValue = "0") int page,
@@ -143,7 +144,7 @@ public class ExpenseController {
     }
 
     @GetMapping("/date-range")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<ExpenseDTO>>> getExpensesByDateRange(
             @RequestParam LocalDate startDate,
             @RequestParam LocalDate endDate,
@@ -179,21 +180,21 @@ public class ExpenseController {
     }
 
     @GetMapping("/project/{projectId}/total")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BigDecimal>> getTotalExpenseByProject(@PathVariable Long projectId) {
         BigDecimal total = expenseService.getTotalExpenseByProject(projectId);
         return ResponseEntity.ok(ApiResponse.success(total));
     }
 
     @GetMapping("/project/{projectId}/statistics")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getExpenseStatistics(@PathVariable Long projectId) {
         Map<String, Object> statistics = expenseService.getExpenseStatisticsByProject(projectId);
         return ResponseEntity.ok(ApiResponse.success(statistics));
     }
 
     @GetMapping("/approval-records")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ExpenseApprovalRecordDTO>>> getApprovalRecords(
             @RequestParam(required = false) Long projectId) {
         List<ExpenseApprovalRecordDTO> records = expenseService.getApprovalRecords(projectId);
@@ -211,7 +212,7 @@ public class ExpenseController {
     }
 
     @PostMapping("/{id}/return-request")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "RETURN_REQUEST", entityType = "Expense", description = "Request expense return")
     public ResponseEntity<ApiResponse<ExpenseDTO>> requestReturn(
             @PathVariable Long id,
@@ -241,14 +242,14 @@ public class ExpenseController {
     }
 
     @GetMapping("/{id}/payments")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ExpensePaymentRecordDTO>>> getPaymentRecords(@PathVariable Long id) {
         List<ExpensePaymentRecordDTO> records = expenseService.getPaymentRecords(id);
         return ResponseEntity.ok(ApiResponse.success(records));
     }
 
     @PostMapping("/{id}/return-reminder")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "SEND_RETURN_REMINDER", entityType = "Expense", description = "Send expense return reminder")
     public ResponseEntity<ApiResponse<ExpenseDTO>> sendReturnReminder(
             @PathVariable Long id,

@@ -14,13 +14,14 @@ import java.security.Principal;
 @RestController
 @RequestMapping("/api/integrations/organization/resync")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class OrganizationManualResyncController {
     private static final String DEFAULT_SOURCE_APP = "oss";
 
     private final OrganizationManualResyncAppService manualResyncAppService;
 
     @PostMapping("/users/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public OrganizationSyncRunResponse resyncUser(@PathVariable String userId, Principal principal) {
         return OrganizationSyncRunResponse.from(
                 manualResyncAppService.resyncUser(DEFAULT_SOURCE_APP, userId, operator(principal))
@@ -28,7 +29,7 @@ public class OrganizationManualResyncController {
     }
 
     @PostMapping("/departments/{deptId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public OrganizationSyncRunResponse resyncDepartment(@PathVariable String deptId, Principal principal) {
         return OrganizationSyncRunResponse.from(
                 manualResyncAppService.resyncDepartment(DEFAULT_SOURCE_APP, deptId, operator(principal))

@@ -34,12 +34,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/resources/accounts")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class AccountController {
 
     private final AccountService accountService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Account", description = "Create account record")
     public ResponseEntity<ApiResponse<AccountResponseDTO>> createAccount(@Valid @RequestBody AccountCreateRequest request) {
         AccountResponseDTO account = accountService.createAccount(request);
@@ -47,14 +48,14 @@ public class AccountController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AccountResponseDTO>> getAccountById(@PathVariable Long id) {
         AccountResponseDTO account = accountService.getAccountById(id);
         return ResponseEntity.ok(ApiResponse.success(account));
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AccountResponseDTO>>> getAllAccounts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -72,7 +73,7 @@ public class AccountController {
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AccountResponseDTO>>> getAccountsByType(
             @PathVariable String type,
             @RequestParam(defaultValue = "0") int page,
@@ -88,7 +89,7 @@ public class AccountController {
     }
 
     @GetMapping("/industry/{industry}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AccountResponseDTO>>> getAccountsByIndustry(
             @PathVariable String industry,
             @RequestParam(defaultValue = "0") int page,
@@ -104,7 +105,7 @@ public class AccountController {
     }
 
     @GetMapping("/region/{region}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AccountResponseDTO>>> getAccountsByRegion(
             @PathVariable String region,
             @RequestParam(defaultValue = "0") int page,
@@ -120,7 +121,7 @@ public class AccountController {
     }
 
     @GetMapping("/credit-level/{creditLevel}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AccountResponseDTO>>> getAccountsByCreditLevel(
             @PathVariable String creditLevel,
             @RequestParam(defaultValue = "0") int page,
@@ -136,7 +137,7 @@ public class AccountController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Page<AccountResponseDTO>>> searchAccounts(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "0") int page,
@@ -171,7 +172,7 @@ public class AccountController {
     }
 
     @GetMapping("/statistics")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAccountStatistics() {
         Map<String, Object> statistics = accountService.getAccountStatistics();
         return ResponseEntity.ok(ApiResponse.success(statistics));

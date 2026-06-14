@@ -41,13 +41,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class TaskController {
 
     private final TaskService taskService;
     private final TaskActivityService taskActivityService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Task", description = "创建新任务")
     public ResponseEntity<ApiResponse<TaskDTO>> createTask(@Valid @RequestBody TaskDTO taskDTO) {
         sanitizeTaskDTO(taskDTO);
@@ -56,7 +57,7 @@ public class TaskController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "获取所有任务")
     public ResponseEntity<ApiResponse<List<TaskDTO>>> getAllTasks() {
         List<TaskDTO> tasks = taskService.getAllTasks();
@@ -64,7 +65,7 @@ public class TaskController {
     }
 
     @GetMapping("/{id:\\d+}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "根据ID获取任务")
     public ResponseEntity<ApiResponse<TaskDTO>> getTaskById(@PathVariable Long id) {
         TaskDTO task = taskService.getTaskById(id);
@@ -72,7 +73,7 @@ public class TaskController {
     }
 
     @PutMapping("/{id:\\d+}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "UPDATE", entityType = "Task", description = "更新任务")
     public ResponseEntity<ApiResponse<TaskDTO>> updateTask(
             @PathVariable Long id,
@@ -92,7 +93,7 @@ public class TaskController {
     }
 
     @GetMapping("/project/{projectId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "根据项目ID获取任务")
     public ResponseEntity<ApiResponse<List<TaskDTO>>> getTasksByProjectId(@PathVariable Long projectId) {
         List<TaskDTO> tasks = taskService.getTasksByProjectId(projectId);
@@ -100,7 +101,7 @@ public class TaskController {
     }
 
     @GetMapping("/my")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "获取我的任务")
     public ResponseEntity<ApiResponse<List<TaskDTO>>> getMyTasks(
             @RequestParam(required = false) Long assigneeId,
@@ -110,7 +111,7 @@ public class TaskController {
     }
 
     @PatchMapping("/{id:\\d+}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "UPDATE", entityType = "Task", description = "更新任务状态")
     public ResponseEntity<ApiResponse<TaskDTO>> updateTaskStatus(
             @PathVariable Long id,
@@ -121,7 +122,7 @@ public class TaskController {
     }
 
     @GetMapping("/{id:\\d+}/activity")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "获取任务动态")
     public ResponseEntity<ApiResponse<List<TaskActivityDTO>>> getTaskActivity(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Task activity retrieved successfully",
@@ -129,7 +130,7 @@ public class TaskController {
     }
 
     @PostMapping("/{id:\\d+}/comments")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "TaskComment", description = "创建任务评论")
     public ResponseEntity<ApiResponse<TaskActivityDTO>> createTaskComment(
             @PathVariable Long id,
@@ -155,7 +156,7 @@ public class TaskController {
     }
 
     @GetMapping("/assignment-candidates")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "获取任务分配候选人")
     public ResponseEntity<ApiResponse<List<TaskAssignmentCandidateDTO>>> getAssignmentCandidates(
             @RequestParam(required = false) String deptCode,
@@ -166,7 +167,7 @@ public class TaskController {
     }
 
     @GetMapping("/team-workload")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "获取团队任务负载")
     public ResponseEntity<ApiResponse<TeamTaskWorkloadDTO>> getTeamTaskWorkload(
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -175,7 +176,7 @@ public class TaskController {
     }
 
     @GetMapping("/upcoming")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "获取即将到期的任务")
     public ResponseEntity<ApiResponse<List<TaskDTO>>> getUpcomingTasks(@RequestParam(defaultValue = "7") int days) {
         LocalDateTime beforeDate = LocalDateTime.now().plusDays(days);

@@ -19,12 +19,13 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectAiController {
 
     private final AiDeepCapabilityService aiDeepCapabilityService;
 
     @PostMapping("/score-preview")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectScorePreviewDTO>> createScorePreview(
             @Valid @RequestBody ProjectScorePreviewRequestDTO request
     ) {
@@ -34,7 +35,7 @@ public class ProjectAiController {
     }
 
     @GetMapping("/{projectId}/ai-cards")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectAiCardsDTO>> getProjectAiCards(@PathVariable Long projectId) {
         ProjectAiCardsDTO cards = aiDeepCapabilityService.getProjectAiCards(projectId);
         return ResponseEntity.ok(ApiResponse.success("Project AI cards retrieved successfully", cards));

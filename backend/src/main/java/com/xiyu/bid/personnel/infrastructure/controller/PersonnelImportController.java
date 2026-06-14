@@ -29,6 +29,7 @@ import java.io.IOException;
 @RequestMapping("/api/knowledge/personnel")
 @RequiredArgsConstructor
 @Slf4j
+@PreAuthorize("isAuthenticated()")
 public class PersonnelImportController {
 
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;

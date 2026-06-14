@@ -27,6 +27,7 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/ca-certificates")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
 public class CaCertificateController {
 
     private final CaCertificateService caService;

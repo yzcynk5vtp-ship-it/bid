@@ -44,6 +44,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/knowledge/cases")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class CaseController {
 
     private final CaseCrudAppService caseCrudAppService;
@@ -62,7 +63,7 @@ public class CaseController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "获取案例分页列表")
     public ResponseEntity<ApiResponse<CaseSearchResultDTO>> getAllCases(
             @RequestParam(required = false) String keyword,
@@ -84,7 +85,7 @@ public class CaseController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "根据ID获取案例")
     public ResponseEntity<ApiResponse<CaseDTO>> getCaseById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Case retrieved successfully", caseCrudAppService.findById(id)));
@@ -107,28 +108,28 @@ public class CaseController {
     }
 
     @GetMapping("/industry/{industry}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "根据行业获取案例")
     public ResponseEntity<ApiResponse<List<CaseDTO>>> getCasesByIndustry(@PathVariable CaseDTO.Industry industry) {
         return ResponseEntity.ok(ApiResponse.success("Cases retrieved successfully", caseCrudAppService.findByIndustry(industry)));
     }
 
     @GetMapping("/outcome/{outcome}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "根据结果获取案例")
     public ResponseEntity<ApiResponse<List<CaseDTO>>> getCasesByOutcome(@PathVariable CaseDTO.Outcome outcome) {
         return ResponseEntity.ok(ApiResponse.success("Cases retrieved successfully", caseCrudAppService.findByOutcome(outcome)));
     }
 
     @GetMapping("/search/options")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "获取案例搜索选项")
     public ResponseEntity<ApiResponse<CaseSearchOptionsDTO>> getSearchOptions() {
         return ResponseEntity.ok(ApiResponse.success("Case search options retrieved successfully", caseSearchAppService.getSearchOptionsDTO()));
     }
 
     @GetMapping("/{id}/related")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "获取相关推荐案例")
     public ResponseEntity<ApiResponse<List<CaseRecommendationDTO>>> getRelatedCases(
             @PathVariable Long id,
@@ -148,14 +149,14 @@ public class CaseController {
     }
 
     @GetMapping("/{id}/share-records")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "获取案例分享记录")
     public ResponseEntity<ApiResponse<List<CaseShareRecordDTO>>> getCaseShareRecords(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Case share records retrieved successfully", caseShareAppService.getShareRecords(id)));
     }
 
     @PostMapping("/{id}/share-records")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Case", description = "创建案例分享记录")
     public ResponseEntity<ApiResponse<CaseShareRecordDTO>> createCaseShareRecord(@PathVariable Long id, @Valid @RequestBody CaseShareRecordCreateRequest request) {
         CaseRequestSanitizer.sanitizeShareRecord(request);
@@ -164,14 +165,14 @@ public class CaseController {
     }
 
     @GetMapping("/{id}/references")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Case", description = "获取案例引用记录")
     public ResponseEntity<ApiResponse<List<CaseReferenceRecordDTO>>> getCaseReferenceRecords(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Case reference records retrieved successfully", caseReferenceAppService.getReferenceRecords(id)));
     }
 
     @PostMapping("/{id}/references")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Case", description = "创建案例引用记录")
     public ResponseEntity<ApiResponse<CaseReferenceRecordDTO>> createCaseReferenceRecord(@PathVariable Long id, @Valid @RequestBody CaseReferenceRecordCreateRequest request) {
         CaseRequestSanitizer.sanitizeReferenceRecord(request);

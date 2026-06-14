@@ -26,12 +26,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/projects/{projectId}/documents")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ProjectDocumentController {
 
     private final ProjectWorkflowService projectWorkflowService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ProjectDocumentDTO>>> getProjectDocuments(
             @PathVariable Long projectId,
             @RequestParam(required = false) String documentCategory,
@@ -47,7 +48,7 @@ public class ProjectDocumentController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectDocumentDTO>> createProjectDocument(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectDocumentCreateRequest request
@@ -61,7 +62,7 @@ public class ProjectDocumentController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ProjectDocumentDTO>> uploadProjectDocument(
             @PathVariable Long projectId,
             @RequestParam("file") MultipartFile file,
