@@ -6,27 +6,7 @@
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
       </el-form-item>
-      <el-form-item label="状态" class="search-field">
-        <el-select v-model="modelValue.status" placeholder="全部" clearable multiple collapse-tags collapse-tags-tooltip class="filter-select">
-          <el-option label="待分配" value="PENDING_ASSIGNMENT" />
-          <el-option label="跟踪中" value="TRACKING" />
-          <el-option label="已评估" value="EVALUATED" />
-          <el-option label="投标中" value="BIDDING" />
-          <el-option label="已中标" value="WON" />
-          <el-option label="未中标" value="LOST" />
-          <el-option label="已放弃" value="ABANDONED" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="报名截止时间" class="search-field--date">
-        <el-date-picker v-model="registrationDeadlineRange" type="daterange" range-separator="至"
-          start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="filter-date-picker" clearable />
-      </el-form-item>
-
-      <el-form-item label="开标时间" class="search-field--datetime" v-show="isExpanded">
-        <el-date-picker v-model="bidOpeningTimeRange" type="datetimerange" range-separator="至"
-          start-placeholder="开始时间" end-placeholder="结束时间" value-format="YYYY-MM-DDTHH:mm:ss" class="filter-datetime-picker" clearable />
-      </el-form-item>
-      <el-form-item label="总部所在地" class="search-field" v-show="isExpanded">
+      <el-form-item label="总部所在地" class="search-field">
         <el-cascader
           v-model="regionValue"
           :options="chinaRegionOptions"
@@ -38,37 +18,56 @@
           style="width:100%"
         />
       </el-form-item>
-      <el-form-item label="来源平台" class="search-field" v-show="isExpanded">
+      <el-form-item label="状态" class="search-field">
+        <el-select v-model="modelValue.status" placeholder="全部" clearable multiple collapse-tags collapse-tags-tooltip class="filter-select">
+          <el-option label="待分配" value="PENDING_ASSIGNMENT" />
+          <el-option label="跟踪中" value="TRACKING" />
+          <el-option label="已评估" value="EVALUATED" />
+          <el-option label="投标中" value="BIDDING" />
+          <el-option label="已中标" value="WON" />
+          <el-option label="未中标" value="LOST" />
+          <el-option label="已放弃" value="ABANDONED" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="来源平台" class="search-field">
         <el-select v-model="modelValue.source" placeholder="全部" clearable multiple collapse-tags collapse-tags-tooltip class="filter-select">
           <el-option v-for="item in sourcePlatformOptions" :key="item" :label="item" :value="item" />
         </el-select>
       </el-form-item>
-      <el-form-item label="项目类型" class="search-field" v-show="isExpanded">
+      <el-form-item label="项目类型" class="search-field">
         <el-select v-model="modelValue.projectType" placeholder="全部" clearable class="filter-select">
           <el-option v-for="item in projectTypeOptions" :key="item" :label="item" :value="item" />
         </el-select>
       </el-form-item>
-      <el-form-item label="客户类型" class="search-field" v-show="isExpanded">
+      <el-form-item label="客户类型" class="search-field">
         <el-select v-model="modelValue.customerType" placeholder="全部" clearable multiple collapse-tags collapse-tags-tooltip class="filter-select">
           <el-option v-for="item in customerTypeOptions" :key="item" :label="item" :value="item" />
         </el-select>
       </el-form-item>
-      <el-form-item label="优先级" class="search-field" v-show="isExpanded">
+      <el-form-item label="优先级" class="search-field">
         <el-select v-model="modelValue.priority" placeholder="全部" clearable multiple collapse-tags collapse-tags-tooltip class="filter-select">
           <el-option v-for="item in priorityOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="项目负责人" class="search-field" v-show="isExpanded">
+      <el-form-item label="报名截止时间" class="search-field--date">
+        <el-date-picker v-model="registrationDeadlineRange" type="daterange" range-separator="至"
+          start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="filter-date-picker" clearable />
+      </el-form-item>
+      <el-form-item label="开标时间" class="search-field--datetime">
+        <el-date-picker v-model="bidOpeningTimeRange" type="datetimerange" range-separator="至"
+          start-placeholder="开始时间" end-placeholder="结束时间" value-format="YYYY-MM-DDTHH:mm:ss" class="filter-datetime-picker" clearable />
+      </el-form-item>
+      <el-form-item label="项目负责人" class="search-field">
         <el-select v-model="modelValue.projectManagerId" placeholder="全部" clearable filterable remote :remote-method="(q) => searchUsers(q, 'pm')" :loading="userLoading.pm" class="filter-select">
           <el-option v-for="u in userOptions.pm" :key="u.id" :label="`${u.name}（${u.employeeId}）`" :value="u.id" />
         </el-select>
       </el-form-item>
-      <el-form-item label="创建人" class="search-field" v-show="isExpanded">
+      <el-form-item label="创建人" class="search-field">
         <el-select v-model="modelValue.creatorId" placeholder="全部" clearable filterable remote :remote-method="(q) => searchUsers(q, 'cr')" :loading="userLoading.cr" class="filter-select">
           <el-option v-for="u in userOptions.cr" :key="u.id" :label="`${u.name}（${u.employeeId}）`" :value="u.id" />
         </el-select>
       </el-form-item>
-      <el-form-item label="创建时间" class="search-field--date" v-show="isExpanded">
+      <el-form-item label="创建时间" class="search-field--date">
         <el-date-picker v-model="createdAtRange" type="daterange" range-separator="至"
           start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="filter-date-picker" clearable />
       </el-form-item>
@@ -79,20 +78,13 @@
         <el-button class="search-reset-button" @click="$emit('reset')">
           <el-icon><RefreshLeft /></el-icon>重置
         </el-button>
-        <el-button link type="primary" class="search-expand-button" @click="isExpanded = !isExpanded" style="margin-left: 8px;">
-          {{ isExpanded ? '收起' : '高级搜索' }}
-          <el-icon class="el-icon--right">
-            <ArrowUp v-if="isExpanded" />
-            <ArrowDown v-else />
-          </el-icon>
-        </el-button>
       </el-form-item>
     </el-form>
   </el-card>
 </template>
 
 <script setup>
-import { RefreshLeft, Search, ArrowUp, ArrowDown } from '@element-plus/icons-vue'
+import { RefreshLeft, Search } from '@element-plus/icons-vue'
 import { SOURCE_PLATFORM_OPTIONS, PROJECT_TYPE_OPTIONS, CUSTOMER_TYPE_OPTIONS, PRIORITY_OPTIONS } from '../constants.js'
 import { chinaRegionOptions } from '@/components/common/chinaRegionData.js'
 import { usersApi } from '@/api/modules/users.js'
@@ -107,8 +99,6 @@ const props = defineProps({
   customerTypeOptions: { type: Array, default: () => CUSTOMER_TYPE_OPTIONS },
   priorityOptions: { type: Array, default: () => PRIORITY_OPTIONS },
 })
-
-const isExpanded = ref(false)
 
 const userOptions = reactive({ pm: [], cr: [] })
 const userLoading = reactive({ pm: false, cr: false })
@@ -213,12 +203,15 @@ const createdAtRange = computed({
 .tender-search-card :deep(.el-card__body) { padding: var(--space-lg, 24px); }
 .tender-search-form { 
   display: flex; 
-  flex-wrap: wrap; 
+  flex-wrap: nowrap; 
   align-items: flex-end; 
   gap: var(--space-md, 16px); 
   min-width: 0; 
+  overflow-x: auto;
+  padding-bottom: 8px; /* 为滚动条预留空间 */
+  -webkit-overflow-scrolling: touch;
 }
-.tender-search-form :deep(.el-form-item) { margin: 0; }
+.tender-search-form :deep(.el-form-item) { margin: 0; flex-shrink: 0; }
 .tender-search-form :deep(.el-form-item__label) { margin-bottom: var(--space-xs, 4px); color: var(--text-secondary, #666); font-size: var(--font-size-xs, 12px); font-weight: 600; line-height: 1.4; }
 /* .search-field / .search-field--keyword / .search-field--date / .search-field--datetime / .search-actions
    已抽取到 src/styles/form-controls.css（全局复用） */
