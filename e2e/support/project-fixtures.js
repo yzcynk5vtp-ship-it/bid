@@ -14,22 +14,24 @@ export async function requestJson(url, options = {}) {
 export async function createAuthenticatedSession() {
   const username = process.env.COMMERCIAL_E2E_USERNAME || `eri92_${Date.now()}`
   const password = process.env.COMMERCIAL_E2E_PASSWORD || 'XiyuDemo!2026'
-  let payload
 
-  try {
-    payload = await requestJson(`${apiBaseUrl}/api/auth/login`, {
+  const doLogin = async () => {
+    const response = await fetch(`${apiBaseUrl}/api/auth/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     })
-  } catch {
-    payload = await requestJson(`${apiBaseUrl}/api/auth/register`, {
+    const loginPayload = await response.json().catch(() => null)
+    return { response, loginPayload }
+  }
+
+  let { response, loginPayload } = await doLogin()
+
+  if (!response.ok) {
+    // 用户不存在 → 注册 → 再 login (H13: register 不签 token, 必须走 login 拿 cookie)
+    await requestJson(`${apiBaseUrl}/api/auth/register`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username,
         password,
@@ -37,21 +39,29 @@ export async function createAuthenticatedSession() {
         fullName: 'ERI-92 E2E',
         role: 'bid_admin',
       }),
-    })
+    }).catch(() => {})
+    ;({ response, loginPayload } = await doLogin())
   }
 
-  if (!payload?.success || !payload?.data?.token || !payload?.data?.id) {
-    throw new Error('Backend login response is missing token or user identity')
+  if (!response.ok || !loginPayload?.success || !loginPayload?.data?.id) {
+    throw new Error(`Backend login failed: ${response.status} ${JSON.stringify(loginPayload)}`)
+  }
+
+  // H13 根治 (2026-06-14): access token 从 Set-Cookie 提取 (body.token 已为 null)
+  const setCookie = response.headers.get('set-cookie') || ''
+  const tokenMatch = setCookie.match(/access_token=([^;]+)/)
+  if (!tokenMatch) {
+    throw new Error('Login response missing access_token cookie (H13)')
   }
 
   return {
-    token: payload.data.token,
+    token: tokenMatch[1],
     user: {
-      id: payload.data.id,
-      name: payload.data.fullName || payload.data.username,
-      username: payload.data.username,
-      email: payload.data.email,
-      role: String(payload.data.role || '').toLowerCase(),
+      id: loginPayload.data.id,
+      name: loginPayload.data.fullName || loginPayload.data.username,
+      username: loginPayload.data.username,
+      email: loginPayload.data.email,
+      role: String(loginPayload.data.role || '').toLowerCase(),
     },
   }
 }
@@ -67,6 +77,19 @@ export async function authedJson(path, token, options = {}) {
     ...options,
     headers,
   })
+}
+
+// H13 根治 (2026-06-14): 浏览器内 page 认证靠 access_token cookie (前端走 cookie, 不读 storage token).
+// spec 调此 helper 注入 cookie + user hint, 替代旧的 sessionStorage.setItem('token').
+export async function attachSessionToPage(page, session) {
+  const frontendBaseUrl = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:1314'
+  await page.context().addCookies([
+    { name: 'access_token', value: session.token, url: apiBaseUrl, httpOnly: true, sameSite: 'Lax' },
+    { name: 'access_token', value: session.token, url: frontendBaseUrl, httpOnly: true, sameSite: 'Lax' },
+  ])
+  await page.addInitScript((user) => {
+    sessionStorage.setItem('user', JSON.stringify(user))
+  }, session.user)
 }
 
 export function toLocalDateTimeString(date) {

@@ -97,6 +97,7 @@ test('template page supports three-dimensional filters and edit flow through rea
   const templateId = createPayload?.data?.id
   expect(templateId).toBeTruthy()
 
+  await page.context().addCookies([{ name: "access_token", value: session.token, url: "http://127.0.0.1:18080", httpOnly: true, sameSite: "Lax" }, { name: "access_token", value: session.token, url: "http://127.0.0.1:1314", httpOnly: true, sameSite: "Lax" }])
   await page.addInitScript(({ token, user }) => {
     sessionStorage.setItem('token', token)
     sessionStorage.setItem('user', JSON.stringify(user))
