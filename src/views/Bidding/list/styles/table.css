@@ -55,7 +55,7 @@
 .tender-title-text {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: normal;
+  white-space: nowrap;
   word-break: break-all;
   line-height: 1.4;
 }

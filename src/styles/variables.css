@@ -206,6 +206,19 @@
   --el-disabled-text-color: #303133;
   --el-text-color-placeholder: #C0C4CC;
   --el-input-placeholder-color: #C0C4CC;
+
+  /* Element Plus 统一排版与大小规范 */
+  --el-font-family: var(--font-family);
+  --el-font-size-base: 14px;
+  --el-font-size-small: 12px;
+  --el-font-size-large: 16px;
+
+  --el-button-font-size: 14px;
+  --el-button-height: 40px;
+  --el-button-border-radius: 6px;
+  --el-input-font-size: 14px;
+  --el-input-height: 40px;
+  --el-input-border-radius: 6px;
 }
 
 /* === 禁用/只读态文字颜色覆盖 ===
