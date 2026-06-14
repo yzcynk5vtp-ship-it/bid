@@ -16,19 +16,20 @@ async function switchToTaskBoardTab(page) {
   if (await draftingTab.isVisible()) {
     await draftingTab.click()
     await expect(page.locator('.drafting-tab-content, .task-board, .kanban-board').first()).toBeAttached({ timeout: 15000 }).catch(() => {})
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
   }
 }
 
 async function reloadToTaskBoard(page) {
   await page.reload()
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('domcontentloaded')
   await switchToTaskBoardTab(page)
 }
 
 async function bootstrapProject(page, label) {
   const session = await createAuthenticatedSession()
   const project = await createProjectFixture(session, label)
+  await page.context().addCookies([{ name: "access_token", value: session.token, url: "http://127.0.0.1:18080", httpOnly: true, sameSite: "Lax" }, { name: "access_token", value: session.token, url: "http://127.0.0.1:1314", httpOnly: true, sameSite: "Lax" }])
   await page.addInitScript(({ token, user }) => {
     sessionStorage.setItem('token', token)
     sessionStorage.setItem('user', JSON.stringify(user))
@@ -36,7 +37,7 @@ async function bootstrapProject(page, label) {
   const projectId = String(project.id)
   await page.goto(`/project/${projectId}`)
   await expect(page).toHaveURL(/\/project\/\d+$/)
-  await page.waitForLoadState('networkidle')
+  await page.waitForLoadState('domcontentloaded')
   await switchToTaskBoardTab(page)
   await expect(page.locator('.drafting-tab-content, .task-board, .kanban-board').first()).toBeAttached({ timeout: 10000 })
   return { session, projectId }
@@ -216,6 +217,7 @@ test.describe('Task board customization core flow', () => {
     // The fixture creates an ADMIN-role user (role: 'bid_admin' in register
     // fallback), so the task-status-dict tab will be visible.
     const session = await createAuthenticatedSession()
+    await page.context().addCookies([{ name: "access_token", value: session.token, url: "http://127.0.0.1:18080", httpOnly: true, sameSite: "Lax" }, { name: "access_token", value: session.token, url: "http://127.0.0.1:1314", httpOnly: true, sameSite: "Lax" }])
     await page.addInitScript(({ token, user }) => {
       sessionStorage.setItem('token', token)
       sessionStorage.setItem('user', JSON.stringify(user))
@@ -324,6 +326,7 @@ test.describe('Task board customization core flow', () => {
 
     // --- 1. Admin creates the extended field via /settings panel ---
     const session = await createAuthenticatedSession()
+    await page.context().addCookies([{ name: "access_token", value: session.token, url: "http://127.0.0.1:18080", httpOnly: true, sameSite: "Lax" }, { name: "access_token", value: session.token, url: "http://127.0.0.1:1314", httpOnly: true, sameSite: "Lax" }])
     await page.addInitScript(({ token, user }) => {
       sessionStorage.setItem('token', token)
       sessionStorage.setItem('user', JSON.stringify(user))
@@ -403,22 +406,19 @@ test.describe('Task board customization core flow', () => {
     const progressTag = page.locator('.el-tag').filter({ hasText: /^总进度:/ }).first()
     await expect(progressTag).toBeVisible()
 
-    // Playwright's dragTo synthesizes pointerdown/move/up events; SortableJS
-    // listens for them. Race the PATCH response so we don't block indefinitely
-    // if the drag synthesis doesn't trigger the onChange handler in this env.
-    await Promise.race([
-      Promise.all([
-        page.waitForResponse(
-          (response) =>
-            response.url().includes(`/api/projects/${projectId}/tasks/`) &&
-            response.url().endsWith('/status') &&
-            response.request().method() === 'PATCH' &&
-            response.ok(),
-          { timeout: 15000 },
-        ),
-        card.dragTo(completedColumn),
-      ]),
-      page.waitForTimeout(20000),
+    // 等待拖拽触发的 PATCH /status 响应 (≤20s); 若 drag 合成在本环境未触发 onChange,
+    // catch 吞掉 rejection 不抛错, 落到下方后端断言 (真正的 gate)。原 Promise.race +
+    // waitForTimeout(20000) 是 timing-based 脆弱写法 (H13 同 PR 顺手治理)。
+    await Promise.all([
+      page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/projects/${projectId}/tasks/`) &&
+          response.url().endsWith('/status') &&
+          response.request().method() === 'PATCH' &&
+          response.ok(),
+        { timeout: 20000 },
+      ).catch(() => {}),
+      card.dragTo(completedColumn),
     ])
 
     // Backend source of truth — this is the real gate. If the drag didn't
