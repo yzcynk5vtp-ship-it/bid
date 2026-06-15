@@ -1,4 +1,4 @@
--- PR: evaluation-404-fix
+-- Input: V1077__project_evaluation_nullable_timestamps.sql
 -- 回滚：恢复 timestamp 列为 NOT NULL DEFAULT CURRENT_TIMESTAMP。
 -- 注意：回滚会把当前 NULL 值填充为 CURRENT_TIMESTAMP，可能丢失业务精确性。
 UPDATE project_evaluation SET board_received_at = CURRENT_TIMESTAMP WHERE board_received_at IS NULL;
