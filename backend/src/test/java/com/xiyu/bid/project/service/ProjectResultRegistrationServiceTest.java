@@ -10,6 +10,7 @@ import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy;
 import com.xiyu.bid.project.dto.ResultRegistrationRequest;
 import com.xiyu.bid.project.entity.ProjectResult;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectResultCompetitorRepository;
 import com.xiyu.bid.project.repository.ProjectResultRepository;
 import com.xiyu.bid.repository.ProjectRepository;
@@ -42,6 +43,7 @@ class ProjectResultRegistrationServiceTest {
     private ProjectRepository projectRepo;
     private ProjectStageService stageService;
     private com.xiyu.bid.service.ProjectAccessScopeService accessScopeService;
+    private ProjectNotificationService notificationService;
     private ProjectResultRegistrationService service;
 
     @BeforeEach
@@ -51,7 +53,8 @@ class ProjectResultRegistrationServiceTest {
         stageService = mock(ProjectStageService.class);
         accessScopeService = mock(com.xiyu.bid.service.ProjectAccessScopeService.class);
         competitorRepo = mock(ProjectResultCompetitorRepository.class);
-        service = new ProjectResultRegistrationService(repo, competitorRepo, projectRepo, stageService, accessScopeService);
+        notificationService = mock(ProjectNotificationService.class);
+        service = new ProjectResultRegistrationService(repo, competitorRepo, projectRepo, stageService, accessScopeService, notificationService);
         Project p = new Project();
         p.setId(1L);
         when(projectRepo.findById(1L)).thenReturn(Optional.of(p));

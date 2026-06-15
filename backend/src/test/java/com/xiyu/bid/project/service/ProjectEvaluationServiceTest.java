@@ -13,6 +13,7 @@ import com.xiyu.bid.project.dto.EvaluationEvidenceAttachRequest;
 import com.xiyu.bid.project.dto.EvaluationFormUpdateRequest;
 import com.xiyu.bid.project.dto.EvaluationSubStageUpdateRequest;
 import com.xiyu.bid.project.dto.ProjectAbandonBidRequest;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.projectworkflow.entity.ProjectDocument;
 import com.xiyu.bid.projectworkflow.entity.ProjectDocument;
@@ -43,6 +44,7 @@ class ProjectEvaluationServiceTest {
     private ProjectRepository projectRepo;
     private ProjectDocumentRepository docRepo;
     private ProjectStageService stageService;
+    private ProjectNotificationService notificationService;
     private ProjectEvaluationService service;
 
     @BeforeEach
@@ -51,7 +53,8 @@ class ProjectEvaluationServiceTest {
         projectRepo = mock(ProjectRepository.class);
         docRepo = mock(ProjectDocumentRepository.class);
         stageService = mock(ProjectStageService.class);
-        service = new ProjectEvaluationService(repo, projectRepo, docRepo, stageService);
+        notificationService = mock(ProjectNotificationService.class);
+        service = new ProjectEvaluationService(repo, projectRepo, docRepo, stageService, notificationService);
         Project p = new Project();
         p.setId(1L);
         when(projectRepo.findById(1L)).thenReturn(Optional.of(p));

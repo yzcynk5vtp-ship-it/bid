@@ -11,10 +11,12 @@ import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.dto.ClosureSubmitRequest;
 import com.xiyu.bid.project.entity.ProjectClosure;
 import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectClosureRepository;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.project.service.ProjectClosureDepositAssembler;
 import com.xiyu.bid.repository.ProjectRepository;
+import com.xiyu.bid.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
@@ -43,6 +45,8 @@ class ProjectClosureServiceTest {
     private ProjectRepository projectRepo;
     private ProjectStageService stageService;
     private ProjectClosureDepositAssembler depositAssembler;
+    private UserRepository userRepository;
+    private ProjectNotificationService notificationService;
     private ProjectClosureService service;
 
     private static final Long PID = 1L;
@@ -58,7 +62,9 @@ class ProjectClosureServiceTest {
         stageService = mock(ProjectStageService.class);
         var initiationRepo = mock(ProjectInitiationDetailsRepository.class);
         depositAssembler = new ProjectClosureDepositAssembler(feeRepo, initiationRepo);
-        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler);
+        userRepository = mock(UserRepository.class);
+        notificationService = mock(ProjectNotificationService.class);
+        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler, userRepository, notificationService);
         Project p = new Project();
         p.setId(PID);
         when(projectRepo.findById(PID)).thenReturn(Optional.of(p));

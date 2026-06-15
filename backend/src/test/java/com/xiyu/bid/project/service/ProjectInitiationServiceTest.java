@@ -10,6 +10,7 @@ import com.xiyu.bid.project.entity.ProjectInitiationDetails;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import com.xiyu.bid.project.core.InitiationFieldPolicy;
 import com.xiyu.bid.project.dto.InitiationDto;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
@@ -45,13 +46,14 @@ class ProjectInitiationServiceTest {
     @Mock ProjectAccessScopeService projectAccessScopeService;
     @Mock UserRepository userRepository;
     @Mock ProjectLeadAssignmentRepository leadAssignmentRepository;
+    @Mock ProjectNotificationService notificationService;
     ProjectInitiationMapper realMapper;
     ProjectInitiationService service;
 
     @BeforeEach
     void setUp() {
         realMapper = new ProjectInitiationMapper(new ObjectMapper());
-        service = new ProjectInitiationService(repo, projectRepository, projectStageService, projectAccessScopeService, userRepository, realMapper, leadAssignmentRepository);
+        service = new ProjectInitiationService(repo, projectRepository, projectStageService, projectAccessScopeService, userRepository, realMapper, leadAssignmentRepository, notificationService);
         lenient().doNothing().when(projectAccessScopeService).assertCurrentUserCanAccessProject(1L);
         lenient().doNothing().when(projectAccessScopeService).assertCurrentUserCanAccessProject(2L);
         lenient().when(projectRepository.findById(1L)).thenReturn(Optional.of(Project.builder().id(1L).managerId(55L).build()));
