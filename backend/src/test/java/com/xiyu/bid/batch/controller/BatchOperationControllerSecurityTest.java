@@ -3,7 +3,8 @@ package com.xiyu.bid.batch.controller;
 import com.xiyu.bid.batch.dto.BatchClaimRequest;
 import com.xiyu.bid.batch.dto.BatchOperationResponse;
 import com.xiyu.bid.batch.service.BatchOperationService;
-import com.xiyu.bid.batch.service.BatchTenderAssignmentService;
+import com.xiyu.bid.batch.service.BatchTenderAssignAppService;
+import com.xiyu.bid.batch.service.BatchTenderStatusAppService;
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.service.AuthService;
@@ -30,7 +31,9 @@ class BatchOperationControllerSecurityTest {
     @Mock
     private BatchOperationService batchOperationService;
     @Mock
-    private BatchTenderAssignmentService batchTenderAssignmentService;
+    private BatchTenderStatusAppService batchTenderStatusAppService;
+    @Mock
+    private BatchTenderAssignAppService batchTenderAssignAppService;
     @Mock
     private AuthService authService;
 
@@ -46,7 +49,7 @@ class BatchOperationControllerSecurityTest {
         when(batchOperationService.batchClaimTenders(eq(List.of(1L, 2L)), eq(42L)))
                 .thenReturn(BatchOperationResponse.builder().success(true).successCount(2).totalCount(2).operationType("CLAIM").build());
 
-        BatchTenderController controller = new BatchTenderController(batchOperationService, batchTenderAssignmentService, authService);
+        BatchTenderController controller = new BatchTenderController(batchOperationService, batchTenderStatusAppService, batchTenderAssignAppService, authService);
         var response = controller.batchClaimTenders(request, userDetails);
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
@@ -66,7 +69,7 @@ class BatchOperationControllerSecurityTest {
         when(authService.resolveUserByUsername("ghost"))
                 .thenThrow(new org.springframework.security.core.userdetails.UsernameNotFoundException("ghost"));
 
-        BatchTenderController controller = new BatchTenderController(batchOperationService, batchTenderAssignmentService, authService);
+        BatchTenderController controller = new BatchTenderController(batchOperationService, batchTenderStatusAppService, batchTenderAssignAppService, authService);
         assertThatThrownBy(() -> controller.batchClaimTenders(request, userDetails))
                 .isInstanceOf(AuthenticationServiceException.class)
                 .hasMessageContaining("Authenticated user not found");
