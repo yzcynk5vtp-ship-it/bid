@@ -49,9 +49,9 @@
           <el-option v-for="item in priorityOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
       </el-form-item>
-      <el-form-item label="报名截止时间" class="search-field--date">
-        <el-date-picker v-model="registrationDeadlineRange" type="daterange" range-separator="至"
-          start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="filter-date-picker" clearable />
+      <el-form-item label="报名截止时间" class="search-field--datetime">
+        <el-date-picker v-model="registrationDeadlineRange" type="datetimerange" range-separator="至"
+          start-placeholder="开始时间" end-placeholder="结束时间" value-format="YYYY-MM-DDTHH:mm:ss" class="filter-datetime-picker" clearable />
       </el-form-item>
       <el-form-item label="开标时间" class="search-field--datetime">
         <el-date-picker v-model="bidOpeningTimeRange" type="datetimerange" range-separator="至"
@@ -67,9 +67,9 @@
           <el-option v-for="u in userOptions.cr" :key="u.id" :label="`${u.name}（${u.employeeId}）`" :value="u.id" />
         </el-select>
       </el-form-item>
-      <el-form-item label="创建时间" class="search-field--date">
-        <el-date-picker v-model="createdAtRange" type="daterange" range-separator="至"
-          start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="filter-date-picker" clearable />
+      <el-form-item label="创建时间" class="search-field--datetime">
+        <el-date-picker v-model="createdAtRange" type="datetimerange" range-separator="至"
+          start-placeholder="开始时间" end-placeholder="结束时间" value-format="YYYY-MM-DDTHH:mm:ss" class="filter-datetime-picker" clearable />
       </el-form-item>
       <el-form-item class="search-actions">
         <el-button type="primary" class="search-submit-button" @click="$emit('search')">
@@ -170,8 +170,8 @@ const registrationDeadlineRange = computed({
     return (f && t) ? [f, t] : null
   },
   set: (val) => {
-    modelValue.value.registrationDeadlineFrom = val?.[0] ? val[0] + 'T00:00:00' : null
-    modelValue.value.registrationDeadlineTo = val?.[1] ? val[1] + 'T23:59:59' : null
+    modelValue.value.registrationDeadlineFrom = val?.[0] || null
+    modelValue.value.registrationDeadlineTo = val?.[1] || null
   }
 })
 
@@ -192,8 +192,8 @@ const createdAtRange = computed({
     return (f && t) ? [f, t] : null
   },
   set: (val) => {
-    modelValue.value.createdAtFrom = val?.[0] ? val[0] + 'T00:00:00' : null
-    modelValue.value.createdAtTo = val?.[1] ? val[1] + 'T23:59:59' : null
+    modelValue.value.createdAtFrom = val?.[0] || null
+    modelValue.value.createdAtTo = val?.[1] || null
   }
 })
 </script>
@@ -231,6 +231,15 @@ const createdAtRange = computed({
 .search-submit-button { background: var(--brand-xiyu-logo, #2E7659); border-color: var(--brand-xiyu-logo, #2E7659); }
 .search-reset-button { border-color: var(--gray-200, #D0D0D0); color: var(--text-secondary, #666); }
 .filter-date-picker, .filter-datetime-picker { width: 100%; --el-date-editor-width: 100%; }
+/* 范围选择器高度与 input/select 对齐（实测均渲染 32px），避免 datetimerange/daterange 偏高 */
+.tender-search-card :deep(.el-range-editor) {
+  height: 32px !important;
+  min-height: 32px !important;
+}
+.tender-search-card :deep(.el-range-editor .el-range-input) {
+  line-height: 32px;
+  font-size: var(--font-size-sm, 14px);
+}
 /* 移动端响应式：form-controls.css 定义 .search-field 系列断点，此处补充 TenderSearchCard 特有样式 */
 @media (max-width: 768px) {
   .tender-search-card :deep(.el-card__body) { padding: var(--space-md, 16px); }
