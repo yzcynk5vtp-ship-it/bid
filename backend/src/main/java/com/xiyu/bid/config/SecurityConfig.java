@@ -63,7 +63,7 @@ public class SecurityConfig {
     private final Environment environment;
     private final ApiKeyAuthenticationFilter apiKeyAuthenticationFilter;
 
-    @Value("${cors.allowed-origins:http://localhost:1314,http://127.0.0.1:1314,http://localhost:5173,http://localhost:5174,http://localhost:3000}")
+    @Value("${cors.allowed-origins:http://localhost:1314,http://127.0.0.1:1314,http://localhost:5173,http://localhost:5174,http://localhost:3000,https://winbid-test.ehsy.com,http://winbid-test.ehsy.com}")
     private String[] corsAllowedOrigins;
 
     private static final String[] WHITE_LIST_URL = {
