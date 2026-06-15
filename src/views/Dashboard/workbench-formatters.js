@@ -58,6 +58,8 @@ export function getProgressColor(progress) {
   return '#EF4444'
 }
 
+// Maps the 8 canonical Workbench project status labels to Element Plus ElTag `type` values.
+// The fallback is always 'info' so the ElTag `type` validator never receives an empty string.
 const PROJECT_STATUS_TYPE_MAP = {
   待立项: 'info',
   已立项: 'info',
@@ -69,6 +71,11 @@ const PROJECT_STATUS_TYPE_MAP = {
   已放弃: 'info',
 }
 
+/**
+ * Resolve a Workbench project status label to an Element Plus ElTag type.
+ * @param {string | null | undefined} status
+ * @returns {'info' | 'primary' | 'success' | 'warning' | 'danger'}
+ */
 export function getProjectStatusType(status) {
   if (status == null || status === '') return 'info'
   return PROJECT_STATUS_TYPE_MAP[status] || 'info'
@@ -80,7 +87,13 @@ const PRIORITY_TYPE_MAP = {
   low: 'info',
 }
 
+/**
+ * Resolve a priority key to an Element Plus ElTag type.
+ * @param {string | null | undefined} priority
+ * @returns {'info' | 'danger' | 'warning'}
+ */
 export function getPriorityType(priority) {
+  if (priority == null || priority === '') return 'info'
   return PRIORITY_TYPE_MAP[priority] || 'info'
 }
 
