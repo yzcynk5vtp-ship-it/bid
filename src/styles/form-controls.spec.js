@@ -84,8 +84,12 @@ describe('global form control styles', () => {
     expect(formControls).toMatch(/\.search-card \.el-form--label-top \.search-field--datetime\s*\{[^}]*min-width:\s*360px/)
   })
 
-  it('CO-211: lets select dropdown popper grow to fit long option text', () => {
+  it('CO-211: lets select dropdown popper grow wider than trigger for long options', () => {
     expect(formControls).toContain('.el-select__popper.el-popper')
+    // popper must use max-content so it can exceed trigger width
+    expect(formControls).toMatch(/\.el-select__popper\.el-popper\s*\{[^}]*width:\s*max-content/)
     expect(formControls).toMatch(/\.el-select__popper\.el-popper\s*\{[^}]*max-width:\s*480px/)
+    // must NOT reference --el-component-size (that var controls height, not popper width)
+    expect(formControls).not.toMatch(/\.el-select__popper[^{]*\{[^}]*--el-component-size/)
   })
 })
