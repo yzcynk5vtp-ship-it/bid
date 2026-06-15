@@ -31,9 +31,15 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="总部所在地" prop="region">
-                <el-select v-model="form.region" placeholder="选择总部所在地" class="full-width">
-                  <el-option v-for="region in regions" :key="region" :label="region" :value="region" />
-                </el-select>
+                <el-cascader
+                  v-model="regionCascaderValue"
+                  :options="chinaRegionOptions"
+                  :props="{ expandTrigger: 'hover', label: 'name', value: 'name', checkStrictly: false, emitPath: true }"
+                  placeholder="选择总部所在地"
+                  clearable
+                  filterable
+                  class="full-width"
+                />
               </el-form-item>
             </el-col>
             <el-col :span="12">
@@ -163,15 +169,15 @@
 </template>
 
 <script setup>
-import { ref, shallowRef } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { DocumentCopy, Upload } from '@element-plus/icons-vue'
 import AdaptiveFormPage from '@/components/common/AdaptiveFormPage.vue'
+import { chinaRegionOptions } from '@/components/common/chinaRegionData.js'
 import {
   CUSTOMER_TYPE_OPTIONS,
   MANUAL_FORM_RULES,
   PRIORITY_OPTIONS,
   PROJECT_TYPE_OPTIONS,
-  REGION_OPTIONS,
 } from '../constants.js'
 
 const ACCEPT_FILE_TYPES = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -182,7 +188,7 @@ defineProps({
   rules: { type: Object, default: () => MANUAL_FORM_RULES },
   saving: { type: Boolean, default: false },
   parsingDocument: { type: Boolean, default: false },
-  regions: { type: Array, default: () => REGION_OPTIONS },
+  regions: { type: Array, default: () => chinaRegionOptions },
   customerTypes: { type: Array, default: () => CUSTOMER_TYPE_OPTIONS },
   priorities: { type: Array, default: () => PRIORITY_OPTIONS },
   projectTypes: { type: Array, default: () => PROJECT_TYPE_OPTIONS },
@@ -192,6 +198,37 @@ const emit = defineEmits(['reset', 'submit', 'file-change', 'parse-pasted-text']
 
 const innerFormRef = ref(null)
 const adaptiveFormRef = shallowRef(null)
+
+/**
+ * Bridge computed: converts between cascader array ['省','市'] and form.region joined string '省市'.
+ * Mirrors TenderSearchCard.vue regionValue pattern for consistency.
+ */
+const regionCascaderValue = computed({
+  get: () => {
+    const v = form.value.region
+    if (!v) return null
+    for (const province of chinaRegionOptions) {
+      if (province.name === v) return [v]
+      if (province.children) {
+        for (const city of province.children) {
+          if (v === province.name + city.name) return [province.name, city.name]
+        }
+      }
+    }
+    return v
+  },
+  set: (val) => {
+    if (!val) {
+      form.value.region = ''
+      return
+    }
+    if (Array.isArray(val)) {
+      form.value.region = val.join('')
+    } else {
+      form.value.region = val
+    }
+  },
+})
 
 const acceptFileTypes = ACCEPT_FILE_TYPES
 
