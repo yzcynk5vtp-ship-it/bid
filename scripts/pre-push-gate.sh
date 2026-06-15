@@ -49,10 +49,12 @@ fi
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-# 后端变更检测：分支相对 origin/main 引入的 backend/ 改动。
-# 注意：pre-push 时 git diff --cached 为空（改动已在 commit），必须用 origin/main...HEAD。
-# 无 backend/ 改动则跳过 3 个后端 mvn 架构测试（省 ~7 min JVM 启动+编译）。
-BACKEND_CHANGED=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -cE '^backend/' || true)
+# 推送前变更检测基准：merge-base(origin/main, HEAD)，等价 origin/main...HEAD 的三 dot 语义。
+# pre-push 时 git diff --cached 为空（改动已在 commit），所有变更检测必须基于 commit range。
+GATE_BASE=$(git merge-base origin/main HEAD 2>/dev/null || echo origin/main)
+
+# 后端变更检测：无 backend/ 改动则跳过 3 个后端 mvn 架构测试（省 ~7 min JVM 启动+编译）。
+BACKEND_CHANGED=$(git diff --name-only "$GATE_BASE"..HEAD 2>/dev/null | grep -cE '^backend/' || true)
 
 # 合并 3 个后端架构测试为一次 mvn 调用（省 2 次 JVM 启动 + 重复编译），逐项结果从 surefire XML 读取以保留精度。
 _BACKEND_MVN_RAN=""
@@ -151,7 +153,7 @@ fi
 # ── 5. 行预算 ───────────────────────────────────────────
 echo "── 行预算 ──"
 if [ -f "$ROOT_DIR/package.json" ]; then
-  if node "$ROOT_DIR/scripts/check-line-budgets.mjs" --staged 2>/dev/null; then
+  if node "$ROOT_DIR/scripts/check-line-budgets.mjs" --base "$GATE_BASE" 2>/dev/null; then
     pass "line-budget"
   else
     fail "line-budget — 新建文件超过 300 行限制"
@@ -160,18 +162,18 @@ fi
 
 # ── 6. 泄露检查 ────────────────────────────────────────
 echo "── 文件泄露检查 ──"
-UNTRACKED=$(git diff --cached --name-only 2>/dev/null | wc -l | tr -d ' ')
-STAGED_FILES=$(git diff --cached --name-only 2>/dev/null | head -20)
+UNTRACKED=$(git diff --name-only "$GATE_BASE"..HEAD 2>/dev/null | wc -l | tr -d ' ')
+STAGED_FILES=$(git diff --name-only "$GATE_BASE"..HEAD 2>/dev/null | head -20)
 if [ "$UNTRACKED" -gt 20 ]; then
-  skip "暂存了 $UNTRACKED 个文件 (>20)"
+  skip "本次推送 $UNTRACKED 个文件 (>20)"
   echo "$STAGED_FILES"
 else
-  pass "暂存文件 $UNTRACKED 个，数量合理"
+  pass "本次推送 $UNTRACKED 个文件，数量合理"
 fi
 
 # ── 7. E2E 选择器安全检查 ────────────────────────────────
 echo "── E2E 选择器 ──"
-CHANGED_E2E=$(git diff --cached --name-only 2>/dev/null | grep 'e2e/.*\.spec\.js$' || true)
+CHANGED_E2E=$(git diff --name-only "$GATE_BASE"..HEAD 2>/dev/null | grep 'e2e/.*\.spec\.js$' || true)
 if [ -n "$CHANGED_E2E" ]; then
   BREADCRUMB_RISK=$(grep -n "getByText(" $CHANGED_E2E 2>/dev/null | grep -v '.first()' | grep -v '// breadcrumb-ok' || true)
   if [ -n "$BREADCRUMB_RISK" ]; then
@@ -186,7 +188,7 @@ fi
 # ── 8. agent-locks 完整检查 ──────────────────────────────
 echo "── agent-locks ──"
 if [ -f "$ROOT_DIR/package.json" ]; then
-  if node "$ROOT_DIR/scripts/check-agent-locks.mjs" --changed-only 2>/dev/null; then
+  if node "$ROOT_DIR/scripts/check-agent-locks.mjs" --base "$GATE_BASE" 2>/dev/null; then
     pass "agent-locks 无冲突"
   else
     fail "agent-locks — 有锁冲突。运行 npm run agent:lock-check 查看详情"
@@ -210,7 +212,7 @@ fi
 
 # ── 10. 路由-E2E 兼容性检查 ────────────────────────────
 echo "── 路由-E2E 兼容 ──"
-STAGED_ROUTES=$(git diff --cached --name-only 2>/dev/null | grep -cE '^src/(router|views)/' || true)
+STAGED_ROUTES=$(git diff --name-only "$GATE_BASE"..HEAD 2>/dev/null | grep -cE '^src/(router|views)/' || true)
 if [ "$STAGED_ROUTES" -gt 0 ]; then
   if node "$ROOT_DIR/scripts/check-route-e2e-compat.mjs" 2>/dev/null; then
     pass "route-e2e-compat"
@@ -226,8 +228,8 @@ echo "── E2E-UI 联动 ──"
 if [ "$SKIP_E2E_CHECK" = "true" ]; then
   skip "E2E-UI 联动 (--skip-e2e-check)"
 else
-  UI_CHANGED=$(git diff --cached --name-only 2>/dev/null | grep -cE '^src/(router|views)/' || true)
-  E2E_CHANGED=$(git diff --cached --name-only 2>/dev/null | grep -cE '^e2e/' || true)
+  UI_CHANGED=$(git diff --name-only "$GATE_BASE"..HEAD 2>/dev/null | grep -cE '^src/(router|views)/' || true)
+  E2E_CHANGED=$(git diff --name-only "$GATE_BASE"..HEAD 2>/dev/null | grep -cE '^e2e/' || true)
   if [ "$UI_CHANGED" -gt 0 ] && [ "$E2E_CHANGED" -eq 0 ]; then
     HEADER=$(git log -1 --format='%s %b' 2>/dev/null || true)
     if echo "$HEADER" | grep -q '\[skip e2e-scope\]'; then
