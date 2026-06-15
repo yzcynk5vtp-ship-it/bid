@@ -43,8 +43,8 @@ export function useReminderSettings(tenderId) {
   async function loadUsers() {
     loadingUsers.value = true
     try {
-      const response = await usersApi.getList({ page: 0, size: 100 })
-      users.value = response.data || []
+      const list = await usersApi.search('', 100)
+      users.value = Array.isArray(list) ? list : []
     } catch (error) {
       console.error('加载用户列表失败:', error)
       users.value = []

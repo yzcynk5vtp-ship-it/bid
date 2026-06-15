@@ -158,8 +158,8 @@
       <el-form-item label="项目名称"><el-text>{{ tender?.title }}</el-text></el-form-item>
       <el-form-item label="新负责人" required>
         <el-select v-model="transferTarget" filterable placeholder="选择新的项目负责人" style="width:100%">
-          <el-option v-for="c in transferCandidates" :key="c.id" :label="c.name" :value="c.id">
-            {{ c.name }} · {{ c.departmentName }}
+          <el-option v-for="c in transferCandidates" :key="c.id" :label="formatAssignmentCandidateLabel(c)" :value="c.id">
+            {{ formatAssignmentCandidateLabel(c) }} · {{ c.departmentName }}
           </el-option>
         </el-select>
       </el-form-item>
@@ -187,6 +187,7 @@ import { useDetailTabs } from './useDetailTabs.js'
 import { useDetailActions } from './useDetailActions.js'
 import { useUserStore } from '@/stores/user'
 import { isBidManager } from '@/utils/permission'
+import { formatAssignmentCandidateLabel } from '../list/helpers.js'
 const TenderEvaluationForm = defineAsyncComponent(() => import('./TenderEvaluationForm.vue'))
 const OperationLogTimeline = defineAsyncComponent(() => import('./components/OperationLogTimeline.vue'))
 const AssignDialog = defineAsyncComponent(() => import('../list/components/AssignDialog.vue'))
@@ -195,6 +196,7 @@ const CrmOpportunitySelector = defineAsyncComponent(() => import('./components/C
 import BottomActionBar from './BottomActionBar.vue'
 import FavoriteButton from '../list/components/FavoriteButton.vue'
 import './styles/detail-layout.css'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userRole?.toLowerCase() || 'staff')
 const {

@@ -60,7 +60,7 @@
             <el-select v-model="form.caCustodian" placeholder="请选择投标部门人员"
               :disabled="!form.hasCa"
               style="width:100%" filterable clearable>
-              <el-option v-for="u in biddingUsers" :key="u.id" :label="u.name" :value="u.id" />
+              <el-option v-for="u in biddingUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -82,6 +82,7 @@ import { ElMessage } from 'element-plus'
 import { authApi, resourcesApi } from '@/api'
 import httpClient from '@/api/client'
 import { useUserStore } from '@/stores/user'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -112,7 +113,12 @@ const loadBiddingUsers = async () => {
     const res = await httpClient.get('/api/admin/users')
     if (res?.data) {
       biddingUsers.value = (Array.isArray(res.data) ? res.data : [])
-        .map(u => ({ id: u.id, name: u.fullName || u.username }))
+        .map(u => ({
+          id: u.id,
+          name: u.fullName || u.username,
+          username: u.username,
+          employeeNumber: u.employeeNumber,
+        }))
     }
   } catch { /* silent */ }
 }

@@ -75,7 +75,7 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { projectsApi } from '@/api'
-import { formatDisplayName } from '@/utils/formatDisplayName.js'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -128,7 +128,7 @@ const searchUsers = async (query) => {
     // Backend UserSearchResult: { id, name, role }; UI el-option label uses `fullName`.
     const list = await usersApi.search(query)
     userOptions.value = Array.isArray(list)
-      ? list.map((u) => ({ id: u.id, fullName: formatDisplayName(u.name, u.employeeNumber), role: u.role }))
+      ? list.map((u) => ({ id: u.id, name: u.name, fullName: u.fullName || u.name, employeeNumber: u.employeeNumber || u.employeeId || u.username, role: u.role }))
       : []
   } catch (err) {
     userOptions.value = []

@@ -34,11 +34,11 @@
           <el-option
             v-for="user in users"
             :key="user.id"
-            :label="user.name"
+            :label="formatUserLabel(user)"
             :value="{ userId: user.id, userName: user.name, wecomUserId: user.wecomUserId || '' }"
           >
             <div class="user-option">
-              <span>{{ user.name }}</span>
+              <span>{{ formatUserLabel(user) }}</span>
               <span class="user-role">{{ user.roleName || user.role || '' }}</span>
             </div>
           </el-option>
@@ -75,6 +75,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useReminderSettings } from './useReminderSettings.js'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },

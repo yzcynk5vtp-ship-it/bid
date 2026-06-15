@@ -79,7 +79,7 @@
                   <el-option 
                     v-for="user in userOptions" 
                     :key="user.id" 
-                    :label="user.name" 
+                    :label="formatUserLabel(user)" 
                     :value="user.id" 
                   />
                 </el-select>
@@ -122,6 +122,7 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, OfficeBuilding, Folder } from '@element-plus/icons-vue'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const props = defineProps({
   depts: { type: Array, required: true },

@@ -51,6 +51,7 @@
     "src/views/System/Settings.vue",
     "src/views/System/WorkflowFormDesigner.vue",
     "src/views/System/workflow-form-designer/useWorkflowFormDesigner.js",
+    "src/components/ai/CollaborationCenter.vue",
     "backend/src/main/java/com/xiyu/bid/approval/controller/ApprovalController.java",
     "backend/src/main/java/com/xiyu/bid/qualification/controller/QualificationController.java",
     "backend/src/main/java/com/xiyu/bid/qualification/service/QualificationService.java",

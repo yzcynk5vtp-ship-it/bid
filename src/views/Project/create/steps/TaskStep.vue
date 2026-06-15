@@ -42,7 +42,7 @@
                     <el-option
                       v-for="user in userList"
                       :key="user.id"
-                      :label="user.name"
+                      :label="formatUserLabel(user)"
                       :value="user.name"
                     />
                   </el-select>
@@ -83,6 +83,7 @@
 <script setup>
 import { ref } from 'vue'
 import { Connection, Plus, Delete } from '@element-plus/icons-vue'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 defineProps({
   taskForm: { type: Object, required: true },

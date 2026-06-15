@@ -9,7 +9,7 @@
       <el-table-column prop="managerUserId" label="负责人" width="160">
         <template #default="{ row }">
           <el-select v-model="row.managerUserId" size="small" style="width: 100%" @change="syncMeta(row)">
-            <el-option v-for="user in userOptions" :key="user.id" :label="user.name" :value="user.id" />
+            <el-option v-for="user in userOptions" :key="user.id" :label="formatUserLabel(user)" :value="user.id" />
           </el-select>
         </template>
       </el-table-column>
@@ -31,7 +31,7 @@
       <el-table-column prop="memberUserIds" label="组成员" min-width="220">
         <template #default="{ row }">
           <el-select v-model="row.memberUserIds" multiple size="small" style="width: 100%" @change="syncMeta(row)">
-            <el-option v-for="user in userOptions" :key="user.id" :label="user.name" :value="user.id" />
+            <el-option v-for="user in userOptions" :key="user.id" :label="formatUserLabel(user)" :value="user.id" />
           </el-select>
         </template>
       </el-table-column>
