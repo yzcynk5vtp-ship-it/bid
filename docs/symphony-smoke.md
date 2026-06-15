@@ -17,10 +17,39 @@ routing workflow. Its presence on the task branch proves that:
 4. Codex (review) was given the diff and returned actionable feedback, which
    Claude applied on the same branch.
 
+## Verification (reviewer-runnable)
+
+Run from the repo root after checking out `agent/symphony/CO-204-routing-test`:
+
+```bash
+# 1. Marker line present, verbatim.
+grep -F '<!-- tested by Claude, reviewed by Codex -->' docs/symphony-smoke.md
+
+# 2. Diff footprint is doc-only (rule 1 hot-path gate).
+git diff --name-only origin/main..HEAD
+# expected: docs/symphony-smoke.md
+
+# 3. Hot-path blacklist (rule 1) — must print nothing.
+git diff --name-only origin/main..HEAD \
+  | grep -E '^(backend/src/main/resources/db/migration-mysql/|backend/src/main/resources/db/rollback/migration-mysql/|backend/src/main/java/com/xiyu/bid/entity/|backend/src/main/resources/application.*\.yml|src/router/index\.js|src/views/Login\.vue|\.github/workflows/|\.githooks/)'
+
+# 4. Branch naming (rule 2) — must start with agent/symphony/.
+git rev-parse --abbrev-ref HEAD
+```
+
+## Iteration log
+
+| Pass | Result |
+|---|---|
+| Pass 1 (c17c9d7e) | Created file with marker line. |
+| Pass 2 (4ef28aa4) | Expanded Purpose + Acceptance criteria per Codex feedback. |
+| Pass 3 (this commit) | Added reviewer-runnable Verification block + iteration log so the artifact is self-auditable; re-verified rule-1 footprint is clean. |
+
 ## Acceptance criteria
 
 - [x] The literal line `<!-- tested by Claude, reviewed by Codex -->` exists
       in this file.
-- [x] No hot-path from `WORKFLOW.md` rule 1 is touched.
+- [x] No hot-path from `WORKFLOW.md` rule 1 is touched (verified above).
 - [x] Commit lands on `agent/symphony/CO-204-routing-test` (per issue body).
 - [x] Diff footprint is doc-only (`docs/symphony-smoke.md`).
+- [x] Verification commands reproduce locally without external services.
