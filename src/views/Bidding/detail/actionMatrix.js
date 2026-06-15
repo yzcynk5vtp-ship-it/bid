@@ -219,6 +219,7 @@ export function getBottomActions(status, role, _requiresReview, evaluationTabAct
 // ---------------------------------------------------------------------------
 export function shouldShowLogsTab(sourceType) {
   if (sourceType == null) return true
-  if (sourceType === 'MANUAL_SINGLE') return false
+  // 后端 sourceType 现在返回中文标签（@JsonValue），同时保留英文枚举名兼容
+  if (sourceType === 'MANUAL_SINGLE' || sourceType === '人工录入') return false
   return true
 }

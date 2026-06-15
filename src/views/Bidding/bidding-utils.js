@@ -271,7 +271,7 @@ export function toBackendStatus(frontendStatus) {
 
 /**
  * 根据标讯来源类型获取显示文本
- * @param {string} sourceType - EXTERNAL_PLATFORM / CRM_OPPORTUNITY / MANUAL_SINGLE / BULK_IMPORT
+ * @param {string} sourceType - 英文枚举名（EXTERNAL_PLATFORM 等）或中文标签（第三方平台 等）
  * @returns {string} 显示文本
  */
 export function getSourceTypeText(sourceType) {

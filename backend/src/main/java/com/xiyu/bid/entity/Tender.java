@@ -1,5 +1,8 @@
 package com.xiyu.bid.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -349,12 +352,53 @@ public class Tender {
     }
 
     /**
-     * 标讯来源类型枚举
+     * 标讯来源类型枚举。
+     *
+     * <p>序列化行为：{@code @JsonValue} 作用于 {@link #getLabel()}，
+     * Jackson 序列化时输出中文标签（如 {@code "第三方平台"}），
+     * 而非枚举常量名（{@code "EXTERNAL_PLATFORM"}）。
+     * 数据库存储不受影响——{@code @Enumerated(EnumType.STRING)} 仍保存英文常量名。</p>
+     *
+     * <p>反序列化行为：{@code @JsonCreator} 同时接受中文标签与英文常量名，
+     * 保证 POST 请求传 {@code "EXTERNAL_PLATFORM"} 或 {@code "第三方平台"} 均可识别。</p>
      */
     public enum SourceType {
-        EXTERNAL_PLATFORM,  // 第三方平台拉取
-        CRM_OPPORTUNITY,    // CRM商机转入
-        MANUAL_SINGLE,      // 人工单条录入
-        BULK_IMPORT         // 批量Excel导入
+        EXTERNAL_PLATFORM("第三方平台"),
+        CRM_OPPORTUNITY("CRM 商机"),
+        MANUAL_SINGLE("人工录入"),
+        BULK_IMPORT("批量导入");
+
+        /** 中文展示标签，通过 @JsonValue 作为 JSON 序列化值。 */
+        private final String label;
+
+        SourceType(String label) {
+            this.label = label;
+        }
+
+        /** Jackson 序列化时输出中文标签，替代默认的枚举 name()。 */
+        @JsonValue
+        public String getLabel() {
+            return label;
+        }
+
+        /**
+         * Jackson 反序列化入口，同时支持中文标签和英文枚举名。
+         *
+         * @param value 中文标签（如 "第三方平台"）或英文枚举名（如 "EXTERNAL_PLATFORM"）
+         * @return 对应的枚举常量；{@code null} 或空白字符串返回 {@code null}
+         * @throws IllegalArgumentException 值无法匹配任何枚举常量时抛出
+         */
+        @JsonCreator
+        public static SourceType fromValue(String value) {
+            if (value == null || value.isBlank()) {
+                return null;
+            }
+            for (SourceType st : values()) {
+                if (st.name().equals(value) || st.label.equals(value)) {
+                    return st;
+                }
+            }
+            throw new IllegalArgumentException("不支持的来源类型: " + value);
+        }
     }
 }
