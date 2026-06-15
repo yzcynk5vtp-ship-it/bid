@@ -13,11 +13,14 @@ import com.xiyu.bid.project.core.AllTasksCompletedPolicy;
 import com.xiyu.bid.project.core.BidReviewPolicy;
 import com.xiyu.bid.project.core.BidReviewStatus;
 import com.xiyu.bid.project.core.ProjectFieldLockPolicy;
+import com.xiyu.bid.project.core.EvaluationSubStage;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy;
 import com.xiyu.bid.project.dto.ProjectDraftingViewDto;
 import com.xiyu.bid.project.dto.ProjectLeadAssignmentRequest;
+import com.xiyu.bid.project.entity.ProjectEvaluation;
 import com.xiyu.bid.project.entity.ProjectLeadAssignment;
+import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.UserRepository;
@@ -52,6 +55,7 @@ public class ProjectDraftingService {
     private final ProjectAccessScopeService projectAccessScopeService;
     private final UserRepository userRepository;
     private final BidReviewAppService bidReviewAppService;
+    private final ProjectEvaluationRepository projectEvaluationRepository;
 
     @Auditable(action = "ASSIGN_PROJECT_LEADS", entityType = "ProjectLeadAssignment",
             description = "分配主/副投标负责人")
@@ -175,6 +179,7 @@ public class ProjectDraftingService {
         }
         projectStageService.requestTransition(projectId, ProjectStage.EVALUATING,
                 ProjectStageTransitionPolicy.GateInputs.EMPTY);
+        ensureEvaluationInitialized(projectId, currentUserId);
         ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
         log.info("Bid submitted project={} stage={}->EVALUATING user={}",
                 projectId, currentStage, currentUserId);
@@ -203,6 +208,22 @@ public class ProjectDraftingService {
     private Project mustGetProject(Long projectId) {
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", String.valueOf(projectId)));
+    }
+
+    private void ensureEvaluationInitialized(Long projectId, Long userId) {
+        if (projectEvaluationRepository.findByProjectId(projectId).isPresent()) {
+            return;
+        }
+        ProjectEvaluation evaluation = ProjectEvaluation.builder()
+                .projectId(projectId)
+                .subStage(EvaluationSubStage.IN_PROGRESS.name())
+                .evaluationStartedAt(LocalDateTime.now())
+                .notes("")
+                .createdBy(userId)
+                .updatedBy(userId)
+                .build();
+        projectEvaluationRepository.save(evaluation);
+        log.info("ProjectEvaluation initialized on bid submission project={} user={}", projectId, userId);
     }
 
     private static BidReviewStatus parseStatus(String raw) {
