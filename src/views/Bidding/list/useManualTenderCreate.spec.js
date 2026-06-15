@@ -183,11 +183,11 @@ describe('useManualTenderCreate', () => {
         bidOpeningTime: '2026-10-16T09:30:00',
         contactName: '赵经理',
         contactPhone: '010-88888888',
-        contactLandline: null,
+        contactTel: null,
         contactMail: 'zhao@example.com',
         contactName2: null,
         contactPhone2: null,
-        contactLandline2: null,
+        contactTel2: null,
         contactMail2: null,
         customerType: '央企集团',
         priority: 'A',
@@ -237,6 +237,40 @@ describe('useManualTenderCreate', () => {
     workflow.manualForm.value.pastedText = '中'.repeat(500_010)
     await nextTick()
     expect(workflow.manualForm.value.pastedText.length).toBe(500_000)
+  })
+
+  it('maps landline form fields to contactTel/contactTel2 in payload', async () => {
+    const refreshTenderList = vi.fn()
+    const { workflow, tendersApi } = createWorkflow({ refreshTenderList })
+    tendersApi.create.mockResolvedValue({ success: true })
+    workflow.manualFormRef.value = { validate: vi.fn().mockResolvedValue(true) }
+    workflow.manualForm.value = {
+      ...workflow.manualForm.value,
+      title: '座机字段映射测试项目',
+      region: '上海',
+      deadline: '2026-11-01 00:00',
+      bidOpeningTime: '2026-11-03 09:30',
+      purchaser: '测试采购方',
+      contact: '张经理',
+      phone: '13800138000',
+      landline: '010-12345678',
+      mail: 'zhang@example.com',
+      contact2: '李经理',
+      phone2: '13900139000',
+      landline2: '021-87654321',
+      mail2: 'li@example.com',
+      customerType: '央企集团',
+      priority: 'A',
+    }
+
+    await expect(workflow.saveManualTender()).resolves.toBe(true)
+
+    expect(tendersApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contactTel: '010-12345678',
+        contactTel2: '021-87654321',
+      }),
+    )
   })
 
   it('rejects files exceeding 50MB size limit', async () => {

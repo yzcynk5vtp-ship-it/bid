@@ -130,16 +130,16 @@ export function buildManualTenderPayload(form = {}) {
     projectType: form.projectType || null,
     deadline: formattedDeadline,
     publishDate: formatLocalDate(),
-    source: '人工录入',
-    // 联系人1
+    source: 'manual',
+    // 联系人1 (座机字段: 前端 form.landline → 后端 contactTel)
     contactName: form.contact || null,
     contactPhone: form.phone || null,
-    contactLandline: form.landline || null,
+    contactTel: form.landline || null,
     contactMail: form.mail || null,
-    // 联系人2
+    // 联系人2 (座机字段: 前端 form.landline2 → 后端 contactTel2)
     contactName2: form.contact2 || null,
     contactPhone2: form.phone2 || null,
-    contactLandline2: form.landline2 || null,
+    contactTel2: form.landline2 || null,
     contactMail2: form.mail2 || null,
     description: form.description || null,
     tenderInfo: form.tenderInfo || null,
