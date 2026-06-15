@@ -40,13 +40,19 @@ git rev-parse --abbrev-ref HEAD | grep -q '^agent/symphony/'
 
 ## Iteration log
 
+Commit hashes are intentionally omitted from this table; they are
+recoverable via `git log -- docs/symphony-smoke.md`. Recording them
+inline forced every pass to re-pin the previous pass's `(this commit)`
+placeholder, creating an unbounded review loop.
+
 | Pass | Result |
 |---|---|
-| Pass 1 (c17c9d7e) | Created file with marker line. |
-| Pass 2 (4ef28aa4) | Expanded Purpose + Acceptance criteria per Codex feedback. |
-| Pass 3 (7a8b624c) | Added reviewer-runnable Verification block + iteration log so the artifact is self-auditable; re-verified rule-1 footprint is clean. |
-| Pass 4 (382e4c88) | Hardened Verification commands to assert (non-zero exit on failure) instead of merely printing; replaced stale "this commit" self-reference in Pass 3 row with its actual hash `7a8b624c`. |
-| Pass 5 (this commit) | Closed the remaining self-reference loop: Pass 4 row still read "(this commit)", now pinned to its actual hash `382e4c88`. No artifact-content change beyond the iteration log. |
+| Pass 1 | Created file with marker line. |
+| Pass 2 | Expanded Purpose + Acceptance criteria per Codex feedback. |
+| Pass 3 | Added reviewer-runnable Verification block + iteration log so the artifact is self-auditable; re-verified rule-1 footprint is clean. |
+| Pass 4 | Hardened Verification commands to assert (non-zero exit on failure) instead of merely printing. |
+| Pass 5 | Closed the remaining self-reference loop in the log. |
+| Pass 6 | Removed all inline commit hashes from the iteration log to break the `(this commit)` re-pin loop and stop introducing new review noise. No artifact-content change beyond the iteration log. |
 
 ## Acceptance criteria
 
