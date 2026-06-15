@@ -20,8 +20,6 @@
           <div class="card-header-row">
             <span class="card-title">标讯列表</span>
             <div class="card-actions">
-              <!-- TODO: 分发记录功能待后端 API 补全后恢复 -->
-              <!-- <el-button size="small" @click="distribution.showRecordDialog.value = true"><el-icon><ListIcon /></el-icon>分发记录</el-button> -->
               <el-button size="small" type="success" @click="marketInsight.showMarketInsight.value = true"><el-icon><TrendCharts /></el-icon>市场洞察</el-button>
               <el-button size="small" @click="handleExport"><el-icon><Download /></el-icon>导出</el-button>
               <el-button v-if="canSyncExternalSource" size="small" type="warning" :loading="sourceConfig.fetchingTenders.value" @click="sourceConfig.syncExternalTenders"><el-icon><Refresh /></el-icon>一键获取标讯</el-button>
@@ -118,8 +116,6 @@
       @reset="distribution.resetAssignForm"
       @submit="distribution.handleAssign"
     />
-    <!-- TODO: 分发记录功能待后端 API 补全后恢复 -->
-    <!-- <RecordsDialog v-model="distribution.showRecordDialog.value" :records="distribution.distributeRecords.value" /> -->
     <SourceConfigDialog
       v-model="sourceConfig.showSourceConfig.value"
       v-model:source-config="sourceConfig.sourceConfig.value"
@@ -191,8 +187,6 @@ import DistributeDialog from './list/components/DistributeDialog.vue'
 import FetchResultDialog from './list/components/FetchResultDialog.vue'
 import ManualTenderDialog from './list/components/ManualTenderDialog.vue'
 import MarketInsightDialog from './list/components/MarketInsightDialog.vue'
-// TODO: 分发记录功能待后端 API 补全后恢复
-// import RecordsDialog from './list/components/RecordsDialog.vue'
 import ReminderSettingsDialog from './list/components/ReminderSettingsDialog.vue'
 import SourceConfigDialog from './list/components/SourceConfigDialog.vue'
 import SourceStatusCard from './list/components/SourceStatusCard.vue'
