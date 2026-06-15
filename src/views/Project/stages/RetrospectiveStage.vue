@@ -258,6 +258,8 @@ async function doReview() {
   }
 }
 onMounted(load)
+
+defineExpose({ load })
 </script>
 <style scoped>
 .retrospective-stage { display: flex; flex-direction: column; gap: 16px; }

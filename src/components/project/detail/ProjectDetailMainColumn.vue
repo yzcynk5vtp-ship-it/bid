@@ -14,6 +14,7 @@
         <el-tab-pane label="项目立项" name="INITIATED">
           <InitiationStage
             v-if="ctx.project?.id"
+            ref="initiationStageRef"
             :key="ctx.project.id"
             :project-id="ctx.project.id"
             @updated="handleStageUpdated"
@@ -43,6 +44,7 @@
             <TaskDecomposeDialog ref="taskDecomposeRef" :project-id="ctx.project?.id" />
             <DraftingStage
               v-if="ctx.project?.id"
+              ref="draftingStageRef"
               :key="ctx.project.id"
               :project-id="ctx.project.id"
               @advanced="handleStageUpdated"
@@ -52,6 +54,7 @@
         <el-tab-pane label="评标中" name="EVALUATING">
           <EvaluationStage
             v-if="ctx.project?.id"
+            ref="evaluationStageRef"
             :key="ctx.project.id"
             :project-id="ctx.project.id"
             @advanced="handleStageUpdated"
@@ -61,6 +64,7 @@
         <el-tab-pane label="结果确认" name="RESULT_PENDING">
           <ResultConfirmStage
             v-if="ctx.project?.id"
+            ref="resultConfirmStageRef"
             :key="ctx.project.id"
             :project-id="ctx.project.id"
             @registered="handleStageUpdated"
@@ -70,6 +74,7 @@
         <el-tab-pane label="项目复盘" name="RETROSPECTIVE">
           <RetrospectiveStage
             v-if="ctx.project?.id"
+            ref="retrospectiveStageRef"
             :key="ctx.project.id"
             :project-id="ctx.project.id"
             @submitted="onRetrospectiveSubmitted"
@@ -79,6 +84,7 @@
         <el-tab-pane label="项目结项" name="CLOSED">
           <ClosureStage
             v-if="ctx.project?.id"
+            ref="closureStageRef"
             :key="ctx.project.id"
             :project-id="ctx.project.id"
             @closed="handleStageUpdated"
@@ -108,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 // import { Document, DocumentChecked, Folder, Upload } from '@element-plus/icons-vue' // 暂时隐藏项目文档
 import { useProjectDetailContext } from '@/composables/projectDetail/context.js'
 import { useProjectStore } from '@/stores/project'
@@ -138,6 +144,23 @@ const scoreParseRef = ref(null)
 const taskDecomposeRef = ref(null)
 const resultType = ref('')
 
+// CO-214: 各 stage 组件引用，用于切换 tab 时主动触发数据刷新
+const initiationStageRef = ref(null)
+const draftingStageRef = ref(null)
+const evaluationStageRef = ref(null)
+const resultConfirmStageRef = ref(null)
+const retrospectiveStageRef = ref(null)
+const closureStageRef = ref(null)
+
+const stageRefMap = {
+  INITIATED: () => initiationStageRef.value,
+  DRAFTING: () => draftingStageRef.value,
+  EVALUATING: () => evaluationStageRef.value,
+  RESULT_PENDING: () => resultConfirmStageRef.value,
+  RETROSPECTIVE: () => retrospectiveStageRef.value,
+  CLOSED: () => closureStageRef.value,
+}
+
 async function loadResultType() {
   if (!ctx.project?.id) return
   try {
@@ -161,6 +184,24 @@ watch(() => ctx.project?.id, (newId) => {
 function handleStageClick(stage) {
   activeStageTab.value = stage.code
 }
+
+// CO-214: 切换 tab 时主动调用目标 stage 的 load()，避免显示旧数据。
+// 元素 el-tabs 默认非懒渲染，所有 stage 在首次进入详情页时已完成 onMounted；
+// 后续切换 tab 不会再次触发 onMounted，因此需要父组件在 tab 变更时主动刷新。
+watch(activeStageTab, async (newTab) => {
+  if (!newTab) return
+  // 等待 tab 切换引发的 DOM 更新完成，确保目标 stage ref 已绑定
+  await nextTick()
+  const target = stageRefMap[newTab]?.()
+  if (target?.load) {
+    try {
+      await target.load()
+    } catch (e) {
+      // 加载失败时静默处理（各 stage 内部已有 ElMessage 错误提示）
+      console.warn(`[ProjectDetailMainColumn] stage "${newTab}" load failed`, e)
+    }
+  }
+})
 
 const snapshotLock = ref(false)
 

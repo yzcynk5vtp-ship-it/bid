@@ -242,6 +242,8 @@ async function submit() {
 }
 
 onMounted(load)
+
+defineExpose({ load })
 </script>
 
 <style scoped>

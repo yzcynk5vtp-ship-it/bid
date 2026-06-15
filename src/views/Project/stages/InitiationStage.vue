@@ -274,6 +274,8 @@ async function handleDynamicSubmit(formData) {
   await submit()
 }
 onMounted(load)
+
+defineExpose({ load })
 </script>
 <style scoped>
 .initiation-stage { display: flex; flex-direction: column; gap: 16px; }
