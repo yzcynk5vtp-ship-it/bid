@@ -47,20 +47,19 @@ xiyu:
       # 按人员映射（支持邮箱、工号/用户名/姓名，优先级最高）。
       # 由于系统当前只能给用户绑定一个 RoleProfile，同一人命中多条时以第一条为准。
       personToRoleMappings:
-        # 投标管理员 /bidAdmin
+        # 投标系统管理员 bid-SystemAdmin（OSS 临时岗位）。
+        # 张頔、郑蓉蓉、袁思琪目前同时属于 /bidAdmin；由于系统只能绑定一个 RoleProfile，
+        # 按最高权限原则统一给 admin。后续若 OSS 取消 bid-SystemAdmin，可把他们改回
+        # bid_admin（张頔/郑蓉蓉）或 bid_senior（袁思琪）。
         - personIdentifier: "03595"                # 张頔：工号
-          roleCode: bid_admin
+          roleCode: admin
         - personIdentifier: "dean_zhang@ehsy.com"  # 张頔：邮箱
-          roleCode: bid_admin
+          roleCode: admin
         - personIdentifier: "06234"                  # 郑蓉蓉：工号
-          roleCode: bid_admin
+          roleCode: admin
         - personIdentifier: "tina_zheng1@ehsy.com"   # 郑蓉蓉：邮箱
-          roleCode: bid_admin
-        # 袁思琪：同时属于 /bidAdmin 与 bid-TeamLeader，合并为 bid_senior（投标主管）
+          roleCode: admin
         - personIdentifier: "11484"                  # 袁思琪：工号
-          roleCode: bid_senior
+          roleCode: admin
         - personIdentifier: "suki_yuan@ehsy.com"     # 袁思琪：邮箱
-          roleCode: bid_senior
-        # 投标系统管理员 bid-SystemAdmin（OSS 临时岗位）——请在此处补充具体人员
-        # - personIdentifier: "TODO_工号或邮箱"
-        #   roleCode: admin
+          roleCode: admin
