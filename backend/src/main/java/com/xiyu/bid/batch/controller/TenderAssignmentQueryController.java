@@ -2,7 +2,7 @@ package com.xiyu.bid.batch.controller;
 
 import com.xiyu.bid.batch.dto.TenderAssignmentCandidateResponse;
 import com.xiyu.bid.batch.dto.TenderAssignmentResponse;
-import com.xiyu.bid.batch.service.BatchTenderAssignmentService;
+import com.xiyu.bid.batch.service.TenderAssignmentQueryService;
 import com.xiyu.bid.dto.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,17 +20,17 @@ import java.util.List;
 @PreAuthorize("isAuthenticated()")
 public class TenderAssignmentQueryController {
 
-    private final BatchTenderAssignmentService batchTenderAssignmentService;
+    private final TenderAssignmentQueryService tenderAssignmentQueryService;
 
     @GetMapping("/{id}/assignment")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TenderAssignmentResponse>> getTenderAssignment(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(batchTenderAssignmentService.getAssignment(id)));
+        return ResponseEntity.ok(ApiResponse.success(tenderAssignmentQueryService.getAssignment(id)));
     }
 
     @GetMapping("/assignment-candidates")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<TenderAssignmentCandidateResponse>>> getTenderAssignmentCandidates() {
-        return ResponseEntity.ok(ApiResponse.success(batchTenderAssignmentService.getCandidates()));
+        return ResponseEntity.ok(ApiResponse.success(tenderAssignmentQueryService.getCandidates()));
     }
 }

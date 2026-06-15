@@ -2,7 +2,8 @@ package com.xiyu.bid.batch.controller;
 
 import com.xiyu.bid.batch.dto.*;
 import com.xiyu.bid.batch.service.BatchOperationService;
-import com.xiyu.bid.batch.service.BatchTenderAssignmentService;
+import com.xiyu.bid.batch.service.BatchTenderAssignAppService;
+import com.xiyu.bid.batch.service.BatchTenderStatusAppService;
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.service.AuthService;
@@ -23,7 +24,8 @@ import org.springframework.web.bind.annotation.*;
 public class BatchTenderController {
 
     private final BatchOperationService batchOperationService;
-    private final BatchTenderAssignmentService batchTenderAssignmentService;
+    private final BatchTenderStatusAppService batchTenderStatusAppService;
+    private final BatchTenderAssignAppService batchTenderAssignAppService;
     private final AuthService authService;
 
     @PostMapping("/claim")
@@ -46,7 +48,7 @@ public class BatchTenderController {
             @Valid @RequestBody BatchTenderStatusUpdateRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = resolveUser(userDetails);
-        BatchOperationResponse response = batchTenderAssignmentService.batchUpdateStatus(request, currentUser);
+        BatchOperationResponse response = batchTenderStatusAppService.batchUpdateStatus(request, currentUser);
         return ResponseEntity.ok(ApiResponse.success(buildMessage("updated", "tender", response.getSuccessCount()), response));
     }
 
@@ -56,7 +58,7 @@ public class BatchTenderController {
             @Valid @RequestBody BatchTenderAssignRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = resolveUser(userDetails);
-        BatchOperationResponse response = batchTenderAssignmentService.batchAssign(request, currentUser);
+        BatchOperationResponse response = batchTenderAssignAppService.batchAssign(request, currentUser);
         return ResponseEntity.ok(ApiResponse.success(buildMessage("assigned", "tender", response.getSuccessCount()), response));
     }
 
