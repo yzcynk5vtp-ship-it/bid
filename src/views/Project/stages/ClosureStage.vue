@@ -404,7 +404,10 @@ async function doReject() {
   finally { rejecting.value = false }
 }
 
-defineExpose({ canSubmit, form, preview })
+defineExpose({ canSubmit, form, preview, load: async () => {
+  await loadPreview()
+  if (props.projectId) checkPrecipitationReadiness()
+} })
 
 const rebidLoading = ref(false)
 async function handleRebid() {

@@ -279,6 +279,8 @@ async function advanceToEvaluation() {
 }
 
 onMounted(load)
+
+defineExpose({ load })
 </script>
 
 <style scoped>

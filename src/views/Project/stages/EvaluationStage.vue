@@ -133,6 +133,8 @@ async function handleSubmit() {
 }
 
 onMounted(load)
+
+defineExpose({ load })
 </script>
 
 <style scoped>
