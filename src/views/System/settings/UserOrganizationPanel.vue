@@ -10,7 +10,7 @@
     </template>
 
     <el-empty v-if="users.length === 0" description="暂无用户，请先创建用户" />
-    <el-table v-else :data="users" border stripe>
+    <el-table v-else :data="users" border stripe height="520">
       <el-table-column prop="fullName" label="姓名" min-width="120" />
       <el-table-column prop="username" label="登录名" min-width="120" />
       <el-table-column prop="departmentName" label="部门" min-width="150" />
