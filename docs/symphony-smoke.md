@@ -27,6 +27,9 @@ Run from the repo root after checking out `agent/symphony/CO-204-routing-test`:
 # 1. Marker line present, verbatim.
 grep -F '<!-- tested by Claude, reviewed by Codex -->' docs/symphony-smoke.md
 
+# 1b. Marker line appears exactly once (no accidental duplication).
+test "$(grep -Fc '<!-- tested by Claude, reviewed by Codex -->' docs/symphony-smoke.md)" -eq 1
+
 # 2. Diff footprint is doc-only (rule 1 hot-path gate).
 test "$(git diff --name-only origin/main..HEAD)" = "docs/symphony-smoke.md"
 
@@ -53,6 +56,7 @@ placeholder, creating an unbounded review loop.
 | Pass 4 | Hardened Verification commands to assert (non-zero exit on failure) instead of merely printing. |
 | Pass 5 | Closed the remaining self-reference loop in the log. |
 | Pass 6 | Removed all inline commit hashes from the iteration log to break the `(this commit)` re-pin loop and stop introducing new review noise. No artifact-content change beyond the iteration log. |
+| Pass 7 | Added step 1b to the Verification block asserting the marker line appears exactly once (closes a gap where a duplicate marker would still pass `grep -F`). Doc-only. |
 
 ## Acceptance criteria
 
