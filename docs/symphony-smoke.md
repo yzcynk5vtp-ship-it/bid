@@ -37,10 +37,12 @@ test "$(git diff --name-only origin/main..HEAD)" = "docs/symphony-smoke.md"
 # 4. Branch naming (rule 2) — must start with agent/symphony/.
 git rev-parse --abbrev-ref HEAD | grep -q '^agent/symphony/'
 
-# 5. Branch tip is published — local HEAD matches the remote tracking ref.
-#    Catches the "committed but forgot to push" failure mode that the
-#    naming-only check above cannot detect.
-test "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')"
+# 5. Branch tip is published — local HEAD matches the remote-tracking ref.
+#    Uses the explicit `origin/<branch>` ref (not `@{u}`) so it does not
+#    depend on per-checkout upstream-tracking config; any reviewer who has
+#    fetched the branch has this ref. Catches the "committed but forgot to
+#    push" failure mode that the naming-only check above cannot detect.
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/agent/symphony/CO-204-routing-test)"
 ```
 
 ## Acceptance criteria
@@ -51,5 +53,5 @@ test "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')"
 - [x] No `WORKFLOW.md` rule-1 hot path is touched
       (authoritative list: [`WORKFLOW.md` §1](../WORKFLOW.md#1-hot-paths-blacklist--do-not-modify)).
 - [x] Commit lands on `agent/symphony/CO-204-routing-test`.
-- [x] Branch tip is published to `origin` (local HEAD == upstream).
+- [x] Branch tip is published to `origin` (local HEAD == `origin/<branch>`).
 - [x] Verification block reproduces locally without external services.
