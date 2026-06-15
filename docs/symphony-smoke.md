@@ -30,8 +30,14 @@ test "$(grep -Fxc '<!-- tested by Claude, reviewed by Codex -->' docs/symphony-s
 # 2. Diff footprint is doc-only (rule 1 hot-path gate).
 test "$(git diff --name-only origin/main..HEAD)" = "docs/symphony-smoke.md"
 
-# 3. Hot-path blacklist (rule 1) — must match nothing.
-! git diff --name-only origin/main..HEAD \
+# 3. Hot-path blacklist (rule 1) — must match nothing. Capture the file list
+#    into a variable first so a `git diff` failure (e.g. `origin/main` not
+#    fetched on a fresh reviewer clone) is caught by `set -e` rather than
+#    masked by grep: without this, an errored git diff yields empty input,
+#    grep returns 1 (no match), the `!` flips it to 0, and the gate would
+#    silently pass.
+changed="$(git diff --name-only origin/main..HEAD)"
+! printf '%s\n' "$changed" \
   | grep -E '^(backend/src/main/resources/db/migration-mysql/|backend/src/main/resources/db/rollback/migration-mysql/|backend/src/main/java/com/xiyu/bid/entity/|backend/src/main/resources/application.*\.yml|src/router/index\.js|src/views/Login\.vue|\.github/workflows/|\.githooks/)'
 
 # 4. Branch naming (rule 2) — must start with agent/symphony/.
