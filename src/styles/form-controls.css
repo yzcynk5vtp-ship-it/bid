@@ -134,29 +134,53 @@ html:not([data-keyboard-nav="true"]) .el-textarea__inner:focus {
 
 
 
-/* ========== label-position=top 模式下搜索字段自动扩展 ========== */
-/* 顶部标签模式下，固定宽度不再适用，改用弹性布局 */
-.el-form--label-top.tender-search-form .search-field,
-.el-form--label-top.tender-search-form .search-field--keyword,
-.el-form--label-top.tender-search-form .search-field--date,
-.el-form--label-top.tender-search-form .search-field--datetime {
+/* ========== CO-211: label-position=top 模式下搜索字段自适应宽度 ==========
+   背景：标讯中心 / 项目列表筛选区在 label-top 模式下使用上面定义的固定宽度
+   （.search-field: 130px、--keyword: 180px、--datetime: 240px），导致：
+   1) 关键词 placeholder「搜索项目名称、招标主体」(11 个中文) 被截断；
+   2) datetimerange 选择器显示「YYYY-MM-DD HH:mm:ss 至 YYYY-MM-DD HH:mm:ss」被截断；
+   3) 多选 select collapse-tags 在窄触发器中过早 ellipsis。
+   方案：label-top 模式下放宽 min-width 到能容纳完整内容的最小宽度，
+   并用 flex:1 1 Npx 让宽屏下继续弹性增长。选择器限定在 .search-card
+   作用域内，避免影响其它使用 .search-field 的 inline 表单。 */
+/* 通用搜索字段：min 160 保证「总部所在地」「项目负责人」等 5 字标签可完整展示 */
+.search-card .el-form--label-top .search-field {
   flex: 1 1 160px;
   width: auto;
-  min-width: 140px;
+  min-width: 160px;
   max-width: 240px;
 }
-.el-form--label-top.tender-search-form .search-field--keyword {
-  flex: 1 1 220px;
+/* 关键词：min 240 容纳 placeholder「搜索项目名称、招标主体」+ 前缀图标 + clearable */
+.search-card .el-form--label-top .search-field--keyword {
+  flex: 1 1 240px;
+  width: auto;
+  min-width: 240px;
   max-width: 320px;
 }
-.el-form--label-top.tender-search-form .search-field--date {
-  flex: 1 1 200px;
-  max-width: 280px;
+/* daterange：min 220 容纳「YYYY-MM-DD 至 YYYY-MM-DD」 */
+.search-card .el-form--label-top .search-field--date {
+  flex: 1 1 220px;
+  width: auto;
+  min-width: 220px;
+  max-width: 300px;
 }
-.el-form--label-top.tender-search-form .search-field--datetime {
-  flex: 1 1 260px;
-  max-width: 360px;
+/* datetimerange：min 360 容纳「YYYY-MM-DD HH:mm:ss 至 YYYY-MM-DD HH:mm:ss」+ 分隔图标 */
+.search-card .el-form--label-top .search-field--datetime {
+  flex: 1 1 360px;
+  width: auto;
+  min-width: 360px;
+  max-width: 420px;
 }
-.el-form--label-top.tender-search-form .search-actions {
+.search-card .el-form--label-top .search-actions {
   flex: 0 0 auto;
+}
+
+/* CO-211: select 下拉面板（teleported popper）允许比触发器更宽，
+   使长选项（如「张三（EMP001）」）完整显示而非被 ellipsis 截断。
+   Element Plus 默认把 popper 的 min-width 设为与触发器等宽（通过
+   inline style），我们用 !important 覆盖并改用 max-content 自适应。 */
+.el-select__popper.el-popper {
+  min-width: 240px !important;
+  width: max-content;
+  max-width: 480px;
 }

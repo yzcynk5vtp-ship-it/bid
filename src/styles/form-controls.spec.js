@@ -68,4 +68,28 @@ describe('global form control styles', () => {
       expect(source).not.toContain('box-shadow: 0 0 0 3px rgba(3, 105, 161')
     }
   })
+
+  it('CO-211: widens keyword field min-width in label-top mode so 11-char Chinese placeholder fits', () => {
+    expect(formControls).toContain('.search-card .el-form--label-top .search-field--keyword')
+    expect(formControls).toMatch(/\.search-card \.el-form--label-top \.search-field--keyword\s*\{[^}]*min-width:\s*240px/)
+  })
+
+  it('CO-211: widens date field min-width in label-top mode so daterange fits', () => {
+    expect(formControls).toContain('.search-card .el-form--label-top .search-field--date')
+    expect(formControls).toMatch(/\.search-card \.el-form--label-top \.search-field--date\s*\{[^}]*min-width:\s*220px/)
+  })
+
+  it('CO-211: widens datetime field min-width in label-top mode so datetimerange fits', () => {
+    expect(formControls).toContain('.search-card .el-form--label-top .search-field--datetime')
+    expect(formControls).toMatch(/\.search-card \.el-form--label-top \.search-field--datetime\s*\{[^}]*min-width:\s*360px/)
+  })
+
+  it('CO-211: lets select dropdown popper grow wider than trigger for long options', () => {
+    expect(formControls).toContain('.el-select__popper.el-popper')
+    // popper must use max-content so it can exceed trigger width
+    expect(formControls).toMatch(/\.el-select__popper\.el-popper\s*\{[^}]*width:\s*max-content/)
+    expect(formControls).toMatch(/\.el-select__popper\.el-popper\s*\{[^}]*max-width:\s*480px/)
+    // must NOT reference --el-component-size (that var controls height, not popper width)
+    expect(formControls).not.toMatch(/\.el-select__popper[^{]*\{[^}]*--el-component-size/)
+  })
 })
