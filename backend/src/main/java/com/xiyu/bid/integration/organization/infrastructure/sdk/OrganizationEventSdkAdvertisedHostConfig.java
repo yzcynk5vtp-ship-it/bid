@@ -36,18 +36,40 @@ public class OrganizationEventSdkAdvertisedHostConfig {
 
     /**
      * 覆写 ServerConfig，使用可配置的对外上报地址。
+     *
+     * <p>兼容两类配置键，避免因为 Spring Boot relaxed binding 规则导致
+     * 环境变量名和代码读取的键对不上而回退到 127.0.0.1：
+     * <ul>
+     *   <li>{@code xiyu.integrations.organization.event-sdk.advertised-host}
+     *       ← 对应环境变量
+     *       {@code XIYU_INTEGRATIONS_ORGANIZATION_EVENT_SDK_ADVERTISED_HOST}</li>
+     *   <li>{@code xiyu.org.event.advertised-host}
+     *       ← 对应环境变量
+     *       {@code XIYU_ORG_EVENT_ADVERTISED_HOST}</li>
+     * </ul>
      */
     static class AdvertisedServerConfig extends ServerConfig {
+
+        private static final String PREFERRED_HOST_KEY
+                = "xiyu.integrations.organization.event-sdk.advertised-host";
+        private static final String PREFERRED_PORT_KEY
+                = "xiyu.integrations.organization.event-sdk.advertised-port";
+        private static final String LEGACY_HOST_KEY = "xiyu.org.event.advertised-host";
+        private static final String LEGACY_PORT_KEY = "xiyu.org.event.advertised-port";
 
         private final String advertisedHost;
         private final int advertisedPort;
 
         AdvertisedServerConfig(Environment env) {
             super(env);
-            this.advertisedHost = env.getProperty(
-                    "xiyu.integrations.organization.event-sdk.advertised-host", "");
-            this.advertisedPort = env.getProperty(
-                    "xiyu.integrations.organization.event-sdk.advertised-port", int.class, 0);
+            this.advertisedHost = firstNonBlank(
+                    env.getProperty(PREFERRED_HOST_KEY, ""),
+                    env.getProperty(LEGACY_HOST_KEY, "")
+            );
+            this.advertisedPort = firstPositive(
+                    env.getProperty(PREFERRED_PORT_KEY, int.class, 0),
+                    env.getProperty(LEGACY_PORT_KEY, int.class, 0)
+            );
         }
 
         @Override
@@ -63,6 +85,14 @@ public class OrganizationEventSdkAdvertisedHostConfig {
                 return advertisedHost.trim();
             }
             return super.getHost();
+        }
+
+        private static String firstNonBlank(String preferred, String fallback) {
+            return preferred == null || preferred.isBlank() ? fallback : preferred;
+        }
+
+        private static int firstPositive(int preferred, int fallback) {
+            return preferred > 0 ? preferred : fallback;
         }
     }
 }
