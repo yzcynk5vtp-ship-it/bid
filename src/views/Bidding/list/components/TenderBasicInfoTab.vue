@@ -10,9 +10,15 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="总部所在地" prop="region">
-              <el-select v-model="form.region" placeholder="选择总部所在地" class="full-width">
-                <el-option v-for="r in regions" :key="r" :label="r" :value="r" />
-              </el-select>
+              <el-cascader
+                v-model="regionCascaderValue"
+                :options="chinaRegionOptions"
+                :props="{ expandTrigger: 'hover', label: 'name', value: 'name', checkStrictly: false, emitPath: true }"
+                placeholder="选择总部所在地"
+                clearable
+                filterable
+                class="full-width"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -93,9 +99,11 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { DocumentCopy, Upload } from '@element-plus/icons-vue'
+import { chinaRegionOptions } from '@/components/common/chinaRegionData.js'
 
-defineProps({
+const props = defineProps({
   activeTab: String,
   form: Object,
   formRef: Object,
@@ -111,6 +119,37 @@ defineProps({
 })
 
 defineEmits(['parse-paste', 'file-change'])
+
+/**
+ * Bridge computed: converts between cascader array ['省','市'] and form.region joined string '省市'.
+ * Mirrors TenderSearchCard.vue regionValue pattern for consistency.
+ */
+const regionCascaderValue = computed({
+  get: () => {
+    const v = props.form.region
+    if (!v) return null
+    for (const province of chinaRegionOptions) {
+      if (province.name === v) return [v]
+      if (province.children) {
+        for (const city of province.children) {
+          if (v === province.name + city.name) return [province.name, city.name]
+        }
+      }
+    }
+    return v
+  },
+  set: (val) => {
+    if (!val) {
+      props.form.region = ''
+      return
+    }
+    if (Array.isArray(val)) {
+      props.form.region = val.join('')
+    } else {
+      props.form.region = val
+    }
+  },
+})
 </script>
 
 <style scoped>

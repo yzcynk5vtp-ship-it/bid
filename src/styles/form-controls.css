@@ -133,3 +133,30 @@ html:not([data-keyboard-nav="true"]) .el-textarea__inner:focus {
 }
 
 
+
+/* ========== label-position=top 模式下搜索字段自动扩展 ========== */
+/* 顶部标签模式下，固定宽度不再适用，改用弹性布局 */
+.el-form--label-top.tender-search-form .search-field,
+.el-form--label-top.tender-search-form .search-field--keyword,
+.el-form--label-top.tender-search-form .search-field--date,
+.el-form--label-top.tender-search-form .search-field--datetime {
+  flex: 1 1 160px;
+  width: auto;
+  min-width: 140px;
+  max-width: 240px;
+}
+.el-form--label-top.tender-search-form .search-field--keyword {
+  flex: 1 1 220px;
+  max-width: 320px;
+}
+.el-form--label-top.tender-search-form .search-field--date {
+  flex: 1 1 200px;
+  max-width: 280px;
+}
+.el-form--label-top.tender-search-form .search-field--datetime {
+  flex: 1 1 260px;
+  max-width: 360px;
+}
+.el-form--label-top.tender-search-form .search-actions {
+  flex: 0 0 auto;
+}

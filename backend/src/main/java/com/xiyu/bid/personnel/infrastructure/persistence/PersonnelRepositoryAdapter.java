@@ -15,6 +15,7 @@ import com.xiyu.bid.personnel.infrastructure.persistence.repository.PersonnelJpa
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +34,16 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
     @Override
     @Transactional
     public Personnel save(Personnel personnel) {
-        PersonnelEntity entity = toEntity(personnel);
+        PersonnelEntity entity;
+        if (personnel.id() != null) {
+            // UPDATE: load existing managed entity to preserve @Version for optimistic locking
+            entity = jpaRepository.findById(personnel.id())
+                    .orElseThrow(() -> new IllegalArgumentException("Personnel not found: " + personnel.id()));
+            applyToEntity(personnel, entity);
+        } else {
+            // CREATE: new entity, no version needed
+            entity = toEntity(personnel);
+        }
         PersonnelEntity saved = jpaRepository.save(entity);
 
         // 处理证书（原有逻辑）
@@ -80,7 +90,7 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
                 criteria.gender(), criteria.entryDateFrom(), criteria.entryDateTo(),
                 criteria.highestEducations(), criteria.studyForms(), criteria.majorKeyword(),
                 criteria.certificateKeyword(), criteria.certificateStatuses(),
-                PageRequest.of(pageNumber, pageSize)
+                PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         List<Personnel> content = page.getContent().stream().map(this::toDomain).toList();
         return PagedResult.of(content, page.getTotalElements(), pageNumber, pageSize);
@@ -172,6 +182,9 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
         e.setEmployeeNumber(p.employeeNumber());
         e.setDepartmentCode(p.departmentCode());
         e.setDepartmentName(p.departmentName());
+        e.setGender(p.gender());
+        e.setEntryDate(p.entryDate());
+        e.setPhone(p.phone());
         e.setEducation(p.education());
         e.setTechnicalTitle(p.technicalTitle());
         e.setStatus(p.status());
@@ -181,6 +194,26 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
         e.setCreatedAt(p.createdAt());
         e.setUpdatedAt(p.updatedAt());
         return e;
+    }
+
+    /**
+     * Update a managed entity in-place from domain object, preserving id and @Version.
+     * Used for UPDATE path to avoid detached-entity version errors.
+     */
+    private void applyToEntity(Personnel p, PersonnelEntity e) {
+        e.setName(p.name());
+        e.setEmployeeNumber(p.employeeNumber());
+        e.setDepartmentCode(p.departmentCode());
+        e.setDepartmentName(p.departmentName());
+        e.setGender(p.gender());
+        e.setEntryDate(p.entryDate());
+        e.setPhone(p.phone());
+        e.setEducation(p.education());
+        e.setTechnicalTitle(p.technicalTitle());
+        e.setStatus(p.status());
+        e.setAttachmentUrl(p.attachmentUrl());
+        e.setRemark(p.remark());
+        e.setBirthDate(p.birthDate());
     }
 
     private Personnel toDomain(PersonnelEntity e) {

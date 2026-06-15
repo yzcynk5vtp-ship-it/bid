@@ -264,11 +264,17 @@ class ResponsibilityArchitectureTest {
 
         // This rule is advisory — we only report, don't block, as there may be
         // legitimate cross-module core usage that needs gradual refactoring.
+        // Cap output to avoid flooding pre-push logs; full list is in test report.
         if (!violations.isEmpty()) {
+            int displayed = Math.min(violations.size(), 20);
             var message = violations.stream()
+                .limit(displayed)
                 .collect(Collectors.joining("\n  ", "Advisory: service classes importing "
                     + "cross-module core classes (not blocking, but consider refactoring):\n  ", ""));
-            System.out.println(message); // printed to test output
+            String suffix = violations.size() > displayed
+                ? "\n  ... and " + (violations.size() - displayed) + " more (see test report)"
+                : "";
+            System.out.println(message + suffix);
         }
     }
 
