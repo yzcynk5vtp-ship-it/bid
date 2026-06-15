@@ -1,6 +1,6 @@
-// Input: primitive display values
-// Output: pure Workbench display formatters and UI token mappings
-// Pos: src/views/Dashboard/ - Dashboard pure core helpers
+// Input: primitive display values (currency, percent, priority key, status label, etc.)
+// Output: pure Workbench display formatters and Element Plus UI token mappings
+// Pos: src/views/Dashboard/ - Dashboard display formatters and ElTag token helpers
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
 export function formatCurrency(value) {
@@ -58,14 +58,46 @@ export function getProgressColor(progress) {
   return '#EF4444'
 }
 
-export function getProjectStatusType(status) {
-  return { '编制中': 'warning', '评审中': 'primary', '即将开标': 'danger' }[status] || ''
+// Maps the 8 canonical Workbench project status labels to Element Plus ElTag `type` values.
+// The fallback is always 'info' so the ElTag `type` validator never receives an empty string.
+const PROJECT_STATUS_TYPE_MAP = {
+  待立项: 'info',
+  已立项: 'info',
+  投标中: 'primary',
+  评标中: 'warning',
+  已中标: 'success',
+  未中标: 'danger',
+  已流标: 'danger',
+  已放弃: 'info',
 }
 
+/**
+ * Resolve a Workbench project status label to an Element Plus ElTag type.
+ * @param {string | null | undefined} status
+ * @returns {'info' | 'primary' | 'success' | 'warning' | 'danger'}
+ */
+export function getProjectStatusType(status) {
+  if (status == null || status === '') return 'info'
+  return PROJECT_STATUS_TYPE_MAP[status] || 'info'
+}
+
+const PRIORITY_TYPE_MAP = {
+  high: 'danger',
+  medium: 'warning',
+  low: 'info',
+  urgent: 'danger',
+}
+
+/**
+ * Resolve a priority key to an Element Plus ElTag type.
+ * @param {string | null | undefined} priority
+ * @returns {'info' | 'danger' | 'warning'}
+ */
 export function getPriorityType(priority) {
-  return { high: 'danger', medium: 'warning', low: 'info' }[priority] || ''
+  if (priority == null || priority === '') return 'info'
+  return PRIORITY_TYPE_MAP[priority] || 'info'
 }
 
 export function getPriorityLabel(priority) {
-  return { high: '高', medium: '中', low: '低' }[priority] || priority
+  return { high: '高', medium: '中', low: '低', urgent: '紧急' }[priority] || priority
 }

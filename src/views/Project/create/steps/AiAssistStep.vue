@@ -116,6 +116,7 @@
 import { Loading, Warning, WarningFilled, MagicStick, DataAnalysis, List } from '@element-plus/icons-vue'
 import ScoreCoverage from '@/components/ai/ScoreCoverage.vue'
 import FeaturePlaceholder from '@/components/common/FeaturePlaceholder.vue'
+import { getPriorityType, getPriorityLabel as getPriorityText } from '@/views/Dashboard/workbench-formatters.js'
 
 defineProps({
   analyzing: { type: Boolean, default: false },
@@ -132,19 +133,11 @@ function getWinScoreClass(score) {
 }
 
 function getWinLevelType(level) {
-  return { high: 'success', medium: 'warning', low: 'danger' }[level] || ''
+  return { high: 'success', medium: 'warning', low: 'danger' }[level] || 'info'
 }
 
 function getWinLevelText(level) {
   return { high: '赢面较高', medium: '赢面中等', low: '赢面较低' }[level] || ''
-}
-
-function getPriorityType(priority) {
-  return { high: 'danger', medium: 'warning', low: 'info' }[priority] || ''
-}
-
-function getPriorityText(priority) {
-  return { high: '高', medium: '中', low: '低' }[priority] || ''
 }
 
 async function validate() { return true }

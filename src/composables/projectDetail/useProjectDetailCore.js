@@ -1,4 +1,5 @@
 import { getProjectStatusText, getProjectStatusType } from '@/views/Project/project-utils.js'
+import { getPriorityType, getPriorityLabel as getPriorityText } from '@/views/Dashboard/workbench-formatters.js'
 
 export function useProjectDetailCore(context) {
   const { router, route, project, isDemoMode } = context
@@ -7,8 +8,6 @@ export function useProjectDetailCore(context) {
   const canRecordResult = () => project.value?.status === 'bidding'
   const getStatusType = (status) => getProjectStatusType(status)
   const getStatusText = (status) => getProjectStatusText(status)
-  const getPriorityType = (priority) => ({ high: 'danger', medium: 'warning', low: 'info' }[priority] || 'info')
-  const getPriorityText = (priority) => ({ high: '高', medium: '中', low: '低' }[priority] || priority)
   const getTaskStatusType = (status) => ({ todo: 'info', doing: 'warning', done: 'success' }[status] || 'info')
   const getTaskStatusText = (status) => ({ todo: '待办', doing: '进行中', done: '已完成' }[status] || status)
 
