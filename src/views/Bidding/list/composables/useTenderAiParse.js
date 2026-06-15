@@ -81,7 +81,7 @@ export function useTenderAiParse(form) {
     const extracted = data?.extractedData && typeof data.extractedData === 'object' ? data.extractedData : null
     const mappings = [
       { title: 'title', region: 'region', tenderAgency: 'purchaser', deadline: 'deadline', bidOpeningTime: 'bidOpeningTime', customerType: 'customerType', priority: 'priority', contact: 'contact', phone: 'phone', landline: 'landline', mail: 'mail', description: 'description', tenderInfo: 'tenderInfo', projectType: 'projectType' },
-      { tenderTitle: 'title', projectName: 'title', tenderAgency: 'purchaser', deadline: 'deadline', bidOpeningTime: 'bidOpeningTime', region: 'region', customerType: 'customerType', priority: 'priority', contactName: 'contact', contactPhone: 'phone', contactEmail: 'mail', tenderScope: 'description' },
+      { tenderTitle: 'title', projectName: 'title', tenderAgency: 'purchaser', deadline: 'deadline', bidOpeningTime: 'bidOpeningTime', region: 'region', customerType: 'customerType', priority: 'priority', contactName: 'contact', contactPhone: 'phone', contactTel: 'landline', contactLandline: 'landline', contactEmail: 'mail', tenderScope: 'description' },
     ]
     const sources = [data, extracted].filter(Boolean)
     for (const src of sources) {
