@@ -85,6 +85,7 @@ const PRIORITY_TYPE_MAP = {
   high: 'danger',
   medium: 'warning',
   low: 'info',
+  urgent: 'danger',
 }
 
 /**

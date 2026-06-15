@@ -296,6 +296,7 @@ describe('workbench route targets and UI mappings', () => {
     expect(getPriorityType('high')).toBe('danger')
     expect(getPriorityType('medium')).toBe('warning')
     expect(getPriorityType('low')).toBe('info')
+    expect(getPriorityType('urgent')).toBe('danger')
     expect(getPriorityType('unknown')).toBe('info')
     expect(getPriorityType('')).toBe('info')
 
