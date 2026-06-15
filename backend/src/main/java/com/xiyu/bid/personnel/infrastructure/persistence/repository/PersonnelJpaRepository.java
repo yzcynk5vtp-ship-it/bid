@@ -54,7 +54,8 @@ public interface PersonnelJpaRepository extends JpaRepository<PersonnelEntity, L
            "(:certificateStatuses IS NULL OR EXISTS (SELECT 1 FROM PersonnelCertificateEntity c WHERE c.personnelId = p.id AND " +
            "   ( (:certificateStatuses IS NOT NULL AND 'VALID' IN :certificateStatuses AND (c.expiryDate IS NULL OR c.expiryDate > CURRENT_DATE)) OR " +
            "     (:certificateStatuses IS NOT NULL AND 'EXPIRING' IN :certificateStatuses AND c.expiryDate IS NOT NULL AND c.expiryDate <= CURRENT_DATE + 60 DAY AND c.expiryDate > CURRENT_DATE) OR " +
-           "     (:certificateStatuses IS NOT NULL AND 'EXPIRED' IN :certificateStatuses AND c.expiryDate IS NOT NULL AND c.expiryDate <= CURRENT_DATE) )))")
+           "     (:certificateStatuses IS NOT NULL AND 'EXPIRED' IN :certificateStatuses AND c.expiryDate IS NOT NULL AND c.expiryDate <= CURRENT_DATE) ))) " +
+           "ORDER BY p.createdAt DESC")
     List<PersonnelEntity> findByCriteriaFull(@Param("keyword") String keyword,
                                              @Param("departmentCode") String departmentCode,
                                              @Param("status") PersonnelStatus status,

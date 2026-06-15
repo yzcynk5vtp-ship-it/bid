@@ -15,6 +15,7 @@ import com.xiyu.bid.personnel.infrastructure.persistence.repository.PersonnelJpa
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -80,7 +81,7 @@ public class PersonnelRepositoryAdapter implements PersonnelRepository {
                 criteria.gender(), criteria.entryDateFrom(), criteria.entryDateTo(),
                 criteria.highestEducations(), criteria.studyForms(), criteria.majorKeyword(),
                 criteria.certificateKeyword(), criteria.certificateStatuses(),
-                PageRequest.of(pageNumber, pageSize)
+                PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
         List<Personnel> content = page.getContent().stream().map(this::toDomain).toList();
         return PagedResult.of(content, page.getTotalElements(), pageNumber, pageSize);
