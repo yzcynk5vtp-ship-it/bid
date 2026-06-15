@@ -2,6 +2,8 @@
 // 根据标讯状态和用户角色返回可见的操作按钮列表
 // 无 I/O、无框架依赖、无副作用
 
+import { getSourceTypeText } from '../bidding-utils.js'
+
 // ---------------------------------------------------------------------------
 // Action definitions (canonical shapes)
 // ---------------------------------------------------------------------------
@@ -219,7 +221,6 @@ export function getBottomActions(status, role, _requiresReview, evaluationTabAct
 // ---------------------------------------------------------------------------
 export function shouldShowLogsTab(sourceType) {
   if (sourceType == null) return true
-  // 后端 sourceType 现在返回中文标签（@JsonValue），同时保留英文枚举名兼容
-  if (sourceType === 'MANUAL_SINGLE' || sourceType === '人工录入') return false
-  return true
+  // 统一归一化为中文标签后再判断，避免同时硬编码英文/中文两种值
+  return getSourceTypeText(sourceType) !== '人工录入'
 }

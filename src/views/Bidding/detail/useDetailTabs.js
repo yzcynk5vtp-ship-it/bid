@@ -1,4 +1,5 @@
 import { computed, ref, watch } from 'vue'
+import { getSourceTypeText } from '../bidding-utils.js'
 
 // Tab 配置
 const TABS = [
@@ -15,13 +16,13 @@ export function useDetailTabs(tenderRef) {
     // tender 为 null/undefined 时显示所有 Tab（加载状态）
     if (!tenderRef.value) return TABS
 
-    // 蓝图要求：人工录入创建标讯时（sourceType === 'MANUAL_SINGLE'）
-    // 不展示操作日志 Tab
-    if (tenderRef.value.sourceType === 'MANUAL_SINGLE') {
+    // 蓝图要求：人工录入创建标讯时不展示操作日志 Tab。
+    // 后端 sourceType 经 @JsonValue 返回中文标签，用 getSourceTypeText 归一化
+    if (getSourceTypeText(tenderRef.value.sourceType) === '人工录入') {
       return TABS.filter(t => t.name !== 'logs')
     }
 
-    // 其他情况（EXTERNAL_PLATFORM, CRM_OPPORTUNITY, BULK_IMPORT）显示所有 Tab
+    // 其他情况（第三方平台、CRM 商机、批量导入）显示所有 Tab
     return TABS
   })
 

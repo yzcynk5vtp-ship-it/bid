@@ -163,6 +163,7 @@ export function getScoreTagType(score) {
 }
 
 export function getSourceTagType(source) {
+  // 英文键兼容存量数据；中文键匹配 @JsonValue 新输出（fallback 为 'info' 故必须显式列出）
   const map = {
     external: 'success',
     manual: 'warning',
@@ -172,19 +173,27 @@ export function getSourceTagType(source) {
   return map[source] || 'info'
 }
 
+/**
+ * 根据来源平台获取显示文本。
+ * 兼容旧英文值与中文新值；中文值由 fallback 透传，无需显式映射。
+ *
+ * @param {string} source - 来源平台
+ * @returns {string} 中文展示文本
+ */
 export function getSourceText(source) {
   const map = {
     external: '外部获取',
     manual: '人工录入',
-    '人工录入': '人工录入',
     中国招标投标公共服务平台: '外部获取',
   }
   return map[source] || source || '未知'
 }
 
 /**
- * 根据标讯来源类型获取标签类型
- * @param {string} sourceType - 英文枚举名（EXTERNAL_PLATFORM 等）或中文标签（第三方平台 等）
+ * 根据标讯来源类型获取标签类型。
+ * 兼容英文枚举名与中文标签；中文键必须显式列出（fallback 为 'info'）。
+ *
+ * @param {string} sourceType - 英文枚举名或中文标签
  * @returns {string} Element Plus tag type
  */
 export function getSourceTypeTagType(sourceType) {

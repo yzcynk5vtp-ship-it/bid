@@ -313,6 +313,11 @@ function sourceTagType(source) {
     MANUAL: 'info',
     MANUAL_SINGLE: 'info',
     BULK_IMPORT: 'info',
+    // 中文标签（@JsonValue 输出，fallback 为空字符串故需显式列出）
+    '第三方平台': 'warning',
+    'CRM 商机': 'success',
+    '人工录入': 'info',
+    '批量导入': 'info',
   }
   return map[source] || ''
 }

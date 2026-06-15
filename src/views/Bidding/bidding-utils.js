@@ -270,9 +270,12 @@ export function toBackendStatus(frontendStatus) {
 }
 
 /**
- * 根据标讯来源类型获取显示文本
- * @param {string} sourceType - 英文枚举名（EXTERNAL_PLATFORM 等）或中文标签（第三方平台 等）
- * @returns {string} 显示文本
+ * 根据标讯来源类型获取显示文本。
+ * 兼容英文枚举名（旧）与中文标签（@JsonValue 新输出）；
+ * 中文值无需显式映射——fallback 直接透传。
+ *
+ * @param {string} sourceType - 英文枚举名或中文标签
+ * @returns {string} 中文显示文本
  */
 export function getSourceTypeText(sourceType) {
   const map = {
@@ -282,11 +285,6 @@ export function getSourceTypeText(sourceType) {
     BULK_IMPORT: '批量导入',
     MANUAL: '人工录入',
     EXTERNAL: '外部获取',
-    // 后端 @JsonValue 现在直接返回中文标签，保留直通映射
-    '第三方平台': '第三方平台',
-    'CRM 商机': 'CRM 商机',
-    '人工录入': '人工录入',
-    '批量导入': '批量导入',
   }
   return map[sourceType] || sourceType || '未知'
 }

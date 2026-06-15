@@ -1,0 +1,119 @@
+package com.xiyu.bid.entity;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class TenderSourceTypeTest {
+
+    private final ObjectMapper mapper = new ObjectMapper();
+
+    @Nested
+    @DisplayName("@JsonValue 序列化")
+    class Serialization {
+
+        @Test
+        @DisplayName("EXTERNAL_PLATFORM 序列化为中文标签 '第三方平台'")
+        void externalPlatformSerializesToChinese() throws Exception {
+            String json = mapper.writeValueAsString(Tender.SourceType.EXTERNAL_PLATFORM);
+            assertThat(json).isEqualTo("\"第三方平台\"");
+        }
+
+        @Test
+        @DisplayName("CRM_OPPORTUNITY 序列化为中文标签 'CRM 商机'")
+        void crmOpportunitySerializesToChinese() throws Exception {
+            String json = mapper.writeValueAsString(Tender.SourceType.CRM_OPPORTUNITY);
+            assertThat(json).isEqualTo("\"CRM 商机\"");
+        }
+
+        @Test
+        @DisplayName("MANUAL_SINGLE 序列化为中文标签 '人工录入'")
+        void manualSingleSerializesToChinese() throws Exception {
+            String json = mapper.writeValueAsString(Tender.SourceType.MANUAL_SINGLE);
+            assertThat(json).isEqualTo("\"人工录入\"");
+        }
+
+        @Test
+        @DisplayName("BULK_IMPORT 序列化为中文标签 '批量导入'")
+        void bulkImportSerializesToChinese() throws Exception {
+            String json = mapper.writeValueAsString(Tender.SourceType.BULK_IMPORT);
+            assertThat(json).isEqualTo("\"批量导入\"");
+        }
+    }
+
+    @Nested
+    @DisplayName("@JsonCreator 反序列化")
+    class Deserialization {
+
+        @Test
+        @DisplayName("中文标签 '第三方平台' 反序列化为 EXTERNAL_PLATFORM")
+        void chineseLabelDeserializes() throws Exception {
+            Tender.SourceType result = mapper.readValue("\"第三方平台\"", Tender.SourceType.class);
+            assertThat(result).isEqualTo(Tender.SourceType.EXTERNAL_PLATFORM);
+        }
+
+        @Test
+        @DisplayName("英文枚举名 'EXTERNAL_PLATFORM' 反序列化仍兼容")
+        void englishNameDeserializes() throws Exception {
+            Tender.SourceType result = mapper.readValue("\"EXTERNAL_PLATFORM\"", Tender.SourceType.class);
+            assertThat(result).isEqualTo(Tender.SourceType.EXTERNAL_PLATFORM);
+        }
+
+        @Test
+        @DisplayName("中文标签 'CRM 商机' 反序列化为 CRM_OPPORTUNITY")
+        void crmChineseLabelDeserializes() throws Exception {
+            Tender.SourceType result = mapper.readValue("\"CRM 商机\"", Tender.SourceType.class);
+            assertThat(result).isEqualTo(Tender.SourceType.CRM_OPPORTUNITY);
+        }
+
+        @Test
+        @DisplayName("英文枚举名 'CRM_OPPORTUNITY' 反序列化仍兼容")
+        void crmEnglishNameDeserializes() throws Exception {
+            Tender.SourceType result = mapper.readValue("\"CRM_OPPORTUNITY\"", Tender.SourceType.class);
+            assertThat(result).isEqualTo(Tender.SourceType.CRM_OPPORTUNITY);
+        }
+
+        @Test
+        @DisplayName("null 输入返回 null")
+        void nullReturnsNull() throws Exception {
+            Tender.SourceType result = mapper.readValue("null", Tender.SourceType.class);
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("空白字符串返回 null")
+        void blankReturnsNull() throws Exception {
+            Tender.SourceType result = mapper.readValue("\"  \"", Tender.SourceType.class);
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("不支持的值抛出 IllegalArgumentException")
+        void unsupportedValueThrows() {
+            assertThatThrownBy(() -> mapper.readValue("\"INVALID_TYPE\"", Tender.SourceType.class))
+                    .hasCauseInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Nested
+    @DisplayName("fromValue 直接调用")
+    class FromValue {
+
+        @Test
+        @DisplayName("中文和英文均能映射到同一枚举常量")
+        void bothFormatsResolveToSameEnum() {
+            assertThat(Tender.SourceType.fromValue("EXTERNAL_PLATFORM"))
+                    .isSameAs(Tender.SourceType.fromValue("第三方平台"));
+            assertThat(Tender.SourceType.fromValue("CRM_OPPORTUNITY"))
+                    .isSameAs(Tender.SourceType.fromValue("CRM 商机"));
+            assertThat(Tender.SourceType.fromValue("MANUAL_SINGLE"))
+                    .isSameAs(Tender.SourceType.fromValue("人工录入"));
+            assertThat(Tender.SourceType.fromValue("BULK_IMPORT"))
+                    .isSameAs(Tender.SourceType.fromValue("批量导入"));
+        }
+    }
+}
