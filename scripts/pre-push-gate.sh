@@ -67,8 +67,11 @@ backend_mvn_run() {
   fi
 }
 surefire_failed() {
-  local xml="$ROOT_DIR/backend/target/surefire-reports/TEST-com.xiyu.bid.${1}.xml"
-  if [ ! -f "$xml" ]; then
+  local class="$1"
+  local xml
+  # Surefire 报告文件名包含完整包路径，需兼容 com.xiyu.bid.support.FlywayRollbackScriptCoverageTest 等子包类。
+  xml=$(find "$ROOT_DIR/backend/target/surefire-reports" -maxdepth 1 -name "TEST-*.${class}.xml" -print -quit 2>/dev/null)
+  if [ -z "$xml" ] || [ ! -f "$xml" ]; then
     return 0  # 无报告 → 保守视为失败
   fi
   grep -qE '<testsuite[^>]*((failures|errors)="[1-9])' "$xml"
