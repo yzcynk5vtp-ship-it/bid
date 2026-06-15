@@ -45,7 +45,8 @@ test "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')"
 - [x] The literal line `<!-- tested by Claude, reviewed by Codex -->` exists
       in this file (once).
 - [x] Diff footprint is doc-only (`docs/symphony-smoke.md`).
-- [x] No `WORKFLOW.md` rule-1 hot path is touched.
+- [x] No `WORKFLOW.md` rule-1 hot path is touched
+      (authoritative list: [`WORKFLOW.md` §1](../WORKFLOW.md#1-hot-paths-blacklist--do-not-modify)).
 - [x] Commit lands on `agent/symphony/CO-204-routing-test`.
 - [x] Branch tip is published to `origin` (local HEAD == upstream).
 - [x] Verification block reproduces locally without external services.
