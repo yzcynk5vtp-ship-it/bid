@@ -54,4 +54,22 @@ class ProjectControllerAuthorizationTest {
                 .contains("'TASK_EXECUTOR'")
                 .contains("'ADMIN_STAFF'");
     }
+
+    @Test
+    void approveClosure_shouldAllowAllExpectedRoles() throws Exception {
+        Method method = ProjectClosureController.class.getMethod(
+                "approve",
+                Long.class,
+                org.springframework.security.core.userdetails.UserDetails.class
+        );
+
+        PreAuthorize preAuthorize = method.getAnnotation(PreAuthorize.class);
+
+        assertThat(preAuthorize).isNotNull();
+        assertThat(preAuthorize.value())
+                .contains("'ADMIN'")
+                .contains("'BID_ADMIN'")
+                .contains("'BID_LEAD'")
+                .contains("'BID_SPECIALIST'");
+    }
 }
