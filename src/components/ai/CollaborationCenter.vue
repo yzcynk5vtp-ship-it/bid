@@ -147,6 +147,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Bell } from '@element-plus/icons-vue'
 import { collaborationApi } from '@/api'
 import { useUserStore } from '@/stores/user'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const props = defineProps({
   modelValue: {
@@ -174,7 +175,8 @@ const isApiMode = computed(() => true)
 const users = computed(() =>
   (userStore.users || []).map((user) => ({
     value: user.name,
-    label: user.name }))
+    label: formatUserLabel(user)
+  }))
 )
 
 const chapters = ref([])

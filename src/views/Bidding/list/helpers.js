@@ -201,15 +201,17 @@ export { getSourceTypeText } from '../bidding-utils.js'
 export function normalizeAssignmentCandidate(candidate = {}) {
   return {
     id: Number(candidate.id),
-    name: candidate.name || `用户#${candidate.id}`,
+    name: candidate.name || candidate.fullName || `用户#${candidate.id}`,
+    fullName: candidate.fullName || candidate.name || '',
     username: candidate.username || '',
+    employeeNumber: candidate.employeeNumber || candidate.employeeId || candidate.username || '',
     departmentName: candidate.departmentName || '未分组',
     roleCode: candidate.roleCode || '',
   }
 }
 
 export function formatAssignmentCandidateLabel(candidate = {}) {
-  return formatDisplayName(candidate.name || `用户#${candidate.id}`, candidate.username)
+  return formatDisplayName(candidate.name || `用户#${candidate.id}`, candidate.employeeNumber || candidate.username)
 }
 
 export function buildDistributionPreview({ tenders = [], candidates = [], form = {} } = {}) {

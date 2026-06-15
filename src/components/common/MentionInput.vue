@@ -28,7 +28,7 @@
         @mousedown.prevent="pickUser(user)"
         @mouseenter="activeIdx = idx"
       >
-        <span class="mention-candidate-name">{{ user.name }}</span>
+        <span class="mention-candidate-name">{{ formatUserLabel(user) }}</span>
         <span v-if="user.role" class="mention-candidate-role">{{ user.role }}</span>
       </div>
     </div>
@@ -39,6 +39,7 @@
 import { ref, watch, onBeforeUnmount } from 'vue'
 import { usersApi } from '@/api/modules/users'
 import { parseMentionContent } from '@/utils/notificationHelpers'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },

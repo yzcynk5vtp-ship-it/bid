@@ -166,7 +166,7 @@
         <el-form-item label="标讯"><span>{{ transferDialog.tender?.title }}</span></el-form-item>
         <el-form-item label="目标负责人">
           <el-select v-model="transferDialog.newOwnerId" placeholder="请选择负责人" style="width:100%" filterable>
-            <el-option v-for="c in transferCandidates" :key="c.id" :label="c.name" :value="c.id" />
+            <el-option v-for="c in transferCandidates" :key="c.id" :label="formatAssignmentCandidateLabel(c)" :value="c.id" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -202,11 +202,12 @@ import { tendersApi } from '@/api/modules/tenders'
 import { batchTendersApi } from '@/api/modules/tenders/batch.js'
 import { useBiddingStore } from '@/stores/bidding'
 import { ElMessage } from 'element-plus'
-import { normalizeAssignmentCandidate } from './list/helpers.js'
+import { normalizeAssignmentCandidate, formatAssignmentCandidateLabel } from './list/helpers.js'
 import { computed, reactive, ref } from 'vue'
 import './list/styles/list-page.css'
 import './list/styles/table.css'
 import './list/styles/mobile-page.css'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const {
   searchForm, viewMode, isMobile, loading, currentPage, pageSize,

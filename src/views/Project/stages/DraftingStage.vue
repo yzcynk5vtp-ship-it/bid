@@ -44,7 +44,7 @@
         <span style="font-size:14px;color:#303133;font-weight:500;">{{ reviewerName || bidReviewerId || '未指定' }}</span>
       </template>
       <el-select v-else-if="perm.canSelectReviewer" v-model="bidReviewerId" filterable remote placeholder="模糊搜索选择审核人" :remote-method="searchReviewer" :loading="reviewerSearching" style="width:280px" clearable>
-        <el-option v-for="u in reviewerOptions" :key="u.id" :label="u.name" :value="u.id" />
+        <el-option v-for="u in reviewerOptions" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
       </el-select>
     </div>
 
@@ -112,7 +112,7 @@ import PerformanceRecommendDrawer from './components/PerformanceRecommendDrawer.
 import QualityCheckDialog from './components/QualityCheckDialog.vue'
 import { useProjectDetailContext } from '@/composables/projectDetail/context.js'
 import { useProjectDraftingPermissions } from '@/composables/projectDetail/useProjectDraftingPermissions.js'
-import { formatDisplayName } from '@/utils/formatDisplayName.js'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const userStore = useUserStore()
 const ctx = useProjectDetailContext()
@@ -211,7 +211,7 @@ async function searchReviewer(query) {
 
     reviewerOptions.value = Array.isArray(list)
       ? list
-          .map(u => ({ id: Number(u.id), name: formatDisplayName(u.fullName || u.name, u.employeeNumber) }))
+          .map(u => ({ id: Number(u.id), name: u.fullName || u.name, employeeNumber: u.employeeNumber, employeeId: u.employeeId }))
           .filter(u => !excludedIds.includes(u.id))
       : []
   } catch { reviewerOptions.value = [] }

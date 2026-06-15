@@ -100,7 +100,7 @@
             <el-option
               v-for="user in userList"
               :key="user.id"
-              :label="user.name"
+              :label="formatUserLabel(user)"
               :value="user.name"
             />
           </el-select>
@@ -182,6 +182,7 @@ import { ref, shallowRef } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AdaptiveFormPage from '@/components/common/AdaptiveFormPage.vue'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const basicForm = defineModel('basicForm', { type: Object, required: true })
 defineProps({
