@@ -7,6 +7,7 @@ import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.service.RoleProfileService;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.task.dto.TaskDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -56,6 +57,9 @@ class TaskExtendedFieldsPersistenceTest {
     @Mock
     private TaskHistoryRecorder taskHistoryRecorder;
 
+    @Mock
+    private ProjectNotificationService notificationService;
+
     private TaskService taskService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -75,7 +79,9 @@ class TaskExtendedFieldsPersistenceTest {
                 projectRepository,
                 assignmentSupport,
                 new TaskDtoMapper(objectMapper),
-                taskHistoryRecorder
+                taskHistoryRecorder,
+                notificationService,
+                userRepository
         );
     }
 

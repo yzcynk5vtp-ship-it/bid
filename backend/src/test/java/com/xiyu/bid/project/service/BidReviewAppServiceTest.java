@@ -8,6 +8,7 @@ import com.xiyu.bid.matrixcollaboration.repository.ProjectMemberRepository;
 import com.xiyu.bid.notification.service.NotificationApplicationService;
 import com.xiyu.bid.project.core.BidReviewStatus;
 import com.xiyu.bid.project.entity.BidDocumentReviewEntity;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.BidDocumentReviewRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
@@ -46,6 +47,7 @@ class BidReviewAppServiceTest {
     @Mock ProjectRepository projectRepository;
     @Mock ProjectMemberRepository projectMemberRepository;
     @Mock ProjectAccessScopeService projectAccessScopeService;
+    @Mock ProjectNotificationService projectNotificationService;
 
     BidReviewAppService service;
 
@@ -58,7 +60,8 @@ class BidReviewAppServiceTest {
                 tenderRepository,
                 projectRepository,
                 projectMemberRepository,
-                projectAccessScopeService);
+                projectAccessScopeService,
+                projectNotificationService);
         lenient().when(reviewRepository.save(any(BidDocumentReviewEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(projectMemberRepository.findByProjectIdAndUserId(any(), any()))

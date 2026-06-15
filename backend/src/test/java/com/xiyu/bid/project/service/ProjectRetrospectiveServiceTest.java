@@ -10,8 +10,10 @@ import com.xiyu.bid.project.core.BidResultType;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.dto.RetrospectiveReviewRequest;
 import com.xiyu.bid.project.dto.RetrospectiveSubmitRequest;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectRetrospectiveRepository;
 import com.xiyu.bid.repository.ProjectRepository;
+import com.xiyu.bid.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,6 +34,8 @@ class ProjectRetrospectiveServiceTest {
     private ProjectRetrospectiveRepository repo;
     private ProjectRepository projectRepo;
     private ProjectStageService stageService;
+    private UserRepository userRepository;
+    private ProjectNotificationService notificationService;
     private ProjectRetrospectiveService service;
 
     @BeforeEach
@@ -39,7 +43,9 @@ class ProjectRetrospectiveServiceTest {
         repo = mock(ProjectRetrospectiveRepository.class);
         projectRepo = mock(ProjectRepository.class);
         stageService = mock(ProjectStageService.class);
-        service = new ProjectRetrospectiveService(repo, projectRepo, stageService);
+        userRepository = mock(UserRepository.class);
+        notificationService = mock(ProjectNotificationService.class);
+        service = new ProjectRetrospectiveService(repo, projectRepo, stageService, userRepository, notificationService);
         Project p = new Project();
         p.setId(1L);
         when(projectRepo.findById(1L)).thenReturn(Optional.of(p));

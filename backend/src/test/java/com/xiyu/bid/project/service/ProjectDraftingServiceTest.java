@@ -9,6 +9,7 @@ import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.dto.ProjectLeadAssignmentRequest;
 import com.xiyu.bid.project.entity.ProjectLeadAssignment;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.UserRepository;
@@ -44,12 +45,13 @@ class ProjectDraftingServiceTest {
     @Mock BidReviewAppService bidReviewAppService;
     @Mock UserRepository userRepository;
     @Mock ProjectEvaluationRepository projectEvaluationRepository;
+    @Mock ProjectNotificationService notificationService;
 
     ProjectDraftingService service;
 
     @BeforeEach
     void setUp() {
-        service = new ProjectDraftingService(leadRepo, projectRepository, taskRepository, projectStageService, projectAccessScopeService, userRepository, bidReviewAppService, projectEvaluationRepository);
+        service = new ProjectDraftingService(leadRepo, projectRepository, taskRepository, projectStageService, projectAccessScopeService, userRepository, bidReviewAppService, projectEvaluationRepository, notificationService);
         lenient().when(projectRepository.findById(1L))
                 .thenReturn(Optional.of(Project.builder().id(1L).build()));
         lenient().when(leadRepo.save(any(ProjectLeadAssignment.class)))
