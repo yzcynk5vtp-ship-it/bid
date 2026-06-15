@@ -110,6 +110,12 @@ async function fetchSchema(scope) {
     }
     emit('schema-loaded', fields.value)
   } catch (e) {
+    const status = e?.response?.status
+    if (status === 404) {
+      // 无动态表单配置是正常情况，直接降级到 fallback 表单，不显示错误 banner
+      emit('schema-error', e)
+      return
+    }
     const msg = e?.response?.data?.msg || e?.message || '未知错误'
     error.value = msg
     emit('schema-error', e)
