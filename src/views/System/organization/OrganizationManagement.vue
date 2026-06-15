@@ -168,12 +168,35 @@ function debouncedSearch() {
 
 const showEdit = computed(() => departments.value.length > 0)
 
+const ROOT_CODE = 'rootorg'
+
+function buildSubTree(parentCode, list, visited = new Set(), depth = 0) {
+  if (depth > 20) return []
+  const children = list.filter(d => d.parentDepartmentCode === parentCode && !visited.has(d.departmentCode))
+  return children.map(c => {
+    const nextVisited = new Set(visited)
+    nextVisited.add(c.departmentCode)
+    return {
+      ...c,
+      children: buildSubTree(c.departmentCode, list, nextVisited, depth + 1)
+    }
+  })
+}
+
 const deptTree = computed(() => {
-  const roots = departments.value.filter(d => !d.parentDepartmentCode || d.parentDepartmentCode === d.departmentCode)
+  const list = departments.value
+  const root = list.find(d => d.departmentCode === ROOT_CODE)
+  if (root) {
+    return [{
+      ...root,
+      children: buildSubTree(ROOT_CODE, list, new Set([ROOT_CODE]))
+    }]
+  }
+  // fallback: 无 rootorg 时以 parent 为空或指向自身的节点为根
+  const roots = list.filter(d => !d.parentDepartmentCode || d.parentDepartmentCode === d.departmentCode)
   return roots.map(r => ({
     ...r,
-    children: departments.value.filter(d => d.parentDepartmentCode === r.departmentCode && d.departmentCode !== r.departmentCode)
-      .map(c => ({ ...c, children: [] }))
+    children: buildSubTree(r.departmentCode, list, new Set([r.departmentCode]))
   }))
 })
 
