@@ -35,6 +35,16 @@ case "$remote_url" in
     fi
     ;;
   *gitee.com*)
+    # Fallback: 如果 bash 环境中 GITEE_TOKEN 未设置，尝试从 zshenv 读取
+    # 背景：用户在 ~/.zshenv 中 export GITEE_TOKEN，但 bash 不读 .zshenv
+    if [[ -z "${GITEE_TOKEN:-}" && -f "${HOME}/.zshenv" ]]; then
+      _zshenv_token="$(grep -E '^export[[:space:]]+GITEE_TOKEN=' "${HOME}/.zshenv" | head -1 | sed 's/^export[[:space:]]*GITEE_TOKEN=//' | tr -d "\"'" )"
+      if [[ -n "$_zshenv_token" ]]; then
+        GITEE_TOKEN="$_zshenv_token"
+        export GITEE_TOKEN
+      fi
+      unset _zshenv_token
+    fi
     if [[ -z "${GITEE_TOKEN:-}" ]]; then
       echo ""
       echo "╔══════════════════════════════════════════════════════════════╗"
@@ -44,6 +54,8 @@ case "$remote_url" in
       echo "║                                                          ║"
       echo "║  设置方式:                                                ║"
       echo "║    export GITEE_TOKEN='your_personal_access_token'        ║"
+      echo "║    或写入 ~/.zshenv:  export GITEE_TOKEN='...'            ║"
+      echo "║    或写入 ~/.bashrc:  export GITEE_TOKEN='...'            ║"
       echo "║                                                          ║"
       echo "║  申请 Token: https://gitee.com/profile/personal_tokens    ║"
       echo "╚══════════════════════════════════════════════════════════════╝"
