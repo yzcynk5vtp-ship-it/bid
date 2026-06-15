@@ -128,9 +128,8 @@
             <el-tag :type="row.status==='ACTIVE'?'success':row.status==='TERMINATED'?'danger':'info'">{{ row.statusLabel }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right" align="center">
+        <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{row}">
-            <el-button type="primary" link size="small" @click.stop="openDetail(row)">详情</el-button>
             <el-button type="primary" link size="small" @click.stop="openForm(row)">编辑</el-button>
             <template v-if="row.status === 'INACTIVE'">
               <el-button type="success" link size="small" @click.stop="handleRestore(row)">恢复</el-button>
