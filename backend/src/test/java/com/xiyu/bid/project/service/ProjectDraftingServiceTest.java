@@ -9,6 +9,7 @@ import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.dto.ProjectLeadAssignmentRequest;
 import com.xiyu.bid.project.entity.ProjectLeadAssignment;
+import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.repository.ProjectRepository;
@@ -28,7 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.argThat;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectDraftingServiceTest {
@@ -40,12 +43,13 @@ class ProjectDraftingServiceTest {
     @Mock com.xiyu.bid.service.ProjectAccessScopeService projectAccessScopeService;
     @Mock BidReviewAppService bidReviewAppService;
     @Mock UserRepository userRepository;
+    @Mock ProjectEvaluationRepository projectEvaluationRepository;
 
     ProjectDraftingService service;
 
     @BeforeEach
     void setUp() {
-        service = new ProjectDraftingService(leadRepo, projectRepository, taskRepository, projectStageService, projectAccessScopeService, userRepository, bidReviewAppService);
+        service = new ProjectDraftingService(leadRepo, projectRepository, taskRepository, projectStageService, projectAccessScopeService, userRepository, bidReviewAppService, projectEvaluationRepository);
         lenient().when(projectRepository.findById(1L))
                 .thenReturn(Optional.of(Project.builder().id(1L).build()));
         lenient().when(leadRepo.save(any(ProjectLeadAssignment.class)))
@@ -157,6 +161,9 @@ class ProjectDraftingServiceTest {
         lenient().when(projectStageService.currentStage(1L)).thenReturn(ProjectStage.DRAFTING);
         lenient().when(bidReviewAppService.getReviewState(1L))
                 .thenReturn(new BidReviewAppService.ReviewState("APPROVED", null, null, null));
+        lenient().when(projectEvaluationRepository.findByProjectId(1L)).thenReturn(Optional.empty());
+        lenient().when(projectEvaluationRepository.save(any(com.xiyu.bid.project.entity.ProjectEvaluation.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test
@@ -165,6 +172,18 @@ class ProjectDraftingServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "sales")));
         var view = service.submitBid(1L, 1L);
         assertThat(view).isNotNull();
+    }
+
+    @Test
+    void submitBid_initializesEvaluationRecord() {
+        prepareSubmitBidHappyPath();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "sales")));
+        service.submitBid(1L, 1L);
+        verify(projectEvaluationRepository).save(argThat(e ->
+                e.getProjectId().equals(1L)
+                        && "IN_PROGRESS".equals(e.getSubStage())
+                        && e.getEvaluationStartedAt() != null
+                        && "".equals(e.getNotes())));
     }
 
     @Test
