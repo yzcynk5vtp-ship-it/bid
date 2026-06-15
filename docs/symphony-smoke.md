@@ -27,16 +27,24 @@ set -e
 #    the count.
 test "$(grep -Fxc '<!-- tested by Claude, reviewed by Codex -->' docs/symphony-smoke.md)" -eq 1
 
-# 2. Diff footprint is doc-only (rule 1 hot-path gate).
-test "$(git diff --name-only origin/main..HEAD)" = "docs/symphony-smoke.md"
+# 2. Diff footprint is doc-only (rule 1 hot-path gate). Uses the
+#    triple-dot range `origin/main...HEAD` (merge-base → HEAD), NOT the
+#    double-dot `origin/main..HEAD` (endpoint diff). With `..`, if
+#    `origin/main` has advanced since the branch was forked and the branch
+#    hasn't been rebased, the endpoint diff would also list every file main
+#    changed — polluting the footprint check with files this branch never
+#    touched. `...` scopes the diff to the branch's own delta regardless of
+#    how far main has moved.
+test "$(git diff --name-only origin/main...HEAD)" = "docs/symphony-smoke.md"
 
-# 3. Hot-path blacklist (rule 1) — must match nothing. Capture the file list
-#    into a variable first so a `git diff` failure (e.g. `origin/main` not
-#    fetched on a fresh reviewer clone) is caught by `set -e` rather than
-#    masked by grep: without this, an errored git diff yields empty input,
-#    grep returns 1 (no match), the `!` flips it to 0, and the gate would
+# 3. Hot-path blacklist (rule 1) — must match nothing. Same triple-dot
+#    range as check #2 for the same reason. Capture the file list into a
+#    variable first so a `git diff` failure (e.g. `origin/main` not fetched
+#    on a fresh reviewer clone) is caught by `set -e` rather than masked
+#    by grep: without this, an errored git diff yields empty input, grep
+#    returns 1 (no match), the `!` flips it to 0, and the gate would
 #    silently pass.
-changed="$(git diff --name-only origin/main..HEAD)"
+changed="$(git diff --name-only origin/main...HEAD)"
 ! printf '%s\n' "$changed" \
   | grep -E '^(backend/src/main/resources/db/migration-mysql/|backend/src/main/resources/db/rollback/migration-mysql/|backend/src/main/java/com/xiyu/bid/entity/|backend/src/main/resources/application.*\.yml|src/router/index\.js|src/views/Login\.vue|\.github/workflows/|\.githooks/)'
 
