@@ -133,7 +133,7 @@ function getWinScoreClass(score) {
 }
 
 function getWinLevelType(level) {
-  return { high: 'success', medium: 'warning', low: 'danger' }[level] || ''
+  return { high: 'success', medium: 'warning', low: 'danger' }[level] || 'info'
 }
 
 function getWinLevelText(level) {
