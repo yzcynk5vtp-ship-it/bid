@@ -73,11 +73,11 @@ function normalizeDeadline(value) {
  * - priority    <- priority（值直接透传，不做选项映射）
  * - contact     <- contactName / contactPerson / contact
  * - phone       <- contactPhone / phone / mobile（不含 email）
- * - landline    <- contactTel (新,优先) / contactLandline (旧,兼容) / landline
+ * - landline    <- contactTel / contactLandline / landline
  * - mail        <- contactEmail / email
  * - contact2    <- contactName2 / secondaryContact
  * - phone2      <- contactPhone2 / phone2 / secondaryPhone
- * - landline2   <- contactTel2 (新,优先) / contactLandline2 (旧,兼容) / secondaryLandline
+ * - landline2   <- contactTel2 / contactLandline2 / secondaryLandline
  * - mail2       <- contactEmail2 / email2 / secondaryEmail
  * - tenderInfo  <- tenderScope（与 description 区分，description 为手填标讯描述）
  * - tags        <- tags

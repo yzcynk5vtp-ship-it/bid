@@ -133,11 +133,11 @@ export function buildManualTenderPayload(form = {}) {
     source: 'manual',
     contactName: form.contact || null,
     contactPhone: form.phone || null,
-    contactTel: form.landline || null,   // 座机: 表单 landline → 后端 contactTel (CO-217: 原 contactLandline 改名)
+    contactTel: form.landline || null,
     contactMail: form.mail || null,
     contactName2: form.contact2 || null,
     contactPhone2: form.phone2 || null,
-    contactTel2: form.landline2 || null, // 座机2: 表单 landline2 → 后端 contactTel2 (CO-217: 原 contactLandline2 改名)
+    contactTel2: form.landline2 || null,
     contactMail2: form.mail2 || null,
     description: form.description || null,
     tenderInfo: form.tenderInfo || null,

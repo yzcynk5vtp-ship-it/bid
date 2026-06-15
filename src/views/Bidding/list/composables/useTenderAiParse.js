@@ -79,14 +79,29 @@ export function useTenderAiParse(form) {
   function applyParsedFields(data) {
     if (!data) return
     const extracted = data?.extractedData && typeof data.extractedData === 'object' ? data.extractedData : null
-    // 两套映射覆盖 AI 返回的不同字段命名风格：
-    //   mapping[0]: AI 返回「表单字段名」(如 landline) → 表单字段
-    //   mapping[1]: AI 返回「后端 API 字段名」(如 contactTel / contactLandline) → 表单字段
-    // 同一目标字段仅填充第一个非空值（先出现的映射优先）。
-    // CO-217: contactLandline→contactTel，同时保留旧名兼容 AI 可能返回的旧字段
+    // Two mapping sets cover different AI field naming conventions:
+    //   [0] AI returns form-style names (landline, phone, …)
+    //   [1] AI returns API-style names (contactTel, contactName, …)
+    // First non-empty value wins for each target field.
     const mappings = [
-      { title: 'title', region: 'region', tenderAgency: 'purchaser', deadline: 'deadline', bidOpeningTime: 'bidOpeningTime', customerType: 'customerType', priority: 'priority', contact: 'contact', phone: 'phone', landline: 'landline', mail: 'mail', description: 'description', tenderInfo: 'tenderInfo', projectType: 'projectType' },
-      { tenderTitle: 'title', projectName: 'title', tenderAgency: 'purchaser', deadline: 'deadline', bidOpeningTime: 'bidOpeningTime', region: 'region', customerType: 'customerType', priority: 'priority', contactName: 'contact', contactPhone: 'phone', contactTel: 'landline', contactLandline: 'landline', /* CO-217 旧名兼容 */ contactTel2: 'landline2', contactLandline2: 'landline2', /* CO-217 旧名兼容 */ contactEmail: 'mail', tenderScope: 'description' },
+      {
+        title: 'title', region: 'region', tenderAgency: 'purchaser',
+        deadline: 'deadline', bidOpeningTime: 'bidOpeningTime',
+        customerType: 'customerType', priority: 'priority',
+        contact: 'contact', phone: 'phone', landline: 'landline',
+        mail: 'mail', description: 'description', tenderInfo: 'tenderInfo',
+        projectType: 'projectType',
+      },
+      {
+        tenderTitle: 'title', projectName: 'title',
+        tenderAgency: 'purchaser',
+        deadline: 'deadline', bidOpeningTime: 'bidOpeningTime',
+        region: 'region', customerType: 'customerType', priority: 'priority',
+        contactName: 'contact', contactPhone: 'phone',
+        contactTel: 'landline', contactLandline: 'landline',
+        contactTel2: 'landline2', contactLandline2: 'landline2',
+        contactEmail: 'mail', tenderScope: 'description',
+      },
     ]
     const sources = [data, extracted].filter(Boolean)
     for (const src of sources) {
