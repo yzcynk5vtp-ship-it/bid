@@ -10,7 +10,10 @@
 Smoke-test artifact for the Claude-exec / Codex-review routing workflow.
 Its presence on the task branch proves Symphony claimed CO-205, routed it to
 Claude (exec), Claude landed a workspace edit on this file, and Codex (review)
-signed off — all on a doc-only diff with no hot-path overlap.
+was invoked against the resulting diff — all on a doc-only change with no
+hot-path overlap. "Signed off" is an outcome of the review, not something
+this artifact can assert on its own; reviewers should consult the Integrator
+review state on the PR for the current verdict.
 
 ## Verification (reviewer-runnable)
 
