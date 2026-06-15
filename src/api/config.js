@@ -14,7 +14,12 @@ const normalizeApiBaseUrl = (rawValue) => {
   const value = String(rawValue || '').trim()
 
   if (!value) {
-    return fallback
+    return ''
+  }
+
+  // 支持相对路径（如 /api），让浏览器通过当前 host + nginx 反向代理访问后端
+  if (value.startsWith('/')) {
+    return trimTrailingSlash(value)
   }
 
   if (/^https?:\/\//i.test(value)) {
