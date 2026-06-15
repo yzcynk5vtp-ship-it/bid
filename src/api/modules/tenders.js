@@ -1,5 +1,5 @@
-// Input: httpClient, tender endpoints, and doc-insight parse endpoint
-// Output: tendersApi - tender list, detail, upload, and manual intake parse accessors
+// Input: httpClient, tender endpoints, and doc-insight parse / store / parse-existing endpoints
+// Output: tendersApi - tender list, detail, upload, store, and manual intake parse accessors
 // Pos: src/api/modules/ - Frontend API module layer
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
@@ -111,6 +111,46 @@ export const tendersApi = {
   async parseTenderIntakeText(text, { entityId = 'manual-tender' } = {}) {
     const file = new File([String(text || '')], '粘贴标讯文本.txt', { type: 'text/plain' })
     return tendersApi.parseTenderIntakeDocument(file, { entityId })
+  },
+
+  /**
+   * 仅存储文件到后端，不执行 AI 解析。
+   * 用于"上传即保存"流程 Step 1：先上传获取 fileUrl / storagePath。
+   * @param {File} file - 文件对象
+   * @param {Object} options - { entityId }
+   * @returns {Promise<{success: boolean, data: StoredDocument}>}
+   *   StoredDocument = { fileUrl: string, storagePath: string, contentSha256: string }
+   */
+  async storeTenderDocument(file, { entityId = 'manual-tender' } = {}) {
+    const formData = new FormData()
+    formData.set('profile', 'TENDER_INTAKE')
+    formData.set('entityId', entityId)
+    formData.set('file', file, file?.name || 'manual-tender-document')
+
+    return httpClient.post('/api/doc-insight/store', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30000
+    })
+  },
+
+  /**
+   * 对已存储的文件执行 AI 解析（无需重新上传）。
+   * 用于"上传即保存"流程 Step 2：基于 storeTenderDocument 返回的 storagePath 解析。
+   * @param {Object} params - { storagePath, fileName, contentType, entityId }
+   * @returns {Promise<{success: boolean, data: DocumentAnalysisResult}>}
+   */
+  async parseExistingTenderDocument({ storagePath, fileName, contentType, entityId = 'manual-tender' } = {}) {
+    const params = new URLSearchParams()
+    params.set('profile', 'TENDER_INTAKE')
+    params.set('entityId', entityId)
+    params.set('storagePath', storagePath)
+    params.set('fileName', fileName || 'manual-tender-document')
+    if (contentType) params.set('contentType', contentType)
+
+    return httpClient.post('/api/doc-insight/parse-existing', params, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 45000
+    })
   },
 
   async update(id, data) {

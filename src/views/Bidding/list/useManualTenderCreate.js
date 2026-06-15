@@ -1,5 +1,5 @@
-// Input: tenders API, manual form validation ref, document parse API, and refresh callback
-// Output: manual tender dialog state, document backfill, and create action
+// Input: tenders API (store/parse-existing/parse), manual form validation ref, and refresh callback
+// Output: manual tender dialog state, document backfill (store-then-parse flow), and create action
 // Pos: src/views/Bidding/list/ - Manual tender creation composable
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
@@ -54,11 +54,18 @@ function applyParsedFields(form, parsedFields) {
   }
 }
 
-function applySourceDocumentMetadata(form, file, parsedResult = {}) {
-  const fileUrl = parsedResult?.documentId || parsedResult?.document?.fileUrl || ''
+/**
+ * 将文件元数据（sourceDocumentName/FileType/FileUrl）写入表单。
+ * @param {Object} form - 响应式表单对象
+ * @param {File} file - 浏览器 File 对象（用于 .name / .type）
+ * @param {Object} result - 后端返回结果，可能是 StoredDocument（{fileUrl, storagePath}）
+ *                          或 DocumentAnalysisResult（{documentId, document: {fileUrl}}）
+ */
+function applySourceDocumentMetadata(form, file, result = {}) {
+  const fileUrl = result?.fileUrl || result?.documentId || result?.document?.fileUrl || ''
   if (!fileUrl) return
-  form.sourceDocumentName = file?.name || parsedResult?.documentName || '招标文件'
-  form.sourceDocumentFileType = file?.type || parsedResult?.contentType || ''
+  form.sourceDocumentName = file?.name || result?.documentName || '招标文件'
+  form.sourceDocumentFileType = file?.type || result?.contentType || ''
   form.sourceDocumentFileUrl = fileUrl
 }
 
@@ -72,7 +79,11 @@ async function parseAndBackfill({ form, source, warningMessage }) {
     throw new Error(response?.msg || warningMessage)
   }
   applyParsedFields(form, normalizeManualTenderParseResult(response.data))
-  applySourceDocumentMetadata(form, source.file, response.data)
+  // "上传即保存"流程中，Step 1 (/store) 已通过 applySourceDocumentMetadata 设置了
+  // sourceDocumentFileUrl；此处仅在旧流程（/parse 一站式）中回填元数据
+  if (!form.sourceDocumentFileUrl) {
+    applySourceDocumentMetadata(form, source.file, response.data)
+  }
 }
 
 export function useManualTenderCreate({ tendersApi, refreshTenderList, canCreateTender }) {
@@ -128,17 +139,48 @@ export function useManualTenderCreate({ tendersApi, refreshTenderList, canCreate
 
     if (!uploadFile || !isSupportedParseFile(uploadFile)) return
 
+    // ── Step 1: 上传即保存 ──────────────────────────────────────────────────────
+    // 文件选择后立即存储到后端，获取 fileUrl / storagePath。
+    // 即使后续 AI 解析失败，文件也已保存，用户保存标讯时文件元数据不会丢失。
+    let storedDoc = null
+    try {
+      const storeResponse = await tendersApi.storeTenderDocument(uploadFile, { entityId: 'manual-tender' })
+      if (storeResponse?.success && storeResponse.data) {
+        storedDoc = storeResponse.data
+        applySourceDocumentMetadata(manualForm.value, uploadFile, storedDoc)
+        ElMessage.success('标讯文件已上传保存')
+      } else {
+        console.warn('文件存储返回异常:', storeResponse?.msg)
+      }
+    } catch (storeError) {
+      console.warn('文件存储失败，继续尝试 AI 解析:', storeError?.message || storeError)
+    }
+
+    // ── Step 2: AI 解析（独立增强步骤，失败不影响文件保存）─────────────────────────
+    // 优先使用 parseExisting（基于 storagePath，避免重复上传），
+    // 仅在 Step 1 存储失败时回退到 /parse 一站式端点。
     parsingManualDocument.value = true
     try {
+      const parseSource = storedDoc?.storagePath
+        ? {
+            file: uploadFile,
+            parse: () => tendersApi.parseExistingTenderDocument({
+              storagePath: storedDoc.storagePath,
+              fileName: uploadFile.name,
+              contentType: uploadFile.type,
+              entityId: 'manual-tender',
+            }),
+          }
+        : {
+            file: uploadFile,
+            parse: () => tendersApi.parseTenderIntakeDocument(uploadFile, { entityId: 'manual-tender' }),
+          }
       await parseAndBackfill({
         form: manualForm.value,
-        source: {
-          file: uploadFile,
-          parse: () => tendersApi.parseTenderIntakeDocument(uploadFile, { entityId: 'manual-tender' }),
-        },
+        source: parseSource,
         warningMessage: '文档自动识别失败',
       })
-      ElMessage.success('DeepSeek/AI 已识别附件内容，可继续编辑后保存')
+      ElMessage.success('DeepSeek/AI 已识别标讯文件内容，可继续编辑后保存')
     } catch (error) {
       const timedOut = error?.code === 'ECONNABORTED'
       ElMessage.warning(timedOut ? 'AI 解析超时，可继续手动填写' : '自动识别失败，可继续手动填写')

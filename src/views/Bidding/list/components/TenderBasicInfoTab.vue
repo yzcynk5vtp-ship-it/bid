@@ -82,10 +82,10 @@
               <div class="paste-actions"><el-button type="primary" :icon="DocumentCopy" :loading="parsingDocument" @click="$emit('parse-paste')">识别粘贴文字</el-button></div>
             </el-form-item>
           </el-col>
-          <!-- 附件上传 -->
+          <!-- 标讯文件 -->
           <el-col :span="24">
-            <el-form-item label="附件上传">
-              <div class="upload-hint">支持 PDF/Word 文件上传（≤50MB），上传后自动 AI 解析并回填表单字段</div>
+            <el-form-item label="标讯文件">
+              <div class="upload-hint">支持 PDF/Word 文件上传（≤50MB），上传即保存，自动 AI 解析回填表单字段</div>
               <el-upload class="manual-tender-upload" :auto-upload="false" :on-change="$emit('file-change', $event)" :file-list="form.attachments" :limit="5" :accept="acceptFileTypes" multiple drag>
                 <el-icon class="el-icon--upload"><Upload /></el-icon>
                 <div class="el-upload__text">{{ parsingDocument ? 'DeepSeek/AI 解析中...' : '将文件拖到此处，或点击选择附件（PDF/Word ≤50MB）' }}</div>

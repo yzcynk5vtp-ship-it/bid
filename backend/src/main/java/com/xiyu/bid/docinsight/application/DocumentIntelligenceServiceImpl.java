@@ -57,6 +57,17 @@ public class DocumentIntelligenceServiceImpl implements DocumentIntelligenceServ
         return parse(profileCode, stored, fileName, contentType, content);
     }
 
+    @Override
+    public StoredDocument storeOnly(String profileCode, String entityId, MultipartFile file) {
+        checkProjectAccess(profileCode, entityId);
+        try {
+            byte[] content = file.getBytes();
+            return storage.store(profileCode, entityId, file.getOriginalFilename(), file.getContentType(), content);
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to read uploaded file", e);
+        }
+    }
+
     private DocumentAnalysisResult parse(String profileCode, StoredDocument stored, String fileName, String contentType, byte[] content) {
         ExtractedDocument extracted = extractor.extract(fileName, contentType, content);
         List<DocumentChunk> chunks = chunker.chunk(extracted.text(), extracted.structuredMetadata());

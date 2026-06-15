@@ -134,9 +134,9 @@
               </el-form-item>
             </el-col>
             <el-col :span="24">
-              <el-form-item label="附件上传">
+              <el-form-item label="标讯文件">
                 <div class="upload-hint">
-                  支持 PDF/Word 文件上传（≤50MB），上传后自动 AI 解析并回填表单字段
+                  支持 PDF/Word 文件上传（≤50MB），上传即保存，自动 AI 解析回填表单字段
                 </div>
                 <el-upload
                   class="manual-tender-upload"
