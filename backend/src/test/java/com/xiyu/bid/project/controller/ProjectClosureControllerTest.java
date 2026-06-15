@@ -115,4 +115,14 @@ class ProjectClosureControllerTest {
                         .content(om.writeValueAsString(req)))
                 .andExpect(status().isUnprocessableEntity());
     }
+
+    @Test
+    void approve_happy_returns200() throws Exception {
+        when(service.approveClosure(eq(1L), eq(1L)))
+                .thenReturn(ClosureDTO.builder().id(10L).projectId(1L).stageLocked(true)
+                        .closedAt(LocalDateTime.now()).build());
+        mockMvc.perform(post("/api/projects/1/closure/approve"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.stageLocked").value(true));
+    }
 }
