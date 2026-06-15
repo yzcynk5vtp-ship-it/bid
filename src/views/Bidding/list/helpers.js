@@ -131,15 +131,13 @@ export function buildManualTenderPayload(form = {}) {
     deadline: formattedDeadline,
     publishDate: formatLocalDate(),
     source: 'manual',
-    // 联系人1: 表单字段 landline 对应后端 API 字段 contactTel
     contactName: form.contact || null,
     contactPhone: form.phone || null,
-    contactTel: form.landline || null,
+    contactTel: form.landline || null, // form.landline → API contactTel (原 contactLandline 已弃用)
     contactMail: form.mail || null,
-    // 联系人2: 表单字段 landline2 对应后端 API 字段 contactTel2
     contactName2: form.contact2 || null,
     contactPhone2: form.phone2 || null,
-    contactTel2: form.landline2 || null,
+    contactTel2: form.landline2 || null, // form.landline2 → API contactTel2
     contactMail2: form.mail2 || null,
     description: form.description || null,
     tenderInfo: form.tenderInfo || null,
