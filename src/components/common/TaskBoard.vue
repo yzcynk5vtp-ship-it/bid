@@ -151,6 +151,7 @@ import draggable from 'vuedraggable'
 import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
 import { useTaskBoardDrag } from './useTaskBoardDrag'
+import { getPriorityType, getPriorityLabel as getPriorityText } from '@/views/Dashboard/workbench-formatters.js'
 
 const props = defineProps({
   tasks: {
@@ -249,24 +250,6 @@ const getColumnHeaderStyle = (column) => {
     color,
     background: hexToSoftBackground(color)
   }
-}
-
-const getPriorityType = (priority) => {
-  const typeMap = {
-    high: 'danger',
-    medium: 'warning',
-    low: 'info'
-  }
-  return typeMap[priority] || 'info'
-}
-
-const getPriorityText = (priority) => {
-  const textMap = {
-    high: '高',
-    medium: '中',
-    low: '低'
-  }
-  return textMap[priority] || priority
 }
 
 const isUrgent = (deadline) => {
