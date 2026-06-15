@@ -26,6 +26,7 @@ export const organizationApi = {
    * @param {string} [params.keyword] - 搜索关键词
    * @param {boolean} [params.enabled] - 启用状态筛选
    * @param {string} [params.departmentCode] - 部门编码筛选
+   * @param {string} [params.sourceApp] - 部门来源应用（用户表存的是 external_dept_id，需要反查）
    * @returns {Promise<{list: Array, totalCount: number, pageIndex: number, pageSize: number}>}
    */
   async listUsersPage(params = {}) {

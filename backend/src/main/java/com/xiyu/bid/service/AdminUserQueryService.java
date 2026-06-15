@@ -2,14 +2,22 @@ package com.xiyu.bid.service;
 
 import com.xiyu.bid.dto.AdminUserDTO;
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.integration.organization.infrastructure.persistence.entity.OrganizationDepartmentEntity;
+import com.xiyu.bid.integration.organization.infrastructure.persistence.repository.OrganizationDepartmentRepository;
 import com.xiyu.bid.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * 用户查询服务（分页查询、DTO 转换）。
@@ -21,17 +29,23 @@ import java.util.Objects;
 public class AdminUserQueryService {
 
     private final UserRepository userRepository;
+    private final OrganizationDepartmentRepository departmentRepository;
 
-    public AdminUserQueryService(UserRepository userRepository) {
+    public AdminUserQueryService(UserRepository userRepository,
+                                 OrganizationDepartmentRepository departmentRepository) {
         this.userRepository = userRepository;
+        this.departmentRepository = departmentRepository;
     }
 
     /**
      * 分页查询用户列表。
+     * <p>用户表 department_code 实际存储的是组织架构 external_dept_id，
+     * 因此按部门编码过滤时需要先反查组织部门表得到 external_dept_id。
      */
     public PaginatedResult<AdminUserDTO> listUsersPage(int page, int size, String keyword,
-                                                        Boolean enabled, String departmentCode) {
-        java.util.stream.Stream<User> stream = userRepository.findAll().stream();
+                                                        Boolean enabled, String departmentCode,
+                                                        String sourceApp) {
+        Stream<User> stream = userRepository.findAll().stream();
 
         if (keyword != null && !keyword.isBlank()) {
             String kw = keyword.trim().toLowerCase(Locale.ROOT);
@@ -47,7 +61,11 @@ public class AdminUserQueryService {
             stream = stream.filter(u -> Objects.equals(u.getEnabled(), enabled));
         }
         if (departmentCode != null && !departmentCode.isBlank()) {
-            stream = stream.filter(u -> departmentCode.equals(u.getDepartmentCode()));
+            Set<String> externalDeptIds = resolveExternalDeptIds(departmentCode, sourceApp);
+            if (externalDeptIds.isEmpty()) {
+                return new PaginatedResult<>(Collections.emptyList(), 0, page, size);
+            }
+            stream = stream.filter(u -> externalDeptIds.contains(u.getDepartmentCode()));
         }
 
         List<AdminUserDTO> all = stream
@@ -62,6 +80,45 @@ public class AdminUserQueryService {
         int endIndex = Math.min(startIndex + size, total);
         List<AdminUserDTO> list = startIndex >= total ? Collections.emptyList() : all.subList(startIndex, endIndex);
         return new PaginatedResult<>(list, total, page, size);
+    }
+
+    private Set<String> resolveExternalDeptIds(String departmentCode, String sourceApp) {
+        if (sourceApp != null && !sourceApp.isBlank()) {
+            Optional<OrganizationDepartmentEntity> target = departmentRepository
+                    .findBySourceAppAndDepartmentCode(sourceApp, departmentCode);
+            if (target.isEmpty()) {
+                return Collections.emptySet();
+            }
+            List<OrganizationDepartmentEntity> all = departmentRepository
+                    .findBySourceAppAndEnabledTrueOrderByDepartmentCode(sourceApp);
+            Map<String, List<OrganizationDepartmentEntity>> byParent = all.stream()
+                    .filter(d -> d.getParentDepartmentCode() != null && !d.getParentDepartmentCode().isBlank())
+                    .collect(Collectors.groupingBy(OrganizationDepartmentEntity::getParentDepartmentCode));
+            Set<String> result = new HashSet<>();
+            collectDescendants(target.get(), byParent, result, new HashSet<>(), 0);
+            return result;
+        }
+        return departmentRepository.findAll().stream()
+                .filter(d -> departmentCode.equals(d.getDepartmentCode()))
+                .map(OrganizationDepartmentEntity::getExternalDeptId)
+                .collect(Collectors.toSet());
+    }
+
+    private void collectDescendants(OrganizationDepartmentEntity current,
+                                    Map<String, List<OrganizationDepartmentEntity>> byParent,
+                                    Set<String> result,
+                                    Set<String> visited,
+                                    int depth) {
+        if (depth > 20 || current == null || !visited.add(current.getDepartmentCode())) {
+            return;
+        }
+        if (current.getExternalDeptId() != null) {
+            result.add(current.getExternalDeptId());
+        }
+        List<OrganizationDepartmentEntity> children = byParent.getOrDefault(current.getDepartmentCode(), Collections.emptyList());
+        for (OrganizationDepartmentEntity child : children) {
+            collectDescendants(child, byParent, result, visited, depth + 1);
+        }
     }
 
     public AdminUserDTO toDto(User user) {
