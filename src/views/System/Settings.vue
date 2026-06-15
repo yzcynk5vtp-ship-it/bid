@@ -21,7 +21,7 @@
     />
 
     <el-tabs v-model="activeTab" class="settings-tabs">
-      <el-tab-pane label="数据权限" name="departments">
+      <el-tab-pane label="数据权限" name="departments" lazy>
         <DepartmentTreePanel
           v-loading="loading"
           :dept-tree="deptTree"
@@ -29,7 +29,7 @@
           :save-handler="saveDepartments"
         />
       </el-tab-pane>
-      <el-tab-pane label="角色权限" name="roles">
+      <el-tab-pane label="角色权限" name="roles" lazy>
         <RoleManagementPanel
           v-loading="loading"
           :roles="roles"
@@ -39,13 +39,14 @@
           :reset-handler="resetRole"
         />
       </el-tab-pane>
-      <el-tab-pane label="接口权限矩阵" name="interface-permissions">
+      <el-tab-pane label="接口权限矩阵" name="interface-permissions" lazy>
         <InterfacePermissionMatrixPanel />
       </el-tab-pane>
       <el-tab-pane
         v-if="isAdmin"
         label="任务状态字典"
         name="task-status-dict"
+        lazy
       >
         <TaskStatusDictPanel />
       </el-tab-pane>
@@ -53,10 +54,11 @@
         v-if="isAdmin"
         label="任务扩展字段"
         name="task-extended-fields"
+        lazy
       >
         <TaskExtendedFieldPanel />
       </el-tab-pane>
-      <el-tab-pane label="用户组织归属" name="users">
+      <el-tab-pane label="用户组织归属" name="users" lazy>
         <UserOrganizationPanel
           v-loading="loading"
           :users="users"
@@ -65,7 +67,7 @@
           :save-handler="saveUserOrganization"
         />
       </el-tab-pane>
-      <el-tab-pane label="投标匹配评分" name="bid-match-scoring">
+      <el-tab-pane label="投标匹配评分" name="bid-match-scoring" lazy>
         <BidMatchScoringSettingsPanel
           :loading="bidScoringLoading"
           :saving="bidScoringSaving"
@@ -83,10 +85,10 @@
           :rule-type-options="ruleTypeOptions"
         />
       </el-tab-pane>
-      <el-tab-pane v-if="canViewAuditLogs" label="审计日志" name="audit">
+      <el-tab-pane v-if="canViewAuditLogs" label="审计日志" name="audit" lazy>
         <AuditLogPanel mode="audit" />
       </el-tab-pane>
-      <el-tab-pane v-if="isAdmin" label="系统信息" name="system-info">
+      <el-tab-pane v-if="isAdmin" label="系统信息" name="system-info" lazy>
         <SystemInfoPanel />
       </el-tab-pane>
     </el-tabs>
