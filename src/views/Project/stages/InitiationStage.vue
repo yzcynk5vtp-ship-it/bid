@@ -41,7 +41,6 @@
 </div>
 <div class="grid-2">
   <el-form-item label="客户营收（亿）"><el-input-number v-model="form.customerRevenue" :min="0" :precision="2" /></el-form-item>
-  <el-form-item label=" " /> <!-- spacer -->
 </div>
 <el-form-item label="招标文件不利项"><el-input v-model="form.tenderAdverseItems" type="textarea" :rows="3" maxlength="5000" /></el-form-item>
 <el-form-item label="风险预判"><el-input v-model="form.riskAssessment" type="textarea" :rows="3" maxlength="5000" /></el-form-item>
@@ -297,4 +296,5 @@ defineExpose({ load })
 .bid-doc-actions { display: flex; gap: 12px; align-items: center; justify-content: flex-end; padding-top: 8px; }
 .error-tag { font-size: 13px; }
 .ai-result-alert { margin-top: 0; }
+.initiation-stage-fallback :deep(.el-form-item__label) { white-space: normal; word-break: break-word; line-height: 1.5; }
 </style>
