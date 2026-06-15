@@ -50,9 +50,10 @@ public class AdminUserController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Boolean enabled,
-            @RequestParam(required = false) String departmentCode) {
+            @RequestParam(required = false) String departmentCode,
+            @RequestParam(required = false) String sourceApp) {
         PaginatedResult<AdminUserDTO> result = adminUserQueryService.listUsersPage(
-                page, size, keyword, enabled, departmentCode);
+                page, size, keyword, enabled, departmentCode, sourceApp);
         return ResponseEntity.ok(ApiResponse.success("查询成功", result));
     }
 
