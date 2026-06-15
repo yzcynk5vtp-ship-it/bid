@@ -69,7 +69,7 @@ function toCsv(rows = []) {
 export const exportApi = {
   async exportExcel(type, rows = [], filename = `${type}-${Date.now()}.csv`) {
     const csv = toCsv(rows)
-    // ﻿ BOM 前缀确保 Windows Excel 正确识别 UTF-8 中文编码
+    // BOM prefix helps Windows Excel recognize UTF-8 Chinese encoding
     const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
     triggerDownload(blob, filename)
     return { success: true, status: ExportStatus.SUCCESS }
