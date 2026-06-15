@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { chinaRegionOptions } from '@/components/common/chinaRegionData.js'
 import {
-  REGION_OPTIONS,
   CUSTOMER_TYPE_OPTIONS,
   PROJECT_TYPE_OPTIONS,
   PRIORITY_OPTIONS,
@@ -12,7 +12,7 @@ export function useTenderCreateForm() {
   const formRef = ref(null)
   const form = ref(createForm())
 
-  const regions = REGION_OPTIONS
+  const regions = chinaRegionOptions
   const customerTypes = CUSTOMER_TYPE_OPTIONS
   const projectTypes = PROJECT_TYPE_OPTIONS
   const priorities = PRIORITY_OPTIONS
