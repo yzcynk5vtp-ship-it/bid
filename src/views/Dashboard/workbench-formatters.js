@@ -70,6 +70,7 @@ const PROJECT_STATUS_TYPE_MAP = {
 }
 
 export function getProjectStatusType(status) {
+  if (status == null || status === '') return 'info'
   return PROJECT_STATUS_TYPE_MAP[status] || 'info'
 }
 

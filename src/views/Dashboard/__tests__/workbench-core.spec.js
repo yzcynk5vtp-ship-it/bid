@@ -276,14 +276,32 @@ describe('workbench route targets and UI mappings', () => {
   it('maps project progress, statuses, and priorities to UI tokens', () => {
     expect(getProgressColor(85)).toBe('#059669')
     expect(getProgressColor(10)).toBe('#EF4444')
+
+    // 8 canonical project statuses → ElTag type
+    expect(getProjectStatusType('待立项')).toBe('info')
+    expect(getProjectStatusType('已立项')).toBe('info')
     expect(getProjectStatusType('投标中')).toBe('primary')
     expect(getProjectStatusType('评标中')).toBe('warning')
     expect(getProjectStatusType('已中标')).toBe('success')
     expect(getProjectStatusType('未中标')).toBe('danger')
+    expect(getProjectStatusType('已流标')).toBe('danger')
+    expect(getProjectStatusType('已放弃')).toBe('info')
+
+    // fallback to info for any unknown/null/empty status
     expect(getProjectStatusType('未知状态')).toBe('info')
+    expect(getProjectStatusType('')).toBe('info')
+    expect(getProjectStatusType(null)).toBe('info')
+    expect(getProjectStatusType(undefined)).toBe('info')
+
+    expect(getPriorityType('high')).toBe('danger')
     expect(getPriorityType('medium')).toBe('warning')
+    expect(getPriorityType('low')).toBe('info')
     expect(getPriorityType('unknown')).toBe('info')
+    expect(getPriorityType('')).toBe('info')
+
     expect(getPriorityLabel('high')).toBe('高')
+    expect(getPriorityLabel('medium')).toBe('中')
+    expect(getPriorityLabel('low')).toBe('低')
     expect(getPriorityLabel('urgent')).toBe('urgent')
   })
 })
