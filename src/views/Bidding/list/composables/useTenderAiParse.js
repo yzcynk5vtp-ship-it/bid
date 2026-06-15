@@ -79,9 +79,29 @@ export function useTenderAiParse(form) {
   function applyParsedFields(data) {
     if (!data) return
     const extracted = data?.extractedData && typeof data.extractedData === 'object' ? data.extractedData : null
+    // Two mapping sets cover different AI field naming conventions:
+    //   [0] AI returns form-style names (landline, phone, …)
+    //   [1] AI returns API-style names (contactTel, contactName, …)
+    // First non-empty value wins for each target field.
     const mappings = [
-      { title: 'title', region: 'region', tenderAgency: 'purchaser', deadline: 'deadline', bidOpeningTime: 'bidOpeningTime', customerType: 'customerType', priority: 'priority', contact: 'contact', phone: 'phone', landline: 'landline', mail: 'mail', description: 'description', tenderInfo: 'tenderInfo', projectType: 'projectType' },
-      { tenderTitle: 'title', projectName: 'title', tenderAgency: 'purchaser', deadline: 'deadline', bidOpeningTime: 'bidOpeningTime', region: 'region', customerType: 'customerType', priority: 'priority', contactName: 'contact', contactPhone: 'phone', contactEmail: 'mail', tenderScope: 'description' },
+      {
+        title: 'title', region: 'region', tenderAgency: 'purchaser',
+        deadline: 'deadline', bidOpeningTime: 'bidOpeningTime',
+        customerType: 'customerType', priority: 'priority',
+        contact: 'contact', phone: 'phone', landline: 'landline',
+        mail: 'mail', description: 'description', tenderInfo: 'tenderInfo',
+        projectType: 'projectType',
+      },
+      {
+        tenderTitle: 'title', projectName: 'title',
+        tenderAgency: 'purchaser',
+        deadline: 'deadline', bidOpeningTime: 'bidOpeningTime',
+        region: 'region', customerType: 'customerType', priority: 'priority',
+        contactName: 'contact', contactPhone: 'phone',
+        contactTel: 'landline', contactLandline: 'landline',
+        contactTel2: 'landline2', contactLandline2: 'landline2',
+        contactEmail: 'mail', tenderScope: 'description',
+      },
     ]
     const sources = [data, extracted].filter(Boolean)
     for (const src of sources) {

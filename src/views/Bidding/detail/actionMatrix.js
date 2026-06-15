@@ -221,6 +221,7 @@ export function getBottomActions(status, role, _requiresReview, evaluationTabAct
 // ---------------------------------------------------------------------------
 export function shouldShowLogsTab(sourceType) {
   if (sourceType == null) return true
-  // 统一归一化为中文标签后再判断，避免同时硬编码英文/中文两种值
-  return getSourceTypeText(sourceType) !== '人工录入'
+  // sourceType 可能是英文枚举名或中文标签
+  if (sourceType === 'MANUAL_SINGLE' || sourceType === '人工录入') return false
+  return true
 }

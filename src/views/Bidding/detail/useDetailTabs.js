@@ -16,9 +16,10 @@ export function useDetailTabs(tenderRef) {
     // tender 为 null/undefined 时显示所有 Tab（加载状态）
     if (!tenderRef.value) return TABS
 
-    // 蓝图要求：人工录入创建标讯时不展示操作日志 Tab。
-    // 后端 sourceType 经 @JsonValue 返回中文标签，用 getSourceTypeText 归一化
-    if (getSourceTypeText(tenderRef.value.sourceType) === '人工录入') {
+    // 蓝图要求：人工录入创建标讯时不展示操作日志 Tab
+    // sourceType 可能是英文枚举名或中文标签
+    const sourceType = tenderRef.value.sourceType
+    if (sourceType === 'MANUAL_SINGLE' || sourceType === '人工录入') {
       return TABS.filter(t => t.name !== 'logs')
     }
 
