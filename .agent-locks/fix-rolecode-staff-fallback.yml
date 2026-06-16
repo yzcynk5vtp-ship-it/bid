@@ -1,9 +1,0 @@
-version: 1
-task: "fix-rolecode-staff-fallback"
-locks:
-  - path: "backend/src/main/java/com/xiyu/bid/entity/RoleProfileCatalog.java"
-    scope: "file"
-    owner: "agent"
-    branch: "agent/claude/fix-rolecode-staff-fallback"
-    expiresAt: "2026-06-17T11:58:55.474Z"
-    reason: "修复未注册角色 STAFF fallback 越权：新增 isRegisteredCode/shouldSkipLegacyRoleCompat + ROLES_WITHOUT_LEGACY_ROLE_COMPAT（codex org-sync 已合 !676 后接力）"
