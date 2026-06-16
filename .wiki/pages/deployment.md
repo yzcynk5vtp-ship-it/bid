@@ -12,7 +12,6 @@ sources:
   - docs/specs/MYSQL_8_DEPLOYMENT.md
   - README.md
   - backend/src/main/resources/application.yml
-  - docs/plans/2026-03-10-go-live-execution-plan.md
   - .wiki/extracts/contract__西域数智化投标管理平台建设项目合同-V1_0420.docx.md
 backlinks:
   - _index
@@ -32,7 +31,7 @@ backlinks:
   - team-and-timeline
 created: 2026-04-15
 updated: 2026-05-28
-health_checked: 2026-06-05
+health_checked: 2026-06-16
 ---
 # 部署与上线
 
