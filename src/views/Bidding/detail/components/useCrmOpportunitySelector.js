@@ -61,14 +61,20 @@ export function useCrmOpportunitySelector(props, emit) {
         if (searchForm.projectStatus.length > 0) params.body.projectStatus = searchForm.projectStatus
         res = await crmApi.searchOpportunities(params)
       } else if (hasBlueprintCriteria()) {
-        // 初始打开：按产品蓝图「招标主体 + 报名截止时间 + 开标时间」精确匹配
-        res = await crmApi.searchOpportunitiesByTender({
-          tenderer: props.tenderer.trim(),
-          registrationDeadline: props.registrationDeadline || '',
-          bidOpeningTime: props.bidOpeningTime || '',
+        // 优先按招标主体（CRM groupName）查同集团商机；CRM groupName 与标讯招标主体可能不完全一致，
+        // 若查不到再兜底全量，避免产品蓝图要求的 evaluationTime 精确匹配导致经常性空结果。
+        res = await crmApi.searchOpportunities({
           pageIndex: currentPage.value,
           pageSize: pageSize.value,
+          body: { groupName: [props.tenderer.trim()] },
         })
+        if ((res?.data?.list?.length || 0) === 0) {
+          res = await crmApi.searchOpportunities({
+            pageIndex: currentPage.value,
+            pageSize: pageSize.value,
+            body: { selectAll: true },
+          })
+        }
       } else {
         // 标讯缺少招标主体时兜底：拉取全量商机供用户手动选择
         res = await crmApi.searchOpportunities({

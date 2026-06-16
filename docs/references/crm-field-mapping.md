@@ -51,12 +51,17 @@
 }
 ```
 
-后端会拆分为 **两次** `page-list` 调用：
+后端匹配策略由 `app.crm.matching-strategy` 控制，支持：
 
-1. `groupName = [tenderer]` + `evaluationStartTime/EndTime` = `registrationDeadline` 的日期范围
-2. `groupName = [tenderer]` + `evaluationStartTime/EndTime` = `bidOpeningTime` 的日期范围
+| 策略 | 行为 | 适用场景 |
+|---|---|---|
+| `EXACT` | 先按 `groupName + evaluationTime` 精确匹配报名截止/开标日期；若为空，兜底 `groupName`；再为空，兜底 `selectAll` | 数据质量高，追求精确匹配 |
+| `GROUP` | 按 `groupName` 匹配；若为空，兜底 `selectAll` | **默认**，平衡召回与相关性 |
+| `ALL` | 直接拉取全量商机 | 快速恢复/排查 |
 
-两次结果按 `id` 去重合并后返回。
+日期字段支持 `yyyy-MM-dd HH:mm:ss`、`yyyy-MM-dd`、`ISO_LOCAL_DATE_TIME`、`ISO_OFFSET_DATE_TIME` 等多种格式。
+
+后端实际会拆分为一次或多次 `page-list` 调用，最终结果按 `id` 去重合并后返回。
 
 ## 4. CRM 响应字段 → 前端展示字段映射
 

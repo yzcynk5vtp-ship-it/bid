@@ -205,6 +205,18 @@ public class CrmProperties {
         private String bidInfoSyncPath = "/customer-chance/bidInfoSync";
     }
 
+    /**
+     * 标讯关联 CRM 商机时的初始匹配策略。
+     * - EXACT: 按招标主体 + 报名截止/开标时间精确匹配 evaluationTime
+     * - GROUP: 按招标主体（groupName）匹配，查不到时兜底全量
+     * - ALL:   直接拉取全量商机
+     */
+    private MatchingStrategy matchingStrategy = MatchingStrategy.GROUP;
+
+    public enum MatchingStrategy {
+        EXACT, GROUP, ALL
+    }
+
     @Data
     public static class CrmContactPersonPaths {
         /** pageListPath. */
