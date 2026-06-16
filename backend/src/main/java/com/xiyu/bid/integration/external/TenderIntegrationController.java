@@ -70,6 +70,24 @@ public class TenderIntegrationController {
         Page<TenderDTO> page = tenderQueryService.searchTendersPaged(
                 criteria, PageRequest.of(safePage, safeSize));
 
+        // 归一化 source 为中文标签
+        page.getContent().forEach(dto -> {
+            if (dto.getSourceType() != null) {
+                switch (dto.getSourceType()) {
+                    case MANUAL_SINGLE:
+                    case BULK_IMPORT:
+                        dto.setSource("人工录入");
+                        break;
+                    case CRM_OPPORTUNITY:
+                        dto.setSource("CRM创建");
+                        break;
+                    case EXTERNAL_PLATFORM:
+                        dto.setSource("第三方平台");
+                        break;
+                }
+            }
+        });
+
         Map<String, Object> data = Map.of(
                 "content", page.getContent(),
                 "totalElements", page.getTotalElements(),
