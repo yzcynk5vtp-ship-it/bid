@@ -4,7 +4,6 @@ space: engineering
 category: business
 tags: [工作台, dashboard, 标书, 需求追溯, 缺口分析, gap]
 sources:
-  - docs/specs/讲标文件-功能响应与亮点.md
   - docs/research/COMMERCIAL_SCOPE.md
   - src/views/Dashboard/Workbench.vue
 backlinks:

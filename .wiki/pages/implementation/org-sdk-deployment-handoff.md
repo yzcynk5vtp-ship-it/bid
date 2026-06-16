@@ -4,7 +4,6 @@ space: implementation
 category: guide
 tags: [handoff, 部署, 组织架构, integration, org-sync]
 sources:
-  - specs/005-org-sdk-integration/plan.md
 backlinks:
 created: 2026-05-28
 updated: 2026-05-28
