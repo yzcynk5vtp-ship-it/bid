@@ -15,7 +15,7 @@ import com.xiyu.bid.project.dto.InitiationApprovalRequest;
 import com.xiyu.bid.project.dto.InitiationRejectionRequest;
 import com.xiyu.bid.project.entity.ProjectInitiationDetails;
 import com.xiyu.bid.project.entity.ProjectLeadAssignment;
-import com.xiyu.bid.project.notification.ProjectNotificationHelper;
+import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
@@ -53,7 +53,7 @@ public class ProjectInitiationApprovalService {
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final ProjectArchiveWorkflowService projectArchiveWorkflowService;
-    private final ProjectNotificationHelper notificationHelper;
+    private final ProjectNotificationService notificationService;
 
     /**
      * 审核通过立项申请，原子完成：状态变更 + 团队分配 + 阶段推进 + 字段锁定。
@@ -115,7 +115,7 @@ public class ProjectInitiationApprovalService {
                         .createArchive(projectId, project.getName(), "ACTIVE"));
 
         // 通知 #2: 立项审核通过 → 项目负责人 + 主/副投标负责人
-        notificationHelper.notifyInitiationApproved(projectId, currentUserId);
+        notificationService.notifyInitiationApproved(projectId, currentUserId);
 
         log.info("Initiation approved project={} primaryLead={} reviewer={}",
                 projectId, req.getPrimaryLeadUserId(), currentUserId);
@@ -150,7 +150,7 @@ public class ProjectInitiationApprovalService {
         initiationRepo.save(entity);
 
         // 通知 #3: 立项驳回 → 项目负责人
-        notificationHelper.notifyInitiationRejected(projectId, currentUserId, req.getRejectionReason());
+        notificationService.notifyInitiationRejected(projectId, currentUserId, req.getRejectionReason());
 
         log.info("Initiation rejected project={} reviewer={} reason={}",
                 projectId, currentUserId, req.getRejectionReason());
