@@ -10,7 +10,6 @@ import com.xiyu.bid.project.entity.ProjectInitiationDetails;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import com.xiyu.bid.project.core.InitiationFieldPolicy;
 import com.xiyu.bid.project.dto.InitiationDto;
-import com.xiyu.bid.project.notification.ProjectNotificationHelper;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
@@ -47,7 +46,7 @@ class ProjectInitiationServiceTest {
     @Mock ProjectAccessScopeService projectAccessScopeService;
     @Mock UserRepository userRepository;
     @Mock ProjectLeadAssignmentRepository leadAssignmentRepository;
-    @Mock ProjectNotificationHelper notificationService;
+    @Mock ProjectNotificationService notificationService;
     ProjectInitiationMapper realMapper;
     ProjectInitiationService service;
 
