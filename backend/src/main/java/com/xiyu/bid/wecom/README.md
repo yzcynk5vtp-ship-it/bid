@@ -7,28 +7,44 @@
 不依赖 notification 站内信管线。通道职责划分：
 
 - **站内信** → `notification` 收件箱
-- **企微** → 本模块（经 CRM `/common/sendMessage`，`flag=3` 仅企微）
+- **企微** → 本模块（经西域统一消息中心 `POST /qywx/sendMSG`）
 
 ## 边界清单
 
 | 文件 | 地位 | 功能 |
 |------|------|------|
-| `WecomMessageSender.java` | Service | 唯一入口：`send(工号[], title, content)`，`flag=3` 调 CRM |
+| `WecomMessageSender.java` | Service | 唯一入口：`send(userName=工号, message)` |
 | `WecomSendResult.java` | Record | 发送结果（success/code/message），模块自有 |
+| `WecomMessageCenterClient.java` | Infrastructure | 调用统一消息中心 `/qywx/sendMSG` |
+| `WecomMessageCenterProperties.java` | Config | `app.wecom.message-center.*` 配置 |
 
 ## 依赖方向
-`wecom → crm`（复用 `CrmMessageService` / `CrmHttpClient` / `CrmAuthService`，不重造 HTTP/鉴权）。
+`wecom` 不依赖 `notification`，也不依赖 `crm`。
+统一消息中心的 HTTP 调用用 Spring `RestTemplateBuilder` 直接实现。
 **本模块不得依赖 `notification`**（由 ArchitectureTest 边界规则保护）。
 
-## 配置前置
-企微发送依赖 CRM 统一消息服务，必须先配置（否则发送失败 → 由调用方重试/DLQ）：
+## 配置
 
-- `app.crm.message-base-url`（env `XIYU_CRM_MESSAGE_BASE_URL`）
-- `app.crm.client-id` / `app.crm.client-secret`（或 OAuth 账号）
+```yaml
+app:
+  wecom:
+    message-center:
+      base-url: ${XIYU_WECOM_MESSAGE_CENTER_BASE_URL:https://yapi.ehsy.com/mock/406}
+      send-path: ${XIYU_WECOM_MESSAGE_CENTER_SEND_PATH:/qywx/sendMSG}
+      application-code: ${XIYU_WECOM_MESSAGE_CENTER_CODE:}
+      connect-timeout-ms: 3000
+      read-timeout-ms: 10000
+```
 
-dev 环境 `message-base-url` 默认为空；联调企微前需显式注入。
+- `application-code`：对应消息中心里已登记的企微应用（消息中心侧保存 corpId/agentId/secret，我们只用 code 标识）。
+- `userName`：接收人工号，对应 `User.employeeNumber`。
+
+## 接口契约（`/qywx/sendMSG`）
+- 请求：`{"userName":"工号","message":"消息内容","code":"应用code","email":"邮箱（可选）"}`
+- 成功：`code == 0`
 
 ## 不做
-- 不做站内信（`flag=1/2`）。
-- 不做重试（CRM 层已有 5xx 重试；任务级重试交给调用方）。
+- 不保存企微凭据（corpId/agentId/secret）。
+- 不做站内信（由 `notification` 负责）。
+- 不做重试（消息中心/调用方自行决定）。
 - 不做批量聚合（按调用方单次入参）。
