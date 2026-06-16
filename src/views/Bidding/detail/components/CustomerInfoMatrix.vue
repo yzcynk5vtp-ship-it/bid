@@ -25,7 +25,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const editableColumns = computed(() => CUSTOMER_INFO_COLUMNS.slice(1))
+const editableColumns = computed(() => CUSTOMER_INFO_COLUMNS)
 
 function makeEmptyRow(rowDef) {
   return {
