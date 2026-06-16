@@ -10,14 +10,6 @@
       :show-header="true"
       highlight-current-row
     >
-      <!-- Fixed column: Role name -->
-      <el-table-column
-        prop="roleLabel"
-        :label="fixedColumn.label"
-        :width="fixedColumn.width"
-        fixed
-      />
-
       <!-- Editable columns -->
       <el-table-column
         v-for="col in editableColumns"
@@ -150,7 +142,6 @@ defineProps({
 })
 
 const emit = defineEmits(['data-change'])
-const fixedColumn = CUSTOMER_INFO_COLUMNS[0]
 
 function onDataChange() {
   emit('data-change')
