@@ -315,11 +315,17 @@ public class TenderIntegrationService {
                 .orElse(null);
     }
 
-    /** 将 EAV 格式的 customerInfos 展平为按角色聚合的数组。 */
+    /** 将 EAV 格式的 customerInfos 展平为按角色聚合的数组（排除已删除的三列）。 */
     private List<Map<String, Object>> flattenCustomerInfos(List<EvaluationCustomerInfoDTO> eavRows) {
         if (eavRows == null || eavRows.isEmpty()) return null;
         Map<String, Map<String, Object>> byRole = new LinkedHashMap<>();
         for (EvaluationCustomerInfoDTO row : eavRows) {
+            // 已删除的列：客户信息(角色名)、是否为重点攻克对象、是否有正式高层交流
+            if ("ROLE_NAME".equals(row.infoKey())
+                    || "KEY_TARGET".equals(row.infoKey())
+                    || "HIGH_LEVEL_EXCHANGE".equals(row.infoKey())) {
+                continue;
+            }
             byRole.computeIfAbsent(row.roleKey(), k -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("roleKey", k);
