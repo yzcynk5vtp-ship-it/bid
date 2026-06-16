@@ -80,6 +80,24 @@ elif [[ "$CURRENT_DIR" == *"worktrees/qoder"* ]]; then
   export SIDECAR_PORT=8006
   export DB_NAME="xiyu_bid_qoder"
   export REDIS_DB=6
+elif [[ "$CURRENT_DIR" == *"worktrees/kimi"* ]]; then
+  export FRONTEND_PORT=1321
+  export BACKEND_PORT=18087
+  export SIDECAR_PORT=8007
+  export DB_NAME="xiyu_bid_kimi"
+  export REDIS_DB=7
+elif [[ "$CURRENT_DIR" == *"worktrees/mimo"* ]]; then
+  export FRONTEND_PORT=1322
+  export BACKEND_PORT=18088
+  export SIDECAR_PORT=8008
+  export DB_NAME="xiyu_bid_mimo"
+  export REDIS_DB=8
+elif [[ "$CURRENT_DIR" == *"worktrees/trae"* ]]; then
+  export FRONTEND_PORT=1323
+  export BACKEND_PORT=18089
+  export SIDECAR_PORT=8009
+  export DB_NAME="xiyu_bid_trae"
+  export REDIS_DB=9
 else
   # Default for main project root (/Users/user/xiyu/xiyu-bid-poc/)
   export FRONTEND_PORT=1314

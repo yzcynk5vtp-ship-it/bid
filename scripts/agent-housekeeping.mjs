@@ -17,7 +17,8 @@ const WORKTREE_DIRS = [
   '/Users/user/xiyu/worktrees/codex',
   '/Users/user/xiyu/worktrees/cursor',
   '/Users/user/xiyu/worktrees/gemini',
-  '/Users/user/xiyu/worktrees/integrator',
+  '/Users/user/xiyu/worktrees/kimi',
+  '/Users/user/xiyu/worktrees/mimo',
   '/Users/user/xiyu/worktrees/qoder',
   '/Users/user/xiyu/worktrees/trae',
 ]
