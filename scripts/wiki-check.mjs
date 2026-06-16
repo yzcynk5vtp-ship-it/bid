@@ -1,5 +1,5 @@
 // Input: wiki pages, source/page catalogs, and extracted artifacts
-// Output: validation report for link integrity, schema completeness, and wiki freshness gates
+// Output: validation report with fix instructions for link integrity, schema completeness, and wiki freshness gates
 // Pos: scripts/ - Wiki health check gate for pre-commit and manual quality verification
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
@@ -40,88 +40,158 @@ function existsInRepo(repoRelativePath) {
   return fs.existsSync(path.join(process.cwd(), repoRelativePath))
 }
 
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function checkPageFrontmatter(pageAbsPath, frontmatter, violations) {
+  const relPath = relToRepo(pageAbsPath)
   for (const field of requiredFrontmatterFields) {
     const value = frontmatter[field]
     if (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0 && field !== 'sources')) {
-      violations.push(`${relToRepo(pageAbsPath)} missing frontmatter field: ${field}`)
+      violations.push({
+        file: relPath,
+        issue: `missing frontmatter field: ${field}`,
+        fix: field === 'health_checked'
+          ? `Add "health_checked: ${todayStr()}" to frontmatter`
+          : field === 'updated'
+            ? `Add "updated: ${todayStr()}" to frontmatter`
+            : `Add "${field}: <value>" to frontmatter`
+      })
     }
   }
 
   if (frontmatter.space && !allowedSpaces.has(frontmatter.space)) {
-    violations.push(`${relToRepo(pageAbsPath)} has invalid space: ${frontmatter.space}`)
+    violations.push({
+      file: relPath,
+      issue: `invalid space: ${frontmatter.space}`,
+      fix: `Change space to one of: ${[...allowedSpaces].join(', ')}`
+    })
   }
 
   if (frontmatter.updated && dateDaysDiff(frontmatter.updated) > 30) {
-    violations.push(`${relToRepo(pageAbsPath)} has stale updated date (>30 days): ${frontmatter.updated}`)
+    violations.push({
+      file: relPath,
+      issue: `stale updated date (>30 days): ${frontmatter.updated}`,
+      fix: `Update "updated" to ${todayStr()} in frontmatter`
+    })
   }
 
   if (frontmatter.health_checked && dateDaysDiff(frontmatter.health_checked) > 7) {
-    violations.push(`${relToRepo(pageAbsPath)} has stale health_checked date (>7 days): ${frontmatter.health_checked}`)
+    violations.push({
+      file: relPath,
+      issue: `stale health_checked date (>7 days): ${frontmatter.health_checked}`,
+      fix: `Update "health_checked" to ${todayStr()} in frontmatter`
+    })
   }
 
   if (Array.isArray(frontmatter.sources)) {
     for (const source of frontmatter.sources) {
       if (!existsInRepo(source)) {
-        violations.push(`${relToRepo(pageAbsPath)} references missing source: ${source}`)
+        violations.push({
+          file: relPath,
+          issue: `references missing source: ${source}`,
+          fix: `Create the file or remove "${source}" from sources list`
+        })
       }
     }
   }
 }
 
 function checkWikiLinks(pageAbsPath, body, knownSlugs, violations) {
+  const relPath = relToRepo(pageAbsPath)
   const links = Array.from(body.matchAll(/\[\[([^\]]+)\]\]/g)).map((m) => m[1].trim())
   for (const link of links) {
     const resolved = resolvePagePathFromLink(link)
     if (!resolved) {
-      violations.push(`${relToRepo(pageAbsPath)} has broken wiki link: [[${link}]]`)
+      violations.push({
+        file: relPath,
+        issue: `broken wiki link: [[${link}]]`,
+        fix: `Create the linked page or fix the link target`
+      })
       continue
     }
 
     const slug = slugFromPagePath(resolved)
     if (!knownSlugs.has(slug)) {
-      violations.push(`${relToRepo(pageAbsPath)} link resolved outside page catalog: [[${link}]]`)
+      violations.push({
+        file: relPath,
+        issue: `link resolved outside page catalog: [[${link}]]`,
+        fix: `Add the target page to .wiki/pages/ or update the link`
+      })
     }
   }
 }
 
 function checkCatalogConsistency(sourceCatalog, pageCatalog, violations) {
   if (!Array.isArray(sourceCatalog) || sourceCatalog.length === 0) {
-    violations.push(`${relToRepo(sourceCatalogJson)} is empty or invalid`)
+    violations.push({
+      file: relToRepo(sourceCatalogJson),
+      issue: 'empty or invalid',
+      fix: 'Run wiki sync to regenerate source-catalog.json'
+    })
   }
 
   if (!Array.isArray(pageCatalog) || pageCatalog.length === 0) {
-    violations.push(`${relToRepo(pageCatalogJson)} is empty or invalid`)
+    violations.push({
+      file: relToRepo(pageCatalogJson),
+      issue: 'empty or invalid',
+      fix: 'Run wiki sync to regenerate page-catalog.json'
+    })
   }
 
   for (const source of sourceCatalog) {
     if (source.status === "missing") continue;
     if (!source.path || !source.hash || !source.status || !source.extract_path) {
-      violations.push(`source catalog item missing required fields: ${JSON.stringify(source)}`)
+      violations.push({
+        file: relToRepo(sourceCatalogJson),
+        issue: `source catalog item missing required fields: ${JSON.stringify(source)}`,
+        fix: 'Run wiki sync to rebuild source catalog'
+      })
       continue
     }
 
     if (!existsInRepo(source.path)) {
-      violations.push(`source catalog path not found: ${source.path}`)
+      violations.push({
+        file: relToRepo(sourceCatalogJson),
+        issue: `source catalog path not found: ${source.path}`,
+        fix: `Create the file or remove this entry from source-catalog.json`
+      })
     }
 
     if (!existsInRepo(source.extract_path)) {
-      violations.push(`source extract not found: ${source.extract_path}`)
+      violations.push({
+        file: relToRepo(sourceCatalogJson),
+        issue: `source extract not found: ${source.extract_path}`,
+        fix: `Run wiki sync to regenerate extract, or create the file`
+      })
     }
   }
 
   for (const page of pageCatalog) {
     if (!page.slug || !page.path || !page.space || !page.updated) {
-      violations.push(`page catalog item missing required fields: ${JSON.stringify(page)}`)
+      violations.push({
+        file: relToRepo(pageCatalogJson),
+        issue: `page catalog item missing required fields: ${JSON.stringify(page)}`,
+        fix: 'Run wiki sync to rebuild page catalog'
+      })
       continue
     }
 
     if (!existsInRepo(page.path)) {
-      violations.push(`page catalog path not found: ${page.path}`)
+      violations.push({
+        file: relToRepo(pageCatalogJson),
+        issue: `page catalog path not found: ${page.path}`,
+        fix: `Create the page file or remove this entry from page-catalog.json`
+      })
     }
 
     if (!allowedSpaces.has(page.space)) {
-      violations.push(`page catalog invalid space for ${page.slug}: ${page.space}`)
+      violations.push({
+        file: relToRepo(pageCatalogJson),
+        issue: `page catalog invalid space for ${page.slug}: ${page.space}`,
+        fix: `Change space to one of: ${[...allowedSpaces].join(', ')}`
+      })
     }
   }
 }
@@ -135,7 +205,11 @@ function main() {
   for (const file of requiredTopLevelFiles) {
     const absPath = path.join(wikiRoot, file)
     if (!fs.existsSync(absPath)) {
-      violations.push(`missing required wiki index file: ${relToRepo(absPath)}`)
+      violations.push({
+        file: relToRepo(absPath),
+        issue: 'missing required wiki index file',
+        fix: `Create ${file} in .wiki/ directory`
+      })
     }
   }
 
@@ -154,10 +228,14 @@ function main() {
   }
 
   if (violations.length > 0) {
-    console.error('wiki:check failed with violations:')
-    for (const violation of violations) {
-      console.error(`- ${violation}`)
+    console.error('wiki:check failed with violations:\n')
+    for (const v of violations) {
+      console.error(`  ✗ ${v.file}`)
+      console.error(`    ${v.issue}`)
+      console.error(`    💡 Fix: ${v.fix}`)
+      console.error('')
     }
+    console.error(`Total: ${violations.length} violation(s). Run "npm run wiki:fix" for auto-fix suggestions.`)
     process.exit(1)
   }
 
