@@ -84,6 +84,16 @@ app:
     message:
       send-path: ${XIYU_CRM_MESSAGE_SEND_PATH:/common/sendMessage}
 
+  # 企微消息：经西域统一消息中心 /qywx/sendMSG 发送
+  # 企微自建应用凭据（corpId/agentId/secret）配在消息中心侧；本服务只持有应用 code。
+  wecom:
+    message-center:
+      base-url: ${XIYU_WECOM_MESSAGE_CENTER_BASE_URL:https://yapi.ehsy.com/mock/406}
+      send-path: ${XIYU_WECOM_MESSAGE_CENTER_SEND_PATH:/qywx/sendMSG}
+      application-code: ${XIYU_WECOM_MESSAGE_CENTER_CODE:}
+      connect-timeout-ms: 3000
+      read-timeout-ms: 10000
+
 limit:
     # Dev override: higher limits for testing
     default:

@@ -3,9 +3,9 @@ package com.xiyu.bid.wecom;
 /**
  * 企微消息发送结果。独立于 notification 模块的自有结果类型。
  *
- * @param success CRM /common/sendMessage 是否成功
- * @param code    CRM 响应 code（成功时通常为 0）
- * @param message CRM 响应 msg 或本地错误描述
+ * @param success 是否成功
+ * @param code    消息中心返回 code（成功时通常为 0）
+ * @param message 返回消息或本地错误描述
  */
 public record WecomSendResult(boolean success, int code, String message) {
 

@@ -13,12 +13,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
  * 站内通知镜像到企微的编排。企微传输委托给独立能力 {@link WecomMessageSender}
- * （按工号、走 CRM /common/sendMessage、flag=3），不再直连企微 API。
+ * （按工号、走西域统一消息中心 {@code /qywx/sendMSG}），不再直连企微 API。
  *
  * <p>收件人解析使用 User.employeeNumber（工号）。投递任务/重试/DLQ 由
  * {@code NotificationDeliveryJobService} 负责，本类只做单次推送并返回结果。
@@ -55,10 +54,10 @@ public class WeComPushService {
         String employeeNumber = userOpt.get().getEmployeeNumber();
         FormattedMessage message = WeComMessageFormatter.format(
             command.title(), command.type(), command.sourceEntityType(), command.sourceEntityId(), platformBaseUrl);
-        String content = message.description() + "\n" + message.url();
+        String body = message.title() + "\n" + message.description() + "\n" + message.url();
 
         try {
-            WecomSendResult result = wecomMessageSender.send(List.of(employeeNumber), message.title(), content);
+            WecomSendResult result = wecomMessageSender.send(employeeNumber, body);
             return result.success()
                 ? NotificationDeliveryResult.success(result.code(), result.message())
                 : NotificationDeliveryResult.failure(result.code(), result.message());

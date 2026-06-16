@@ -1,6 +1,7 @@
 package com.xiyu.bid.notification.outbound.service;
 
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.notification.outbound.application.NotificationDeliveryCommand;
 import com.xiyu.bid.notification.outbound.event.NotificationCreatedEvent;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.wecom.WecomMessageSender;
@@ -18,7 +19,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -58,7 +58,7 @@ class WeComPushServiceTest {
         assertThat(result.successful()).isTrue();
         assertThat(result.skipped()).isTrue();
         assertThat(result.message()).contains("employee number");
-        verify(wecomMessageSender, never()).send(anyList(), anyString(), anyString());
+        verify(wecomMessageSender, never()).send(anyString(), anyString());
     }
 
     @Test
@@ -71,14 +71,14 @@ class WeComPushServiceTest {
         assertThat(result.successful()).isTrue();
         assertThat(result.skipped()).isTrue();
         assertThat(result.message()).contains("employee number");
-        verify(wecomMessageSender, never()).send(anyList(), anyString(), anyString());
+        verify(wecomMessageSender, never()).send(anyString(), anyString());
     }
 
     @Test
     @DisplayName("发送成功 -> sent，收件人为工号")
     void successfulSend_returnsSuccess() {
         when(userRepository.findById(7L)).thenReturn(Optional.of(userWithEmployee("E007")));
-        when(wecomMessageSender.send(eq(List.of("E007")), anyString(), anyString()))
+        when(wecomMessageSender.send(eq("E007"), anyString()))
             .thenReturn(WecomSendResult.success(0, "ok"));
 
         NotificationDeliveryResult result = service.pushForRecipient(event(), 7L);
@@ -92,7 +92,7 @@ class WeComPushServiceTest {
     @DisplayName("发送器返回 failure -> failed")
     void failedSend_returnsFailure() {
         when(userRepository.findById(7L)).thenReturn(Optional.of(userWithEmployee("E007")));
-        when(wecomMessageSender.send(anyList(), anyString(), anyString()))
+        when(wecomMessageSender.send(anyString(), anyString()))
             .thenReturn(WecomSendResult.failure(500, "crm down"));
 
         NotificationDeliveryResult result = service.pushForRecipient(event(), 7L);
@@ -106,13 +106,13 @@ class WeComPushServiceTest {
     @DisplayName("content 含格式化描述与深链 URL")
     void send_passesFormattedContent() {
         when(userRepository.findById(7L)).thenReturn(Optional.of(userWithEmployee("E007")));
-        when(wecomMessageSender.send(anyList(), anyString(), anyString()))
+        when(wecomMessageSender.send(anyString(), anyString()))
             .thenReturn(WecomSendResult.success(0, "ok"));
 
         service.pushForRecipient(event(), 7L);
 
         ArgumentCaptor<String> content = ArgumentCaptor.forClass(String.class);
-        verify(wecomMessageSender).send(eq(List.of("E007")), anyString(), content.capture());
+        verify(wecomMessageSender).send(eq("E007"), content.capture());
         assertThat(content.getValue()).contains("https://xiyu.example.com");
     }
 
@@ -120,7 +120,7 @@ class WeComPushServiceTest {
     @DisplayName("发送器抛异常 -> 向上抛出，交由投递管线处理")
     void senderThrows_bubblesException() {
         when(userRepository.findById(7L)).thenReturn(Optional.of(userWithEmployee("E007")));
-        when(wecomMessageSender.send(anyList(), anyString(), anyString()))
+        when(wecomMessageSender.send(anyString(), anyString()))
             .thenThrow(new RuntimeException("timeout"));
 
         assertThatThrownBy(() -> service.pushForRecipient(event(), 7L))
