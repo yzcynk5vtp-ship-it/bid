@@ -133,6 +133,7 @@ public class TenderIntegrationService {
         TenderDTO dto = tenderMapper.toDTO(tender);
         dto.setContactInfo(tenderMapper.buildContacts(tender));
         dto.setEvaluation(buildEvaluationDTO(tender.getId(), tender));
+        normalizeSourceForIntegration(dto, tender);
         return dto;
     }
 
@@ -202,7 +203,27 @@ public class TenderIntegrationService {
         TenderDTO dto = tenderMapper.toDTO(saved);
         dto.setContactInfo(tenderMapper.buildContacts(saved));
         dto.setEvaluation(buildEvaluationDTO(saved.getId(), saved));
+        normalizeSourceForIntegration(dto, saved);
         return dto;
+    }
+
+    /** 将 source 字段映射为中文标签，与 sourceType 保持一致。 */
+    private void normalizeSourceForIntegration(TenderDTO dto, Tender tender) {
+        if (tender.getSourceType() == null) return;
+        switch (tender.getSourceType()) {
+            case MANUAL_SINGLE:
+            case BULK_IMPORT:
+                dto.setSource("人工录入");
+                break;
+            case CRM_OPPORTUNITY:
+                dto.setSource("CRM创建");
+                break;
+            case EXTERNAL_PLATFORM:
+                dto.setSource("第三方平台");
+                break;
+            default:
+                break;
+        }
     }
 
     private String buildExternalId(String sourceSystem, String sourceId) {
