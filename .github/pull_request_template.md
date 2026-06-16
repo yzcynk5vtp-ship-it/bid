@@ -7,6 +7,13 @@
 - [ ] 修改了 UI/路由，且已同步更新 `e2e/` 测试
 - [ ] 修改了 UI/路由，且在 commit message 中注明了 `[skip e2e-scope]` 及原因
 
+## CRM 集成改动检查
+- [ ] 未修改 CRM 相关代码/接口/字段映射
+- [ ] 修改了 CRM 字段映射或查询规则，已同步更新 `docs/references/crm-field-mapping.md`
+- [ ] 修改了 CRM 查询/回传接口，已补充/更新契约测试（`CrmChanceServiceTest`、`CrmChanceControllerIntegrationTest` 等）
+- [ ] 已确认使用真实 CRM API 验证，无 Mock 残留
+- [ ] 已运行 CRM API 探针或真实环境 E2E 验证
+
 ## Scope Check
 - [ ] I changed only the files required for this task.
 - [ ] I reviewed `git diff` and did not include unrelated local changes.

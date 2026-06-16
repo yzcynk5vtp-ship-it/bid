@@ -31,6 +31,14 @@ export function useCrmOpportunitySelector(props, emit) {
     props.alreadyLinkedName ? { name: props.alreadyLinkedName } : null
   )
 
+  function hasBlueprintCriteria() {
+    return Boolean(props.tenderer?.trim())
+  }
+
+  function hasManualCriteria() {
+    return Boolean(searchForm.name?.trim() || searchForm.code?.trim() || searchForm.projectStatus.length > 0)
+  }
+
   async function openSearch() {
     showDialog.value = true
     if (!searchPerformed.value) await doSearch(1)
@@ -40,29 +48,39 @@ export function useCrmOpportunitySelector(props, emit) {
     if (page) currentPage.value = page
     searching.value = true
     try {
-      const params = {
-        pageIndex: currentPage.value,
-        pageSize: pageSize.value,
-        body: {},
+      let res
+      if (hasManualCriteria()) {
+        // 用户输入了手动查询条件：按商机名称/编号/状态走通用分页查询
+        const params = {
+          pageIndex: currentPage.value,
+          pageSize: pageSize.value,
+          body: {},
+        }
+        if (searchForm.name) params.body.name = searchForm.name.trim()
+        if (searchForm.code) params.body.code = searchForm.code.trim()
+        if (searchForm.projectStatus.length > 0) params.body.projectStatus = searchForm.projectStatus
+        res = await crmApi.searchOpportunities(params)
+      } else if (hasBlueprintCriteria()) {
+        // 初始打开：按产品蓝图「招标主体 + 报名截止时间 + 开标时间」精确匹配
+        res = await crmApi.searchOpportunitiesByTender({
+          tenderer: props.tenderer.trim(),
+          registrationDeadline: props.registrationDeadline || '',
+          bidOpeningTime: props.bidOpeningTime || '',
+          pageIndex: currentPage.value,
+          pageSize: pageSize.value,
+        })
+      } else {
+        // 标讯缺少招标主体时兜底：拉取全量商机供用户手动选择
+        res = await crmApi.searchOpportunities({
+          pageIndex: currentPage.value,
+          pageSize: pageSize.value,
+          body: { selectAll: true },
+        })
       }
-      if (searchForm.name) params.body.name = searchForm.name
-      if (searchForm.code) params.body.code = searchForm.code
-      if (searchForm.projectStatus.length > 0) params.body.projectStatus = searchForm.projectStatus
-      // 有招标主体时优先按商机名称/server 侧模糊匹配；无招标主体时拉全量
-      if (props.tenderer && !searchForm.name) params.body.name = props.tenderer.trim()
-      if (!props.tenderer && !searchForm.name) params.body.selectAll = true
 
-      const res = await crmApi.searchOpportunities(params)
       const data = res?.data
-      let list = data?.list || []
-      // 二次兜底：若 server 返回全量，在前端按招标主体在多个字段中模糊匹配
-      if (props.tenderer && list.length > 0) {
-        const keyword = props.tenderer.trim().toLowerCase()
-        const fields = ['tenderSubject', 'name', 'title', 'customer', 'groupName', 'code']
-        list = list.filter(item => fields.some(f => item[f] && String(item[f]).toLowerCase().includes(keyword)))
-      }
-      results.value = list
-      totalCount.value = list.length
+      results.value = data?.list || []
+      totalCount.value = data?.totalCount || 0
       searchPerformed.value = true
       if (results.value.length === 0) ElMessage.info('未找到匹配的CRM商机')
     } catch (e) {
