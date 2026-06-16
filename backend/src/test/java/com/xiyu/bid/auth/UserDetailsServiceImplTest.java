@@ -26,7 +26,8 @@ class UserDetailsServiceImplTest {
     private UserDetailsServiceImpl userDetailsService;
 
     @Test
-    void customRoleShouldRetainLegacyStaffAuthority() {
+    void unregisteredCustomRoleShouldNotInheritLegacyStaffAuthority() {
+        // 未注册 roleCode（legal-reviewer）不应继承 STAFF 兼容，避免误入 hasAnyRole(... 'STAFF' ...) 白名单
         User user = userWithRoleProfile("legal", User.Role.STAFF, "legal-reviewer");
         when(userRepository.findByUsername("legal")).thenReturn(Optional.of(user));
 
@@ -34,7 +35,71 @@ class UserDetailsServiceImplTest {
 
         assertThat(details.getAuthorities())
                 .extracting("authority")
-                .contains("ROLE_STAFF", "legal-reviewer", "ROLE_LEGAL-REVIEWER");
+                .contains("legal-reviewer", "ROLE_LEGAL-REVIEWER")
+                .doesNotContain("ROLE_STAFF", "bidding", "project", "knowledge");
+    }
+
+    @Test
+    void bidOtherDeptShouldNotInheritStaffButKeepOwnCodeAndTaskPermissions() {
+        // bid_other_dept（跨部门协同人员）按蓝图不应访问标讯/项目/知识库 → 不继承 ROLE_STAFF；
+        // 但保留 ROLE_BID_OTHER_DEPT + catalog 的 task 权限（任务 API 用 isAuthenticated，仍可用）
+        User user = userWithRoleProfile("hanhui", User.Role.STAFF, RoleProfileCatalog.BID_OTHER_DEPT_CODE);
+        when(userRepository.findByUsername("hanhui")).thenReturn(Optional.of(user));
+
+        UserDetails details = userDetailsService.loadUserByUsername("hanhui");
+
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains(RoleProfileCatalog.BID_OTHER_DEPT_CODE, "ROLE_BID_OTHER_DEPT",
+                        "task.view.own", "task.handle.own")
+                .doesNotContain("ROLE_STAFF", "bidding", "project", "knowledge", "resource");
+    }
+
+    @Test
+    void legacyUserWithoutRoleProfileShouldStillGetStaffAuthority() {
+        // roleCode 为 null 的纯 Legacy 用户（仅 users.role=STAFF）不受影响，保留 ROLE_STAFF
+        User user = User.builder()
+                .username("legacy")
+                .password("{noop}password")
+                .email("legacy@example.com")
+                .fullName("legacy")
+                .role(User.Role.STAFF)
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("legacy")).thenReturn(Optional.of(user));
+
+        UserDetails details = userDetailsService.loadUserByUsername("legacy");
+
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains("ROLE_STAFF");
+    }
+
+    @Test
+    void unregisteredRoleWithDbMenuPermissionsShouldRespectDbConfig() {
+        // 未注册角色保留 DB 显式 menu_permissions（管理员授权），但不继承 STAFF，也不 fallback staff 全套
+        RoleProfile roleProfile = RoleProfile.builder()
+                .code("vendor-user")
+                .name("vendor-user")
+                .build();
+        roleProfile.setMenuPermissions(java.util.List.of("custom.perm"));
+        User user = User.builder()
+                .username("vendor")
+                .password("{noop}password")
+                .email("vendor@example.com")
+                .fullName("vendor")
+                .role(User.Role.STAFF)
+                .roleProfile(roleProfile)
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("vendor")).thenReturn(Optional.of(user));
+
+        UserDetails details = userDetailsService.loadUserByUsername("vendor");
+
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains("custom.perm", "vendor-user", "ROLE_VENDOR-USER")
+                .doesNotContain("ROLE_STAFF", "bidding");
     }
 
     @Test

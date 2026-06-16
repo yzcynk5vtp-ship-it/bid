@@ -38,6 +38,13 @@ public final class RoleProfileCatalog {
     /** 拥有全局数据权限与操作权限的角色码集合。 */
     public static final Set<String> GLOBAL_ACCESS_ROLES = Set.of(ADMIN_CODE, BID_ADMIN_CODE, BID_LEAD_CODE, BID_SENIOR_CODE);
 
+    /** 不应继承 Legacy User.Role 鉴权兼容（ROLE_STAFF/ADMIN/MANAGER）的新式受限角色。
+     *  <p>这些角色仅靠自身 {@code ROLE_<CODE>} + 细粒度 menuPermissions 鉴权。若让它们继承
+     *  STAFF 兼容，会因 {@code hasAnyRole(... 'STAFF' ...)} 类白名单误入标讯/项目/知识库等
+     *  STAFF 可见模块（如跨部门协同人员按蓝图不应访问标讯中心）。
+     *  <p>其合法 API（如 {@code TaskController}）用 {@code isAuthenticated()}，移除 legacy 兼容不影响任务处理。 */
+    public static final Set<String> ROLES_WITHOUT_LEGACY_ROLE_COMPAT = Set.of(BID_OTHER_DEPT_CODE);
+
     /** 允许提交投标（推进至评标阶段）的业务角色码集合，对齐前端 useProjectDraftingPermissions.canSubmitBid。 */
     public static final Set<String> SUBMIT_BID_ALLOWED_ROLES = Set.of(BID_ADMIN_CODE, BID_LEAD_CODE, BID_SENIOR_CODE, SALES_CODE, BID_SPECIALIST_CODE);
 
@@ -195,6 +202,27 @@ public final class RoleProfileCatalog {
             case MANAGER_CODE, BID_LEAD_CODE, BID_SENIOR_CODE, SALES_CODE -> User.Role.MANAGER;
             default -> User.Role.STAFF;
         };
+    }
+
+    /** roleCode 是否为 catalog 已注册的标准角色。null/空白返回 false。 */
+    public static boolean isRegisteredCode(String roleCode) {
+        if (roleCode == null || roleCode.isBlank()) {
+            return false;
+        }
+        return DEFINITIONS.containsKey(roleCode.trim().toLowerCase(Locale.ROOT));
+    }
+
+    /** 该 roleCode 是否应在颁发 Spring Security authority 时跳过 Legacy User.Role 兼容
+     *  （即不发 {@code ROLE_STAFF/ADMIN/MANAGER}）。
+     *  <p>命中条件（roleCode 非空时任一）：(1) 在 {@link #ROLES_WITHOUT_LEGACY_ROLE_COMPAT}，
+     *  或 (2) 未在 catalog 注册（防御手动 INSERT 的角色误拿 STAFF fallback）。
+     *  <p>roleCode 为 null/空白（纯 Legacy 用户）返回 false，保留其 {@code user.getRole()} 鉴权。 */
+    public static boolean shouldSkipLegacyRoleCompat(String roleCode) {
+        if (roleCode == null || roleCode.isBlank()) {
+            return false;
+        }
+        String normalized = roleCode.trim().toLowerCase(Locale.ROOT);
+        return ROLES_WITHOUT_LEGACY_ROLE_COMPAT.contains(normalized) || !DEFINITIONS.containsKey(normalized);
     }
 
     public record SeedDefinition(
