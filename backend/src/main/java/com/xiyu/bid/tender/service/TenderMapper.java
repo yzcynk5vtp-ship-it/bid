@@ -1,10 +1,12 @@
 package com.xiyu.bid.tender.service;
 
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.tender.dto.ContactDTO;
 import com.xiyu.bid.tender.dto.TenderDTO;
 import com.xiyu.bid.tender.dto.TenderRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -240,6 +242,30 @@ public class TenderMapper {
         if (dto.getCrmOpportunityName() != null) target.setCrmOpportunityName(dto.getCrmOpportunityName());
         if (dto.getAbandonmentReason() != null) target.setAbandonmentReason(dto.getAbandonmentReason());
         if (dto.getBasicInfoSavedAt() != null) target.setBasicInfoSavedAt(dto.getBasicInfoSavedAt());
+    }
+
+    /**
+     * 从实体扁平联系人字段构建联系人数组（集成接口使用）。
+     */
+    public List<ContactDTO> buildContacts(Tender tender) {
+        List<ContactDTO> contacts = new ArrayList<>();
+        if (tender.getContactName() != null && !tender.getContactName().isBlank()) {
+            contacts.add(ContactDTO.builder()
+                    .name(tender.getContactName())
+                    .phone(tender.getContactPhone())
+                    .tel(tender.getContactTel())
+                    .mail(tender.getContactMail())
+                    .build());
+        }
+        if (tender.getContactName2() != null && !tender.getContactName2().isBlank()) {
+            contacts.add(ContactDTO.builder()
+                    .name(tender.getContactName2())
+                    .phone(tender.getContactPhone2())
+                    .tel(tender.getContactTel2())
+                    .mail(tender.getContactMail2())
+                    .build());
+        }
+        return contacts;
     }
 
     private List<String> decodeTags(String tags) {

@@ -127,7 +127,7 @@ public class TenderEvaluationSubmissionMapper {
     }
 
     /** 将实体转换为完整 DTO。 */
-    TenderEvaluationDTO toDTO(TenderEvaluation e, Tender tender, boolean canFill, boolean canDecide) {
+    public TenderEvaluationDTO toDTO(TenderEvaluation e, Tender tender, boolean canFill, boolean canDecide) {
         if (e == null) {
             return null;
         }

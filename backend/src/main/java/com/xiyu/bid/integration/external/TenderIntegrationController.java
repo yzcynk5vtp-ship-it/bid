@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -68,6 +69,24 @@ public class TenderIntegrationController {
         int safePage = Math.max(criteria.getPage(), 0);
         Page<TenderDTO> page = tenderQueryService.searchTendersPaged(
                 criteria, PageRequest.of(safePage, safeSize));
+
+        // 归一化 source 为中文标签
+        page.getContent().forEach(dto -> {
+            if (dto.getSourceType() != null) {
+                switch (dto.getSourceType()) {
+                    case MANUAL_SINGLE:
+                    case BULK_IMPORT:
+                        dto.setSource("人工录入");
+                        break;
+                    case CRM_OPPORTUNITY:
+                        dto.setSource("CRM创建");
+                        break;
+                    case EXTERNAL_PLATFORM:
+                        dto.setSource("第三方平台");
+                        break;
+                }
+            }
+        });
 
         Map<String, Object> data = Map.of(
                 "content", page.getContent(),
@@ -132,12 +151,13 @@ public class TenderIntegrationController {
     // ── 接口四：标讯详情 ───────────────────────────────────────────────────
 
     @GetMapping("/{sourceSystem}/{sourceId}")
-    @Operation(summary = "标讯详情", description = "按 (sourceSystem, sourceId) 查询单条标讯完整信息")
+    @Operation(summary = "标讯详情", description = "按 tenderId 或 (sourceSystem, sourceId) 查询单条标讯完整信息")
     public ResponseEntity<ApiResponse<TenderDTO>> getTender(
             @PathVariable String sourceSystem,
-            @PathVariable String sourceId) {
-        log.info("INTEGRATION GET /api/integration/tenders/{}/{}", sourceSystem, sourceId);
-        TenderDTO tender = tenderIntegrationService.getByExternalId(sourceSystem, sourceId);
+            @PathVariable String sourceId,
+            @RequestParam(required = false) Long tenderId) {
+        log.info("INTEGRATION GET /api/integration/tenders/{}/{} tenderId={}", sourceSystem, sourceId, tenderId);
+        TenderDTO tender = tenderIntegrationService.getByExternalId(sourceSystem, sourceId, tenderId);
         return ResponseEntity.ok(ApiResponse.success("查询成功", tender));
     }
 
