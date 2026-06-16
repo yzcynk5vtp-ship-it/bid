@@ -3,9 +3,16 @@ package com.xiyu.bid.integration.external;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.tender.dto.ContactDTO;
+import com.xiyu.bid.tender.dto.EvaluationBasicDTO;
+import com.xiyu.bid.tender.dto.EvaluationCustomerInfoDTO;
+import com.xiyu.bid.tender.dto.EvaluationRecommendationDTO;
 import com.xiyu.bid.tender.dto.TenderDTO;
 import com.xiyu.bid.tender.dto.TenderEvaluationDTO;
 import com.xiyu.bid.tender.entity.TenderEvaluation;
+import com.xiyu.bid.tender.entity.TenderEvaluationBasic;
+import com.xiyu.bid.tender.entity.TenderEvaluationCustomerInfo;
+import com.xiyu.bid.tender.entity.TenderEvaluationRecommendation;
+import com.xiyu.bid.tender.repository.TenderEvaluationCustomerInfoRepository;
 import com.xiyu.bid.tender.repository.TenderEvaluationRepository;
 import com.xiyu.bid.tender.service.TenderEvaluationSubmissionMapper;
 import com.xiyu.bid.tender.service.TenderMapper;
@@ -15,7 +22,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 外部标讯同步核心服务（接口规范 v2.0）。
@@ -28,6 +39,7 @@ public class TenderIntegrationService {
     private final TenderRepository tenderRepository;
     private final TenderMapper tenderMapper;
     private final TenderEvaluationRepository tenderEvaluationRepository;
+    private final TenderEvaluationCustomerInfoRepository customerInfoRepository;
     private final TenderEvaluationSubmissionMapper submissionMapper;
 
     /**
@@ -90,14 +102,34 @@ public class TenderIntegrationService {
     }
 
     /**
-     * 按 externalId 查询标讯详情。
+     * 按 externalId 或 tenderId 查询标讯详情（二选一必传）。
      */
     @Transactional(readOnly = true)
-    public TenderDTO getByExternalId(String sourceSystem, String sourceId) {
-        String externalId = buildExternalId(sourceSystem, sourceId);
-        Tender tender = tenderRepository.findByExternalId(externalId)
-                .orElseThrow(() -> new com.xiyu.bid.exception.ResourceNotFoundException(
-                        "标讯不存在: " + externalId));
+    public TenderDTO getByExternalId(String sourceSystem, String sourceId, Long tenderId) {
+        Tender tender;
+        if (tenderId != null) {
+            tender = tenderRepository.findById(tenderId)
+                    .orElseThrow(() -> new com.xiyu.bid.exception.ResourceNotFoundException(
+                            "标讯不存在: id=" + tenderId));
+            if (sourceSystem != null && !sourceSystem.isBlank()
+                    && sourceId != null && !sourceId.isBlank()) {
+                String expectedExternalId = buildExternalId(sourceSystem, sourceId);
+                if (tender.getExternalId() != null && !tender.getExternalId().equals(expectedExternalId)) {
+                    throw new IllegalArgumentException(
+                            "tenderId=" + tenderId + " 的 externalId="
+                            + tender.getExternalId() + " 与路径 sourceSystem=" + sourceSystem
+                            + " sourceId=" + sourceId + " 不匹配");
+                }
+            }
+        } else if (sourceSystem != null && !sourceSystem.isBlank()
+                && sourceId != null && !sourceId.isBlank()) {
+            String externalId = buildExternalId(sourceSystem, sourceId);
+            tender = tenderRepository.findByExternalId(externalId)
+                    .orElseThrow(() -> new com.xiyu.bid.exception.ResourceNotFoundException(
+                            "标讯不存在: " + externalId));
+        } else {
+            throw new IllegalArgumentException("tenderId 与 (sourceSystem, sourceId) 至少需要传一组");
+        }
         TenderDTO dto = tenderMapper.toDTO(tender);
         dto.setContactInfo(tenderMapper.buildContacts(tender));
         dto.setEvaluation(buildEvaluationDTO(tender.getId(), tender));
@@ -161,6 +193,12 @@ public class TenderIntegrationService {
 
         Tender saved = tenderRepository.save(tender);
         log.info("Updated tender id={} externalId={}", saved.getId(), externalId);
+
+        // 处理评估数据
+        if (request.getEvaluation() != null) {
+            saveEvaluation(saved.getId(), request.getEvaluation());
+        }
+
         TenderDTO dto = tenderMapper.toDTO(saved);
         dto.setContactInfo(tenderMapper.buildContacts(saved));
         dto.setEvaluation(buildEvaluationDTO(saved.getId(), saved));
@@ -226,11 +264,122 @@ public class TenderIntegrationService {
                 .orElse(""));
     }
 
-    /** 查询评估表并构建 DTO。 */
-    private TenderEvaluationDTO buildEvaluationDTO(Long tenderId, Tender tender) {
+    /** 查询评估表并构建 DTO（customerInfos 展平为按角色聚合的格式）。 */
+    private Object buildEvaluationDTO(Long tenderId, Tender tender) {
         return tenderEvaluationRepository.findByTenderId(tenderId)
-                .map(e -> submissionMapper.toDTO(e, tender, false, false))
+                .map(e -> {
+                    TenderEvaluationDTO dto = submissionMapper.toDTO(e, tender, false, false);
+                    Map<String, Object> result = new LinkedHashMap<>();
+                    result.put("evaluationStatus", dto.evaluationStatus() != null ? dto.evaluationStatus().name() : null);
+                    result.put("bidRecommendation", dto.bidRecommendation() != null ? dto.bidRecommendation().name() : null);
+                    result.put("submittedAt", dto.submittedAt());
+                    result.put("evaluatorId", dto.evaluatorId());
+                    result.put("evaluatorName", dto.evaluatorName());
+                    result.put("evaluatedAt", dto.evaluatedAt());
+                    result.put("reviewStatus", e.getReviewStatus() != null ? e.getReviewStatus().name() : null);
+                    result.put("reviewerName", e.getReviewerName());
+                    result.put("reviewedAt", e.getReviewedAt());
+                    result.put("reviewComment", e.getReviewComment());
+                    result.put("evaluationRound", dto.evaluationRound());
+                    result.put("canFillEvaluation", dto.canFillEvaluation());
+                    result.put("canDecideBid", dto.canDecideBid());
+                    result.put("requiresReview", dto.requiresReview());
+                    result.put("lastReviewedBy", dto.lastReviewedBy());
+                    result.put("lastReviewedAt", dto.lastReviewedAt());
+                    result.put("evaluationBasic", dto.evaluationBasic());
+                    result.put("evaluationCustomerInfos", flattenCustomerInfos(dto.evaluationCustomerInfos()));
+                    result.put("evaluationRecommendation", dto.evaluationRecommendation());
+                    return result;
+                })
                 .orElse(null);
+    }
+
+    /** 将 EAV 格式的 customerInfos 展平为按角色聚合的数组。 */
+    private List<Map<String, Object>> flattenCustomerInfos(List<EvaluationCustomerInfoDTO> eavRows) {
+        if (eavRows == null || eavRows.isEmpty()) return null;
+        Map<String, Map<String, Object>> byRole = new LinkedHashMap<>();
+        for (EvaluationCustomerInfoDTO row : eavRows) {
+            byRole.computeIfAbsent(row.roleKey(), k -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("roleKey", k);
+                return m;
+            });
+            byRole.get(row.roleKey()).put(row.infoKey(), row.value());
+        }
+        return new ArrayList<>(byRole.values());
+    }
+
+    /** 保存评估数据（新增或覆盖更新）。 */
+    private void saveEvaluation(Long tenderId, TenderUpdateRequest.EvaluationUpdate eval) {
+        TenderEvaluation evalEntity = tenderEvaluationRepository.findByTenderId(tenderId)
+                .orElseGet(() -> {
+                    TenderEvaluation ne = new TenderEvaluation();
+                    ne.setTenderId(tenderId);
+                    ne.setEvaluationStatus(TenderEvaluation.EvaluationStatus.DRAFT);
+                    ne.setReviewStatus(TenderEvaluation.ReviewStatus.PENDING);
+                    ne.setEvaluationRound(1);
+                    return ne;
+                });
+
+        // 基础信息段
+        if (eval.getEvaluationBasic() != null) {
+            EvaluationBasicDTO b = eval.getEvaluationBasic();
+            TenderEvaluationBasic basic = evalEntity.getBasic();
+            if (basic == null) {
+                basic = new TenderEvaluationBasic();
+                basic.setEvaluation(evalEntity);
+            }
+            if (b.plannedShortlistedCount() != null) basic.setPlannedShortlistedCount(b.plannedShortlistedCount());
+            if (b.mroOfficeFlowAmount() != null) basic.setMroOfficeFlowAmount(b.mroOfficeFlowAmount());
+            if (b.unfavorableItems() != null) basic.setUnfavorableItems(b.unfavorableItems());
+            if (b.riskAssessment() != null) basic.setRiskAssessment(b.riskAssessment());
+            if (b.contingencyPlan() != null) basic.setContingencyPlan(b.contingencyPlan());
+            if (b.processKnowledge() != null) basic.setProcessKnowledge(b.processKnowledge());
+            if (b.supportNotes() != null) basic.setSupportNotes(b.supportNotes());
+            if (b.projectPlanGap() != null) basic.setProjectPlanGap(b.projectPlanGap());
+            if (b.customerRevenue() != null) basic.setCustomerRevenue(b.customerRevenue());
+            evalEntity.setBasic(basic);
+        }
+
+        // 客户信息段（展平格式 → EAV）
+        if (eval.getEvaluationCustomerInfos() != null) {
+            // 删除旧数据
+            if (evalEntity.getCustomerInfos() != null) {
+                customerInfoRepository.deleteAll(evalEntity.getCustomerInfos());
+            }
+            List<TenderEvaluationCustomerInfo> newRows = new ArrayList<>();
+            for (Map<String, Object> roleData : eval.getEvaluationCustomerInfos()) {
+                String roleKey = (String) roleData.get("roleKey");
+                if (roleKey == null) continue;
+                for (Map.Entry<String, Object> entry : roleData.entrySet()) {
+                    if ("roleKey".equals(entry.getKey()) || entry.getValue() == null) continue;
+                    TenderEvaluationCustomerInfo row = new TenderEvaluationCustomerInfo();
+                    row.setEvaluation(evalEntity);
+                    row.setRoleKey(roleKey);
+                    row.setInfoKey(entry.getKey());
+                    row.setCellValue(entry.getValue().toString());
+                    row.setValueType(TenderEvaluationCustomerInfo.ValueType.TEXT);
+                    newRows.add(row);
+                }
+            }
+            evalEntity.setCustomerInfos(newRows);
+        }
+
+        // 投标负责人建议段
+        if (eval.getEvaluationRecommendation() != null) {
+            EvaluationRecommendationDTO r = eval.getEvaluationRecommendation();
+            TenderEvaluationRecommendation rec = evalEntity.getRecommendation();
+            if (rec == null) {
+                rec = new TenderEvaluationRecommendation();
+                rec.setEvaluation(evalEntity);
+                rec.setEvaluationId(evalEntity.getId());
+            }
+            if (r.shouldBid() != null) rec.setShouldBid(r.shouldBid());
+            if (r.reason() != null) rec.setReason(r.reason());
+            evalEntity.setRecommendation(rec);
+        }
+
+        tenderEvaluationRepository.save(evalEntity);
     }
 
     private Tender mapToEntity(TenderPushRequest r) {

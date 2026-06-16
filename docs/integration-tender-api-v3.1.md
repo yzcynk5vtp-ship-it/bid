@@ -4,7 +4,7 @@
 
 ---
 
-一、 接口概览
+## 一、 接口概览
 
 本平台面向外部系统开放 4 个标讯接口，统一通过 X-API-Key 进行认证：
 
@@ -18,9 +18,9 @@
 
 ---
 
-二、 通用约定
+## 二、 通用约定
 
-2.1 认证方式
+### 2.1 认证方式
 
 所有接口统一使用 API Key 认证，在 HTTP 请求头中携带：
 
@@ -35,7 +35,7 @@ API Key 由本平台管理员分配，分为两种权限范围：
 
 生产环境必须启用 HTTPS。
 
-2.2 响应体格式
+### 2.2 响应体格式
 
 所有接口统一返回 ApiResponse 结构：
 
@@ -48,7 +48,7 @@ API Key 由本平台管理员分配，分为两种权限范围：
 
 追踪 ID：失败响应的追踪 ID 不在 JSON body 中，而是通过 HTTP 响应头 X-Trace-Id 返回。
 
-2.3 时间格式约定（v3.1 新增）
+### 2.3 时间格式约定（v3.1 新增）
 
 所有接口的日期时间字段统一使用以下格式：
 
@@ -59,7 +59,7 @@ API Key 由本平台管理员分配，分为两种权限范围：
 
 > 请求入参同时兼容 yyyy-MM-ddTHH:mm 和 yyyy-MM-ddTHH:mm:ss 两种格式，服务端自动归一化。
 
-2.4 通用 HTTP 状态码
+### 2.4 通用 HTTP 状态码
 
 | HTTP 状态码 | 含义 | 说明 |
 |------------|------|------|
@@ -75,9 +75,9 @@ API Key 由本平台管理员分配，分为两种权限范围：
 
 ---
 
-三、 接口定义
+## 三、 接口定义
 
-3.1 接口一：标讯列表查询
+### 3.1 接口一：标讯列表查询
 
 外部系统分页查询本平台标讯库，支持模糊关键词搜索和多维条件筛选。
 
@@ -167,7 +167,7 @@ API Key 由本平台管理员分配，分为两种权限范围：
 > 列表中每条标讯均包含 contactInfo 联系人数组，同时保留 contactName 等扁平字段向下兼容。时间字段统一到分。
 
 
-3.2 接口二：标讯创建（幂等推送）
+### 3.2 接口二：标讯创建（幂等推送）
 
 外部系统向本平台推送标讯数据，按 (sourceSystem, sourceId) 组合做幂等去重，无匹配记录时自动创建新标讯。
 
@@ -298,7 +298,7 @@ data.status 取值说明：CREATED — 新建成功（HTTP 201）；UPDATED — 
 ```
 
 
-3.3 接口三：标讯修改
+### 3.3 接口三：标讯修改
 
 按 tenderId 或 (sourceSystem, sourceId) 定位已有标讯（二选一必传），更新其字段信息。找不到时返回 404。
 
@@ -349,6 +349,100 @@ data.status 取值说明：CREATED — 新建成功（HTTP 201）；UPDATED — 
 | contactInfo | List\<ContactDTO\> | 否 | 联系人数组（v3.1 变更：替代原来的 contactPerson/contactPhone 独立字段） | 见示例 |
 | contentDesc | String | 否 | 招标需求描述（最长 5000 字符） | "采购范围调整..." |
 | attachments | Array | 否 | 附件列表 | 见接口二 |
+| evaluation | Object | 否 | 项目评估数据（v3.1 新增），包含以下三个子段 | 见下方明细 |
+
+**evaluation 子段结构**
+
+**`evaluationBasic`** — 评估基础信息段（9 个字段，对应 `TenderEvaluationBasic` 实体）
+
+| 字段名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| plannedShortlistedCount | Integer | 否 | 计划入围供应商数量 | 5 |
+| mroOfficeFlowAmount | BigDecimal | 否 | 电商 MRO+办公流水金额（万） | 1200.00 |
+| unfavorableItems | String | 否 | 招标文件不利项 | "付款周期较长" |
+| riskAssessment | String | 否 | 风险预判 | "中等风险" |
+| contingencyPlan | String | 否 | 项目经理综合评估是否有兜底方案 | "已准备备选方案" |
+| processKnowledge | String | 否 | 项目经理是否了解评标全流程 | "熟悉全流程" |
+| supportNotes | String | 否 | 需要的支持及其他关键信息备注 | "需要法务支持" |
+| projectPlanGap | String | 否 | 项目计划 GAP | "交付周期偏紧" |
+| customerRevenue | BigDecimal | 否 | 客户营收（万） | 5000.00 |
+
+**`evaluationCustomerInfos`** — 客户信息行数组，每行包含以下 15 个信息维度字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| NAME | String | 否 | 姓名，TEXT |
+| CONTACT | String | 否 | 联系方式，TEXT |
+| POSITION | String | 否 | 职位，ENUM14 |
+| XIYU_CONTACT | String | 否 | 西域项目负责人，TEXT |
+| CONTACT_METHOD | String | 是 | 触达方式，ENUM7 |
+| EVALUATION_BASIS | String | 否 | 倾向性评估依据，TEXT |
+| INFO_CLEAR_WINNER_BID | Boolean | 否 | 是否给出明确中标信息，SWITCH |
+| INFO_WIN_RATE_IMPACT | String | 否 | 对中标影响率，DROPDOWN6 |
+| CONTACTED | String | 否 | 是否触达，DROPDOWN（是/否） |
+| GUIDED_BID | String | 否 | 是否向此人引导标书，DROPDOWN（是/否） |
+| CAN_GET_KEY_INFO | String | 否 | 是否可获取关键信息，DROPDOWN（是/否） |
+| CAN_REMOVE_ADVERSE | String | 否 | 是否可删除不利项，DROPDOWN（是/否） |
+| CAN_SYNC_EVAL | String | 否 | 是否可同步评标信息，DROPDOWN（是/否） |
+| TENDENCY | String | 否 | 对我司的倾向性，DROPDOWN（支持/中立/反对） |
+
+> `CONTACT_METHOD`（触达方式）为必填字段，值为空时校验不通过。
+
+**`evaluationRecommendation`** — 投标负责人建议段
+
+| 字段名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| shouldBid | Boolean | 否 | 是否建议投标 | true |
+| reason | String | 否 | 建议理由 | "项目匹配度高，利润可观" |
+
+**请求示例（含评估数据）**
+
+```
+PUT /api/integration/tenders/CRM/OPP-2026-00918
+Content-Type: application/json
+X-API-Key: <your-api-key>
+
+{
+  "tenderId": 50,
+  "title": "更新后的标题",
+  "dueDate": "2026-06-20T10:00",
+  "evaluation": {
+    "evaluationBasic": {
+      "plannedShortlistedCount": 5,
+      "mroOfficeFlowAmount": 1200.00,
+      "unfavorableItems": "付款周期较长",
+      "riskAssessment": "中等风险",
+      "contingencyPlan": "已准备备选方案",
+      "processKnowledge": "熟悉全流程",
+      "supportNotes": "需要法务支持",
+      "projectPlanGap": "交付周期偏紧",
+      "customerRevenue": 5000.00
+    },
+    "evaluationCustomerInfos": [
+      {
+        "NAME": "张三",
+        "CONTACT": "13800138000",
+        "POSITION": "总经理",
+        "XIYU_CONTACT": "李四",
+        "CONTACT_METHOD": "电话",
+        "EVALUATION_BASIS": "长期合作",
+        "INFO_CLEAR_WINNER_BID": false,
+        "INFO_WIN_RATE_IMPACT": "高",
+        "CONTACTED": "是",
+        "GUIDED_BID": "是",
+        "CAN_GET_KEY_INFO": "是",
+        "CAN_REMOVE_ADVERSE": "否",
+        "CAN_SYNC_EVAL": "否",
+        "TENDENCY": "支持"
+      }
+    ],
+    "evaluationRecommendation": {
+      "shouldBid": true,
+      "reason": "项目匹配度高，利润可观"
+    }
+  }
+}
+```
 
 > `contactInfo` 字段说明：传入时先清空实体原有联系人字段，再按数组顺序写入。数组第 0 项映射到 contactName/Phone/Tel/Mail，第 1 项映射到 contactName2/Phone2/Tel2/Mail2，超出忽略。
 
@@ -452,10 +546,19 @@ X-API-Key: <your-api-key>
       },
       "evaluationCustomerInfos": [
         {
-          "roleKey": "PURCHASER",
-          "infoKey": "ATTITUDE",
-          "value": "支持",
-          "valueType": "DROPDOWN"
+          "NAME": "张三",
+          "POSITION": "总经理",
+          "XIYU_CONTACT": "李四",
+          "CONTACT_METHOD": "电话",
+          "EVALUATION_BASIS": "长期合作",
+          "INFO_CLEAR_WINNER_BID": false,
+          "INFO_WIN_RATE_IMPACT": "高",
+          "CONTACTED": "是",
+          "GUIDED_BID": "是",
+          "CAN_GET_KEY_INFO": "是",
+          "CAN_REMOVE_ADVERSE": "否",
+          "CAN_SYNC_EVAL": "否",
+          "TENDENCY": "支持"
         }
       ],
       "evaluationRecommendation": {
@@ -470,9 +573,9 @@ X-API-Key: <your-api-key>
 > `evaluation` 为项目评估数据（v3.1 新增），无评估记录时为 null（JSON 省略）。时间字段统一到分。
 
 
-3.4 接口四：标讯详情
+### 3.4 接口四：标讯详情
 
-按 (sourceSystem, sourceId) 组合查询单条标讯的完整信息（含项目评估数据）。找不到时返回 404。
+按 tenderId 或 (sourceSystem, sourceId) 组合定位已有标讯（二选一），查询单条标讯的完整信息（含项目评估数据）。找不到时返回 404。
 
 请求方式：GET
 
@@ -484,13 +587,38 @@ X-API-Key: <your-api-key>
 
 | 参数名 | 类型 | 必填 | 说明 | 示例值 |
 |--------|------|------|------|--------|
-| sourceSystem | String | 是 | 来源系统编码 | "CRM" |
-| sourceId | String | 是 | 来源系统的数据唯一 ID | "OPP-2026-00918" |
+| sourceSystem | String | 否 | 来源系统编码（与 sourceId 成对使用，或用 tenderId 替代） | "CRM" |
+| sourceId | String | 否 | 来源系统的数据唯一 ID（与 sourceSystem 成对使用，或用 tenderId 替代） | "OPP-2026-00918" |
+
+请求 Query 参数（v3.1 新增）
+
+| 参数名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| tenderId | Long | 否 | 标讯内部 ID（与路径参数二选一，v3.1 新增） | 50 |
+
+**定位逻辑**（v3.1 新增）
+
+| tenderId (query) | sourceSystem+sourceId (path) | 行为 |
+|------------------|------------------------------|------|
+| ✅ 传了 | ❌ 不传 | 按 tenderId 查找（路径用 _ 占位：GET /\_/\_?tenderId=50） |
+| ❌ 不传 | ✅ 传了 | 按 externalId = sourceSystem:sourceId 查找 |
+| ✅ 传了 | ✅ 传了，匹配 | 按 tenderId 查找，交叉校验通过 |
+| ✅ 传了 | ✅ 传了，不匹配 | 返回 400 错误 |
+| ❌ 不传 | ❌ 不传 | 返回 400 错误 |
 
 请求示例
 
+**按 (sourceSystem, sourceId) 查询**
+
 ```
 GET /api/integration/tenders/CRM/OPP-2026-00918
+X-API-Key: <your-api-key>
+```
+
+**按 tenderId 查询**
+
+```
+GET /api/integration/tenders/_/_?tenderId=50
 X-API-Key: <your-api-key>
 ```
 
@@ -604,10 +732,19 @@ X-API-Key: <your-api-key>
       },
       "evaluationCustomerInfos": [
         {
-          "roleKey": "PURCHASER",
-          "infoKey": "ATTITUDE",
-          "value": "支持",
-          "valueType": "DROPDOWN"
+          "NAME": "张三",
+          "POSITION": "总经理",
+          "XIYU_CONTACT": "李四",
+          "CONTACT_METHOD": "电话",
+          "EVALUATION_BASIS": "长期合作",
+          "INFO_CLEAR_WINNER_BID": false,
+          "INFO_WIN_RATE_IMPACT": "高",
+          "CONTACTED": "是",
+          "GUIDED_BID": "是",
+          "CAN_GET_KEY_INFO": "是",
+          "CAN_REMOVE_ADVERSE": "否",
+          "CAN_SYNC_EVAL": "否",
+          "TENDENCY": "支持"
         }
       ],
       "evaluationRecommendation": {
@@ -624,26 +761,11 @@ X-API-Key: <your-api-key>
 错误响应：同 v3.0。
 
 
-3.5 接口五：标讯详情（内部，按 ID）
-
-> 此接口供本平台内部前端使用，外部系统请使用接口四。
-
-请求方式：GET
-
-路径：/api/tenders/{id}
-
-| 参数 | 位置 | 类型 | 必填 | 说明 |
-|------|------|------|------|------|
-| id | Path | Long | 是 | 标讯主键 ID |
-
-成功响应（HTTP 200）：返回 TenderDTO 全字段，结构同接口四（无 evaluation 字段）。
-
-
 ---
 
-四、 对接说明
+## 四、 对接说明
 
-4.1 整体对接流程
+### 4.1 整体对接流程
 
 ```
 外部系统（CRM/OA/标讯平台等）
@@ -663,7 +785,7 @@ X-API-Key: <your-api-key>
     |                               支持 tenderId 或 (sourceSystem,sourceId) 定位，部分更新
 ```
 
-4.2 幂等性保障
+### 4.2 幂等性保障
 
 - 幂等键：(sourceSystem, sourceId) 组合，通过 externalId 字段（格式：{sourceSystem}:{sourceId}）建立 UNIQUE 唯一约束。
 - 重复推送行为：
@@ -671,13 +793,13 @@ X-API-Key: <your-api-key>
   - 传 forceUpdate=true：覆盖更新已有记录，返回 HTTP 200，status=UPDATED
 - 接口三/四（修改/详情）：支持 tenderId 或 (sourceSystem, sourceId) 二选一定位，找不到时返回 404
 
-4.3 限流说明
+### 4.3 限流说明
 
 - 默认限流：200 次/分钟/API Key
 - 超出限制返回 HTTP 429
 - 如有更高调用量需求，请联系本平台技术团队调整配额
 
-4.4 关键字段说明
+### 4.4 关键字段说明
 
 | 字段 | 说明 |
 |------|------|
@@ -687,7 +809,7 @@ X-API-Key: <your-api-key>
 | contactInfo | v3.1 新增：联系人数组，每项含 name/phone/tel/mail；原有 contactName 等扁平字段同时保留向下兼容 |
 | evaluation | v3.1 新增：项目评估嵌套对象，含基础信息段、客户信息矩阵、投标负责人建议三段数据 |
 
-4.5 环境信息
+### 4.5 环境信息
 
 | 环境 | 说明 | 状态 |
 |------|------|------|
@@ -699,9 +821,9 @@ X-API-Key: <your-api-key>
 
 ---
 
-五、 附录
+## 五、 附录
 
-5.1 标讯状态枚举（status）
+### 5.1 标讯状态枚举（status）
 
 | 枚举值 | 含义 |
 |--------|------|
@@ -713,7 +835,7 @@ X-API-Key: <your-api-key>
 | LOST | 未中标 |
 | ABANDONED | 已放弃 |
 
-5.2 风险等级枚举（riskLevel）
+### 5.2 风险等级枚举（riskLevel）
 
 | 枚举值 | 含义 |
 |--------|------|
@@ -721,7 +843,7 @@ X-API-Key: <your-api-key>
 | MEDIUM | 中风险 |
 | HIGH | 高风险 |
 
-5.3 来源类型枚举（sourceType）
+### 5.3 来源类型枚举（sourceType）
 
 | 枚举值 | 含义 |
 |--------|------|
@@ -730,7 +852,7 @@ X-API-Key: <your-api-key>
 | MANUAL_SINGLE | 人工单条录入 |
 | BULK_IMPORT | 批量 Excel 导入 |
 
-5.4 评估相关枚举（v3.1 新增）
+### 5.4 评估相关枚举（v3.1 新增）
 
 **评估状态（evaluationStatus）**
 
@@ -757,7 +879,7 @@ X-API-Key: <your-api-key>
 
 ---
 
-文档版本记录
+### 文档版本记录
 
 | 版本 | 日期 | 变更说明 |
 |------|------|---------|

@@ -1,6 +1,8 @@
 package com.xiyu.bid.integration.external;
 
 import com.xiyu.bid.tender.dto.ContactDTO;
+import com.xiyu.bid.tender.dto.EvaluationBasicDTO;
+import com.xiyu.bid.tender.dto.EvaluationRecommendationDTO;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -12,6 +14,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 外部系统更新标讯请求 DTO（接口规范 v2.0）。
@@ -81,4 +84,19 @@ public class TenderUpdateRequest {
     private String contentDesc;
 
     private List<TenderPushRequest.AttachmentRef> attachments;
+
+    // ── 项目评估（v3.1 新增）─────────────────────────────────────────
+
+    /** 项目评估数据 */
+    private EvaluationUpdate evaluation;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EvaluationUpdate {
+        private EvaluationBasicDTO evaluationBasic;
+        private List<Map<String, Object>> evaluationCustomerInfos;
+        private EvaluationRecommendationDTO evaluationRecommendation;
+    }
 }

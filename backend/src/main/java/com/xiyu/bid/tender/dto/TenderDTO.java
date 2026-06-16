@@ -48,7 +48,7 @@ public class TenderDTO {
 
     /** 项目评估数据（集成接口专用，无评估时为 null） */
     @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
-    private TenderEvaluationDTO evaluation;
+    private Object evaluation;
     private String sourceDocumentName;
     private String sourceDocumentFileType;
     private String sourceDocumentFileUrl;
