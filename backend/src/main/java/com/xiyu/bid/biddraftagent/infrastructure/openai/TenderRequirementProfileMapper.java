@@ -35,6 +35,7 @@ final class TenderRequirementProfileMapper {
                 nullToList(output.riskPoints),
                 nullToList(output.tags),
                 nullToList(output.requirementItems).stream()
+                        .filter(item -> item != null)
                         .map(item -> toTenderItem(item, defaultPathStr)).toList()
         );
     }
