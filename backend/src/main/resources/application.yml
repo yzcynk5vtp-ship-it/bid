@@ -74,6 +74,8 @@ ai:
 
 app:
   version: ${project.version:1.0.3}
+  crm:
+    matching-strategy: ${APP_CRM_MATCHING_STRATEGY:GROUP}
   bid-agent:
     upload-dir: ${BID_AGENT_UPLOAD_DIR:}
   export:

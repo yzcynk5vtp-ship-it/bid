@@ -169,6 +169,28 @@ async function main() {
     })
   }
 
+  await expectOk('CRM search-by-tender 可返回匹配商机（空结果阻断发布）', async () => {
+    const probeVars = ['PROBE_API_BASE_URL', 'PROBE_USERNAME', 'PROBE_PASSWORD', 'PROBE_GROUP_NAME', 'PROBE_EVALUATION_DATE']
+    const missing = probeVars.filter((key) => !process.env[key])
+    if (missing.length > 0) {
+      recordPass('CRM search-by-tender 可返回匹配商机（空结果阻断发布）', `skipped, missing env: ${missing.join(', ')}`)
+      return
+    }
+
+    const { execFileSync } = await import('node:child_process')
+    const probePath = new URL('../crm-opportunity-probe.mjs', import.meta.url).pathname
+    try {
+      execFileSync(process.execPath, [probePath], {
+        env: process.env,
+        stdio: 'pipe',
+        encoding: 'utf-8',
+      })
+    } catch (error) {
+      throw new Error(`CRM probe failed: ${error.stderr || error.message}`)
+    }
+    recordPass('CRM search-by-tender 可返回匹配商机（空结果阻断发布）', `group=${process.env.PROBE_GROUP_NAME} date=${process.env.PROBE_EVALUATION_DATE}`)
+  })
+
   const jsonPath = path.join(reportDir, `prod-smoke-report-${runId}.json`)
   const mdPath = path.join(reportDir, `prod-smoke-report-${runId}.md`)
   fs.writeFileSync(jsonPath, `${JSON.stringify(state, null, 2)}\n`)
