@@ -46,18 +46,24 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private List<SimpleGrantedAuthority> authoritiesFor(User user) {
         Set<String> authorities = new LinkedHashSet<>();
         
+        // 0. roleCode 提前，判定是否跳过 Legacy User.Role 兼容（bid_other_dept 等新式受限角色
+        //    及任何未注册角色不发 ROLE_STAFF/ADMIN/MANAGER，避免误入 hasAnyRole(... 'STAFF' ...) 白名单）。
+        String roleCode = user.getRoleCode();
+        boolean skipLegacyCompat = RoleProfileCatalog.shouldSkipLegacyRoleCompat(roleCode);
+
         // 1. Legacy role (e.g., ROLE_STAFF, ROLE_ADMIN, ROLE_MANAGER)
         User.Role legacyRole = user.getRole() == null ? User.Role.STAFF : user.getRole();
-        authorities.add("ROLE_" + legacyRole.name());
+        if (!skipLegacyCompat) {
+            authorities.add("ROLE_" + legacyRole.name());
+        }
         
         // 2. Role code as authority (e.g., bid_admin, staff) + 新旧兼容映射
-        String roleCode = user.getRoleCode();
         if (roleCode != null && !roleCode.isBlank()) {
             authorities.add(roleCode);
             authorities.add("ROLE_" + roleCode.toUpperCase(Locale.ROOT));
             // 新角色 (roleCode) → 旧角色 (User.Role) 兼容层代理：
             User.Role compatLegacy = RoleProfileCatalog.securityCompatLegacyRole(roleCode);
-            if (compatLegacy != null) {
+            if (compatLegacy != null && !skipLegacyCompat) {
                 authorities.add("ROLE_" + compatLegacy.name());
             }
         }
@@ -88,7 +94,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // 4b. Always merge catalog-defined permissions for the user's roleCode,
         //     ensuring newly added permissions (e.g. retrospective.submit) are
         //     granted even when the DB-stored permission list is stale.
-        if (roleCode != null && !roleCode.isBlank()) {
+        //     仅对已注册角色生效——未注册 roleCode 的 definitionForCode 会 fallback 到 staff，
+        //     错误授予标讯/项目/知识库权限，故用 isRegisteredCode 拦截。
+        if (roleCode != null && !roleCode.isBlank() && RoleProfileCatalog.isRegisteredCode(roleCode)) {
             RoleProfileCatalog.SeedDefinition catalogDef = RoleProfileCatalog.definitionForCode(roleCode);
             if (catalogDef != null && catalogDef.menuPermissions() != null) {
                 authorities.addAll(catalogDef.menuPermissions());
