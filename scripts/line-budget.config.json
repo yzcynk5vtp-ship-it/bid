@@ -38,6 +38,7 @@
         "package.json",
         "src/api/modules/knowledge.js",
         "src/api/modules/settings.js",
+        "src/api/modules/tenders.js",
         "src/components/ai/CollaborationCenter.vue",
         "src/components/common/DynamicFormRenderer.vue",
         "src/components/common/chinaRegionData.js",

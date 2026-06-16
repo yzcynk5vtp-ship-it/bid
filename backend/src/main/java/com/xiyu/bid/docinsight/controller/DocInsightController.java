@@ -1,5 +1,5 @@
-// Input: HTTP multipart/form-data 上传请求（profile, entityId, file）；parse-existing 请求（profile, entityId, storagePath, fileName, contentType）
-// Output: DocumentAnalysisResult / StoredDocument 包装在 ApiResponse；边界校验（大小、类型、参数格式、项目访问范围）
+// Input: HTTP multipart/form-data 上传请求（profile, entityId, file）；parse-existing 请求（profile, entityId, storagePath, fileName, contentType）；下载请求（fileUrl）
+// Output: DocumentAnalysisResult / StoredDocument 包装在 ApiResponse；文件下载流；边界校验（大小、类型、参数格式、项目访问范围）
 // Pos: docinsight/controller — 文档智能分析 REST 入口
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.docinsight.controller;
@@ -11,9 +11,14 @@ import com.xiyu.bid.docinsight.application.StoredDocument;
 import com.xiyu.bid.docinsight.domain.DocInsightProfiles;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,6 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -33,6 +41,10 @@ public class DocInsightController {
     /** 上传文件大小上限（MB），通过 app.docinsight.max-upload-mb 配置，默认 50 MB。 */
     @Value("${app.docinsight.max-upload-mb:50}")
     private int maxUploadMb;
+
+    /** 文件存储目录，与 LocalDocumentStorage 共享同一配置。 */
+    @Value("${app.doc-insight.upload-dir:}")
+    private String configuredUploadDir;
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "application/pdf",
@@ -118,6 +130,79 @@ public class DocInsightController {
         DocumentAnalysisResult result = docInsightService.processExisting(
                 profileCode, entityId, storagePath, fileName, contentType);
         return ResponseEntity.ok(ApiResponse.success("文档解析完成", result));
+    }
+
+    /**
+     * 下载已存储的文件。
+     * 通过 doc-insight:// 格式的 fileUrl 定位文件并返回文件流。
+     * 用于标讯详情页展示"标讯文件"下载链接。
+     */
+    @GetMapping("/download")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Resource> download(@RequestParam("fileUrl") String fileUrl) {
+        if (fileUrl == null || !fileUrl.startsWith("doc-insight://")) {
+            throw new IllegalArgumentException("无效的文件 URL 格式");
+        }
+
+        String relativePath = fileUrl.substring("doc-insight://".length());
+        if (relativePath.isBlank() || relativePath.contains("..")) {
+            throw new IllegalArgumentException("无效的文件路径");
+        }
+
+        Path uploadRoot = resolveUploadRoot();
+        Path targetPath = uploadRoot.resolve(relativePath).normalize();
+        if (!targetPath.startsWith(uploadRoot.toAbsolutePath().normalize())) {
+            throw new IllegalArgumentException("文件路径越界");
+        }
+
+        if (!Files.exists(targetPath)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件不存在");
+        }
+
+        String fileName = targetPath.getFileName().toString();
+        // 去除 hash 前缀（如 "abc123-原始文件名.pdf" → "原始文件名.pdf"）
+        String displayName = fileName.contains("-") ? fileName.substring(fileName.indexOf('-') + 1) : fileName;
+        String contentType = inferContentType(displayName);
+
+        long fileSize;
+        try {
+            fileSize = Files.size(targetPath);
+        } catch (IOException e) {
+            throw new IllegalStateException("无法读取文件大小", e);
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + sanitizeFilename(displayName) + "\"");
+        headers.setContentType(MediaType.parseMediaType(contentType));
+        headers.setContentLength(fileSize);
+
+        Resource resource = new FileSystemResource(targetPath);
+        return new ResponseEntity<>(resource, headers, HttpStatus.OK);
+    }
+
+    private Path resolveUploadRoot() {
+        if (configuredUploadDir != null && !configuredUploadDir.isBlank()) {
+            return Path.of(configuredUploadDir).toAbsolutePath().normalize();
+        }
+        return Path.of(System.getProperty("java.io.tmpdir"), "xiyu-doc-insight-uploads").toAbsolutePath().normalize();
+    }
+
+    private String inferContentType(String fileName) {
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".pdf")) return "application/pdf";
+        if (lower.endsWith(".doc")) return "application/msword";
+        if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        if (lower.endsWith(".xls")) return "application/vnd.ms-excel";
+        if (lower.endsWith(".xlsx")) return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        if (lower.endsWith(".ppt")) return "application/vnd.ms-powerpoint";
+        if (lower.endsWith(".pptx")) return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        if (lower.endsWith(".txt")) return "text/plain";
+        return "application/octet-stream";
+    }
+
+    private String sanitizeFilename(String fileName) {
+        return fileName.replaceAll("[\\\\/:*?\"<>|]+", "_");
     }
 
     // ── Shared validation helpers ──────────────────────────────────────────────

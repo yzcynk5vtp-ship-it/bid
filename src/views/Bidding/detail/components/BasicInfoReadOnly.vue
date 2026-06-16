@@ -71,8 +71,8 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="标讯文件">
-              <template v-if="tender.sourceDocumentName && tender.sourceDocumentFileUrl">
-                <el-link type="primary" :href="tender.sourceDocumentFileUrl" target="_blank" :underline="false">
+              <template v-if="tender.sourceDocumentName && sourceDocumentDownloadUrl">
+                <el-link type="primary" :href="sourceDocumentDownloadUrl" target="_blank" :underline="false">
                   📄 {{ tender.sourceDocumentName }}
                 </el-link>
               </template>
@@ -106,10 +106,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { formatTenderDateTime } from '../../bidding-utils.js'
+import { toDownloadUrl } from '@/api/modules/tenders.js'
 
 const props = defineProps({
   tender: { type: Object, default: null },
+})
+
+/**
+ * 将 doc-insight:// 内部 URI 转换为 HTTP 下载 URL。
+ * 其他格式（http/https）直接返回原值。
+ */
+const sourceDocumentDownloadUrl = computed(() => {
+  return toDownloadUrl(props.tender?.sourceDocumentFileUrl)
 })
 </script>
 
