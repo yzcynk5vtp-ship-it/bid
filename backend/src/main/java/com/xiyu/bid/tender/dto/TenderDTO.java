@@ -1,6 +1,7 @@
 package com.xiyu.bid.tender.dto;
 
 import com.xiyu.bid.entity.Tender;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,8 +28,11 @@ public class TenderDTO {
     private String purchaserName;
     private String purchaserHash;
     private LocalDate publishDate;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime deadline;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime bidOpeningTime;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime registrationDeadline;
     private String contactName;
     private String contactPhone;
@@ -38,6 +42,13 @@ public class TenderDTO {
     private String contactPhone2;
     private String contactTel2;
     private String contactMail2;
+
+    /** 联系人数组（集成接口专用，扁平字段保留兼容） */
+    private List<ContactDTO> contactInfo;
+
+    /** 项目评估数据（集成接口专用，无评估时为 null） */
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private TenderEvaluationDTO evaluation;
     private String sourceDocumentName;
     private String sourceDocumentFileType;
     private String sourceDocumentFileUrl;
@@ -69,10 +80,13 @@ public class TenderDTO {
     private String sourcePlatform;
     private String crmOpportunityId;
     private String crmOpportunityName;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime createdAt;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime updatedAt;
 
     /** 基本信息最近一次保存时间（见 Tender.basicInfoSavedAt） */
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime basicInfoSavedAt;
 
     /** 分配人名称 */

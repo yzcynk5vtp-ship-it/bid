@@ -1,5 +1,6 @@
 package com.xiyu.bid.integration.external;
 
+import com.xiyu.bid.tender.dto.ContactDTO;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -22,6 +23,9 @@ import java.util.List;
 @AllArgsConstructor
 public class TenderUpdateRequest {
 
+    /** 标讯内部 ID（可选，传入后可与路径参数交叉校验） */
+    private Long tenderId;
+
     @Size(max = 500)
     private String title;
 
@@ -36,17 +40,42 @@ public class TenderUpdateRequest {
     @DecimalMax(value = "999999999999", message = "预算金额超出范围")
     private BigDecimal budgetAmount;
 
-    @Size(max = 100)
-    private String contactPerson;
-
-    @Size(max = 50)
-    private String contactPhone;
-
-    @Size(max = 50)
-    private String contactTel;
+    // ── 基本信息字段（均可选）───────────────────────────────────────
 
     @Size(max = 100)
-    private String contactMail;
+    private String region;
+
+    @Size(max = 100)
+    private String industry;
+
+    @Size(max = 255)
+    private String tenderAgency;
+
+    private String bidOpeningTime;
+
+    private String registrationDeadline;
+
+    @Size(max = 100)
+    private String customerType;
+
+    @Size(max = 10)
+    private String priority;
+
+    @Size(max = 20)
+    private String projectType;
+
+    @Size(max = 100)
+    private String sourcePlatform;
+
+    @Size(max = 200)
+    private String source;
+
+    private List<String> tags;
+
+    // ── 联系人 ─────────────────────────────────────────────────────
+
+    /** 联系人数组 */
+    private List<ContactDTO> contactInfo;
 
     @Size(max = 5000)
     private String contentDesc;

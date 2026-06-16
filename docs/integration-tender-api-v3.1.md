@@ -1,0 +1,767 @@
+版本：v3.1（2026-06-16）
+文档用途：本文档面向外部业务系统（OA、CRM、ERP、标讯平台等）的技术对接方，提供西域数智化投标管理平台（以下简称"本平台"）的接口调用规范和集成方案。
+
+
+---
+
+一、 接口概览
+
+本平台面向外部系统开放 4 个标讯接口，统一通过 X-API-Key 进行认证：
+
+| # | 接口名称 | 方法 | 路径 | 功能说明 | 权限范围 |
+|---|---------|------|------|---------|---------|
+| 1 | 标讯列表查询 | GET | /api/integration/tenders | 模糊搜索 + 多维精准筛选，返回分页结果 | tender:read |
+| 2 | 标讯创建 | POST | /api/integration/tenders/push | 按 (sourceSystem, sourceId) 幂等去重，无匹配时创建 | tender:write |
+| 3 | 标讯修改 | PUT | /api/integration/tenders/{sourceSystem}/{sourceId} | 按 tenderId 或 (sourceSystem, sourceId) 定位，更新标讯字段 | tender:write |
+| 4 | 标讯详情 | GET | /api/integration/tenders/{sourceSystem}/{sourceId} | 按 (sourceSystem, sourceId) 查询单条标讯完整信息 | tender:read |
+
+
+---
+
+二、 通用约定
+
+2.1 认证方式
+
+所有接口统一使用 API Key 认证，在 HTTP 请求头中携带：
+
+X-API-Key: <your-api-key>
+
+API Key 由本平台管理员分配，分为两种权限范围：
+
+| 范围 | 说明 | 适用于 |
+|------|------|--------|
+| tender:read | 只读访问 | 接口 1、接口 4 |
+| tender:write | 读写访问 | 接口 1、接口 2、接口 3、接口 4 |
+
+生产环境必须启用 HTTPS。
+
+2.2 响应体格式
+
+所有接口统一返回 ApiResponse 结构：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| success | Boolean | 请求是否成功 |
+| code | Integer | HTTP 状态码（200 表示成功，其余为 HTTP 错误码） |
+| msg | String | 可读的描述信息 |
+| data | Object / null | 响应数据（成功时携带） |
+
+追踪 ID：失败响应的追踪 ID 不在 JSON body 中，而是通过 HTTP 响应头 X-Trace-Id 返回。
+
+2.3 时间格式约定（v3.1 新增）
+
+所有接口的日期时间字段统一使用以下格式：
+
+| 类型 | 格式 | 示例 |
+|------|------|------|
+| 日期 | yyyy-MM-dd | "2026-06-15" |
+| 日期时间 | yyyy-MM-ddTHH:mm（到分） | "2026-06-15T10:00" |
+
+> 请求入参同时兼容 yyyy-MM-ddTHH:mm 和 yyyy-MM-ddTHH:mm:ss 两种格式，服务端自动归一化。
+
+2.4 通用 HTTP 状态码
+
+| HTTP 状态码 | 含义 | 说明 |
+|------------|------|------|
+| 200 | 请求成功 | 业务处理成功 |
+| 400 | 参数校验失败 | 必填字段缺失、格式错误等 |
+| 401 | 认证失败 | API Key 无效、缺失或已过期 |
+| 403 | 权限不足 | API Key 无操作该接口的权限 |
+| 404 | 资源未找到 | 关联的业务单据不存在 |
+| 409 | 状态冲突 | 当前状态不允许执行该操作（如重复推送） |
+| 429 | 请求过频 | 超出接口限流阈值 |
+| 500 | 服务内部错误 | 请联系本平台技术团队 |
+
+
+---
+
+三、 接口定义
+
+3.1 接口一：标讯列表查询
+
+外部系统分页查询本平台标讯库，支持模糊关键词搜索和多维条件筛选。
+
+请求方式：GET
+
+路径：/api/integration/tenders
+
+权限：tender:read
+
+请求 Query 参数
+
+| 参数名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| keyword | String | 否 | 模糊搜索关键词，同时匹配标题 / 招标单位 / 描述 | "MRO采购" |
+| sourceSystem | String | 否 | 来源系统编码，精确匹配 | "CRM" |
+| status | String[] | 否 | 标讯状态列表（可传多个），枚举值见附录 | ["PENDING_ASSIGNMENT","ASSIGNED"] |
+| region | String | 否 | 地区 | "上海" |
+| industry | String | 否 | 行业 | "制造业" |
+| budgetMin | BigDecimal | 否 | 预算金额下限（≥），单位：元 | 100000.00 |
+| budgetMax | BigDecimal | 否 | 预算金额上限（≤），单位：元 | 5000000.00 |
+| deadlineFrom | DateTime | 否 | 投标截止时间下限，格式 yyyy-MM-ddTHH:mm | "2026-06-01T00:00" |
+| deadlineTo | DateTime | 否 | 投标截止时间上限，格式 yyyy-MM-ddTHH:mm | "2026-12-31T23:59" |
+| publishDateFrom | Date | 否 | 发布日期下限，格式 yyyy-MM-dd | "2026-01-01" |
+| publishDateTo | Date | 否 | 发布日期上限，格式 yyyy-MM-dd | "2026-12-31" |
+| priority | String | 否 | 优先级筛选 | "高" |
+| updatedSince | DateTime | 否 | 按 updatedAt 增量过滤，返回更新时间 >= 此值的所有记录，格式 yyyy-MM-ddTHH:mm | "2026-05-26T00:00" |
+| page | Integer | 否 | 分页页码（0-based，默认 0） | 0 |
+| size | Integer | 否 | 每页条数，默认 20，上限 100 | 20 |
+
+成功响应（HTTP 200）
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "content": [
+      {
+        "id": 50,
+        "title": "西域集团2026年度MRO物料采购招标项目",
+        "source": "CRM",
+        "purchaserName": "西域智慧供应链（上海）股份公司",
+        "budget": 5000000.00,
+        "region": "上海",
+        "industry": "制造业",
+        "tenderAgency": "XX招标代理有限公司",
+        "publishDate": "2026-05-26",
+        "deadline": "2026-06-15T10:00",
+        "bidOpeningTime": "2026-06-16T09:30",
+        "registrationDeadline": "2026-06-10T17:00",
+        "customerType": "国企",
+        "priority": "高",
+        "projectType": "货物",
+        "contactName": "张经理",
+        "contactPhone": "13800138000",
+        "contactTel": "021-12345678",
+        "contactMail": "zhang@example.com",
+        "contactName2": null,
+        "contactPhone2": null,
+        "contactTel2": null,
+        "contactMail2": null,
+        "contactInfo": [
+          {
+            "name": "张经理",
+            "phone": "13800138000",
+            "tel": "021-12345678",
+            "mail": "zhang@example.com"
+          }
+        ],
+        "description": "采购范围包含密封件、五金工具及防爆灯具一批",
+        "status": "PENDING_ASSIGNMENT",
+        "sourceType": "EXTERNAL_PLATFORM",
+        "externalId": "CRM:OPP-2026-00918",
+        "createdAt": "2026-05-26T14:30",
+        "updatedAt": "2026-05-26T14:30"
+      }
+    ],
+    "totalElements": 1,
+    "totalPages": 1,
+    "page": 0,
+    "size": 20
+  }
+}
+```
+
+> 列表中每条标讯均包含 contactInfo 联系人数组，同时保留 contactName 等扁平字段向下兼容。时间字段统一到分。
+
+
+3.2 接口二：标讯创建（幂等推送）
+
+外部系统向本平台推送标讯数据，按 (sourceSystem, sourceId) 组合做幂等去重，无匹配记录时自动创建新标讯。
+
+请求方式：POST
+
+路径：/api/integration/tenders/push
+
+权限：tender:write
+
+请求字段
+
+| 字段名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| sourceSystem | String | **是** | 来源系统编码，用于区分推送方 | "CRM" |
+| sourceId | String | **是** | 来源系统的数据唯一 ID，用于幂等去重 | "OPP-2026-00918" |
+| title | String | **是** | 标讯/项目名称（最长 500 字符） | "西域集团2026年度MRO物料采购招标项目" |
+| customerName | String | 否 | 招标单位全称（最长 255 字符） | "西域智慧供应链（上海）股份公司" |
+| publishDate | String | 否 | 标讯发布日期，格式 yyyy-MM-dd | "2026-05-26" |
+| dueDate | String | 否 | 投标截止时间，格式 yyyy-MM-ddTHH:mm | "2026-06-15T10:00" |
+| budgetAmount | BigDecimal | 否 | 项目预算金额，单位：元 | 5000000.00 |
+| region | String | 否 | 地区（最长 100 字符）| "上海" |
+| industry | String | 否 | 行业（最长 100 字符）| "制造业" |
+| tenderAgency | String | 否 | 招标代理机构（最长 255 字符）| "XX招标代理有限公司" |
+| bidOpeningTime | String | 否 | 开标时间，格式 yyyy-MM-ddTHH:mm | "2026-06-16T09:30" |
+| registrationDeadline | String | 否 | 报名截止时间，格式 yyyy-MM-ddTHH:mm | "2026-06-10T17:00" |
+| customerType | String | 否 | 客户类型（最长 100 字符）| "国企" |
+| priority | String | 否 | 优先级（最长 10 字符）| "高" |
+| projectType | String | 否 | 项目类型（最长 20 字符）| "货物" |
+| sourcePlatform | String | 否 | 来源平台名称（最长 100 字符）| "中国政府采购网" |
+| source | String | 否 | 来源（最长 200 字符）| "政府采购网" |
+| tags | List\<String\> | 否 | 标签列表 | ["MRO", "信息化"] |
+| contactInfo | List\<ContactDTO\> | 否 | 联系人数组（最多取前 2 个），见下方 ContactDTO 结构 | 见示例 |
+| contentDesc | String | 否 | 招标需求描述或公告正文（最长 5000 字符）| "采购范围包含..." |
+| attachments | Array | 否 | 附件列表（建议不超过 20 个，单个文件不超过 50MB）| 见下方明细 |
+| forceUpdate | Boolean | 否 | 是否强制覆盖更新已有标讯。默认 false（重复推送返回 HTTP 409）；设为 true 则覆盖更新 | false |
+
+**ContactDTO 结构**（v3.1 新增）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | String | 否 | 联系人姓名 |
+| phone | String | 否 | 手机号 |
+| tel | String | 否 | 座机号 |
+| mail | String | 否 | 邮箱 |
+
+attachments 数组元素字段：
+
+| 字段名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| fileName | String | 是 | 附件名称 |
+| fileUrl | String | 是 | 附件下载 URL（需为公网可匿名访问的地址） |
+
+请求示例
+
+```
+POST /api/integration/tenders/push
+Content-Type: application/json
+X-API-Key: <your-api-key>
+
+{
+  "sourceSystem": "CRM",
+  "sourceId": "OPP-2026-00918",
+  "title": "西域集团2026年度MRO物料采购招标项目",
+  "customerName": "西域智慧供应链（上海）股份公司",
+  "publishDate": "2026-05-26",
+  "dueDate": "2026-06-15T10:00",
+  "budgetAmount": 5000000.00,
+  "region": "上海",
+  "industry": "制造业",
+  "tenderAgency": "XX招标代理有限公司",
+  "bidOpeningTime": "2026-06-16T09:30",
+  "registrationDeadline": "2026-06-10T17:00",
+  "customerType": "国企",
+  "priority": "高",
+  "projectType": "货物",
+  "sourcePlatform": "中国政府采购网",
+  "source": "政府采购网",
+  "tags": ["MRO", "信息化"],
+  "contactInfo": [
+    {
+      "name": "张经理",
+      "phone": "13800138000",
+      "tel": "021-12345678",
+      "mail": "zhang@example.com"
+    }
+  ],
+  "contentDesc": "采购范围包含密封件、五金工具及防爆灯具一批，具体规格详见招标文件。",
+  "attachments": [
+    {
+      "fileName": "招标公告及要求.pdf",
+      "fileUrl": "https://oss.ehsy.com/files/req.pdf"
+    }
+  ]
+}
+```
+
+成功响应（HTTP 200 / 201）
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "msg": "标讯推送接收成功",
+  "data": {
+    "tenderId": 100,
+    "status": "CREATED",
+    "message": "标讯创建成功"
+  }
+}
+```
+
+data.status 取值说明：CREATED — 新建成功（HTTP 201）；UPDATED — 覆盖更新（forceUpdate=true）；DUPLICATE — 幂等命中未更新（HTTP 409）。调用方建议判断：收到 HTTP 409 或 data 中 status=DUPLICATE 时，说明标讯已存在，可选择下次传 forceUpdate=true 强制更新。
+
+错误响应
+
+重复推送（HTTP 409）：
+
+```json
+{
+  "success": false,
+  "code": 409,
+  "msg": "标讯 sourceId=OPP-2026-00918 已存在，如需覆盖请传入 forceUpdate=true",
+  "data": {
+    "tenderId": 50,
+    "status": "DUPLICATE"
+  }
+}
+```
+
+
+3.3 接口三：标讯修改
+
+按 tenderId 或 (sourceSystem, sourceId) 定位已有标讯（二选一必传），更新其字段信息。找不到时返回 404。
+
+请求方式：PUT
+
+路径：/api/integration/tenders/{sourceSystem}/{sourceId}
+
+权限：tender:write
+
+路径参数
+
+| 参数名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| sourceSystem | String | 否 | 来源系统编码（与 sourceId 成对使用，或用 tenderId 替代） | "CRM" |
+| sourceId | String | 否 | 来源系统的数据唯一 ID（与 sourceSystem 成对使用，或用 tenderId 替代） | "OPP-2026-00918" |
+
+**定位逻辑**（v3.1 新增）
+
+| tenderId (body) | sourceSystem+sourceId (path) | 行为 |
+|-----------------|------------------------------|------|
+| ✅ 传了 | ❌ 不传 | 按 tenderId 查找（路径用 _ 占位：PUT /_/\_） |
+| ❌ 不传 | ✅ 传了 | 按 externalId = sourceSystem:sourceId 查找 |
+| ✅ 传了 | ✅ 传了，匹配 | 按 tenderId 查找，交叉校验通过 |
+| ✅ 传了 | ✅ 传了，不匹配 | 返回 400 错误 |
+| ❌ 不传 | ❌ 不传 | 返回 400 错误 |
+
+请求字段（均为可选，支持部分更新）
+
+| 字段名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| tenderId | Long | 否 | 标讯内部 ID（与路径参数二选一，v3.1 新增） | 50 |
+| title | String | 否 | 标讯/项目名称（最长 500 字符） | "更新后的标题" |
+| customerName | String | 否 | 招标单位全称（最长 255 字符） | "西域智慧供应链（上海）股份公司" |
+| publishDate | String | 否 | 标讯发布日期，格式 yyyy-MM-dd | "2026-05-26" |
+| dueDate | String | 否 | 投标截止时间，格式 yyyy-MM-ddTHH:mm | "2026-06-20T10:00" |
+| budgetAmount | BigDecimal | 否 | 项目预算金额，单位：元 | 6000000.00 |
+| region | String | 否 | 地区 | "上海" |
+| industry | String | 否 | 行业 | "制造业" |
+| tenderAgency | String | 否 | 招标代理机构 | "XX招标代理有限公司" |
+| bidOpeningTime | String | 否 | 开标时间，格式 yyyy-MM-ddTHH:mm | "2026-06-16T09:30" |
+| registrationDeadline | String | 否 | 报名截止时间，格式 yyyy-MM-ddTHH:mm | "2026-06-10T17:00" |
+| customerType | String | 否 | 客户类型 | "国企" |
+| priority | String | 否 | 优先级 | "高" |
+| projectType | String | 否 | 项目类型 | "货物" |
+| sourcePlatform | String | 否 | 来源平台名称 | "中国政府采购网" |
+| source | String | 否 | 来源 | "政府采购网" |
+| tags | List\<String\> | 否 | 标签列表 | ["MRO"] |
+| contactInfo | List\<ContactDTO\> | 否 | 联系人数组（v3.1 变更：替代原来的 contactPerson/contactPhone 独立字段） | 见示例 |
+| contentDesc | String | 否 | 招标需求描述（最长 5000 字符） | "采购范围调整..." |
+| attachments | Array | 否 | 附件列表 | 见接口二 |
+
+> `contactInfo` 字段说明：传入时先清空实体原有联系人字段，再按数组顺序写入。数组第 0 项映射到 contactName/Phone/Tel/Mail，第 1 项映射到 contactName2/Phone2/Tel2/Mail2，超出忽略。
+
+请求示例
+
+```
+PUT /api/integration/tenders/CRM/OPP-2026-00918
+Content-Type: application/json
+X-API-Key: <your-api-key>
+
+{
+  "tenderId": 50,
+  "title": "西域集团2026年度MRO物料采购招标项目（补充版）",
+  "dueDate": "2026-06-20T10:00",
+  "budgetAmount": 6000000.00,
+  "contactInfo": [
+    {
+      "name": "李经理",
+      "phone": "13900139000",
+      "tel": "021-87654321",
+      "mail": "li@example.com"
+    }
+  ],
+  "contentDesc": "采购范围调整，新增工业阀门类物资"
+}
+```
+
+成功响应（HTTP 200）
+
+返回更新后标讯的完整信息：
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "msg": "标讯更新成功",
+  "data": {
+    "id": 50,
+    "title": "西域集团2026年度MRO物料采购招标项目（补充版）",
+    "source": "CRM",
+    "purchaserName": "西域智慧供应链（上海）股份公司",
+    "budget": 6000000.00,
+    "region": "上海",
+    "industry": "制造业",
+    "tenderAgency": "XX招标代理有限公司",
+    "publishDate": "2026-05-26",
+    "deadline": "2026-06-20T10:00",
+    "bidOpeningTime": "2026-06-16T09:30",
+    "registrationDeadline": "2026-06-10T17:00",
+    "customerType": "国企",
+    "priority": "高",
+    "projectType": "货物",
+    "contactName": "李经理",
+    "contactPhone": "13900139000",
+    "contactTel": "021-87654321",
+    "contactMail": "li@example.com",
+    "contactName2": null,
+    "contactPhone2": null,
+    "contactTel2": null,
+    "contactMail2": null,
+    "contactInfo": [
+      {
+        "name": "李经理",
+        "phone": "13900139000",
+        "tel": "021-87654321",
+        "mail": "li@example.com"
+      }
+    ],
+    "description": "采购范围调整，新增工业阀门类物资",
+    "status": "PENDING_ASSIGNMENT",
+    "sourceType": "EXTERNAL_PLATFORM",
+    "externalId": "CRM:OPP-2026-00918",
+    "createdAt": "2026-05-26T14:30",
+    "updatedAt": "2026-06-16T09:00",
+    "evaluation": {
+      "evaluationStatus": "SUBMITTED",
+      "bidRecommendation": "RECOMMEND",
+      "submittedAt": "2026-06-15T10:00",
+      "evaluatorName": "赵评估",
+      "evaluatedAt": "2026-06-15T09:30",
+      "reviewStatus": "APPROVED",
+      "reviewerName": "钱审核",
+      "reviewedAt": "2026-06-15T11:00",
+      "reviewComment": "同意投标",
+      "evaluationRound": 1,
+      "canFillEvaluation": false,
+      "canDecideBid": false,
+      "requiresReview": false,
+      "lastReviewedBy": null,
+      "lastReviewedAt": null,
+      "evaluationBasic": {
+        "plannedShortlistedCount": 5,
+        "mroOfficeFlowAmount": 1200.00,
+        "unfavorableItems": "付款周期较长",
+        "riskAssessment": "中等风险",
+        "contingencyPlan": "已准备备选方案",
+        "processKnowledge": "熟悉全流程",
+        "supportNotes": "需要法务支持",
+        "projectPlanGap": "交付周期偏紧",
+        "customerRevenue": 5000.00
+      },
+      "evaluationCustomerInfos": [
+        {
+          "roleKey": "PURCHASER",
+          "infoKey": "ATTITUDE",
+          "value": "支持",
+          "valueType": "DROPDOWN"
+        }
+      ],
+      "evaluationRecommendation": {
+        "shouldBid": true,
+        "reason": "项目匹配度高，利润可观"
+      }
+    }
+  }
+}
+```
+
+> `evaluation` 为项目评估数据（v3.1 新增），无评估记录时为 null（JSON 省略）。时间字段统一到分。
+
+
+3.4 接口四：标讯详情
+
+按 (sourceSystem, sourceId) 组合查询单条标讯的完整信息（含项目评估数据）。找不到时返回 404。
+
+请求方式：GET
+
+路径：/api/integration/tenders/{sourceSystem}/{sourceId}
+
+权限：tender:read
+
+路径参数
+
+| 参数名 | 类型 | 必填 | 说明 | 示例值 |
+|--------|------|------|------|--------|
+| sourceSystem | String | 是 | 来源系统编码 | "CRM" |
+| sourceId | String | 是 | 来源系统的数据唯一 ID | "OPP-2026-00918" |
+
+请求示例
+
+```
+GET /api/integration/tenders/CRM/OPP-2026-00918
+X-API-Key: <your-api-key>
+```
+
+成功响应（HTTP 200）
+
+返回标讯完整信息（含评估数据）：
+
+```json
+{
+  "success": true,
+  "code": 200,
+  "msg": "查询成功",
+  "data": {
+    "id": 50,
+    "title": "西域集团2026年度MRO物料采购招标项目",
+    "source": "CRM",
+    "purchaserName": "西域智慧供应链（上海）股份公司",
+    "purchaserHash": "abc123",
+    "budget": 5000000.00,
+    "region": "上海",
+    "industry": "制造业",
+    "tenderAgency": "XX招标代理有限公司",
+    "publishDate": "2026-05-26",
+    "deadline": "2026-06-15T10:00",
+    "bidOpeningTime": "2026-06-16T09:30",
+    "registrationDeadline": "2026-06-10T17:00",
+    "customerType": "国企",
+    "priority": "高",
+    "projectType": "货物",
+    "sourcePlatform": "中国政府采购网",
+    "tags": ["MRO", "信息化"],
+    "contactName": "张经理",
+    "contactPhone": "13800138000",
+    "contactTel": "021-12345678",
+    "contactMail": "zhang@example.com",
+    "contactName2": "王工",
+    "contactPhone2": "13700137000",
+    "contactTel2": null,
+    "contactMail2": "wang@example.com",
+    "contactInfo": [
+      {
+        "name": "张经理",
+        "phone": "13800138000",
+        "tel": "021-12345678",
+        "mail": "zhang@example.com"
+      },
+      {
+        "name": "王工",
+        "phone": "13700137000",
+        "tel": null,
+        "mail": "wang@example.com"
+      }
+    ],
+    "sourceDocumentName": "招标文件.pdf",
+    "sourceDocumentFileType": "application/pdf",
+    "sourceDocumentFileUrl": "https://oss.example.com/doc.pdf",
+    "description": "采购范围包含密封件、五金工具及防爆灯具一批",
+    "tenderInfo": "详细标讯信息...",
+    "bidNotice": "招标公告前200字...",
+    "bidNoticeFileUrl": "https://oss.example.com/notice.pdf",
+    "status": "PENDING_ASSIGNMENT",
+    "aiScore": 75,
+    "riskLevel": "MEDIUM",
+    "sourceType": "EXTERNAL_PLATFORM",
+    "originalUrl": "http://www.ccgp.gov.cn/...",
+    "externalId": "CRM:OPP-2026-00918",
+    "projectManagerId": null,
+    "projectManagerName": null,
+    "biddingPersonId": null,
+    "biddingPersonName": null,
+    "department": null,
+    "distributorId": null,
+    "distributorName": null,
+    "creatorId": null,
+    "creatorName": null,
+    "projectId": null,
+    "abandonmentReason": null,
+    "crmOpportunityId": null,
+    "crmOpportunityName": null,
+    "assigneeName": null,
+    "basicInfoSavedAt": "2026-05-26T14:30",
+    "createdAt": "2026-05-26T14:30",
+    "updatedAt": "2026-05-26T14:30",
+    "evaluation": {
+      "evaluationStatus": "SUBMITTED",
+      "bidRecommendation": "RECOMMEND",
+      "submittedAt": "2026-06-15T10:00",
+      "evaluatorId": 5,
+      "evaluatorName": "赵评估",
+      "evaluatedAt": "2026-06-15T09:30",
+      "reviewStatus": "APPROVED",
+      "reviewerName": "钱审核",
+      "reviewedAt": "2026-06-15T11:00",
+      "reviewComment": "同意投标",
+      "evaluationRound": 1,
+      "canFillEvaluation": false,
+      "canDecideBid": false,
+      "requiresReview": false,
+      "lastReviewedBy": null,
+      "lastReviewedAt": null,
+      "evaluationBasic": {
+        "plannedShortlistedCount": 5,
+        "mroOfficeFlowAmount": 1200.00,
+        "unfavorableItems": "付款周期较长",
+        "riskAssessment": "中等风险",
+        "contingencyPlan": "已准备备选方案",
+        "processKnowledge": "熟悉全流程",
+        "supportNotes": "需要法务支持",
+        "projectPlanGap": "交付周期偏紧",
+        "customerRevenue": 5000.00
+      },
+      "evaluationCustomerInfos": [
+        {
+          "roleKey": "PURCHASER",
+          "infoKey": "ATTITUDE",
+          "value": "支持",
+          "valueType": "DROPDOWN"
+        }
+      ],
+      "evaluationRecommendation": {
+        "shouldBid": true,
+        "reason": "项目匹配度高，利润可观"
+      }
+    }
+  }
+}
+```
+
+> `evaluation` 为项目评估数据（v3.1 新增），无评估记录时为 null（JSON 省略）。时间字段统一到分（yyyy-MM-ddTHH:mm）。
+
+错误响应：同 v3.0。
+
+
+3.5 接口五：标讯详情（内部，按 ID）
+
+> 此接口供本平台内部前端使用，外部系统请使用接口四。
+
+请求方式：GET
+
+路径：/api/tenders/{id}
+
+| 参数 | 位置 | 类型 | 必填 | 说明 |
+|------|------|------|------|------|
+| id | Path | Long | 是 | 标讯主键 ID |
+
+成功响应（HTTP 200）：返回 TenderDTO 全字段，结构同接口四（无 evaluation 字段）。
+
+
+---
+
+四、 对接说明
+
+4.1 整体对接流程
+
+```
+外部系统（CRM/OA/标讯平台等）
+    |
+    |--- 1. 申请 API Key --------> 本平台管理员（分配 tender:read / tender:write 权限）
+    |
+    |--- 2. 推送标讯（幂等创建）--> POST /api/integration/tenders/push
+    |                               返回 tenderId、status
+    |
+    |--- 3. 查询标讯列表 ---------> GET /api/integration/tenders
+    |                               支持 keyword 搜索 + 多维筛选分页
+    |
+    |--- 4. 查询标讯详情 ---------> GET /api/integration/tenders/{sourceSystem}/{sourceId}
+    |                               返回完整标讯信息 + 项目评估数据
+    |
+    |--- 5. 更新标讯字段 ---------> PUT /api/integration/tenders/{sourceSystem}/{sourceId}
+    |                               支持 tenderId 或 (sourceSystem,sourceId) 定位，部分更新
+```
+
+4.2 幂等性保障
+
+- 幂等键：(sourceSystem, sourceId) 组合，通过 externalId 字段（格式：{sourceSystem}:{sourceId}）建立 UNIQUE 唯一约束。
+- 重复推送行为：
+  - 不传 forceUpdate（默认）：返回 HTTP 409，data 中携带已有 tenderId
+  - 传 forceUpdate=true：覆盖更新已有记录，返回 HTTP 200，status=UPDATED
+- 接口三/四（修改/详情）：支持 tenderId 或 (sourceSystem, sourceId) 二选一定位，找不到时返回 404
+
+4.3 限流说明
+
+- 默认限流：200 次/分钟/API Key
+- 超出限制返回 HTTP 429
+- 如有更高调用量需求，请联系本平台技术团队调整配额
+
+4.4 关键字段说明
+
+| 字段 | 说明 |
+|------|------|
+| externalId | 本平台内部生成的唯一标识，格式为 {sourceSystem}:{sourceId}，用于精确定位每条标讯 |
+| status | 标讯业务状态，枚举值见附录 |
+| sourceType | 来源类型，EXTERNAL_PLATFORM 表示来自外部系统推送 |
+| contactInfo | v3.1 新增：联系人数组，每项含 name/phone/tel/mail；原有 contactName 等扁平字段同时保留向下兼容 |
+| evaluation | v3.1 新增：项目评估嵌套对象，含基础信息段、客户信息矩阵、投标负责人建议三段数据 |
+
+4.5 环境信息
+
+| 环境 | 说明 | 状态 |
+|------|------|------|
+| 测试环境 | 用于接口联调和集成测试 | 待对接时提供具体 URL |
+| 生产环境 | 正式运行环境 | 待上线时提供具体 URL |
+
+对接过程中如有问题，请联系本平台技术团队获取 API Key 及环境信息。
+
+
+---
+
+五、 附录
+
+5.1 标讯状态枚举（status）
+
+| 枚举值 | 含义 |
+|--------|------|
+| PENDING_ASSIGNMENT | 待分配 |
+| ASSIGNED | 已分配 |
+| BIDDING | 投标中 |
+| BID_SUBMITTED | 已投标 |
+| WIN | 已中标 |
+| LOST | 未中标 |
+| ABANDONED | 已放弃 |
+
+5.2 风险等级枚举（riskLevel）
+
+| 枚举值 | 含义 |
+|--------|------|
+| LOW | 低风险 |
+| MEDIUM | 中风险 |
+| HIGH | 高风险 |
+
+5.3 来源类型枚举（sourceType）
+
+| 枚举值 | 含义 |
+|--------|------|
+| EXTERNAL_PLATFORM | 外部系统推送 |
+| CRM_OPPORTUNITY | CRM 商机转入 |
+| MANUAL_SINGLE | 人工单条录入 |
+| BULK_IMPORT | 批量 Excel 导入 |
+
+5.4 评估相关枚举（v3.1 新增）
+
+**评估状态（evaluationStatus）**
+
+| 枚举值 | 含义 |
+|--------|------|
+| DRAFT | 草稿 |
+| SUBMITTED | 已提交 |
+
+**投标建议（bidRecommendation）**
+
+| 枚举值 | 含义 |
+|--------|------|
+| RECOMMEND | 建议投标 |
+| NOT_RECOMMEND | 不建议投标 |
+
+**审核状态（reviewStatus）**
+
+| 枚举值 | 含义 |
+|--------|------|
+| PENDING | 待审核 |
+| APPROVED | 已通过 |
+| REJECTED | 已拒绝 |
+
+
+---
+
+文档版本记录
+
+| 版本 | 日期 | 变更说明 |
+|------|------|---------|
+| v1.0 | 2026-06-01 | 初版发布 |
+| v2.0 | 2026-06-01 | 全面重写：修正接口路径；详情/修改接口从 {id} 改为 {sourceSystem}/{sourceId}；统一响应格式；新增列表查询；traceId 移至 X-Trace-Id 响应头；推送响应 status 枚举调整；补全幂等性说明和整体对接流程 |
+| v3.0 | 2026-06-04 | ApiResponse.created() 工厂方法；TenderUpdateRequest 参数校验；限流 Filter 扩展；详情/修改接口统一按 (sourceSystem, sourceId) 定位；API Key Header 大小写兼容 |
+| v3.1 | 2026-06-16 | **联系人扁平字段改为 contactInfo 数组**（原有扁平字段保留向下兼容）；**新增 11 个基本信息字段**（region、industry、tenderAgency、bidOpeningTime、registrationDeadline、customerType、priority、projectType、sourcePlatform、source、tags）；**修改接口支持 tenderId 定位**（与 sourceSystem+sourceId 二选一）；**详情/修改接口新增 evaluation 项目评估嵌套对象**；**全部时间字段格式统一为 yyyy-MM-ddTHH:mm（到分）**，入参兼容到秒 |
