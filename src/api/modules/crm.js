@@ -18,6 +18,7 @@ export const crmApi = {
    * @param {number[]} [params.body.projectStatus] - 项目状态
    * @param {number[]} [params.body.projectRisk] - 项目风险
    * @param {number} [params.body.cooperationStatus] - 合作状态
+   * @param {string} [params.body.tenderSubject] - 招标主体（CRM 仅返回，不用于过滤）
    * @param {string} [params.body.evaluationStartTime] - 评标开始时间
    * @param {string} [params.body.evaluationEndTime] - 评标结束时间
    * @param {string[]} [params.body.projectLeaderName] - 项目负责人
@@ -32,6 +33,20 @@ export const crmApi = {
    */
   async searchOpportunities(params) {
     return httpClient.post('/api/xiyu/crm/chances/page-list', params)
+  },
+
+  /**
+   * 按标讯信息查询 CRM 商机（产品蓝图匹配规则）。
+   * @param {Object} params
+   * @param {string} params.tenderer - 招标主体（对应 CRM groupName）
+   * @param {string} params.registrationDeadline - 报名截止时间（对应 CRM evaluationTime）
+   * @param {string} params.bidOpeningTime - 开标时间（对应 CRM evaluationTime）
+   * @param {number} [params.pageIndex=1]
+   * @param {number} [params.pageSize=10]
+   * @returns {Promise<{data: {list: Array, totalCount: number, pageSize: number, pageIndex: number}}>}
+   */
+  async searchOpportunitiesByTender(params) {
+    return httpClient.post('/api/xiyu/crm/chances/search-by-tender', params)
   },
 
   /**

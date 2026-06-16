@@ -5,6 +5,7 @@ import com.xiyu.bid.crm.application.CrmContactPersonService;
 import com.xiyu.bid.crm.infrastructure.dto.BidInfoSyncDTO;
 import com.xiyu.bid.crm.infrastructure.dto.ContactPersonInfoVO;
 import com.xiyu.bid.crm.infrastructure.dto.CustomerChancePageRequest;
+import com.xiyu.bid.crm.infrastructure.dto.CustomerChanceSearchByTenderRequest;
 import com.xiyu.bid.dto.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -42,6 +43,17 @@ public class CrmChanceController {
     public ResponseEntity<ApiResponse<CrmChanceService.CrmChancePageResult>> pageList(
             @RequestBody CustomerChancePageRequest request) {
         CrmChanceService.CrmChancePageResult result = chanceService.pageList(request);
+        return ResponseEntity.ok(ApiResponse.success("查询成功", result));
+    }
+
+    /**
+     * 按标讯信息查询 CRM 商机（产品蓝图匹配规则）。
+     * <p>使用招标主体、报名截止时间、开标时间组合匹配。
+     */
+    @PostMapping("/search-by-tender")
+    public ResponseEntity<ApiResponse<CrmChanceService.CrmChancePageResult>> searchByTender(
+            @RequestBody CustomerChanceSearchByTenderRequest request) {
+        CrmChanceService.CrmChancePageResult result = chanceService.searchByTender(request);
         return ResponseEntity.ok(ApiResponse.success("查询成功", result));
     }
 
