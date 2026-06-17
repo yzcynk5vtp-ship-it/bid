@@ -59,7 +59,9 @@ public class TenderAssignmentPermissions {
                 return false;
             }
             // 已关联CRM商机时，评估表第一、二部分数据来自CRM，不允许手动编辑
-            if (tender.getCrmOpportunityName() != null || tender.getEvaluationSource() != null) {
+            // 但 CRM 关联流程中需要自动提交评估表，此时标讯状态仍为 TRACKING，允许提交
+            if ((tender.getCrmOpportunityName() != null || tender.getEvaluationSource() != null)
+                    && status != Tender.Status.TRACKING) {
                 return false;
             }
         }
