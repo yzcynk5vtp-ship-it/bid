@@ -1,6 +1,7 @@
 package com.xiyu.bid.tender.service;
 
 import com.xiyu.bid.annotation.Auditable;
+import com.xiyu.bid.crm.domain.AssignmentResult;
 import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.entity.User;
@@ -128,7 +129,9 @@ public class TenderCommandService {
 
     private boolean tryAutoAssign(Tender tender) {
         try {
-            if (autoAssignmentService.autoAssignIfPossible(tender)) {
+            AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
+            if (result.isMatched()) {
+                applyAssignmentResult(tender, result);
                 com.xiyu.bid.batch.core.TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.TRACKING);
                 tender.setStatus(Tender.Status.TRACKING);
                 eventPublisher.publishEvent(TenderStatusChangedEvent.of(tender.getId(), tender.getExternalId(), Tender.Status.PENDING_ASSIGNMENT, Tender.Status.TRACKING, tender.getTitle()));
@@ -141,6 +144,19 @@ public class TenderCommandService {
                     tender.getId(), e.getMessage());
         }
         return false;
+    }
+
+    private void applyAssignmentResult(Tender tender, AssignmentResult result) {
+        if (result.projectManagerId() != null) {
+            try {
+                tender.setProjectManagerId(Long.valueOf(result.projectManagerId()));
+            } catch (NumberFormatException e) {
+                log.warn("Cannot convert projectManagerId '{}' to Long for tender {}",
+                        result.projectManagerId(), tender.getId());
+            }
+        }
+        tender.setProjectManagerName(result.projectManagerName());
+        tender.setDepartment(result.departmentName());
     }
 
     public TenderDTO updateStatus(Long id, Tender.Status targetStatus) {
