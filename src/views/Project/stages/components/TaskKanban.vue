@@ -121,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { projectsApi } from '@/api/modules/projects.js'
 import { usersApi } from '@/api/modules/users.js'
@@ -257,16 +257,8 @@ async function approveTask(task) {
   } catch (e) { ElMessage.error(e?.response?.data?.msg || '审核失败') }
 }
 // Reject with reason
-const showRejectDialog = ref(false)
-const rejectingTask = ref(null)
-const rejectReason = ref('')
-const rejectingLoading = ref(false)
-
-function rejectTask(task) {
-  rejectingTask.value = task
-  rejectReason.value = ''
-  showRejectDialog.value = true
-}
+const showRejectDialog = ref(false), rejectingTask = ref(null), rejectReason = ref(''), rejectingLoading = ref(false)
+function rejectTask(task) { rejectingTask.value = task; rejectReason.value = ''; showRejectDialog.value = true }
 
 async function confirmReject() {
   if (!rejectReason.value.trim()) return ElMessage.warning('请填写驳回原因')
@@ -283,6 +275,7 @@ async function confirmReject() {
 }
 
 onMounted(loadTasks)
+watch(() => props.projectId, (newId, oldId) => { if (newId && newId !== oldId) loadTasks() })
 </script>
 
 <style scoped>
