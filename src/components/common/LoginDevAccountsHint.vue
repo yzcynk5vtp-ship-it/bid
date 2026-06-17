@@ -26,7 +26,6 @@ const DEV_ACCOUNTS = [
   '投标组长: bid_lead / Test@123',
   '项目负责人: sales / Test@123',
   '员工: staff / Test@123',
-  '任务执行人: task_executor / Test@123',
   '投标专员: bid_specialist / Test@123',
   '行政人员: admin_staff / Test@123'
 ]

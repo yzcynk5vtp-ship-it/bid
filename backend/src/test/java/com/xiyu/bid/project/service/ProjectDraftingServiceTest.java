@@ -213,14 +213,6 @@ class ProjectDraftingServiceTest {
     }
 
     @Test
-    void submitBid_taskExecutor_denied_403() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "task_executor")));
-        assertThatThrownBy(() -> service.submitBid(1L, 1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting("statusCode").isEqualTo(HttpStatus.FORBIDDEN);
-    }
-
-    @Test
     void submitBid_noRoleProfile_denied_403() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, null)));
         assertThatThrownBy(() -> service.submitBid(1L, 1L))

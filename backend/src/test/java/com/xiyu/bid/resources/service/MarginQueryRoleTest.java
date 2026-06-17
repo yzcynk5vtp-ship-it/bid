@@ -31,8 +31,6 @@ class MarginQueryRoleTest {
 
         assertThat(MarginQueryRole.from("bid_specialist").apply(PA, PI))
                 .isEqualTo(fragment);
-        assertThat(MarginQueryRole.from("TASK_EXECUTOR").apply(PA, PI))
-                .isEqualTo(fragment);
     }
 
     @Test

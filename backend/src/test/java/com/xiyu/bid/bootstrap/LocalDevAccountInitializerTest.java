@@ -60,8 +60,6 @@ class LocalDevAccountInitializerTest {
                 .thenReturn(Optional.of(RoleProfile.builder().id(6L).code("bid_lead").build()));
         when(roleProfileRepository.findByCodeIgnoreCase("sales"))
                 .thenReturn(Optional.of(RoleProfile.builder().id(7L).code("sales").build()));
-        when(roleProfileRepository.findByCodeIgnoreCase("task_executor"))
-                .thenReturn(Optional.of(RoleProfile.builder().id(8L).code("task_executor").build()));
         when(roleProfileRepository.findByCodeIgnoreCase("bid_specialist"))
                 .thenReturn(Optional.of(RoleProfile.builder().id(9L).code("bid_specialist").build()));
         when(roleProfileRepository.findByCodeIgnoreCase("admin_staff"))

@@ -49,7 +49,7 @@ import java.util.*;
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST', 'TASK_EXECUTOR', 'ADMIN_STAFF')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST', 'ADMIN_STAFF')")
 public class TenderController {
 
     private final TenderQueryService tenderQueryService;
@@ -153,7 +153,7 @@ public class TenderController {
     }
 
     @GetMapping("/import-template")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SPECIALIST', 'TASK_EXECUTOR', 'ADMIN_STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SPECIALIST', 'ADMIN_STAFF')")
     @Operation(summary = "下载标讯批量导入模板")
     public ResponseEntity<byte[]> downloadImportTemplate() {
         byte[] body = tenderImportService.generateTemplate();
