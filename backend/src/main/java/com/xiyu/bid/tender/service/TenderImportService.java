@@ -128,10 +128,24 @@ public class TenderImportService {
         }
         for (int i = 0; i < HEADERS.length; i++) {
             String actual = cellReader.readString(header.getCell(i));
-            if (actual == null || !HEADERS[i].equals(actual)) {
+            if (actual == null || !normalizeHeader(HEADERS[i]).equals(normalizeHeader(actual))) {
                 throw new IllegalArgumentException("模板表头不匹配，请使用最新模板");
             }
         }
+    }
+
+    /**
+     * 规范化表头字符串：去空格、统一全角符号为半角、转小写、去除末尾 * 标记。
+     */
+    static String normalizeHeader(String raw) {
+        if (raw == null) return "";
+        String s = raw.trim();
+        s = s.replace('（', '(').replace('）', ')')
+             .replace('：', ':').replace('，', ',')
+             .replace('、', ',').replace('；', ';')
+             .replace('！', '!').replace('？', '?');
+        s = s.replaceAll("\\*+$", "");
+        return s.toLowerCase();
     }
 
     private int collectRows(Sheet sheet, List<TenderRequest> rows, List<RowError> errors) {
