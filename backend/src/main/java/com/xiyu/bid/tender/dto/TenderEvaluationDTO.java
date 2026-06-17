@@ -23,12 +23,12 @@ public record TenderEvaluationDTO(
     // ---------- 评估表状态 + 建议 ----------
     EvaluationStatus evaluationStatus,
     BidRecommendation bidRecommendation,
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime submittedAt,
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime submittedAt,
 
     // ---------- 审核 / 评估人 元数据 ----------
     Long evaluatorId,
     String evaluatorName,
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime evaluatedAt,
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime evaluatedAt,
 
     // ---------- 实例级权限（当前调用方相对该标讯的判定） ----------
     boolean canFillEvaluation,
@@ -52,7 +52,7 @@ public record TenderEvaluationDTO(
     String lastReviewedBy,
 
     /** 最后审核时间。 */
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime lastReviewedAt,
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm") LocalDateTime lastReviewedAt,
 
     /** 评估轮次。 */
     Integer evaluationRound

@@ -55,6 +55,9 @@ app:
       password: XiyuAdmin2026!
       email: admin@xiyu-local
       full-name: 系统管理员
+    local-dev:
+      enabled: true
+      password: Test@123
   crm:
     # CRM integration under app.crm (merged from second app: block)
     # 向后兼容：如未配置以下拆分项，自动使用 baseUrl

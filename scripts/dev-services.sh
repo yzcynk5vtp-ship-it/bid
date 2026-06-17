@@ -876,6 +876,7 @@ start_backend() {
       DB_NAME="$DB_NAME" \
       DB_USERNAME="$DB_USERNAME" \
       DB_PASSWORD="$DB_PASSWORD" \
+      LOCAL_DEV_PASSWORD="${LOCAL_DEV_PASSWORD:-Test@123}" \
       DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY" \
       REDIS_HOST="$REDIS_HOST" \
       REDIS_PORT="$REDIS_PORT" \
@@ -889,6 +890,7 @@ start_backend() {
       SERVER_PORT="$BACKEND_PORT" \
       "${JAVA_HOME:-/opt/homebrew/opt/openjdk}/bin/java" \
       -XX:+UseZGC -Xms256m -Xmx512m \
+      -Dapp.bootstrap.local-dev.enabled=true \
       -jar "$jar_file" \
       >>"$BACKEND_LOG" 2>&1 < /dev/null &
     local started_pid=$!
