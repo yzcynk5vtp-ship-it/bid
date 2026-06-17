@@ -70,6 +70,6 @@
 
 ## 速查
 
-- **技术栈**：Vue 3 + Vite 5 + Element Plus | Java 21 + Spring Boot 3.3 + JPA + MySQL 8.0 + Flyway | Playwright
+- **技术栈**：Vue 3 + Vite 5 + Element Plus | Java 21 + Spring Boot 3.2 + JPA + MySQL 8.0 + Flyway | Playwright（以 `backend/pom.xml` 为唯一源）
 - **本地启动必须**：`export XIYU_DEV_CONFIRMED=1`（生产部署不得使用本地脚本）
 - **开场约定**：AI 代理开启新任务时，先声明当前环境（worktree 名称、当前分支、协作模式）

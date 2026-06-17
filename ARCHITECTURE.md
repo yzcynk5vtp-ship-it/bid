@@ -5,7 +5,7 @@
 ## 技术栈
 
 - **前端**：Vue 3 + Vite 5 + Element Plus + Pinia + Vue Router 4 + Axios + ECharts + Sass
-- **后端**：Java 21 + Spring Boot 3.3 + JPA (Hibernate) + MySQL 8.0 + Redis 7 + Flyway + ArchUnit
+- **后端**：Java 21 + Spring Boot 3.2 + JPA (Hibernate) + MySQL 8.0 + Redis 7 + Flyway + ArchUnit（以 `backend/pom.xml` 为唯一源）
 - **E2E 测试**：Playwright + Node.js (VITE_API_MODE=api)
 - **文档转换**：Python 3.12 + FastAPI + MarkItDown (sidecar 模式)
 - **部署**：Docker + Docker Compose + nginx
@@ -44,7 +44,7 @@
 - **必写回滚**：所有新的 Flyway 迁移文件必须附带对应的 U 脚本
 - **安全性**：回滚脚本中必须包含前置检查（`DROP COLUMN IF EXISTS`、`DROP TABLE IF EXISTS` 等）
 - **PR 备注**：U 脚本在创建时需要在注释中注明 PR 编号
-- **历史补全**：历史迁移（V1047 之前）的回滚脚本可选，但推荐逐步补全
+- **历史补全**：历史迁移的回滚脚本可选，但推荐逐步补全（当前活跃迁移已推进至 V1081+）
 
 ### 数据库运维命令
 

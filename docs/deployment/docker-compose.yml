@@ -2,7 +2,8 @@
 # 使用方式：
 #   cd backend && mvn package -DskipTests                     # 先编译后端
 #   npm run build                                              # 先构建前端
-#   docker compose up -d                                      # 一键启动所有服务
+#   docker compose up -d                                      # 启动除 MySQL 外的服务（前端/后端/Redis/sidecar）
+#   docker compose --profile infra up -d                      # 含 MySQL 的一键启动（mysql 服务在 infra profile 下）
 #   docker compose logs -f                                    # 查看所有日志
 #   docker compose down                                       # 停止所有服务
 #
