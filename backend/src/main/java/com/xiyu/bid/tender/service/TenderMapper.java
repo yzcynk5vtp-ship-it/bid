@@ -71,6 +71,7 @@ public class TenderMapper {
                 .sourcePlatform(tender.getSourcePlatform())
                 .crmOpportunityId(tender.getCrmOpportunityId())
                 .crmOpportunityName(tender.getCrmOpportunityName())
+                .evaluationSource(tender.getEvaluationSource() != null ? tender.getEvaluationSource().name() : null)
                 .abandonmentReason(tender.getAbandonmentReason())
                 .createdAt(tender.getCreatedAt())
                 .updatedAt(tender.getUpdatedAt())
@@ -179,6 +180,7 @@ public class TenderMapper {
                 .sourcePlatform(dto.getSourcePlatform())
                 .crmOpportunityId(dto.getCrmOpportunityId())
                 .crmOpportunityName(dto.getCrmOpportunityName())
+                .evaluationSource(dto.getEvaluationSource() != null ? Tender.EvaluationSource.valueOf(dto.getEvaluationSource()) : null)
                 .abandonmentReason(dto.getAbandonmentReason())
                 .basicInfoSavedAt(dto.getBasicInfoSavedAt());
         if (dto.getStatus() != null) {

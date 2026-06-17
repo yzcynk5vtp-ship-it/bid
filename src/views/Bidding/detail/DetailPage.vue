@@ -109,6 +109,7 @@
             :evaluation="tenderEvaluation"
             :can-fill="canFillEvaluation"
             :can-decide="canFillEvaluation"
+            :can-fill-recommendation="canFillRecommendation"
             :tender-id="Number(tender.id)"
             :hide-actions="hideEvaluationActions"
             :saving-draft="savingDraft"
@@ -235,15 +236,24 @@ const {
 } = useEvaluationReview(tender)
 
 const canFillEvaluation = computed(() => {
-  // 已关联CRM商机时，评估表数据来自CRM，不允许修改
-  if (tender.value?.crmOpportunityName) return false
+  // 已关联CRM商机且来源为CRM推送时，评估表数据来自CRM，不允许修改
+  if (tender.value?.crmOpportunityName && tender.value?.evaluationSource === 'CRM_PUSH') return false
   // TRACKING（跟踪中/待评估）状态下，bid_lead 或 sales 角色可以填写评估表字段
   if (!tender.value || !userRole.value) return false
   return tender.value.status === 'TRACKING' && (isBidManager(userRole.value) || userRole.value === 'sales')
 })
 
+// CO-232: 投标系统主动关联CRM商机时，第三部分（项目负责人建议）仍可编辑
+const canFillRecommendation = computed(() => {
+  if (!tender.value || !userRole.value) return false
+  if (tender.value?.evaluationSource === 'BID_SYSTEM_LINK') {
+    return tender.value.status === 'TRACKING' && (isBidManager(userRole.value) || userRole.value === 'sales')
+  }
+  return canFillEvaluation.value
+})
+
 const hideEvaluationActions = computed(
-  () => !canFillEvaluation.value
+  () => !canFillEvaluation.value && !canFillRecommendation.value
 )
 
 const isEvaluationSubmitted = computed(() =>

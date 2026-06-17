@@ -191,10 +191,12 @@ public class TenderIntegrationService {
         if (request.getContentDesc() != null) {
             tender.setDescription(InputSanitizer.sanitizeString(request.getContentDesc(), 5000));
         }
+        if (request.getEvaluation() != null) {
+            tender.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.CRM_PUSH);
+        }
 
         Tender saved = tenderRepository.save(tender);
         log.info("Updated tender id={} externalId={}", saved.getId(), externalId);
-
         // 处理评估数据
         if (request.getEvaluation() != null) {
             saveEvaluation(saved.getId(), request.getEvaluation());
@@ -246,7 +248,6 @@ public class TenderIntegrationService {
         tender.setContactPhone2(null);
         tender.setContactTel2(null);
         tender.setContactMail2(null);
-
         ContactDTO c1 = contactInfo.get(0);
         if (c1.getName() != null) tender.setContactName(InputSanitizer.sanitizeString(c1.getName(), 100));
         if (c1.getPhone() != null) tender.setContactPhone(InputSanitizer.sanitizeString(c1.getPhone(), 50));
@@ -408,7 +409,6 @@ public class TenderIntegrationService {
 
         tenderEvaluationRepository.save(evalEntity);
     }
-
     private Tender mapToEntity(TenderPushRequest r) {
         Tender t = new Tender();
         t.setTitle(InputSanitizer.sanitizeString(r.getTitle(), 500));

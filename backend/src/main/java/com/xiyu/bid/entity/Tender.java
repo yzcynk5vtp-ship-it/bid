@@ -175,6 +175,11 @@ public class Tender {
     @Column(name = "crm_opportunity_id", length = 64)
     private String crmOpportunityId;
 
+    /* 评估表数据来源：CRM_PUSH=CRM主动推送, BID_SYSTEM_LINK=投标系统主动关联 */
+    @Column(name = "evaluation_source", length = 20)
+    @Enumerated(EnumType.STRING)
+    private EvaluationSource evaluationSource;
+
     /* 人员分配 */
     @Column(name = "project_manager_id")
     private Long projectManagerId;
@@ -400,5 +405,15 @@ public class Tender {
             }
             throw new IllegalArgumentException("不支持的来源类型: " + value);
         }
+    }
+
+    /**
+     * 评估表数据来源枚举。
+     * CRM_PUSH: CRM 系统主动推送评估数据（入口一），投标系统不可编辑
+     * BID_SYSTEM_LINK: 投标系统主动关联 CRM 商机（入口二），第三部分可编辑
+     */
+    public enum EvaluationSource {
+        CRM_PUSH,
+        BID_SYSTEM_LINK
     }
 }

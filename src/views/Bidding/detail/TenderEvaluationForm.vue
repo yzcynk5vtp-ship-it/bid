@@ -40,7 +40,7 @@
         <el-form
           :model="form.recommendation"
           label-width="140px"
-          :disabled="isReadOnly"
+          :disabled="isRecommendationReadOnly"
         >
           <el-form-item
             label="是否投标"
@@ -51,7 +51,7 @@
               v-model="form.recommendation.shouldBid"
               placeholder="请选择"
               clearable
-              :disabled="isReadOnly"
+              :disabled="isRecommendationReadOnly"
               style="width: 200px"
             >
               <el-option label="投标" :value="true" />
@@ -72,7 +72,7 @@
               :rows="4"
               placeholder="请填写理由（选择不投标时必填）"
               maxlength="5000"
-              :readonly="isReadOnly"
+              :readonly="isRecommendationReadOnly"
             />
           </el-form-item>
         </el-form>
@@ -93,6 +93,7 @@ const props = defineProps({
   evaluation: { type: Object, default: null },
   canFill: { type: Boolean, default: false },
   canDecide: { type: Boolean, default: false },
+  canFillRecommendation: { type: Boolean, default: false },
   tenderId: { type: Number, required: true },
   savingDraft: { type: Boolean, default: false },
   submitting: { type: Boolean, default: false },
@@ -109,6 +110,7 @@ const {
   form,
   activeSection,
   isReadOnly,
+  isRecommendationReadOnly,
   showDraftSubmitButtons,
   showDecisionButtons,
   hasUnsavedChanges,
