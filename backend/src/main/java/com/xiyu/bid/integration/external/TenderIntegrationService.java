@@ -27,7 +27,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
 /**
  * 外部标讯同步核心服务（接口规范 v2.0）。
  */
@@ -99,6 +98,7 @@ public class TenderIntegrationService {
                 r.getPriority(), r.getProjectType(), r.getSourcePlatform(), r.getSource(), r.getTags());
         applyContactInfo(tender, r.getContactInfo());
         if (r.getContentDesc() != null) tender.setDescription(InputSanitizer.sanitizeString(r.getContentDesc(), 5000));
+        tender.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.CRM_PUSH);
     }
 
     /**
@@ -201,7 +201,6 @@ public class TenderIntegrationService {
         if (request.getEvaluation() != null) {
             saveEvaluation(saved.getId(), request.getEvaluation());
         }
-
         TenderDTO dto = tenderMapper.toDTO(saved);
         dto.setContactInfo(tenderMapper.buildContacts(saved));
         dto.setEvaluation(buildEvaluationDTO(saved.getId(), saved));
@@ -432,6 +431,7 @@ public class TenderIntegrationService {
         t.setSourceType(com.xiyu.bid.entity.Tender.SourceType.EXTERNAL_PLATFORM);
         t.setSource(com.xiyu.bid.entity.Tender.SourceType.EXTERNAL_PLATFORM.getLabel());
         t.setStatus(com.xiyu.bid.entity.Tender.Status.PENDING_ASSIGNMENT);
+        t.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.CRM_PUSH);
         return t;
     }
 
