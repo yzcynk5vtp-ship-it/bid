@@ -1,7 +1,7 @@
 import { ElMessageBox } from 'element-plus'
 import { taskTemplates } from './constants.js'
 import { normalizeProjectTaskList, openScoreDraftDialogWhenTenderSourceMissing } from './projectDetailTaskGeneration.js'
-import { createTaskAssigneePayload, uploadTaskAttachments } from './taskAssigneePayload.js'
+import { createTaskAssigneePayload, uploadTaskAttachmentsWithFallback } from './taskAssigneePayload.js'
 import { normalizeTaskStatusForApi, taskFormDtoToBackend, taskBackendToCard } from '@/views/Project/project-utils'
 export function useProjectDetailTaskActions(context) {
   const { route, userStore, projectStore, projectsApi, tenderBreakdownApi = projectsApi, isApiProject, message, state, workflow } = context
@@ -226,7 +226,7 @@ export function useProjectDetailTaskActions(context) {
         const dto = taskFormDtoToBackend(data)
         const updated = await projectStore.updateTask(state.project.value.id, target.id, dto)
         Object.assign(target, taskBackendToCard(updated))
-        await uploadTaskAttachments(target, data.attachments, { projectStore, projectId: route.params.id, userStore })
+        await uploadTaskAttachmentsWithFallback(target, data.attachments, { projectStore, projectId: route.params.id, userStore }, '任务已更新，但附件上传失败', message)
         pushActivity(`更新了任务「${target.name}」`)
         message.success('任务已更新')
         done?.()
@@ -272,9 +272,9 @@ export function useProjectDetailTaskActions(context) {
       })
       if (!result?.success || !result?.data) throw new Error(result?.msg || '新增任务失败')
       const createdTask = taskBackendToCard({ ...result.data, deliverables: [] })
-      await uploadTaskAttachments(createdTask, data.attachments, { projectStore, projectId: route.params.id, userStore })
+      await uploadTaskAttachmentsWithFallback(createdTask, data.attachments, { projectStore, projectId: route.params.id, userStore }, '任务已新增，但附件上传失败', message)
       ensureTaskList().unshift(createdTask)
-      pushActivity(`新增了任务「${result.data.name}」`)
+      pushActivity(`新增了任务「${createdTask.name}」`)
       message.success('任务已新增')
       done?.()
     } catch (error) {

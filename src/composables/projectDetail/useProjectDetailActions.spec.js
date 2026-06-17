@@ -138,6 +138,6 @@ describe('project detail action regressions', () => {
     await loadProjectWorkflowData('12')
 
     expect(project.value.tasks).toHaveLength(1)
-    expect(project.value.tasks[0].title).toBe('正常任务')
+    expect(project.value.tasks[0].name).toBe('正常任务')
   })
 })

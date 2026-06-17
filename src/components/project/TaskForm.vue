@@ -28,9 +28,6 @@
               @remove="handleAttachmentRemove"
             >
               <el-button :icon="Upload" :disabled="readonly">添加附件</el-button>
-              <template #tip>
-                <div class="attachment-tip">保存任务后上传到该任务</div>
-              </template>
             </el-upload>
           </el-form-item>
 
@@ -84,9 +81,6 @@
               @remove="handleDeliverableRemove"
             >
               <el-button :icon="Upload" :disabled="readonly && !canDeliver">上传交付物</el-button>
-              <template #tip>
-                <div class="attachment-tip">任务执行人上传交付物</div>
-              </template>
             </el-upload>
           </el-form-item>
 

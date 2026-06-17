@@ -1,5 +1,6 @@
 import { ElMessageBox } from 'element-plus'
 import { collaborationApi } from '@/api'
+import { taskBackendToCard } from '@/views/Project/project-utils'
 
 function downloadTextFile(filename, content, mimeType = 'text/plain;charset=utf-8') {
   const blob = new Blob([content], { type: mimeType })
@@ -195,7 +196,7 @@ export function useProjectDetailDocumentActions(context) {
     project.value.tasks = taskResult?.success && Array.isArray(taskResult.data)
       ? taskResult.data
           .filter((task) => !task.title?.startsWith('【待立项】'))
-          .map((task) => ({ ...task, deliverables: task.deliverables || [], hasDeliverable: Boolean(task.hasDeliverable) }))
+          .map((task) => taskBackendToCard({ ...task, deliverables: task.deliverables || [] }))
       : []
     project.value.documents = documentResult?.success && Array.isArray(documentResult.data) ? documentResult.data : []
   }
