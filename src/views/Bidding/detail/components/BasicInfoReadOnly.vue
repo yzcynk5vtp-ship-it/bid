@@ -73,7 +73,7 @@
             <el-form-item label="标讯文件">
               <template v-if="tender.attachments && tender.attachments.length">
                 <div v-for="(file, idx) in tender.attachments" :key="idx" style="margin-bottom:4px">
-                  <el-link type="primary" :href="file.fileUrl" target="_blank" :underline="false">
+                  <el-link type="primary" :href="normalizeDownloadUrl(file.fileUrl)" target="_blank" :underline="false">
                     📄 {{ file.fileName }}
                   </el-link>
                 </div>
@@ -120,14 +120,15 @@ const props = defineProps({
   tender: { type: Object, default: null },
 })
 
-const sourceDocumentDownloadUrl = computed(() => {
-  const url = props.tender?.sourceDocumentFileUrl
+function normalizeDownloadUrl(url) {
   if (!url) return ''
   if (url.startsWith('doc-insight://')) {
     return `/api/doc-insight/download?fileUrl=${encodeURIComponent(url)}`
   }
   return url
-})
+}
+
+const sourceDocumentDownloadUrl = computed(() => normalizeDownloadUrl(props.tender?.sourceDocumentFileUrl))
 </script>
 
 <style scoped>
