@@ -17,7 +17,7 @@ export function createTaskAssigneePayload(data = {}, userStore = {}) {
 export function normalizeTaskAttachmentFiles(attachments = []) {
   return (Array.isArray(attachments) ? attachments : [attachments])
     .map((item) => item?.raw || item?.file || item)
-    .filter(Boolean)
+    .filter((file) => Boolean(file))
 }
 
 export function createTaskAttachmentPayload(file, userStore = {}) {
@@ -36,5 +36,15 @@ export async function uploadTaskAttachments(task, attachments, { projectStore, p
     if (!saved) continue
     task.deliverables = [saved, ...(task.deliverables || []).filter((item) => String(item.id) !== String(saved.id))]
     task.hasDeliverable = true
+  }
+}
+
+export async function uploadTaskAttachmentsWithFallback(task, attachments, deps, fallbackMessage, message) {
+  if (!attachments?.length) return
+  try {
+    await uploadTaskAttachments(task, attachments, deps)
+  } catch (error) {
+    console.warn('[uploadTaskAttachments] 任务附件上传失败', error)
+    message?.warning?.(fallbackMessage)
   }
 }

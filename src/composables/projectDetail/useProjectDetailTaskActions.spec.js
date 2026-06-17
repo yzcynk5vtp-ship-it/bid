@@ -157,6 +157,79 @@ describe('useProjectDetailTaskActions', () => {
     expect(state.project.value.tasks[0].hasDeliverable).toBe(true)
   })
 
+  it('API 项目新增任务时附件上传失败不阻断任务创建', async () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const file = new File(['附件内容'], '任务附件.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+    const createTask = vi.fn().mockResolvedValue({
+      success: true,
+      data: { id: 604, title: '带失败附件的任务', status: 'TODO' },
+    })
+    const addDeliverable = vi.fn().mockRejectedValue(new Error('网络超时'))
+    const warning = vi.fn()
+    const done = vi.fn()
+    const state = {
+      project: ref({ id: 12, name: '测试项目', tasks: [] }),
+      activities: ref([]),
+      scoreDraftDialogVisible: ref(false),
+      currentTask: ref(null),
+      taskDialogVisible: ref(false),
+    }
+
+    const { handleSaveTask } = useProjectDetailTaskActions({
+      route: { params: { id: '12' } },
+      userStore: { userName: '测试用户', currentUser: { id: 9 } },
+      projectStore: { addDeliverable },
+      projectsApi: { createTask },
+      isApiProject: ref(true),
+      message: { success: vi.fn(), error: vi.fn(), warning },
+      state,
+      workflow: {},
+    })
+
+    await handleSaveTask({
+      mode: 'create',
+      data: { name: '带失败附件的任务', priority: 'medium', attachments: [file] },
+      done,
+    })
+
+    expect(state.project.value.tasks).toHaveLength(1)
+    expect(state.project.value.tasks[0].name).toBe('带失败附件的任务')
+    expect(warning).toHaveBeenCalledWith('任务已新增，但附件上传失败')
+    expect(done).toHaveBeenCalled()
+    consoleWarnSpy.mockRestore()
+  })
+
+  it('API 项目新增任务无附件时不调用 addDeliverable', async () => {
+    const createTask = vi.fn().mockResolvedValue({
+      success: true,
+      data: { id: 605, title: '无附件任务', status: 'TODO' },
+    })
+    const addDeliverable = vi.fn()
+    const state = {
+      project: ref({ id: 12, name: '测试项目', tasks: [] }),
+      activities: ref([]),
+      scoreDraftDialogVisible: ref(false),
+      currentTask: ref(null),
+      taskDialogVisible: ref(false),
+    }
+
+    const { handleSaveTask } = useProjectDetailTaskActions({
+      route: { params: { id: '12' } },
+      userStore: { userName: '测试用户', currentUser: { id: 9 } },
+      projectStore: { addDeliverable },
+      projectsApi: { createTask },
+      isApiProject: ref(true),
+      message: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
+      state,
+      workflow: {},
+    })
+
+    await handleSaveTask({ mode: 'create', data: { name: '无附件任务', priority: 'medium' } })
+
+    expect(addDeliverable).not.toHaveBeenCalled()
+    expect(state.project.value.tasks).toHaveLength(1)
+  })
+
   it('API 项目点击拆解任务调用后端拆解接口并写入任务，不打开评分弹窗', async () => {
     const success = vi.fn()
     const error = vi.fn()
