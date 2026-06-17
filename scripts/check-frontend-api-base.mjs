@@ -12,8 +12,11 @@ import { readdirSync, readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 
 const DIST_ASSETS = join(process.cwd(), 'dist', 'assets')
-// 带端口的 dev 地址。排除 `window.location.href||"http://localhost"`（无端口，非 API baseURL）这类合法引用。
-const DEV_API_URL = /https?:\/\/(?:localhost|127\.0\.0\.1):\d+/g
+// 拦截不该出现在部署产物里的 API base：dev 地址（localhost/127.0.0.1）+ 内网 IP（带端口）。
+// 这些作 baseURL 几乎必然跨域（前端访问 origin ≠ API base），应改为同源（baseURL 空，npm run build:samesite）。
+// 域名 base（如 https://winbid-test.ehsy.com，无端口）不拦——从该域名访问是同域合法的。
+// 仍排除 `window.location.href||"http://localhost"`（无端口，非 API baseURL）这类合法引用。
+const BAD_API_BASE = /https?:\/\/(?:localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}):\d+/g
 
 if (!existsSync(DIST_ASSETS)) {
   console.error(`❌ check:frontend-api-base: 找不到 ${DIST_ASSETS}，请先构建（npm run build:api / build:samesite）`)
@@ -24,12 +27,12 @@ const hits = []
 for (const f of readdirSync(DIST_ASSETS)) {
   if (!f.endsWith('.js')) continue
   const content = readFileSync(join(DIST_ASSETS, f), 'utf8')
-  const found = [...content.matchAll(DEV_API_URL)].map(m => m[0])
+  const found = [...content.matchAll(BAD_API_BASE)].map(m => m[0])
   if (found.length) hits.push({ file: f, urls: [...new Set(found)] })
 }
 
 if (hits.length) {
-  console.error('❌ 前端构建产物含 dev API 地址（localhost/127.0.0.1:port），不能部署：')
+  console.error('❌ 前端构建产物含 dev/内网 IP API 地址（localhost/127.0.0.1/内网IP:port），不能部署：')
   for (const h of hits) console.error(`   ${h.file}: ${h.urls.join(', ')}`)
   console.error('')
   console.error('   部署构建必须用生产 baseURL：')
