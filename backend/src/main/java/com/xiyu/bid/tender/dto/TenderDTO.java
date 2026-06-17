@@ -28,11 +28,11 @@ public class TenderDTO {
     private String purchaserName;
     private String purchaserHash;
     private LocalDate publishDate;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime deadline;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime bidOpeningTime;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime registrationDeadline;
     private String contactName;
     private String contactPhone;
@@ -85,13 +85,13 @@ public class TenderDTO {
     private String crmOpportunityId;
     private String crmOpportunityName;
     private String evaluationSource;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime createdAt;
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime updatedAt;
 
     /** 基本信息最近一次保存时间（见 Tender.basicInfoSavedAt） */
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime basicInfoSavedAt;
 
     /** 分配人名称 */
