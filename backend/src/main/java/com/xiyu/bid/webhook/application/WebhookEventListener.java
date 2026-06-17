@@ -57,8 +57,20 @@ public class WebhookEventListener {
             payload.put("newStatus", event.newStatus().name());
             payload.put("title", event.title());
             payload.put("occurredAt", event.occurredAt().toString());
+            if (event.operatorId() != null) {
+                payload.put("operatorId", event.operatorId());
+            }
+            if (event.operatorName() != null) {
+                payload.put("operatorName", event.operatorName());
+            }
             if (event.newStatus() == com.xiyu.bid.entity.Tender.Status.ABANDONED && event.abandonReason() != null) {
                 payload.put("abandonReason", event.abandonReason());
+            }
+            if (event.recommendationShouldBid() != null) {
+                payload.put("recommendation", Map.of(
+                        "shouldBid", event.recommendationShouldBid(),
+                        "reason", event.recommendationReason() == null ? "" : event.recommendationReason()
+                ));
             }
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException ex) {
