@@ -426,10 +426,12 @@ public class TenderIntegrationService {
         t.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.CRM_PUSH);
         return t;
     }
-    /** 解析 datetime 字符串，兼容 yyyy-MM-ddTHH:mm 和 yyyy-MM-ddTHH:mm:ss */
+    /** 解析 datetime 字符串，兼容 yyyy-MM-dd HH:mm、yyyy-MM-ddTHH:mm、yyyy-MM-ddTHH:mm:ss */
     private static java.time.LocalDateTime parseDateTime(String value) {
         if (value == null || value.isBlank()) return null;
-        String normalized = value.length() == 16 ? value + ":00" : value;
+        // 空格 → T；补秒
+        String normalized = value.replace(' ', 'T');
+        if (normalized.length() == 16) normalized += ":00";
         return java.time.LocalDateTime.parse(normalized);
     }
 }
