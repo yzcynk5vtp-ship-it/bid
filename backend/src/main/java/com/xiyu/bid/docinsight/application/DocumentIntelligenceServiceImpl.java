@@ -70,7 +70,23 @@ public class DocumentIntelligenceServiceImpl implements DocumentIntelligenceServ
 
     private DocumentAnalysisResult parse(String profileCode, StoredDocument stored, String fileName, String contentType, byte[] content) {
         ExtractedDocument extracted = extractor.extract(fileName, contentType, content);
-        List<DocumentChunk> chunks = chunker.chunk(extracted.text(), extracted.structuredMetadata());
+
+        // 扫描件检测：提取文本过短则返回警告，不进行 AI 分析
+        String extractedText = extracted.text();
+        if (extractedText == null || extractedText.trim().length() < 100) {
+            log.warn("Document {} appears to be a scanned PDF (extracted text length: {}), skipping AI analysis",
+                    fileName, extractedText == null ? 0 : extractedText.trim().length());
+            return new DocumentAnalysisResult(
+                    stored.fileUrl(),
+                    Map.of(),
+                    List.of(),
+                    extractedText,
+                    List.of("SCANNED_DOCUMENT: 该文件可能是扫描件（图片型PDF），无法提取文本内容。" +
+                            "请尝试上传可编辑的PDF/Word文件，或直接使用粘贴识别功能。")
+            );
+        }
+
+        List<DocumentChunk> chunks = chunker.chunk(extractedText, extracted.structuredMetadata());
 
         DocumentAnalyzer analyzer = analyzers.stream()
                 .filter(a -> a.supports(profileCode))
@@ -80,7 +96,7 @@ public class DocumentIntelligenceServiceImpl implements DocumentIntelligenceServ
         DocumentAnalysisInput input = new DocumentAnalysisInput(
                 stored.fileUrl(),
                 fileName,
-                extracted.text(),
+                extractedText,
                 extracted.structuredMetadata(),
                 chunks,
                 profileCode,
