@@ -1,5 +1,4 @@
 package com.xiyu.bid.integration.external;
-
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.tender.dto.ContactDTO;
@@ -21,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,13 +32,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class TenderIntegrationService {
-
     private final TenderRepository tenderRepository;
     private final TenderMapper tenderMapper;
     private final TenderEvaluationRepository tenderEvaluationRepository;
     private final TenderEvaluationCustomerInfoRepository customerInfoRepository;
     private final TenderEvaluationSubmissionMapper submissionMapper;
-
     /**
      * 幂等推送标讯。
      * 按 (sourceSystem, sourceId) 组合 externalId 进行幂等判断：
@@ -86,7 +82,6 @@ public class TenderIntegrationService {
                             .build();
                 });
     }
-
     private void applyUpdate(Tender tender, TenderPushRequest r) {
         if (r.getTitle() != null) tender.setTitle(InputSanitizer.sanitizeString(r.getTitle(), 500));
         if (r.getCustomerName() != null) tender.setPurchaserName(InputSanitizer.sanitizeString(r.getCustomerName(), 500));
@@ -100,7 +95,6 @@ public class TenderIntegrationService {
         if (r.getContentDesc() != null) tender.setDescription(InputSanitizer.sanitizeString(r.getContentDesc(), 5000));
         tender.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.CRM_PUSH);
     }
-
     /**
      * 按 externalId 或 tenderId 查询标讯详情（二选一必传）。
      */
@@ -134,9 +128,9 @@ public class TenderIntegrationService {
         dto.setContactInfo(tenderMapper.buildContacts(tender));
         dto.setEvaluation(buildEvaluationDTO(tender.getId(), tender));
         normalizeSourceForIntegration(dto, tender);
+        normalizeFileUrls(dto);
         return dto;
     }
-
     /**
      * 按 externalId 或 tenderId 更新标讯字段（二选一必传）。
      * tenderId 优先级高于 sourceSystem/sourceId；两者都传时会交叉校验。
@@ -207,7 +201,6 @@ public class TenderIntegrationService {
         normalizeSourceForIntegration(dto, saved);
         return dto;
     }
-
     /** 将 source 字段映射为中文标签，与 sourceType 保持一致。 */
     private void normalizeSourceForIntegration(TenderDTO dto, Tender tender) {
         if (tender.getSourceType() == null) return;
@@ -226,11 +219,15 @@ public class TenderIntegrationService {
                 break;
         }
     }
-
+    private void normalizeFileUrls(TenderDTO dto) {
+        if (dto.getSourceDocumentFileUrl() != null && dto.getSourceDocumentFileUrl().startsWith("doc-insight://")) dto.setSourceDocumentFileUrl(toDownloadUrl(dto.getSourceDocumentFileUrl()));
+        if (dto.getBidNoticeFileUrl() != null && dto.getBidNoticeFileUrl().startsWith("doc-insight://")) dto.setBidNoticeFileUrl(toDownloadUrl(dto.getBidNoticeFileUrl()));
+        if (dto.getAttachments() != null) dto.getAttachments().forEach(a -> { if (a.getFileUrl() != null && a.getFileUrl().startsWith("doc-insight://")) a.setFileUrl(toDownloadUrl(a.getFileUrl())); });
+    }
+    private static String toDownloadUrl(String u) { return "/api/doc-insight/download?fileUrl=" + java.net.URLEncoder.encode(u, java.nio.charset.StandardCharsets.UTF_8); }
     private String buildExternalId(String sourceSystem, String sourceId) {
         return sourceSystem + ":" + sourceId;
     }
-
     /**
      * 将请求中的联系人数组映射到实体扁平字段（最多取前 2 个）。
      */
@@ -261,7 +258,6 @@ public class TenderIntegrationService {
             if (c2.getMail() != null) tender.setContactMail2(InputSanitizer.sanitizeString(c2.getMail(), 100));
         }
     }
-
     /** 将请求中的基本信息字段映射到实体（非空才覆盖）。 */
     private void applyBasicInfo(Tender t, String region, String industry, String tenderAgency,
                                 String bidOpeningTime, String registrationDeadline, String customerType,
@@ -284,7 +280,6 @@ public class TenderIntegrationService {
                 .reduce((a, b) -> a + "," + b)
                 .orElse(""));
     }
-
     /** 查询评估表并构建 DTO（customerInfos 展平为按角色聚合的格式）。 */
     private Object buildEvaluationDTO(Long tenderId, Tender tender) {
         return tenderEvaluationRepository.findByTenderId(tenderId)
@@ -314,7 +309,6 @@ public class TenderIntegrationService {
                 })
                 .orElse(null);
     }
-
     /** 将 EAV 格式的 customerInfos 展平为按角色聚合的数组（排除已删除的三列）。 */
     private List<Map<String, Object>> flattenCustomerInfos(List<EvaluationCustomerInfoDTO> eavRows) {
         if (eavRows == null || eavRows.isEmpty()) return null;
@@ -335,7 +329,6 @@ public class TenderIntegrationService {
         }
         return new ArrayList<>(byRole.values());
     }
-
     /** 保存评估数据（新增或覆盖更新）。 */
     private void saveEvaluation(Long tenderId, TenderUpdateRequest.EvaluationUpdate eval) {
         TenderEvaluation evalEntity = tenderEvaluationRepository.findByTenderId(tenderId)
@@ -347,7 +340,6 @@ public class TenderIntegrationService {
                     ne.setEvaluationRound(1);
                     return ne;
                 });
-
         // 基础信息段
         if (eval.getEvaluationBasic() != null) {
             EvaluationBasicDTO b = eval.getEvaluationBasic();
@@ -434,7 +426,6 @@ public class TenderIntegrationService {
         t.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.CRM_PUSH);
         return t;
     }
-
     /** 解析 datetime 字符串，兼容 yyyy-MM-ddTHH:mm 和 yyyy-MM-ddTHH:mm:ss */
     private static java.time.LocalDateTime parseDateTime(String value) {
         if (value == null || value.isBlank()) return null;
