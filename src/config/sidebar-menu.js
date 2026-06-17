@@ -166,7 +166,21 @@ export const roleMenuGroups = sidebarMenuConfig
   .map((menu) => ({
     value: menu.meta.permissionKeys[0],
     label: menu.meta.title,
-    children: menu.name === 'Dashboard' ? workbenchRoleMenuChildren : []
+    children: menu.children && menu.children.length
+      ? menu.children
+          .filter((child) => !hiddenApiMenuNames.has(child.name))
+          .map((child) => ({
+            value: child.meta.permissionKeys.length > 1
+              ? child.meta.permissionKeys[child.meta.permissionKeys.length - 1]
+              : child.name !== menu.name
+                ? child.name.replace(/([A-Z])/g, '-$1').replace(/^-/, '').toLowerCase()
+                : menu.meta.permissionKeys[0],
+            label: child.meta.title,
+            fullLabel: `${menu.meta.title}：${child.meta.title}`
+          }))
+      : menu.name === 'Dashboard'
+        ? workbenchRoleMenuChildren
+        : []
   }))
 
 export const roleMenuOptions = [

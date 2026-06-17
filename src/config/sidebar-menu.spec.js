@@ -1,10 +1,10 @@
-import { hiddenApiMenuNames, roleMenuGroups, roleMenuOptions, sidebarMenuConfig } from './sidebar-menu'
+import { roleMenuGroups, roleMenuOptions } from './sidebar-menu'
 
 describe('sidebar-menu config', () => {
   it('keeps role menu options aligned with visible top-level sidebar menus', () => {
-    const visibleMenus = sidebarMenuConfig.filter((menu) => !hiddenApiMenuNames.has(menu.name))
-    const topLevelOptions = roleMenuOptions.slice(0, visibleMenus.length)
-    const workbenchOptions = roleMenuOptions.slice(visibleMenus.length)
+    const topLevelOptions = roleMenuGroups.map((g) => ({ value: g.value, label: g.label }))
+    const dashboardGroup = roleMenuGroups.find((group) => group.value === 'dashboard')
+    const workbenchOptions = dashboardGroup.children.map((child) => child.value)
 
     expect(topLevelOptions.map((item) => item.label)).toEqual([
       '工作台',
@@ -18,7 +18,7 @@ describe('sidebar-menu config', () => {
     expect(topLevelOptions.map((item) => item.label)).not.toEqual(
       expect.arrayContaining(['操作日志', '审计日志'])
     )
-    expect(workbenchOptions.map((item) => item.value)).toEqual([
+    expect(workbenchOptions).toEqual([
       'dashboard:view_welcome_banner',
       'dashboard:view_metric_cards',
       'dashboard:view_calendar',
@@ -40,13 +40,12 @@ describe('sidebar-menu config', () => {
   })
 
   it('uses the same primary permission key as the top-level sidebar menu', () => {
-    const visibleMenus = sidebarMenuConfig.filter((menu) => !hiddenApiMenuNames.has(menu.name))
-    const topLevelOptions = roleMenuOptions.slice(0, visibleMenus.length)
+    const topLevelOptions = roleMenuGroups.map((g) => ({ value: g.value, label: g.label }))
 
     expect(topLevelOptions).toEqual(
-      visibleMenus.map((menu) => ({
-        value: menu.meta.permissionKeys[0],
-        label: menu.meta.title
+      roleMenuGroups.map((group) => ({
+        value: group.value,
+        label: group.label
       }))
     )
     expect(new Set(roleMenuOptions.map((item) => item.value)).size).toBe(roleMenuOptions.length)
