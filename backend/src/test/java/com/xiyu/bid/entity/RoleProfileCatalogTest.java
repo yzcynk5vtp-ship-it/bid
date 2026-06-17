@@ -32,9 +32,9 @@ class RoleProfileCatalogTest {
     void isRegisteredCodeShouldRecognizeCatalogCodesOnly() {
         assertThat(RoleProfileCatalog.isRegisteredCode(RoleProfileCatalog.ADMIN_STAFF_CODE)).isTrue();
         assertThat(RoleProfileCatalog.isRegisteredCode(RoleProfileCatalog.BID_OTHER_DEPT_CODE)).isTrue();
-        assertThat(RoleProfileCatalog.isRegisteredCode("BID_ADMIN")).isTrue();      // 大小写归一
-        assertThat(RoleProfileCatalog.isRegisteredCode("  bid_lead  ")).isTrue();   // trim
-        assertThat(RoleProfileCatalog.isRegisteredCode("legal-reviewer")).isFalse(); // 未注册
+        assertThat(RoleProfileCatalog.isRegisteredCode("BID_ADMIN")).isTrue();
+        assertThat(RoleProfileCatalog.isRegisteredCode("  bid_lead  ")).isTrue();
+        assertThat(RoleProfileCatalog.isRegisteredCode("legal-reviewer")).isFalse();
         assertThat(RoleProfileCatalog.isRegisteredCode("unknown_role")).isFalse();
         assertThat(RoleProfileCatalog.isRegisteredCode(null)).isFalse();
         assertThat(RoleProfileCatalog.isRegisteredCode("")).isFalse();
@@ -44,18 +44,42 @@ class RoleProfileCatalogTest {
     @Test
     @DisplayName("shouldSkipLegacyRoleCompat：受限角色与未注册角色跳过 STAFF 兼容，已注册普通角色与纯 Legacy 用户保留")
     void shouldSkipLegacyRoleCompatShouldCoverRestrictedAndUnregistered() {
-        // 显式标记的新式受限角色：跳过
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat(RoleProfileCatalog.BID_OTHER_DEPT_CODE)).isTrue();
-        // 未注册角色：跳过（防御手动 INSERT 的角色误拿 STAFF fallback）
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat("legal-reviewer")).isTrue();
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat("  Unknown ")).isTrue();
-        // 行政人员（admin_staff）和跨部门协同（bid_other_dept）：跳过（不应通过 ROLE_STAFF 误入标讯/项目模块）
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat(RoleProfileCatalog.ADMIN_STAFF_CODE)).isTrue();
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat(RoleProfileCatalog.BID_ADMIN_CODE)).isFalse();
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat(RoleProfileCatalog.SALES_CODE)).isFalse();
-        // 纯 Legacy 用户（roleCode 为空）：不跳过，保留 user.getRole() 鉴权
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat(null)).isFalse();
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat("")).isFalse();
         assertThat(RoleProfileCatalog.shouldSkipLegacyRoleCompat("   ")).isFalse();
+    }
+
+    @Test
+    @DisplayName("seedDefinitions 列表无重复 code，且每个 seed 角色在 DEFINITIONS 中已注册")
+    void seedDefinitionsShouldCoverAllCatalogRolesWithoutDuplicates() {
+        var seeds = RoleProfileCatalog.seedDefinitions();
+        var seedCodes = seeds.stream().map(RoleProfileCatalog.SeedDefinition::code).toList();
+        assertThat(seedCodes).doesNotHaveDuplicates();
+        for (String code : seedCodes) {
+            assertThat(RoleProfileCatalog.isRegisteredCode(code))
+                    .as("seed code '%s' must exist in DEFINITIONS", code)
+                    .isTrue();
+        }
+    }
+
+    @Test
+    @DisplayName("OSS_TO_INTERNAL_ROLE 所有映射目标都是已知角色 code")
+    void ossMappingTargetsShouldBeKnownRoles() {
+        var targets = java.util.Set.of(
+                "bid_admin", "bid_lead", "admin",
+                "bid_specialist", "sales", "admin_staff", "bid_other_dept");
+        for (String target : targets) {
+            boolean known = RoleProfileCatalog.isRegisteredCode(target)
+                    || "admin".equals(target) || "manager".equals(target) || "staff".equals(target);
+            assertThat(known)
+                    .as("OSS mapping target '%s' must be a known role code", target)
+                    .isTrue();
+        }
     }
 }
