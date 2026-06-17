@@ -18,6 +18,19 @@ function byDateField(a, b, field, order) {
   return order === 'ascending' ? va - vb : vb - va
 }
 
+/**
+ * Match a filter value against a field value.
+ * Handles both string (single-select) and array (multi-select) filter values.
+ * Empty arrays are treated as "no filter" (always match).
+ */
+function matchFilter(filterVal, fieldVal) {
+  if (!filterVal) return true
+  if (Array.isArray(filterVal)) {
+    return filterVal.length === 0 || filterVal.includes(fieldVal)
+  }
+  return fieldVal === filterVal
+}
+
 const SORTERS = {
   createdAt: byDateField,
   bidOpenTime: byDateField,
@@ -40,18 +53,18 @@ export function useProjectFilter(searchForm) {
     return (projectStore.projects || []).filter((p) => {
       if (f.name && !(p.name || '').includes(f.name) && !(p.projectName || '').includes(f.name)) return false
       if (f.ownerUnit && !(p.ownerUnit || '').includes(f.ownerUnit)) return false
-      if (f.projectType && p.projectType !== f.projectType) return false
-      if (f.customerType && p.customerType !== f.customerType) return false
-      if (f.sourceModule && p.sourceModule !== f.sourceModule) return false
-      if (f.bidStatus && p.bidStatus !== f.bidStatus) return false
-      if (f.stage && p.stage !== f.stage) return false
+      if (!matchFilter(f.projectType, p.projectType)) return false
+      if (!matchFilter(f.customerType, p.customerType)) return false
+      if (!matchFilter(f.sourceModule, p.sourceModule)) return false
+      if (!matchFilter(f.bidStatus, p.bidStatus)) return false
+      if (!matchFilter(f.stage, p.stage)) return false
       if (f.projectLeaderName && !(p.projectLeaderName || '').includes(f.projectLeaderName)) return false
       if (f.biddingLeaderName && !(p.biddingLeaderName || '').includes(f.biddingLeaderName)) return false
       if (f.leaderDepartment && p.leaderDepartment !== f.leaderDepartment) return false
       if (f.region && !(p.region || '').includes(f.region)) return false
       if (f.biddingPlatform && !(p.biddingPlatform || '').includes(f.biddingPlatform)) return false
       if (f.bidMonth && p.bidMonth !== f.bidMonth) return false
-      if (f.priority && p.priority !== f.priority) return false
+      if (!matchFilter(f.priority, p.priority)) return false
       if (f.shortlistedCountMin != null && (p.shortlistedCount == null || p.shortlistedCount < f.shortlistedCountMin)) return false
       if (f.shortlistedCountMax != null && (p.shortlistedCount == null || p.shortlistedCount > f.shortlistedCountMax)) return false
       if (f.revenueMin != null) {
