@@ -11,7 +11,7 @@
     </template>
     <el-table :data="documents" stripe size="small" v-loading="loading" empty-text="暂无文档">
       <el-table-column label="文档名称" prop="name" min-width="200" />
-      <el-table-column label="上传者" prop="uploaderName" width="120" />
+      <el-table-column label="上传者" prop="uploader" width="120" />
       <el-table-column label="上传时间" width="160">
         <template #default="{ row }">{{ row.createdAt ? row.createdAt.slice(0, 16).replace('T', ' ') : '-' }}</template>
       </el-table-column>
