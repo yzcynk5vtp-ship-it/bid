@@ -108,7 +108,7 @@ export function useCrmOpportunitySelector(props, emit) {
     ElMessage.success('商机信息已确认')
   }
 
-  function confirmLink() {
+  async function confirmLink() {
     if (!selectedChance.value && !manualConfirmed.value) {
       ElMessage.warning('请先选择或输入商机')
       return
@@ -137,6 +137,30 @@ export function useCrmOpportunitySelector(props, emit) {
     }
     // CRM选择模式
     const chance = selectedChance.value
+    let customerInfos = []
+    if (chance?.id) {
+      try {
+        const contactRes = await crmApi.getContactPersons(chance.id)
+        const contacts = contactRes?.data || []
+        customerInfos = contacts.map(c => ({
+          roleKey: 'OTHER_KEY_DECISION_MAKER_1',
+          NAME: c.name || '',
+          CONTACT_INFO: c.phone || c.email || '',
+          POSITION: '',
+          XIYU_CONTACT: c.ehsyProjectManager || '',
+          CONTACT_METHOD: c.contactMethod || '',
+          INFO_TENDENCY_BASIS: c.preferenceBasis || '',
+          CONTACTED: c.contacted != null ? (c.contacted ? '是' : '否') : null,
+          GUIDED_BID: c.guidedBidDocument != null ? (c.guidedBidDocument ? '是' : '否') : null,
+          CAN_GET_KEY_INFO: c.getKeyInfo != null ? (c.getKeyInfo ? '是' : '否') : null,
+          CAN_REMOVE_ADVERSE: c.deleteDisadvantage != null ? (c.deleteDisadvantage ? '是' : '否') : null,
+          CAN_SYNC_EVAL: c.syncInfo != null ? (c.syncInfo ? '是' : '否') : null,
+          TENDENCY: c.preferenceLevel || null,
+          INFO_CLEAR_WINNER_BID: c.guaranteeWin || false,
+          INFO_WIN_RATE_IMPACT: c.impactRate || null,
+        }))
+      } catch { /* ignore */ }
+    }
     linkedOpportunity.value = { name: chance.name, code: chance.code, id: chance.id }
     emit('linked', {
       opportunityId: chance.id,
@@ -154,13 +178,13 @@ export function useCrmOpportunitySelector(props, emit) {
           planSupplierCount: chance.planSupplierCount || 0,
           bidDocumentDisadvantage: chance.bidDocumentDisadvantage || '',
           riskPrediction: chance.riskPrediction || '',
-          contingencyPlan: chance.contingencyPlan || '',
-          processKnowledge: chance.processKnowledge || '',
-          supportNotes: chance.supportNotes || '',
-          projectPlanGap: chance.projectPlanGap || '',
+          contingencyPlan: chance.backupPlan != null ? (chance.backupPlan ? '是' : '否') : '',
+          processKnowledge: chance.managerUnderstandProcess || '',
+          supportNotes: '',
+          projectPlanGap: chance.projectGap || '',
           customerRevenue: chance.customerRevenue || null,
         },
-        customerInfos: [],
+        customerInfos,
         recommendation: { shouldBid: !chance.backupPlan, reason: chance.riskPrediction || '' },
       },
     })
