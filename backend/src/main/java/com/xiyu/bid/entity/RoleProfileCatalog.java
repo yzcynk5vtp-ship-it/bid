@@ -116,7 +116,7 @@ public final class RoleProfileCatalog {
                 DEFINITIONS.get(BID_ADMIN_CODE),
                 DEFINITIONS.get(BID_SPECIALIST_CODE),
                 DEFINITIONS.get(BID_OTHER_DEPT_CODE),
-                DEFINITIONS.get(ADMIN_STAFF_CODE)
+                DEFINITIONS.get(ADMIN_CODE)
         );
     }
 
@@ -124,12 +124,12 @@ public final class RoleProfileCatalog {
         if (roleCode == null) {
             return DEFINITIONS.get(ADMIN_CODE);
         }
-        return DEFINITIONS.getOrDefault(roleCode.trim().toLowerCase(Locale.ROOT), DEFINITIONS.get(ADMIN_STAFF_CODE));
+        return DEFINITIONS.getOrDefault(roleCode.trim().toLowerCase(Locale.ROOT), DEFINITIONS.get(ADMIN_CODE));
     }
 
     public static SeedDefinition definitionForLegacyRole(User.Role role) {
         if (role == null) {
-            return DEFINITIONS.get(STAFF_CODE);
+            return DEFINITIONS.get(ADMIN_CODE);
         }
         return switch (role) {
             case ADMIN -> DEFINITIONS.get(ADMIN_CODE);
