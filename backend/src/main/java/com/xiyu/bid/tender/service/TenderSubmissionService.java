@@ -75,9 +75,22 @@ public class TenderSubmissionService {
 
         Tender.Status oldBidStatus = tender.getStatus();
         tender.setStatus(Tender.Status.BIDDING);
+
+        String operatorName = userRepository.findById(userId).map(User::getFullName).orElse("未知");
+        Boolean recShouldBid = null;
+        String recReason = null;
+        var evalOpt = tenderEvaluationRepository.findByTenderId(tenderId);
+        if (evalOpt.isPresent()) {
+            var eval = evalOpt.get();
+            recShouldBid = eval.getBidRecommendation() != null ? eval.getBidRecommendation() == TenderEvaluation.BidRecommendation.RECOMMEND : null;
+            if (eval.getRecommendation() != null) {
+                recReason = eval.getRecommendation().getReason();
+            }
+        }
         eventPublisher.publishEvent(
                 com.xiyu.bid.webhook.domain.TenderStatusChangedEvent.of(
-                        tender.getId(), tender.getExternalId(), oldBidStatus, Tender.Status.BIDDING, tender.getTitle()));
+                        tender.getId(), tender.getExternalId(), oldBidStatus, Tender.Status.BIDDING, tender.getTitle(),
+                        null, userId, operatorName, recShouldBid, recReason));
         tenderRepository.save(tender);
 
         TaskDTO createdTodo = taskService.createTask(
@@ -120,9 +133,22 @@ public class TenderSubmissionService {
         Tender.Status oldStatus = tender.getStatus();
         tender.setStatus(Tender.Status.ABANDONED);
         tender.setAbandonmentReason(req.getReason());
+
+        String operatorName = userRepository.findById(userId).map(User::getFullName).orElse("未知");
+        Boolean recShouldBid = null;
+        String recReason = null;
+        var evalOpt = tenderEvaluationRepository.findByTenderId(tenderId);
+        if (evalOpt.isPresent()) {
+            var eval = evalOpt.get();
+            recShouldBid = eval.getBidRecommendation() != null ? eval.getBidRecommendation() == TenderEvaluation.BidRecommendation.RECOMMEND : null;
+            if (eval.getRecommendation() != null) {
+                recReason = eval.getRecommendation().getReason();
+            }
+        }
         eventPublisher.publishEvent(
                 com.xiyu.bid.webhook.domain.TenderStatusChangedEvent.of(
-                        tender.getId(), tender.getExternalId(), oldStatus, Tender.Status.ABANDONED, tender.getTitle()));
+                        tender.getId(), tender.getExternalId(), oldStatus, Tender.Status.ABANDONED, tender.getTitle(),
+                        req.getReason(), userId, operatorName, recShouldBid, recReason));
         tenderRepository.save(tender);
         log.info("Tender {} abandoned by user {}, reason: {}", tenderId, userId, req.getReason());
         return rejectedBidResponse(true, "已放弃该标讯");

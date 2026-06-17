@@ -14,17 +14,30 @@ public record TenderStatusChangedEvent(
     Tender.Status newStatus,
     String title,
     LocalDateTime occurredAt,
-    String abandonReason
+    String abandonReason,
+    Long operatorId,
+    String operatorName,
+    Boolean recommendationShouldBid,
+    String recommendationReason
 ) {
     public static TenderStatusChangedEvent of(Long tenderId, String externalId,
                                                Tender.Status oldStatus, Tender.Status newStatus,
                                                String title) {
-        return new TenderStatusChangedEvent(tenderId, externalId, oldStatus, newStatus, title, LocalDateTime.now(), null);
+        return new TenderStatusChangedEvent(tenderId, externalId, oldStatus, newStatus, title, LocalDateTime.now(), null, null, null, null, null);
     }
 
     public static TenderStatusChangedEvent of(Long tenderId, String externalId,
                                                Tender.Status oldStatus, Tender.Status newStatus,
                                                String title, String abandonReason) {
-        return new TenderStatusChangedEvent(tenderId, externalId, oldStatus, newStatus, title, LocalDateTime.now(), abandonReason);
+        return new TenderStatusChangedEvent(tenderId, externalId, oldStatus, newStatus, title, LocalDateTime.now(), abandonReason, null, null, null, null);
+    }
+
+    public static TenderStatusChangedEvent of(Long tenderId, String externalId,
+                                               Tender.Status oldStatus, Tender.Status newStatus,
+                                               String title, String abandonReason,
+                                               Long operatorId, String operatorName,
+                                               Boolean recommendationShouldBid, String recommendationReason) {
+        return new TenderStatusChangedEvent(tenderId, externalId, oldStatus, newStatus, title, LocalDateTime.now(),
+                abandonReason, operatorId, operatorName, recommendationShouldBid, recommendationReason);
     }
 }
