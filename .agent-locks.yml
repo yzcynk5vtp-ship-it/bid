@@ -7,36 +7,4 @@ version: 1
 # Why: a single shared lock file caused near-constant rebase conflicts when
 # multiple agents ran in parallel. Per-task files mean new tasks = new files = no
 # conflicts. Existing entries here will age out via the daily janitor.
-locks:
-- path: backend/src/main/resources/db/migration-mysql/V1048__brand_auth_operation_log.sql
-  scope: file
-  reason: 品牌授权数据库迁移
-  owner: gemini
-  branch: gemini/feat-brand-auth-4.6
-- path: backend/src/main/resources/db/rollback/migration-mysql/U1048__brand_auth_operation_log.sql
-  scope: file
-  reason: 品牌授权数据库迁移回滚
-  owner: gemini
-  branch: gemini/feat-brand-auth-4.6
-- path: backend/src/main/resources/application-dev.yml
-  scope: directory
-  reason: 添加 CRM OAuth 凭据环境变量绑定
-  owner: codex
-  branch: agent/codex/crm-real-env
-  expiresAt: 2026-06-10T00:00:00Z
-- path: src/router/index.js
-  scope: file
-  reason: 移除旧版案例详情页路由
-  owner: trae
-  branch: fix/bug-c1c2-c4-case-detail-route-and-industry-mapping
-  expiresAt: 2026-06-15T00:00:00Z
-- path: .github/workflows/ci.yml
-  scope: file
-  reason: CI quality gate reinforce — compile check + full E2E regression
-  owner: codex
-  branch: agent/codex/ci-quality-gate-reinforce
-- path: backend/src/main/resources/application*.yml
-  scope: file
-  reason: 放宽默认速率限制 100→500/60s
-  owner: agent
-  branch: agent/trae/fix-warehouse-col
+locks: []
