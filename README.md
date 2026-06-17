@@ -75,7 +75,7 @@
 - Playwright
 
 ### 后端
-- Spring Boot 3.3
+- Spring Boot 3.2（以 `backend/pom.xml` 为唯一源）
 - Java 21
 - Spring Security + JWT
 - Spring Data JPA
@@ -88,7 +88,7 @@
 ### 前置依赖
 
 - Node.js 18+
-- npm
+- pnpm（`package.json` 声明 `packageManager: pnpm@10.27.0`；如未安装可 `corepack enable` 或 `npm i -g pnpm`）
 - Java 21
 - Maven 3.9+
 - MySQL 8.0
@@ -316,9 +316,9 @@ xiyu-bid-poc/
 - `AGENTS.md`：协作口径与智能体约定
 - `RULES.md`：四阶段流程、核心业务逻辑架构约束、红线与当前基线
 - `CLAUDE.md`：执行入口、命令、验证清单与环境坑点
-- `.wiki/pages/data-governance.md`：前端真实数据治理
 - `.wiki/pages/doc-governance.md`：文档治理规范
-- `WIKI.md`：Wiki 知识库治理说明
+
+> 注：`.wiki/pages/data-governance.md` 与根目录 `WIKI.md` 已不存在，请勿引用（如需前端数据治理内容，参见 `scripts/check-front-data-boundaries.mjs` 与 `npm run check:front-data-boundaries`）。
 
 ## 当前状态
 

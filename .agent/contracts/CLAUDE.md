@@ -20,19 +20,19 @@
 - 仓库名、包名、构件名中的 `xiyu-bid-poc`、`bid-poc` 属于历史遗留。
 - 当前项目按真实 API 交付模式协作，Mock 模式已于 2026-04-30 退役（`mock.js`、`mock-adapters/`、`.env.mock` 均已删除）。
 - 如仍在其它文档或评论中看到 `frontendDemo` / `demoPersistence` / `isMockMode` 字样，视为过期表述，不代表仓库真实状态。
-- **数据库**：仅支持 MySQL 8.0。迁移脚本统一放在 `migration-mysql/` 目录（B73 基线 + V74~V1047 等活跃版本）；`migration/` 目录为历史遗留，仅含少量过渡版本。
+- **数据库**：仅支持 MySQL 8.0。迁移脚本统一放在 `migration-mysql/` 目录（B73 基线 + V74~V1081 等活跃版本）；`migration/` 目录为历史遗留，含 V111~V120 等 16 个历史文件，Flyway 配置不再读取。
 
 ### 数据库迁移规范
 
 - **迁移脚本位置**：`backend/src/main/resources/db/migration-mysql/`（活跃迁移目录）
 - **命名规范**：
   - 基线版本：`B{version}_*.sql`（如 `B73__full_schema_baseline.sql`）
-  - 增量版本：`V{version}_*.sql`（如 `V1047__add_product_line_to_knowledge_case.sql`）
+  - 增量版本：`V{version}_*.sql`（如 `V1081__remove_task_executor_role.sql`）
 - **版本号**：必须大于已有最大版本号
   - ⚠️ **严禁手动猜测或 `ls | tail` 决定版本号**，必须使用 `scripts/next-migration-version.sh` 获取
   - ⚠️ **创建前先运行 `scripts/next-migration-version.sh --reserve`** 预约版本并打印创建命令
   - ⚠️ `sync-env.sh` 早操和 `pre-push-gate.sh` 推送前会自动检测版本冲突
-- **回滚脚本**：放在 `db/rollback/` 目录，与迁移脚本版本对应
+- **回滚脚本**：放在 `backend/src/main/resources/db/rollback/migration-mysql/` 目录，与迁移脚本版本对应（回滚文件实际位于 `migration-mysql/` 子目录下，而非直接放在 `db/rollback/`）
 
 ## 推荐命令
 
@@ -93,7 +93,9 @@ npm run test:e2e
 ```bash
 cd /Users/user/xiyu/worktrees/cursor/backend
 mvn test -Dtest=<相关测试类>
+# 架构边界测试（CI 实际运行下列三类）：
 mvn test -Dtest=ArchitectureTest
+mvn test -Dtest=FPJavaArchitectureTest,MaintainabilityArchitectureTest
 mvn test
 ```
 
@@ -268,6 +270,7 @@ npm run test:e2e
 3. **环境检测**：执行 `source scripts/dev-env.sh`。
 
 ### 2. 专属资源映射表
+> 以 `scripts/dev-env.sh` 为唯一源。新增 Agent 需同步更新此表与 `dev-env.sh`。
 | Agent | 前端端口 | 后端端口 | 数据库名 | Redis DB |
 | :--- | :--- | :--- | :--- | :--- |
 | **Claude** | 1315 | 18081 | xiyu_bid_claude | 1 |
@@ -275,6 +278,10 @@ npm run test:e2e
 | **Gemini** | 1317 | 18083 | xiyu_bid_gemini | 3 |
 | **Cursor** | 1318 | 18084 | xiyu_bid_cursor | 4 |
 | **Integrator** | 1319 | 18085 | xiyu_bid_integrator | 5 |
+| **Qoder** | 1320 | 18086 | xiyu_bid_qoder | 6 |
+| **Kimi** | 1321 | 18087 | xiyu_bid_kimi | 7 |
+| **Mimo** | 1322 | 18088 | xiyu_bid_mimo | 8 |
+| **Trae** | 1323 | 18089 | xiyu_bid_trae | 9 |
 
 ### 3. 协作启动命令
 Agent 必须使用包装脚本启动，以自动适配上述隔离端口：
@@ -306,10 +313,19 @@ Agent 必须使用包装脚本启动，以自动适配上述隔离端口：
 
 永远优先修复导致门禁失败的根本问题，而不是绕过。使用绝对路径 `/usr/bin/git` 绕过同样属于违规。
 
-### 6. 自动合并 + 解除 CI/人工 merge 堵塞（2026-06 加固）
+### 6. 自动合并 + 解除 CI/人工 merge 堵塞（⚠️ 已过期，仅作历史参考）
+
+> **⚠️ 已过期（2026-06 迁移到 Gitee 后失效）**
+> 本节描述的 auto-merge workflow (`.github/workflows/auto-enable-merge-on-approved.yml`) 依赖 GitHub CLI (`gh`) 和 GitHub Token。
+> 项目当前远程仓库为 **Gitee**（`gitee.com/allinai888/bid`），Gitee 不支持 GitHub Actions 的 auto-merge 功能。
+> 该 workflow 文件首行已标注 `[STALE for Gitee]`，**不会在 Gitee CI 中执行**。
+> 本节内容仅保留作为历史设计参考；当前 PR 合并请走 Gitee 原生流程（人工点击合并或通过 Gitee API）。
+
+**历史背景**（曾用于 GitHub 远程时期）：
+
 **问题**：agent 任务多 → PR 多 → CI 队列 + 人工最后 "点一下合并" 成为瓶颈，严重影响并行开发效率。同时必须 100% 保留所有门禁（agent-locks、line-budget、架构、frontend/backend/e2e + strict up-to-date）。
 
-**已实施的解法**（不弱化任何门禁）：
+**历史解法**（不弱化任何门禁，仅在 GitHub 远程时期生效）：
 
 1. **审核通过后自动 enable auto-merge**（核心）
    - 新 workflow: `.github/workflows/auto-enable-merge-on-approved.yml`
