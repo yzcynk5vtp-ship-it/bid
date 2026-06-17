@@ -194,6 +194,7 @@ public class TenderCommandService {
         commandAccessGuard.assertCanUpdateTender(existingTender, userId);
         existingTender.setCrmOpportunityId(crmOpportunityId);
         existingTender.setCrmOpportunityName(crmOpportunityName);
+        existingTender.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.BID_SYSTEM_LINK);
         Tender updatedTender = tenderRepository.save(existingTender);
         log.info("Linked CRM opportunity {} to tender id: {}", crmOpportunityId, id);
         return tenderMapper.toDTO(updatedTender);

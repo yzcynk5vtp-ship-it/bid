@@ -80,6 +80,7 @@ public class TenderDTO {
     private String sourcePlatform;
     private String crmOpportunityId;
     private String crmOpportunityName;
+    private String evaluationSource;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime createdAt;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")

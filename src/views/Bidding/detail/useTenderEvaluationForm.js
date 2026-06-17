@@ -163,8 +163,11 @@ export function useTenderEvaluationForm(props, emit) {
   const isEditable = computed(() => props.canFill && !isSubmitted.value)
   const isReadOnly = computed(() => !isEditable.value)
 
-  const showDraftSubmitButtons = computed(() => props.canFill && !isSubmitted.value)
-  const showDecisionButtons = computed(() => props.canDecide && isSubmitted.value)
+  const isRecommendationEditable = computed(() => (props.canFill || props.canFillRecommendation) && !isSubmitted.value)
+  const isRecommendationReadOnly = computed(() => !isRecommendationEditable.value)
+
+  const showDraftSubmitButtons = computed(() => (props.canFill || props.canFillRecommendation) && !isSubmitted.value)
+  const showDecisionButtons = computed(() => (props.canDecide || props.canFillRecommendation) && isSubmitted.value)
 
   // ---- active section / collapsible panel state ----
   const activeSection = ref('basic')
@@ -217,6 +220,7 @@ export function useTenderEvaluationForm(props, emit) {
     form,
     activeSection,
     isReadOnly,
+    isRecommendationReadOnly,
     isEditable,
     showDraftSubmitButtons,
     showDecisionButtons,
