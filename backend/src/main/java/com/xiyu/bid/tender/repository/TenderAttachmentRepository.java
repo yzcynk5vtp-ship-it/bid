@@ -1,6 +1,6 @@
-package com.xiyu.bid.repository;
+package com.xiyu.bid.tender.repository;
 
-import com.xiyu.bid.entity.TenderAttachment;
+import com.xiyu.bid.tender.entity.TenderAttachment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

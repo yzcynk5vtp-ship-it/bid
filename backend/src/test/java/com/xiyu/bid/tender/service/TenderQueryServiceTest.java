@@ -3,6 +3,7 @@ package com.xiyu.bid.tender.service;
 import com.xiyu.bid.batch.repository.TenderAssignmentRecordRepository;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.repository.ProjectRepository;
+import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.tender.dto.TenderDTO;
@@ -39,10 +40,12 @@ class TenderQueryServiceTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private TenderAttachmentRepository tenderAttachmentRepository;
+    @Mock
     private TenderAssignmentRecordRepository tenderAssignmentRecordRepository;
 
     private TenderQueryService createService() {
-        return new TenderQueryService(tenderRepository, tenderMapper, accessGuard,
+        return new TenderQueryService(tenderRepository, tenderMapper, tenderAttachmentRepository, accessGuard,
                 projectRepository, userRepository, tenderAssignmentRecordRepository);
     }
 

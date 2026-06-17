@@ -6,6 +6,7 @@ import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
 import com.xiyu.bid.crm.domain.AssignmentResult;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.repository.ProjectRepository;
+import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
@@ -54,6 +55,8 @@ class TenderCommandServiceTest {
     private TenderDeduplicationService tenderDeduplicationService;
     @Mock
     private com.xiyu.bid.notification.service.NotificationApplicationService notificationAppService;
+    @Mock
+    private TenderAttachmentRepository tenderAttachmentRepository;
 
     private TenderCommandService tenderCommandService;
     private TenderMapper tenderMapper;
@@ -70,7 +73,8 @@ class TenderCommandServiceTest {
         tenderCommandService = new TenderCommandService(
                 tenderDeduplicationService, tenderRepository, projectRepository,
                 tenderMapper, accessGuard, taskService, commandAccessGuard,
-                autoAssignmentService, eventPublisher, userRepository, notificationAppService);
+                autoAssignmentService, eventPublisher, userRepository, notificationAppService,
+                tenderAttachmentRepository);
 
         tender = Tender.builder()
                 .id(1L)

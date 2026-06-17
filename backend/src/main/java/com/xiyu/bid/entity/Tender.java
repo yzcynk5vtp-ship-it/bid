@@ -1,6 +1,7 @@
 package com.xiyu.bid.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.xiyu.bid.tender.entity.TenderAttachment;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 import jakarta.persistence.Column;

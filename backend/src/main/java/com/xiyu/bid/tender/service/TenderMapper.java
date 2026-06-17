@@ -1,7 +1,7 @@
 package com.xiyu.bid.tender.service;
 
 import com.xiyu.bid.entity.Tender;
-import com.xiyu.bid.entity.TenderAttachment;
+import com.xiyu.bid.tender.entity.TenderAttachment;
 import com.xiyu.bid.tender.dto.ContactDTO;
 import com.xiyu.bid.tender.dto.TenderAttachmentDTO;
 import com.xiyu.bid.tender.dto.TenderDTO;
