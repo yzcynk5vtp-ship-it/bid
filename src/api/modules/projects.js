@@ -1,7 +1,5 @@
-// Input: httpClient, API mode config, project normalizers and demo adapters
-// Output: projectsApi - project list, detail, task decomposition, and lifecycle accessors
-// Pos: src/api/modules/ - Frontend API module layer
-// 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
+// Input: httpClient, API mode config, project normalizers and demo adapters — once updated, update this header
+// Output: projectsApi — project list, detail, task decomposition, and lifecycle accessors | Pos: src/api/modules/
 
 /**
  * 项目模块 API
@@ -17,9 +15,10 @@ function matchesProjectStatus(projectStatus, filterStatus) {
 
 function applyProjectFilters(projects, params = {}) {
   return projects.filter((project) => {
-    const status = params.bidStatus || params.status
-    if (status && !matchesProjectStatus(project.bidStatus || project.status, status)) return false
-    if (params.stage && !matchesProjectStatus(project.stage, params.stage)) return false
+    const statusArr = [].concat(params.bidStatus || params.status || []).filter(Boolean)
+    if (statusArr.length && !statusArr.some(s => matchesProjectStatus(project.bidStatus || project.status, s))) return false
+    const stageArr = [].concat(params.stage || []).filter(Boolean)
+    if (stageArr.length && !stageArr.some(s => matchesProjectStatus(project.stage, s))) return false
 
     if (params.managerId && String(project.managerId) !== String(params.managerId)) {
       return false
