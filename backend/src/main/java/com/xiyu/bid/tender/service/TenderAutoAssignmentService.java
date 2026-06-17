@@ -90,16 +90,16 @@ public class TenderAutoAssignmentService {
      * 根据标讯创建后自动尝试分配.
      *
      * <p>此方法应在标讯保存后调用。
-     * 分配成功后更新标讯状态为 TRACKING。
+     * 分配成功后由调用方更新标讯状态为 TRACKING。
      *
      * @param tender 标讯实体（已保存，带 ID）
-     * @return true 成功匹配并分配，false 保持 PENDING_ASSIGNMENT
+     * @return 分配结果；{@code isMatched()} 为 true 表示成功匹配并分配
      */
     @Transactional
-    public boolean autoAssignIfPossible(final Tender tender) {
+    public AssignmentResult autoAssignIfPossible(final Tender tender) {
         if (tender == null) {
             LOG.warn("Auto-assignment skipped: tender is null");
-            return false;
+            return AssignmentResult.noMatch();
         }
 
         AssignmentResult result = tryAutoAssign(tender);
@@ -110,12 +110,11 @@ public class TenderAutoAssignmentService {
                     tender.getId(),
                     result.projectManagerName(),
                     result.projectManagerId());
-            return true;
+        } else {
+            LOG.debug("Tender {} remains PENDING (no CRM mapping)",
+                    tender.getId());
         }
-
-        LOG.debug("Tender {} remains PENDING (no CRM mapping)",
-                tender.getId());
-        return false;
+        return result;
     }
 
     private boolean hasText(final String value) {

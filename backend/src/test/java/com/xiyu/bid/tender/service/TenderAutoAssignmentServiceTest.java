@@ -122,8 +122,8 @@ class TenderAutoAssignmentServiceTest {
     }
 
     @Test
-    @DisplayName("autoAssignIfPossible_匹配成功返回 true")
-    void autoAssignIfPossible_Match_ShouldReturnTrue() {
+    @DisplayName("autoAssignIfPossible_匹配成功返回 matched result")
+    void autoAssignIfPossible_Match_ShouldReturnMatchedResult() {
         CrmProjectMapping mapping = CrmProjectMapping.builder()
                 .purchaserName("上海西域采购中心")
                 .projectManagerName("王五")
@@ -132,27 +132,28 @@ class TenderAutoAssignmentServiceTest {
         when(mappingRepository.findByPurchaserName("上海西域采购中心"))
                 .thenReturn(Optional.of(mapping));
 
-        boolean result = autoAssignmentService.autoAssignIfPossible(tender);
+        AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
 
-        assertThat(result).isTrue();
+        assertThat(result.isMatched()).isTrue();
+        assertThat(result.projectManagerName()).isEqualTo("王五");
     }
 
     @Test
-    @DisplayName("autoAssignIfPossible_匹配失败返回 false")
-    void autoAssignIfPossible_NoMatch_ShouldReturnFalse() {
+    @DisplayName("autoAssignIfPossible_匹配失败返回 noMatch")
+    void autoAssignIfPossible_NoMatch_ShouldReturnNoMatch() {
         when(mappingRepository.findByPurchaserName(anyString()))
                 .thenReturn(Optional.empty());
 
-        boolean result = autoAssignmentService.autoAssignIfPossible(tender);
+        AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
 
-        assertThat(result).isFalse();
+        assertThat(result.isMatched()).isFalse();
     }
 
     @Test
-    @DisplayName("autoAssignIfPossible_tender 为空返回 false")
-    void autoAssignIfPossible_NullTender_ShouldReturnFalse() {
-        boolean result = autoAssignmentService.autoAssignIfPossible(null);
+    @DisplayName("autoAssignIfPossible_tender 为空返回 noMatch")
+    void autoAssignIfPossible_NullTender_ShouldReturnNoMatch() {
+        AssignmentResult result = autoAssignmentService.autoAssignIfPossible(null);
 
-        assertThat(result).isFalse();
+        assertThat(result.isMatched()).isFalse();
     }
 }

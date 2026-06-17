@@ -3,6 +3,7 @@ package com.xiyu.bid.tender.service;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.batch.repository.TenderAssignmentRecordRepository;
 import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
+import com.xiyu.bid.crm.domain.AssignmentResult;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
@@ -98,7 +99,7 @@ class TenderCommandServiceTest {
             saved.setId(1L);
             return saved;
         });
-        when(autoAssignmentService.autoAssignIfPossible(any(Tender.class))).thenReturn(false);
+        when(autoAssignmentService.autoAssignIfPossible(any(Tender.class))).thenReturn(AssignmentResult.noMatch());
 
         TenderDTO savedDto = tenderCommandService.createTender(tenderDTO);
 
@@ -107,34 +108,41 @@ class TenderCommandServiceTest {
     }
 
     @Test
-    @DisplayName("创建标讯 - CRM 匹配成功则状态变为 TRACKING")
-    void createTender_CrmMatch_ShouldChangeStatusToTracking() {
+    @DisplayName("创建标讯 - CRM 匹配成功则状态变为 TRACKING 并写入负责人信息")
+    void createTender_CrmMatch_ShouldChangeStatusToTrackingAndWriteAssignment() {
         when(tenderRepository.save(any(Tender.class))).thenAnswer(invocation -> {
             Tender saved = invocation.getArgument(0);
             saved.setId(1L);
             return saved;
         });
-        when(autoAssignmentService.autoAssignIfPossible(any(Tender.class))).thenReturn(true);
+        when(autoAssignmentService.autoAssignIfPossible(any(Tender.class))).thenReturn(
+                AssignmentResult.success("CRM-001", "1001", "张三", "DEPT-001", "销售部"));
 
         TenderDTO savedDto = tenderCommandService.createTender(tenderDTO);
 
         assertThat(savedDto.getStatus()).isEqualTo(Tender.Status.TRACKING);
+        assertThat(savedDto.getProjectManagerId()).isEqualTo(1001L);
+        assertThat(savedDto.getProjectManagerName()).isEqualTo("张三");
+        assertThat(savedDto.getDepartment()).isEqualTo("销售部");
         verify(tenderRepository, times(2)).save(any(Tender.class));
     }
 
     @Test
-    @DisplayName("创建标讯 - CRM 匹配失败则保持 PENDING_ASSIGNMENT")
-    void createTender_CrmNoMatch_ShouldKeepPendingAssignment() {
+    @DisplayName("创建标讯 - CRM 匹配失败则保持 PENDING_ASSIGNMENT 且不写入负责人信息")
+    void createTender_CrmNoMatch_ShouldKeepPendingAssignmentAndNotWriteAssignment() {
         when(tenderRepository.save(any(Tender.class))).thenAnswer(invocation -> {
             Tender saved = invocation.getArgument(0);
             saved.setId(1L);
             return saved;
         });
-        when(autoAssignmentService.autoAssignIfPossible(any(Tender.class))).thenReturn(false);
+        when(autoAssignmentService.autoAssignIfPossible(any(Tender.class))).thenReturn(AssignmentResult.noMatch());
 
         TenderDTO savedDto = tenderCommandService.createTender(tenderDTO);
 
         assertThat(savedDto.getStatus()).isEqualTo(Tender.Status.PENDING_ASSIGNMENT);
+        assertThat(savedDto.getProjectManagerId()).isNull();
+        assertThat(savedDto.getProjectManagerName()).isNull();
+        assertThat(savedDto.getDepartment()).isNull();
         verify(tenderRepository, times(1)).save(any(Tender.class));
     }
 
