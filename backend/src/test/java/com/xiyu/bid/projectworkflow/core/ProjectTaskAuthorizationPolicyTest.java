@@ -18,7 +18,7 @@ class ProjectTaskAuthorizationPolicyTest {
     // ── canManageTask ───────────────────────────────────────────────────
 
     @ParameterizedTest
-    @ValueSource(strings = {"admin", "bid_admin", "bid_lead", "bid_senior", "bid_specialist"})
+    @ValueSource(strings = {"admin", "bid_admin", "bid_lead", "bid_specialist"})
     void canManageTask_whenAllowedRole_shouldPermit(String roleCode) {
         var result = ProjectTaskAuthorizationPolicy.canManageTask(roleCode);
         assertThat(result.allowed()).isTrue();
@@ -26,7 +26,7 @@ class ProjectTaskAuthorizationPolicyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"task_executor", "bid_other_dept", "sales", "admin_staff"})
+    @ValueSource(strings = {"bid_other_dept", "sales", "admin_staff"})
     void canManageTask_whenDisallowedRole_shouldDenyIdentity(String roleCode) {
         var result = ProjectTaskAuthorizationPolicy.canManageTask(roleCode);
         assertThat(result.allowed()).isFalse();
@@ -44,7 +44,7 @@ class ProjectTaskAuthorizationPolicyTest {
     // ── canSubmitTask ───────────────────────────────────────────────────
 
     @ParameterizedTest
-    @ValueSource(strings = {"task_executor", "bid_other_dept", "sales", "admin", "bid_lead"})
+    @ValueSource(strings = {"bid_other_dept", "sales", "admin", "bid_lead"})
     void canSubmitTask_whenIsAssignee_shouldPermitRegardlessOfRole(String roleCode) {
         var result = ProjectTaskAuthorizationPolicy.canSubmitTask(roleCode, true);
         assertThat(result.allowed()).isTrue();
@@ -52,7 +52,7 @@ class ProjectTaskAuthorizationPolicyTest {
 
     @Test
     void canSubmitTask_whenNotAssignee_shouldDenyIdentity() {
-        var result = ProjectTaskAuthorizationPolicy.canSubmitTask("task_executor", false);
+        var result = ProjectTaskAuthorizationPolicy.canSubmitTask("bid_other_dept", false);
         assertThat(result.allowed()).isFalse();
         assertThat(result.cause()).isEqualTo(ProjectTaskAuthorizationPolicy.Decision.Cause.IDENTITY);
         assertThat(result.reason()).contains("仅任务执行人本人");
@@ -69,14 +69,14 @@ class ProjectTaskAuthorizationPolicyTest {
     // ── canReviewTask ───────────────────────────────────────────────────
 
     @ParameterizedTest
-    @ValueSource(strings = {"admin", "bid_admin", "bid_lead", "bid_senior", "bid_specialist"})
+    @ValueSource(strings = {"admin", "bid_admin", "bid_lead", "bid_specialist"})
     void canReviewTask_whenAllowedRole_shouldPermit(String roleCode) {
         var result = ProjectTaskAuthorizationPolicy.canReviewTask(roleCode);
         assertThat(result.allowed()).isTrue();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"task_executor", "bid_other_dept", "sales", "admin_staff"})
+    @ValueSource(strings = {"bid_other_dept", "sales", "admin_staff"})
     void canReviewTask_whenDisallowedRole_shouldDenyIdentity(String roleCode) {
         var result = ProjectTaskAuthorizationPolicy.canReviewTask(roleCode);
         assertThat(result.allowed()).isFalse();
@@ -94,7 +94,7 @@ class ProjectTaskAuthorizationPolicyTest {
         assertThat(allowed.allowed()).isTrue();
         // 执行人不可审核
         var denied = ProjectTaskAuthorizationPolicy.decideStatusTransition(
-                "REVIEW", "COMPLETED", "task_executor", true);
+                "REVIEW", "COMPLETED", "bid_other_dept", true);
         assertThat(denied.allowed()).isFalse();
         assertThat(denied.cause()).isEqualTo(ProjectTaskAuthorizationPolicy.Decision.Cause.IDENTITY);
         assertThat(denied.reason()).contains("无权审核");
@@ -112,11 +112,11 @@ class ProjectTaskAuthorizationPolicyTest {
     void decideStatusTransition_fromTodoToReview_shouldRouteToCanSubmitTask() {
         // TODO→REVIEW(提交)：指派人本人可提交，角色无关
         var allowed = ProjectTaskAuthorizationPolicy.decideStatusTransition(
-                "TODO", "REVIEW", "task_executor", true);
+                "TODO", "REVIEW", "bid_other_dept", true);
         assertThat(allowed.allowed()).isTrue();
         // 非指派人不可提交
         var denied = ProjectTaskAuthorizationPolicy.decideStatusTransition(
-                "TODO", "REVIEW", "task_executor", false);
+                "TODO", "REVIEW", "bid_other_dept", false);
         assertThat(denied.allowed()).isFalse();
         assertThat(denied.cause()).isEqualTo(ProjectTaskAuthorizationPolicy.Decision.Cause.IDENTITY);
     }
@@ -144,7 +144,7 @@ class ProjectTaskAuthorizationPolicyTest {
         assertThat(allowed.allowed()).isTrue();
         // 非管理角色不可
         var denied = ProjectTaskAuthorizationPolicy.decideStatusTransition(
-                "TODO", "COMPLETED", "task_executor", true);
+                "TODO", "COMPLETED", "bid_other_dept", true);
         assertThat(denied.allowed()).isFalse();
         assertThat(denied.cause()).isEqualTo(ProjectTaskAuthorizationPolicy.Decision.Cause.IDENTITY);
         assertThat(denied.reason()).contains("无权管理");

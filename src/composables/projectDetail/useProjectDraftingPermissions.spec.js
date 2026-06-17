@@ -14,7 +14,6 @@ function resolveDraftingRoleGroup(role) {
   if (role === 'bid_admin' || role === 'bid_lead' || role === 'bid_senior') return 'admin_lead'
   if (role === 'sales') return 'lead_assist'
   if (role === 'auditor') return 'auditor'
-  if (role === 'task_executor') return 'executor'
   return null
 }
 
@@ -38,7 +37,6 @@ describe('resolveDraftingRoleGroup', () => {
     ['bid_senior', 'admin_lead'],
     ['sales', 'lead_assist'],
     ['auditor', 'auditor'],
-    ['task_executor', 'executor'],
     ['admin', null],
     ['manager', null],
     ['staff', null],
@@ -58,7 +56,6 @@ describe('canSubmitBid — 提交投标权限', () => {
     ['bid_senior', true],
     ['sales', true],
     ['auditor', false],
-    ['task_executor', false],
     ['staff', false],
     ['manager', false],
     ['admin', false],
@@ -77,7 +74,6 @@ describe('canReviewBid — 审核投标权限', () => {
     ['bid_lead', false],
     ['bid_senior', false],
     ['sales', false],
-    ['task_executor', false],
     ['staff', false],
     ['manager', false],
     ['admin', false],
@@ -93,7 +89,6 @@ describe('canSubmitBidForReview — 提交投标审核权限', () => {
     ['bid_lead', false],
     ['bid_senior', false],
     ['auditor', false],
-    ['task_executor', false],
     ['staff', false],
     ['manager', false],
   ])('角色 %s → canSubmitBidForReview=%s', (role, expected) => {

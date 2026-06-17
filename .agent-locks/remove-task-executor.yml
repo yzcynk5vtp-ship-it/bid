@@ -1,0 +1,15 @@
+version: 1
+task: "remove-task-executor"
+locks:
+  - path: "backend/src/main/resources/db/migration-mysql/V1081__remove_task_executor_role.sql"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/mimo/remove-task-executor"
+    expiresAt: "2026-06-18T12:00:00.000Z"
+    reason: "Deleting task_executor role from database"
+  - path: "backend/src/main/resources/db/rollback/migration-mysql/U1081__remove_task_executor_role.sql"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/mimo/remove-task-executor"
+    expiresAt: "2026-06-18T12:00:00.000Z"
+    reason: "Rollback script for task_executor role deletion"

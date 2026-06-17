@@ -158,7 +158,7 @@ class TenderEditPermissionPolicyTest {
         }
 
         // 无编辑权限角色
-        for (String role : new String[]{"bid_specialist", "task_executor", "admin_staff"}) {
+        for (String role : new String[]{"bid_specialist", "admin_staff"}) {
             for (Tender.Status status : Tender.Status.values()) {
                 builder.add(args(role, status, Ownership.SELF_CREATOR, false));
             }
@@ -193,7 +193,7 @@ class TenderEditPermissionPolicyTest {
         }
 
         // 无删除权限角色
-        for (String role : new String[]{"bid_specialist", "task_executor", "admin_staff"}) {
+        for (String role : new String[]{"bid_specialist", "admin_staff"}) {
             for (Tender.Status status : Tender.Status.values()) {
                 builder.add(args(role, status, Ownership.SELF_CREATOR, false));
             }

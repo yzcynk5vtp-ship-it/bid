@@ -75,7 +75,8 @@ class ResponsibilityArchitectureTest {
         "com.xiyu.bid.project.service.ProjectClosureService",
         "com.xiyu.bid.settings.service.SettingsService",
         "com.xiyu.bid.tender.controller.TenderController",
-        "com.xiyu.bid.tender.service.TenderCommandService"
+        "com.xiyu.bid.tender.service.TenderCommandService",
+        "com.xiyu.bid.tender.service.TenderMapper"
     );
 
     // ── FP-Java: Core isolation patterns ──

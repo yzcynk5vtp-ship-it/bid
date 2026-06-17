@@ -19,7 +19,6 @@ enum MarginQueryRole {
     MANAGER((pa, pi) -> ""),
     STAFF(MarginQueryRole::staffFragment),
     BID_SPECIALIST(MarginQueryRole::staffFragment),
-    TASK_EXECUTOR(MarginQueryRole::staffFragment),
     SALES(MarginQueryRole::ownerFragment),
     BID_LEAD(MarginQueryRole::ownerFragment),
     UNKNOWN(MarginQueryRole::staffFragment);

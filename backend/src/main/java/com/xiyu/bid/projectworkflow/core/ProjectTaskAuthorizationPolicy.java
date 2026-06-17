@@ -13,7 +13,7 @@ import com.xiyu.bid.entity.RoleProfileCatalog;
  * <p>角色口径（对齐审计 F1）：</p>
  * <ul>
  *   <li>管理/审核任务：{@code admin}/{@code bid_admin}/{@code bid_lead}/{@code bid_senior}/{@code bid_specialist}</li>
- *   <li>提交任务/上传交付物：任务执行人本人（角色无关，含 {@code task_executor}/{@code bid_other_dept}/{@code sales}/{@code admin}）</li>
+ *   <li>提交任务/上传交付物：任务执行人本人（角色无关，含 {@code bid_other_dept}/{@code sales}/{@code admin}）</li>
  * </ul>
  */
 public final class ProjectTaskAuthorizationPolicy {

@@ -26,7 +26,6 @@
  * - bid_admin  → 投标管理员（蓝图"投标管理员/组长"）
  * - bid_lead   → 投标组长（蓝图"投标管理员/组长"）
  * - sales      → 投标负责人（蓝图"投标负责人/辅助人"）
- * - task_executor → 任务执行人（蓝图"任务执行人"）
  * - auditor    → 审核人（蓝图"审核人"）
  * - 其他（admin, manager, staff 等）→ 默认可见页面，但无特殊操作权限
  */
@@ -41,7 +40,6 @@ function resolveDraftingRoleGroup(role) {
   if (role === 'bid_admin' || role === 'bid_lead' || role === 'bid_senior') return 'admin_lead'
   if (role === 'sales') return 'lead_assist'       // 投标负责人 / 辅助人
   if (role === 'auditor') return 'auditor'         // 审核人
-  if (role === 'task_executor') return 'executor'  // 任务执行人
   return null
 }
 
