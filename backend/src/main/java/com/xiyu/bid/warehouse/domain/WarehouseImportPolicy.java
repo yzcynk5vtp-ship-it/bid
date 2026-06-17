@@ -57,17 +57,13 @@ public class WarehouseImportPolicy {
     private WarehouseImportPolicy() {
     }
 
-    /**
-     * 净化仓库名称：将特殊字符（/ \ : * ? " < > |）替换为下划线。
-     */
+    /** 净化仓库名称：将特殊字符（/ \ : * ? " < > |）替换为下划线。 */
     public static String sanitizeWarehouseName(String name) {
         if (name == null) return "";
         return SPECIAL_CHARS.matcher(name).replaceAll("_").trim();
     }
 
-    /**
-     * 校验表头是否符合模板定义。
-     */
+    /** 校验表头：使用规范化匹配（忽略空格、全角/半角差异、大小写、末尾 * 标记）。 */
     public static List<String> validateHeader(String[] actualHeader) {
         List<String> errors = new ArrayList<>();
         if (actualHeader == null || actualHeader.length < EXPECTED_COL_COUNT) {
@@ -75,19 +71,23 @@ public class WarehouseImportPolicy {
             return errors;
         }
         for (int i = 0; i < EXPECTED_COL_COUNT; i++) {
-            String expected = TEMPLATE_HEADERS[i];
-            String actual = actualHeader[i] == null ? "" : actualHeader[i].trim();
-            if (!expected.equals(actual)) {
-                errors.add("第 " + (i + 1) + " 列表头不匹配：期望 \"" + expected + "\"，实际 \"" + actual + "\"");
+            if (!normalizeHeader(TEMPLATE_HEADERS[i]).equals(normalizeHeader(actualHeader[i]))) {
+                errors.add("第 " + (i + 1) + " 列表头不匹配：期望 \"" + TEMPLATE_HEADERS[i] + "\"，实际 \"" + actualHeader[i] + "\"");
             }
         }
         return errors;
     }
 
-    /**
-     * 将 Excel 行解析为校验后的仓库草稿 + 校验错误列表。
-     * 全部失败信息以值返回，不抛业务异常。
-     */
+    /** 规范化：去空格、全角→半角、转小写、去除末尾 *。 */
+    static String normalizeHeader(String raw) {
+        if (raw == null) return "";
+        String s = raw.trim().replace('（', '(').replace('）', ')')
+             .replace('：', ':').replace('，', ',').replace('、', ',')
+             .replace('；', ';').replace('！', '!').replace('？', '?');
+        return s.replaceAll("\\*+$", "").toLowerCase();
+    }
+
+    /** 将 Excel 行解析为校验后的仓库草稿 + 校验错误列表（全部以值返回，不抛异常）。 */
     public static ParsedRow parseRow(int rowIndex, String[] cells) {
         List<String> errors = new ArrayList<>();
         ParsedRow result = new ParsedRow();

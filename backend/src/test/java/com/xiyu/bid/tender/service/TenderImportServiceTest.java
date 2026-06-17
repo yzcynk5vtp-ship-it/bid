@@ -188,6 +188,35 @@ class TenderImportServiceTest {
     }
 
     @Test
+    @DisplayName("normalizeHeader 忽略空格、全角符号、大小写和末尾 * 标记")
+    void normalizeHeaderHandlesCommonVariants() {
+        assertThat(TenderImportService.normalizeHeader("  项目名称*  ")).isEqualTo("项目名称");
+        assertThat(TenderImportService.normalizeHeader("项目名称")).isEqualTo("项目名称");
+        assertThat(TenderImportService.normalizeHeader("项目名称***")).isEqualTo("项目名称");
+        assertThat(TenderImportService.normalizeHeader("项目 名称")).isEqualTo("项目 名称");
+        assertThat(TenderImportService.normalizeHeader("联系人1（手机）")).isEqualTo("联系人1(手机)");
+        assertThat(TenderImportService.normalizeHeader("CONTACT_NAME")).isEqualTo("contact_name");
+    }
+
+    @Test
+    @DisplayName("表头含全角括号或多余空格应被容忍")
+    void headerWithFullWidthCharsIsAccepted() throws Exception {
+        when(validator.validate(any(TenderRequest.class))).thenReturn(Collections.emptySet());
+        when(tenderMapper.toDTO(any(TenderRequest.class))).thenReturn(new TenderDTO());
+
+        String[] relaxedHeaders = new String[TenderImportService.HEADERS.length];
+        for (int i = 0; i < relaxedHeaders.length; i++) {
+            relaxedHeaders[i] = TenderImportService.HEADERS[i].replace("(", "（").replace(")", "）") + " ";
+        }
+        byte[] bytes = buildWorkbookWithHeaders(relaxedHeaders, new String[][]{exampleRow()});
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "import.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes);
+
+        TenderImportResultDTO result = service.importFromExcel(file, 1L);
+        assertThat(result.getSuccessCount()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("全部行合法时应当依次创建并返回成功汇总")
     void allValidRowsAreImported() throws Exception {
         when(validator.validate(any(TenderRequest.class))).thenReturn(Collections.emptySet());
