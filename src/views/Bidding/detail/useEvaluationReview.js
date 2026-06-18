@@ -45,7 +45,22 @@ export function useEvaluationReview(tenderRef) {
     try {
       const result = await tendersApi.loadEvaluation(id)
       if (result?.success !== false) {
-        tenderEvaluation.value = result?.data || null
+        const evalData = result?.data || null
+        // 同步加载评估表附件列表（附件存储在 project_documents 表，独立于 evaluation 接口）
+        if (evalData) {
+          try {
+            const docsResult = await tendersApi.getEvaluationDocuments(id)
+            if (docsResult?.success !== false) {
+              const docs = docsResult?.data || []
+              // 填充到 evaluationBasic.projectPlanGapFiles，供 ProjectPlanGapUpload 组件回显
+              if (!evalData.evaluationBasic) evalData.evaluationBasic = {}
+              evalData.evaluationBasic.projectPlanGapFiles = docs
+            }
+          } catch (e) {
+            console.warn('getEvaluationDocuments failed:', e?.message || e)
+          }
+        }
+        tenderEvaluation.value = evalData
         hasUnsavedChanges.value = false
       }
     } catch (e) {
