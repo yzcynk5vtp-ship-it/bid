@@ -61,12 +61,12 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="标讯描述">
-              <el-input :model-value="tender.description || '-'" type="textarea" :rows="3" readonly />
+              <el-input :model-value="tender.description || '-'" type="textarea" :autosize="{ minRows: 3, maxRows: 10 }" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="24">
             <el-form-item label="标讯信息">
-              <el-input :model-value="tender.tenderInfo || '-'" type="textarea" :rows="3" readonly />
+              <el-input :model-value="tender.tenderInfo || '-'" type="textarea" :autosize="{ minRows: 3, maxRows: 10 }" readonly />
             </el-form-item>
           </el-col>
           <el-col :span="24">
