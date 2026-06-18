@@ -208,7 +208,7 @@ const regionCascaderValue = computed({
     const v = form.value.region
     if (!v) return null
     for (const province of chinaRegionOptions) {
-      if (province.name === v) return [v]
+      if (province.name === v || province.name === v + '市' || province.name === v + '省') return [province.name]
       if (province.children) {
         for (const city of province.children) {
           if (v === province.name + city.name) return [province.name, city.name]
