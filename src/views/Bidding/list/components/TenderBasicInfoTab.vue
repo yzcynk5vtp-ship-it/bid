@@ -132,7 +132,7 @@ const regionCascaderValue = computed({
     const v = props.form.region
     if (!v) return null
     for (const province of chinaRegionOptions) {
-      if (province.name === v) return [v]
+      if (province.name === v || province.name === v + '市' || province.name === v + '省' || province.name === v + '自治区') return [province.name]
       if (province.children) {
         for (const city of province.children) {
           if (v === province.name + city.name) return [province.name, city.name]
