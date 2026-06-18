@@ -1,6 +1,8 @@
 package com.xiyu.bid.integration.external;
 
 import com.xiyu.bid.tender.dto.ContactDTO;
+import com.xiyu.bid.tender.dto.EvaluationBasicDTO;
+import com.xiyu.bid.tender.dto.EvaluationRecommendationDTO;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
@@ -13,6 +15,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 外部系统推送标讯请求 DTO（接口规范 v2.0）。
@@ -88,6 +91,11 @@ public class TenderPushRequest {
     @Size(max = 5000)
     private String contentDesc;
 
+    // ── 项目评估（v3.1 新增）─────────────────────────────────────────
+
+    /** 项目评估数据 */
+    private EvaluationUpdate evaluation;
+
     /** 标讯信息（最长 5000 字符） */
     @Size(max = 5000)
     private String tenderInfo;
@@ -114,6 +122,16 @@ public class TenderPushRequest {
 
     /** CRM 商机 ID（传入后自动关联商机并分配项目负责人）。 */
     private String crmId;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EvaluationUpdate {
+        private EvaluationBasicDTO evaluationBasic;
+        private List<Map<String, Object>> evaluationCustomerInfos;
+        private EvaluationRecommendationDTO evaluationRecommendation;
+    }
 
     @Data
     @Builder

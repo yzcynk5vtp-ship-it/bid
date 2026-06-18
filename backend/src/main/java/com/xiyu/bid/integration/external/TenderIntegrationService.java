@@ -60,6 +60,9 @@ public class TenderIntegrationService {
                         }
                         crmTenderLinkService.linkIfPresent(existing, request.getCrmId());
                         Tender saved = tenderRepository.save(existing);
+                        if (request.getEvaluation() != null) {
+                            saveEvaluation(saved.getId(), request.getEvaluation());
+                        }
                         log.info("Force-updated tender id={} externalId={}", saved.getId(), externalId);
                         return TenderPushResponse.builder()
                                 .tenderId(saved.getId())
@@ -81,6 +84,9 @@ public class TenderIntegrationService {
                     }
                     crmTenderLinkService.linkIfPresent(tender, request.getCrmId());
                     Tender saved = tenderRepository.save(tender);
+                    if (request.getEvaluation() != null) {
+                        saveEvaluation(saved.getId(), request.getEvaluation());
+                    }
                     log.info("Created tender id={} externalId={}", saved.getId(), externalId);
                     return TenderPushResponse.builder()
                             .tenderId(saved.getId())
@@ -357,6 +363,17 @@ public class TenderIntegrationService {
     }
     /** 保存评估数据（新增或覆盖更新）。 */
     private void saveEvaluation(Long tenderId, TenderUpdateRequest.EvaluationUpdate eval) {
+        saveEvaluationInternal(tenderId, eval.getEvaluationBasic(), eval.getEvaluationCustomerInfos(), eval.getEvaluationRecommendation());
+    }
+
+    /** 保存评估数据（创建路径复用）。 */
+    private void saveEvaluation(Long tenderId, TenderPushRequest.EvaluationUpdate eval) {
+        saveEvaluationInternal(tenderId, eval.getEvaluationBasic(), eval.getEvaluationCustomerInfos(), eval.getEvaluationRecommendation());
+    }
+
+    private void saveEvaluationInternal(Long tenderId, EvaluationBasicDTO evaluationBasic,
+                                        List<Map<String, Object>> evaluationCustomerInfos,
+                                        EvaluationRecommendationDTO evaluationRecommendation) {
         TenderEvaluation evalEntity = tenderEvaluationRepository.findByTenderId(tenderId)
                 .orElseGet(() -> {
                     TenderEvaluation ne = new TenderEvaluation();
@@ -367,8 +384,8 @@ public class TenderIntegrationService {
                     return ne;
                 });
         // 基础信息段
-        if (eval.getEvaluationBasic() != null) {
-            EvaluationBasicDTO b = eval.getEvaluationBasic();
+        if (evaluationBasic != null) {
+            EvaluationBasicDTO b = evaluationBasic;
             TenderEvaluationBasic basic = evalEntity.getBasic();
             if (basic == null) {
                 basic = new TenderEvaluationBasic();
@@ -387,7 +404,7 @@ public class TenderIntegrationService {
         }
 
         // 客户信息段（展平格式 → EAV）
-        if (eval.getEvaluationCustomerInfos() != null) {
+        if (evaluationCustomerInfos != null) {
             // 关键修复：必须确保旧行先从数据库 DELETE，再 INSERT 新行。
             // Hibernate 默认 flush 顺序是 INSERT-before-DELETE（JPA 规范），
             // 如果 clear() 和 add() 在同一事务内，INSERT 新行时旧行仍在数据库中，
@@ -403,7 +420,7 @@ public class TenderIntegrationService {
                 tenderEvaluationRepository.saveAndFlush(evalEntity);
             }
             int roleIndex = 1;
-            for (Map<String, Object> roleData : eval.getEvaluationCustomerInfos()) {
+            for (Map<String, Object> roleData : evaluationCustomerInfos) {
                 String roleKey = (String) roleData.get("roleKey");
                 if (roleKey == null || roleKey.isBlank()) {
                     roleKey = "EXTERNAL_ROLE_" + roleIndex;
@@ -423,8 +440,8 @@ public class TenderIntegrationService {
         }
 
         // 投标负责人建议段
-        if (eval.getEvaluationRecommendation() != null) {
-            EvaluationRecommendationDTO r = eval.getEvaluationRecommendation();
+        if (evaluationRecommendation != null) {
+            EvaluationRecommendationDTO r = evaluationRecommendation;
             TenderEvaluationRecommendation rec = evalEntity.getRecommendation();
             if (rec == null) {
                 rec = new TenderEvaluationRecommendation();
