@@ -388,12 +388,20 @@ public class TenderIntegrationService {
 
         // 客户信息段（展平格式 → EAV）
         if (eval.getEvaluationCustomerInfos() != null) {
-            // 删除旧数据并清空关联，避免 Hibernate 持久化上下文残留导致 save 失败
-            if (evalEntity.getCustomerInfos() != null) {
-                customerInfoRepository.deleteAll(evalEntity.getCustomerInfos());
-                evalEntity.getCustomerInfos().clear();
+            // 关键修复：必须确保旧行先从数据库 DELETE，再 INSERT 新行。
+            // Hibernate 默认 flush 顺序是 INSERT-before-DELETE（JPA 规范），
+            // 如果 clear() 和 add() 在同一事务内，INSERT 新行时旧行仍在数据库中，
+            // 会撞 uk_eval_role_info (evaluation_id, role_key, info_key) 唯一约束 → 500。
+            // 这是 PR784/PR785 修复不彻底的根因。
+            // 修复方案：clear() 触发 orphanRemoval 后立即 saveAndFlush 执行 DELETE SQL，
+            // 然后再 add 新行并 save 执行 INSERT SQL。
+            if (evalEntity.getCustomerInfos() == null) {
+                evalEntity.setCustomerInfos(new ArrayList<>());
             }
-            List<TenderEvaluationCustomerInfo> newRows = new ArrayList<>();
+            if (!evalEntity.getCustomerInfos().isEmpty()) {
+                evalEntity.getCustomerInfos().clear();
+                tenderEvaluationRepository.saveAndFlush(evalEntity);
+            }
             int roleIndex = 1;
             for (Map<String, Object> roleData : eval.getEvaluationCustomerInfos()) {
                 String roleKey = (String) roleData.get("roleKey");
@@ -409,10 +417,9 @@ public class TenderIntegrationService {
                     row.setInfoKey(entry.getKey());
                     row.setCellValue(entry.getValue().toString());
                     row.setValueType(TenderEvaluationCustomerInfo.ValueType.TEXT);
-                    newRows.add(row);
+                    evalEntity.getCustomerInfos().add(row);
                 }
             }
-            evalEntity.setCustomerInfos(newRows);
         }
 
         // 投标负责人建议段
