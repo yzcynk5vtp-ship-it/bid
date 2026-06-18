@@ -69,7 +69,7 @@
             <el-input
               v-model="form.recommendation.reason"
               type="textarea"
-              :rows="4"
+              :autosize="{ minRows: 4, maxRows: 10 }"
               placeholder="请填写理由（选择不投标时必填）"
               maxlength="5000"
               :readonly="isRecommendationReadOnly"

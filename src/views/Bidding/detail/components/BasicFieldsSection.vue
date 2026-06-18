@@ -59,7 +59,7 @@
         <el-input
           v-model="localBasic.unfavorableItems"
           type="textarea"
-          :rows="3"
+          :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写招标文件中的不利项"
           maxlength="5000"
           :disabled="disabled"
@@ -74,7 +74,7 @@
         <el-input
           v-model="localBasic.riskAssessment"
           type="textarea"
-          :rows="3"
+          :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写风险预判"
           maxlength="5000"
           :disabled="disabled"
@@ -99,7 +99,7 @@
         <el-input
           v-model="localBasic.processKnowledge"
           type="textarea"
-          :rows="3"
+          :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写对评标流程的了解程度"
           maxlength="5000"
           :disabled="disabled"
@@ -113,7 +113,7 @@
         <el-input
           v-model="localBasic.supportNotes"
           type="textarea"
-          :rows="3"
+          :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写需要的支持及备注"
           maxlength="5000"
           :disabled="disabled"

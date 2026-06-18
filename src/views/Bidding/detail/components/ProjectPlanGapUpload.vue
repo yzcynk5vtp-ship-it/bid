@@ -3,7 +3,7 @@
     <el-input
       v-model="localGap"
       type="textarea"
-      :rows="3"
+      :autosize="{ minRows: 3, maxRows: 10 }"
       placeholder="请填写项目计划差距（可选）"
       maxlength="5000"
       :disabled="disabled"
