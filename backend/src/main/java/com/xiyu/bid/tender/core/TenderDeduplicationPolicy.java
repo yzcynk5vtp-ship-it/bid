@@ -1,12 +1,15 @@
 package com.xiyu.bid.tender.core;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
 /**
  * 标讯去重策略（纯核心）。
  * 判断逻辑：招标主体 + 报名截止时间 + 开标时间 三字段完全匹配。
  * 任何一方招标主体为 null 或空白时直接返回 false（缺乏足够匹配信息）。
+ * 时间比较截断到秒：前端时间选择器精确到分钟，数据库中不同字段可能保存为
+ * DATETIME / DATETIME(6) 等不同精度，秒以下差异不应影响业务去重判定。
  * 不依赖任何外部资源。
  */
 public final class TenderDeduplicationPolicy {
@@ -36,8 +39,12 @@ public final class TenderDeduplicationPolicy {
             return false;
         }
         return normalize(purchaser1).equalsIgnoreCase(normalize(purchaser2))
-                && Objects.equals(regDeadline1, regDeadline2)
-                && Objects.equals(bidOpenTime1, bidOpenTime2);
+                && Objects.equals(truncateToSeconds(regDeadline1), truncateToSeconds(regDeadline2))
+                && Objects.equals(truncateToSeconds(bidOpenTime1), truncateToSeconds(bidOpenTime2));
+    }
+
+    private static LocalDateTime truncateToSeconds(LocalDateTime value) {
+        return value.truncatedTo(ChronoUnit.SECONDS);
     }
 
     /**
