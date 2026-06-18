@@ -49,14 +49,25 @@ export function useBiddingDetailPage() {
     }
   }
 
+  // CO-258: tender deleted → NOT_FOUND state, render empty state instead of white screen
+  const tenderNotFound = ref(false)
+
   const loadTenderDetail = async () => {
     const tenderId = route.params.id
     try {
       const result = await tendersApi.getDetail(tenderId)
       if (!result?.success) throw new Error(result?.msg || '获取标讯详情失败')
       tender.value = result.data
+      tenderNotFound.value = false
       await loadMatchScore(tenderId)
-    } catch (error) { ElMessage.error(error?.message || '网络请求失败，请稍后重试') }
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        tender.value = null
+        tenderNotFound.value = true
+        return
+      }
+      ElMessage.error(error?.message || '网络请求失败，请稍后重试')
+    }
   }
 
   // @@ACTIONS: participate / abandon / viewOriginal
@@ -141,6 +152,7 @@ export function useBiddingDetailPage() {
 
   return {
     tender, matchScore,
+    tenderNotFound,
     matchScoreState, scoreEmptyText, scoreEmptyDescription,
     regionMeta, industryMeta, deadlineParts,
     getScoreClass, getStatusType, getStatusText, getDeadlineClass,
