@@ -8,6 +8,8 @@ import com.xiyu.bid.notification.outbound.infrastructure.NotificationDeliveryTas
 import com.xiyu.bid.notification.outbound.infrastructure.NotificationDeliveryTaskStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -17,7 +19,8 @@ public class NotificationDeliveryTaskListener {
     private final NotificationDeliveryTaskRepository taskRepository;
     private final ObjectMapper objectMapper;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onNotificationCreated(NotificationCreatedEvent event) {
         for (Long recipientUserId : event.recipientUserIds()) {
             NotificationDeliveryCommand command = NotificationDeliveryCommand.fromEvent(event, recipientUserId);
