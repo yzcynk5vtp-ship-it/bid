@@ -54,3 +54,110 @@
 
 - [crm-field-mapping.md](./crm-field-mapping.md) — 字段映射与查询策略说明
 - [西域CRM商机对接接口.md](../integration/西域CRM商机对接接口.md) — CRM 接口规范
+
+---
+
+## 9. CRM 商机字段映射错位导致评估表数据错乱（CO-262 / PR795）
+
+> 来源：2026-06-18 CO-262 CRM 商机关联投标评估表字段映射错误事故复盘（PR795）
+> 适用范围：所有 CRM 商机字段映射到投标评估表的场景
+
+### 事故一句话总结
+
+CRM 商机关联投标评估表时，`useCrmOpportunitySelector.js` 把 CRM 字段映射到错误的评估表字段：风险预判填了商机备注、支持备注为空、投标建议理由填了风险预判、GAP 附件未回填。
+
+### 根因：字段映射逻辑错位
+
+```javascript
+// ❌ 错误映射（PR795 修复前）
+basic: {
+  riskAssessment: chance.remark || '',           // 风险预判 ← 商机备注（错）
+  supportNotes: '',                               // 支持备注 ← 空（错）
+  projectPlanGap: chance.projectGap || '',
+  // projectPlanGapFiles 未回填（错）
+},
+recommendation: { shouldBid: !chance.backupPlan, reason: chance.riskPrediction || '' }, // 投标建议理由 ← 风险预判（错）
+
+// ✅ 正确映射（PR795 修复后）
+basic: {
+  riskAssessment: chance.riskPrediction || '',    // 风险预判 ← CRM 风险预判
+  supportNotes: chance.remark || '',              // 支持备注 ← CRM 商机备注
+  projectPlanGap: chance.projectGap || '',
+  projectPlanGapFiles: chance.gapFile ? [{ fileName: 'GAP附件', fileUrl: chance.gapFile }] : [], // GAP 附件回填
+},
+recommendation: { shouldBid: !chance.backupPlan, reason: '' }, // 投标建议理由留空给用户填
+```
+
+**关键认知**：
+- CRM 商机字段语义见 `CustomerChanceVO.java`：`riskPrediction`（风险预判）、`remark`（商机备注）、`gapFile`（GAP 附件 URL）
+- 评估表字段语义：`riskAssessment`（风险预判）、`supportNotes`（支持备注）、`projectPlanGapFiles`（GAP 附件列表）
+- 映射必须**语义对齐**，不能只看字段名是否"看起来相关"
+
+### 字段映射对照表（PR795 修正后）
+
+| 评估表字段 | CRM 商机字段 | 语义 |
+|---|---|---|
+| `basic.riskAssessment` | `chance.riskPrediction` | 风险预判 |
+| `basic.supportNotes` | `chance.remark` | 商机备注/支持备注 |
+| `basic.projectPlanGap` | `chance.projectGap` | 项目计划 GAP |
+| `basic.projectPlanGapFiles` | `chance.gapFile` | GAP 附件 URL |
+| `basic.unfavorableItems` | `chance.bidDocumentDisadvantage` | 招标文件不利项 |
+| `basic.contingencyPlan` | `chance.backupPlan` | 兜底方案 |
+| `basic.processKnowledge` | `chance.managerUnderstandProcess` | 客户经理是否了解流程 |
+| `recommendation.reason` | （留空） | 投标建议理由，由用户手动填写 |
+
+### 手动输入模式同步修复
+
+手动输入模式（非 CRM 选择）也需同步修复字段映射：
+
+```javascript
+// ❌ 错误：手动输入模式
+riskAssessment: mf.remark || '',           // 风险预判 ← 备注（错）
+supportNotes: '',                          // 支持备注 ← 空（错）
+
+// ✅ 正确：手动输入模式
+riskAssessment: mf.projectRiskText || '',  // 风险预判 ← 项目风险文本
+supportNotes: mf.remark || '',             // 支持备注 ← 备注
+projectPlanGapFiles: [],                   // 手动输入无 GAP 附件
+```
+
+### 诊断方法
+
+1. 用户反馈"评估表字段填错"或"该填的没填、不该填的填了"
+2. 检查 `useCrmOpportunitySelector.js` 的字段映射逻辑
+3. 对照 `CustomerChanceVO.java` 确认 CRM 字段语义
+4. 对照评估表 DTO 确认目标字段语义
+5. 验证映射是否语义对齐
+
+### 通用规则：字段映射必须语义对齐
+
+1. **不能只看字段名**：`remark`（备注）不等于 `riskPrediction`（风险预判）
+2. **必须对照源头定义**：CRM 字段语义以 `CustomerChanceVO.java` 为准，不能凭猜测
+3. **留空字段要显式**：如 `recommendation.reason` 留空给用户填，必须显式写 `reason: ''`，不能映射到其他字段
+4. **附件字段要回填**：`projectPlanGapFiles` 必须从 `chance.gapFile` 回填，不能遗漏
+
+### 测试验证
+
+修复后新增 2 个测试用例到 `useCrmOpportunitySelector.spec.js`（共 6 个测试全部通过）：
+- 测试 1：CRM 选择模式字段映射验证（riskAssessment←riskPrediction, supportNotes←remark, projectPlanGapFiles←gapFile, reason 为空）
+- 测试 2：手动输入模式字段映射验证（riskAssessment←projectRiskText, supportNotes←remark）
+
+### 排查方法
+
+```bash
+# 查找 CRM 商机字段定义
+grep -rn "class CustomerChanceVO" backend/src/main/java/
+
+# 查找字段映射逻辑
+grep -rn "riskAssessment\|supportNotes\|projectPlanGapFiles" src/views/Bidding/detail/components/
+
+# 查找评估表 DTO 字段定义
+grep -rn "record EvaluationBasicDTO" backend/src/main/java/
+```
+
+## 相关文档
+
+- [crm-field-mapping.md](./crm-field-mapping.md) — 字段映射与查询策略说明
+- [西域CRM商机对接接口.md](../integration/西域CRM商机对接接口.md) — CRM 接口规范
+- [useCrmOpportunitySelector.js](../../src/views/Bidding/detail/components/useCrmOpportunitySelector.js) — 字段映射修复位置
+- [CustomerChanceVO.java](../../backend/src/main/java/com/xiyu/bid/crm/infrastructure/dto/CustomerChanceVO.java) — CRM 商机字段定义
