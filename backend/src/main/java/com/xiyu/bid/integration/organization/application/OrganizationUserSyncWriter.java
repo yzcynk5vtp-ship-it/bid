@@ -29,7 +29,7 @@ import java.util.Set;
 public class OrganizationUserSyncWriter {
     private static final String LOCKED_PASSWORD_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoOHIhi4YhML26vP7Hk1UR93E1Vda8yI9W";
 
-    /** OSS 角色码到内部角色码的映射 */
+    /** OSS 角色码到内部角色码的映射（配置文件中大小写可能不一致，查找时忽略大小写） */
     private static final java.util.Map<String, String> OSS_TO_INTERNAL_ROLE = java.util.Map.of(
         "/bidAdmin", "bid_admin",
         "bid-TeamLeader", "bid_lead",
@@ -39,6 +39,10 @@ public class OrganizationUserSyncWriter {
         "bid-administration", "admin_staff",
         "bid-otherDept", "bid_other_dept"
     );
+    private static final java.util.Map<String, String> OSS_TO_INTERNAL_ROLE_IGNORE_CASE = OSS_TO_INTERNAL_ROLE.entrySet().stream()
+            .collect(java.util.stream.Collectors.toUnmodifiableMap(
+                    e -> e.getKey().toLowerCase(Locale.ROOT),
+                    java.util.Map.Entry::getValue));
 
     private final UserRepository userRepository;
     private final OrganizationDepartmentRepository organizationDepartmentRepository;
@@ -72,9 +76,10 @@ public class OrganizationUserSyncWriter {
             }
         }
         String resolvedRoleCode = firstNonNull(personMappedRoleCode, deptMappedRoleCode, positionMappedRoleCode);
-        // 将 OSS 角色码映射为内部角色码
+        // 将 OSS 角色码映射为内部角色码（忽略大小写，防止 PositionToRoleMapper 返回小写后无法命中）
         if (resolvedRoleCode != null) {
-            resolvedRoleCode = OSS_TO_INTERNAL_ROLE.getOrDefault(resolvedRoleCode, resolvedRoleCode);
+            resolvedRoleCode = OSS_TO_INTERNAL_ROLE_IGNORE_CASE.getOrDefault(
+                    resolvedRoleCode.toLowerCase(Locale.ROOT), resolvedRoleCode);
         }
         if (properties.isSkipUnmappedUsers() && (resolvedRoleCode == null || resolvedRoleCode.isBlank())) {
             handleUnmappedUser(sourceApp, eventKey, snapshot, existingUser);
