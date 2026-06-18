@@ -2,7 +2,7 @@
 title: 工程经验总结
 space: engineering
 category: guide
-tags: [经验总结, 数据库迁移, PostgreSQL, MySQL, Flyway, 多Agent并行, 工程化护栏, Git历史]
+tags: [经验总结, 数据库迁移, PostgreSQL, MySQL, Flyway, 多Agent并行, 工程化护栏, Git历史, ArchUnit, Controller包规范]
 sources:
   - CLAUDE.md
   - RULES.md
@@ -11,7 +11,7 @@ backlinks:
   - _index
   - multi-agent-defense-playbook
 created: 2026-05-10
-updated: 2026-05-21
+updated: 2026-06-18
 health_checked: 2026-06-13
 ---
 # 工程经验总结
@@ -368,3 +368,44 @@ npm run check:front-data-boundaries      # 数据边界
 git diff origin/main..HEAD --stat        # 逐文件审查，排除泄露
 npm run agent:lock-release -- --all      # 释放非 hot-path 锁（合并前）
 ```
+
+---
+
+## 五、新增 Controller 放入根包导致 ArchitectureTest 失败（2026-06-18）
+
+> 来源：PR #792 `feat(oss-org): sync role menu permissions from OSS getUserMenuTree (#002)`
+> 分支：`agent/kimi/002-oss-menu-permission-sync`
+
+### 5.1 事故
+
+新增 `AdminRoleOssMenuSyncController` 时按直觉放在了 `com.xiyu.bid.controller` 根包下，本地业务测试全绿，但 `mvn test -Dtest=ArchitectureTest` 报错：
+
+```
+java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] -
+Rule 'root controller package should only contain whitelisted classes' was violated (1 times):
+Class <com.xiyu.bid.controller.AdminRoleOssMenuSyncController> does not match any whitelist
+```
+
+### 5.2 根因
+
+项目通过 ArchUnit 对 `com.xiyu.bid.controller` 根包做了白名单限制，只允许早期少量通用 Controller（如 `AdminRoleController`）存在。新业务能力 Controller 必须落入对应一级模块包，例如 `com.xiyu.bid.integration.organization.controller`。
+
+### 5.3 修复
+
+1. 将文件物理移动到 `backend/src/main/java/com/xiyu/bid/integration/organization/controller/`
+2. 修改 `package` 声明为 `com.xiyu.bid.integration.organization.controller`
+3. 同步更新测试文件 `AdminRoleOssMenuSyncControllerTest` 的 import
+4. 重新运行 `ArchitectureTest` 通过
+
+### 5.4 预防 Checklist
+
+- [ ] 新建 Controller 前先确认它属于哪个业务模块
+- [ ] 业务模块 Controller 统一放在 `com.xiyu.bid.<module>.controller`，不要直接放根包
+- [ ] 提交前必跑 `mvn test -Dtest=ArchitectureTest`
+- [ ] 若必须放根包，先更新 `ArchitectureTest` 白名单并经过架构评审
+
+### 5.5 经验值变更记录
+
+| 日期 | 分支 | 变更内容 |
+|------|------|----------|
+| 2026-06-18 | `agent/kimi/002-oss-menu-permission-sync` | 将 `AdminRoleOssMenuSyncController` 从根包迁移到 `integration.organization` 包，修复 ArchUnit 违规 |
