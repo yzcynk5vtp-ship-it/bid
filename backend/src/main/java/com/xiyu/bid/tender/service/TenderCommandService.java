@@ -227,11 +227,14 @@ public class TenderCommandService {
         existingTender.setCrmOpportunityId(crmOpportunityId);
         existingTender.setCrmOpportunityName(crmOpportunityName);
         existingTender.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.BID_SYSTEM_LINK);
+        // CO-268: 关联CRM商机后，将标讯状态切换为已评估
+        if (existingTender.getStatus() == com.xiyu.bid.entity.Tender.Status.TRACKING) {
+            existingTender.setStatus(com.xiyu.bid.entity.Tender.Status.EVALUATED);
+        }
         Tender updatedTender = tenderRepository.save(existingTender);
         log.info("Linked CRM opportunity {} to tender id: {}", crmOpportunityId, id);
         return tenderMapper.toDTO(updatedTender);
     }
-
     public void deleteTender(Long id, Long userId) {
         log.debug("Deleting tender with id: {}", id);
         Tender tender = tenderRepository.findById(id)
