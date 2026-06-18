@@ -144,3 +144,129 @@ grep -rn "@UniqueConstraint" backend/src/main/java/
 - [crm-integration-lessons.md](./crm-integration-lessons.md) — CRM 外部系统对接经验教训
 - [TenderIntegrationServiceEvaluationTest.java](../../backend/src/test/java/com/xiyu/bid/integration/external/TenderIntegrationServiceEvaluationTest.java) — 本次修复的测试实现
 - [TenderEvaluationCustomerInfo.java](../../backend/src/main/java/com/xiyu/bid/tender/entity/TenderEvaluationCustomerInfo.java) — 唯一约束定义位置
+
+---
+
+## 8. Lombok @Data 循环引用导致 StackOverflowError（PR794）
+
+> 来源：2026-06-18 标讯创建接口 500 事故复盘（PR794）
+> 适用范围：所有 JPA 双向关联实体使用 Lombok `@Data` 的场景
+
+### 事故一句话总结
+
+CRM 推送标讯接口 `PUT /api/integration/tenders/_/_` 报 500（"系统繁忙，请稍后重试"），根因是 `TenderEvaluation` 与 `TenderEvaluationBasic` 互相持有对方引用，且都用了 Lombok `@Data` 注解，生成的 `hashCode()` 互相调用导致无限递归。
+
+### 根因：@Data 生成的 hashCode() 在双向关联实体间无限递归
+
+```
+循环路径（服务器日志证据）：
+Caused by: java.lang.StackOverflowError: null
+  at TenderEvaluationBasic.hashCode(TenderEvaluationBasic.java:26)
+  at TenderEvaluation.hashCode(TenderEvaluation.java:41)
+  at TenderEvaluationBasic.hashCode(TenderEvaluationBasic.java:26)
+  at TenderEvaluation.hashCode(TenderEvaluation.java:41)
+  ... (无限循环)
+```
+
+**关键认知**：
+- Lombok `@Data` 等价于 `@Getter`+`@Setter`+`@EqualsAndHashCode`+`@ToString`+`@RequiredArgsConstructor`
+- `@EqualsAndHashCode` 默认包含所有字段
+- 当父实体 `TenderEvaluation` 持有子实体 `basic` 字段，子实体 `TenderEvaluationBasic` 又持有父实体 `evaluation` 字段时，`hashCode()` 互相调用形成无限递归
+- 代码注释自证：`TODO(post-V119): consider replacing @Data with @Getter`（开发者意识到但未修复）
+
+### 正确修复：@Data → @Getter+@Setter+@EqualsAndHashCode(exclude=...)
+
+```java
+// ❌ 错误：@Data 在双向关联实体上
+@Entity
+@Table(name = "tender_evaluations")
+@Data
+public class TenderEvaluation {
+    @OneToOne(mappedBy = "evaluation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private TenderEvaluationBasic basic;  // 持有子实体引用
+}
+
+@Entity
+@Table(name = "tender_evaluation_basics")
+@Data
+public class TenderEvaluationBasic {
+    @OneToOne
+    @JoinColumn(name = "evaluation_id")
+    private TenderEvaluation evaluation;  // 反向引用父实体 → 循环
+}
+
+// ✅ 正确：排除反向引用字段
+@Entity
+@Table(name = "tender_evaluations")
+@Getter
+@Setter
+@EqualsAndHashCode(exclude = {"basic", "customerInfos", "recommendation"})
+public class TenderEvaluation {
+    @OneToOne(mappedBy = "evaluation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private TenderEvaluationBasic basic;
+}
+
+@Entity
+@Table(name = "tender_evaluation_basics")
+@Getter
+@Setter
+@EqualsAndHashCode(exclude = {"evaluation"})
+public class TenderEvaluationBasic {
+    @OneToOne
+    @JoinColumn(name = "evaluation_id")
+    private TenderEvaluation evaluation;
+}
+```
+
+### 项目内所有双向关联实体都必须检查
+
+本次修复涉及 4 个实体（同属 TenderEvaluation 三段式重构）：
+- `TenderEvaluation`（父，exclude basic/customerInfos/recommendation）
+- `TenderEvaluationBasic`（子，exclude evaluation）
+- `TenderEvaluationCustomerInfo`（子，exclude evaluation）
+- `TenderEvaluationRecommendation`（子，exclude evaluation）
+
+### 诊断方法
+
+1. 服务器日志出现 `StackOverflowError` 且堆栈呈"无限循环"特征（同一组行重复出现）
+2. 堆栈中的行号对应 `hashCode()` 方法
+3. 检查实体类是否有 `@Data` + 双向关联（`@OneToOne(mappedBy=...)` 或 `@OneToMany(mappedBy=...)` + 子实体反向引用）
+
+### 通用规则
+
+任何满足以下条件的实体都是高危场景：
+1. 实体使用 Lombok `@Data`
+2. 实体间存在双向关联（父持有子引用，子持有父反向引用）
+3. 任何代码路径触发 `hashCode()` 或 `equals()`（如放入 HashSet、作为 Map key、JPA persistence context 检查）
+
+### 排查方法
+
+```bash
+# 搜索所有使用 @Data 的 JPA 实体
+grep -rn "@Data" backend/src/main/java/ --include="*.java" | xargs grep -l "@Entity"
+
+# 搜索所有双向关联（mappedBy）
+grep -rn "mappedBy" backend/src/main/java/ --include="*.java"
+
+# 交叉比对：@Data 实体 + 双向关联 = 高危场景
+```
+
+### 备选方案
+
+除了 `@EqualsAndHashCode(exclude=...)`，还可以：
+- 用 `@Getter`+`@Setter` 替代 `@Data`（不生成 `hashCode/equals`，用 Object 默认实现）
+- 用 `@ToString(exclude=...)` 同步排除反向引用字段（避免 `toString()` 也无限递归）
+
+**推荐**：`@Getter`+`@Setter`+`@EqualsAndHashCode(exclude=...)` 组合，既保留 Lombok 便利，又切断循环路径。
+
+### 测试验证
+
+修复后运行相关测试验证：
+- `TenderEvaluationServiceTest`、`TenderEvaluationSubmissionServiceTest`、`TenderEvaluationControllerTest`、`TenderEvaluationFormPolicyTest` 共 52 个测试通过
+- 架构测试 `ArchitectureTest`、`FPJavaArchitectureTest`、`MaintainabilityArchitectureTest` 共 36 个测试通过
+
+## 相关文档
+
+- [spring-boot-gotchas.md](./spring-boot-gotchas.md) — Spring Boot 陷阱（含 Bean 名冲突）
+- [TenderEvaluation.java](../../backend/src/main/java/com/xiyu/bid/tender/entity/TenderEvaluation.java) — 父实体修复位置
+- [TenderEvaluationBasic.java](../../backend/src/main/java/com/xiyu/bid/tender/entity/TenderEvaluationBasic.java) — 子实体修复位置
