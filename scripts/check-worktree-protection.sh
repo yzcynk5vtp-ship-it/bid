@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Input: 持久 Worktree 目录（/Users/user/xiyu/worktrees）下的工作树列表
+# Output: 完整性错误计数（worktree 缺失/路径异常等），非零退出码阻断 push
+# Pos: scripts/ - Git Worktree 完整性预检
+# 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 # ============================================================
 # check-worktree-protection.sh — 持久 Worktree 完整性检查
 # 在 pre-push / pre-commit 门禁中调用，防止误删 Agent Worktree
