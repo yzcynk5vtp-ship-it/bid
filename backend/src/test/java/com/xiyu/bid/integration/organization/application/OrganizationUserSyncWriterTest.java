@@ -229,6 +229,31 @@ class OrganizationUserSyncWriterTest {
         assertThat(saved.getValue().getRoleCode()).isEqualTo("bid_lead");
     }
 
+    @Test
+    @DisplayName("position mapping with camelCase OSS role code resolves to internal role ignoring case")
+    void mapPositionToRole_ossRoleCodeCaseInsensitive_resolvesToInternalRole() {
+        OrganizationIntegrationProperties properties = new OrganizationIntegrationProperties();
+        OrganizationIntegrationProperties.PositionToRoleMapping mapping = new OrganizationIntegrationProperties.PositionToRoleMapping();
+        mapping.setPositionPattern("^项目经理$");
+        mapping.setRoleCode("bid-projectLeader");
+        properties.setPositionToRoleMappings(List.of(mapping));
+        PositionToRoleMapper positionToRoleMapper = new PositionToRoleMapper(properties);
+        OrganizationUserSyncWriter projectLeaderWriter = new OrganizationUserSyncWriter(
+                userRepository, organizationDepartmentRepository, roleProfileRepository, properties, positionToRoleMapper, null);
+
+        when(userRepository.findByExternalOrgSourceAppAndExternalOrgUserId("oss", "1001")).thenReturn(Optional.empty());
+        when(roleProfileRepository.findByCodeIgnoreCase("sales")).thenReturn(Optional.of(role("sales")));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        projectLeaderWriter.upsert("oss", "event-key", new OrganizationUserSnapshot(
+                "1001", "pm001", "项目经理", "pm@example.com",
+                "13800000000", "2001", "投标项目部", "", "项目经理", true));
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertThat(saved.getValue().getRoleCode()).isEqualTo("sales");
+    }
+
     private RoleProfile role(String code) {
         RoleProfile role = new RoleProfile();
         role.setCode(code);
