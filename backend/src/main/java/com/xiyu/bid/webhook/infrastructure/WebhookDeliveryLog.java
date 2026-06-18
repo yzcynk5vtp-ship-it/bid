@@ -44,7 +44,7 @@ public class WebhookDeliveryLog {
     @Builder.Default
     private int retryCount = 0;
 
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, length = 32)
     @Builder.Default
     private String status = "PENDING";
 
