@@ -215,9 +215,10 @@ public class TenderIntegrationService {
         if (request.getAttachments() != null) {
             saveAttachments(saved.getId(), request.getAttachments());
         }
-        // 处理评估数据
-        if (request.getEvaluation() != null) {
-            saveEvaluation(saved.getId(), request.getEvaluation());
+        // 处理评估数据（有实际数据时才保存，避免空 evaluation 触发 JPA 异常）
+        TenderUpdateRequest.EvaluationUpdate eval = request.getEvaluation();
+        if (eval != null && hasEvaluationData(eval)) {
+            saveEvaluation(saved.getId(), eval);
         }
         TenderDTO dto = tenderMapper.toDTO(saved);
         dto.setContactInfo(tenderMapper.buildContacts(saved));
@@ -356,6 +357,12 @@ public class TenderIntegrationService {
         return new ArrayList<>(byRole.values());
     }
     /** 保存评估数据（新增或覆盖更新）。 */
+    private boolean hasEvaluationData(TenderUpdateRequest.EvaluationUpdate eval) {
+        return eval.getEvaluationBasic() != null
+            || (eval.getEvaluationCustomerInfos() != null && !eval.getEvaluationCustomerInfos().isEmpty())
+            || eval.getEvaluationRecommendation() != null;
+    }
+
     private void saveEvaluation(Long tenderId, TenderUpdateRequest.EvaluationUpdate eval) {
         TenderEvaluation evalEntity = tenderEvaluationRepository.findByTenderId(tenderId)
                 .orElseGet(() -> {
