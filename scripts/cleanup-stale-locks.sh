@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Input: 持久 worktree 目录列表（/Users/user/xiyu/worktrees/*）
+# Output: 删除每个 worktree 中过期的 .agent-locks 锁文件
+# Pos: scripts/ - 多 Agent 锁清理入口
+# 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 # 清理所有 worktree 中的 stale agent 锁文件
 # 用法: bash /Users/user/xiyu/worktrees/trae/scripts/cleanup-stale-locks.sh
 set -euo pipefail
