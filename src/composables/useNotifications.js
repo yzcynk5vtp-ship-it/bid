@@ -9,6 +9,7 @@
  * 在收到 429 限流响应时自动暂停轮询 60 秒
  */
 import { onMounted, onUnmounted, ref } from 'vue'
+import { notificationsApi } from '@/api/modules/notifications.js'
 import { useNotificationStore } from '@/stores/notifications'
 
 export function useNotifications(options = {}) {
@@ -27,15 +28,22 @@ export function useNotifications(options = {}) {
   const startPolling = () => {
     stopPolling()
     store.fetchUnreadCount()
-    pollingTimer.value = setInterval(() => {
+    pollingTimer.value = setInterval(async () => {
       if (backoffUntil.value > Date.now()) {
         return
       }
-      store.fetchUnreadCount().catch((err) => {
-        if (err?.response?.status === 429) {
+      try {
+        const result = await notificationsApi.getUnreadCount()
+        store.unreadCount = result.count ?? 0
+      } catch (err) {
+        const status = err?.response?.status
+        if (status === 429) {
           backoffUntil.value = Date.now() + 60000
+        } else if (status === 401 || status === 403) {
+          // 无通知权限的角色：永久停止轮询，避免控制台 403 刷屏
+          stopPolling()
         }
-      })
+      }
     }, pollingInterval)
   }
 

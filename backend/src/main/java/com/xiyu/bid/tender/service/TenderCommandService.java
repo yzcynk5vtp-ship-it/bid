@@ -9,6 +9,7 @@ import com.xiyu.bid.entity.User;
 import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.exception.ResourceNotFoundException;
+import com.xiyu.bid.exception.BusinessException;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.notification.dto.CreateNotificationRequest;
 import com.xiyu.bid.notification.service.NotificationApplicationService;
@@ -218,7 +219,7 @@ public class TenderCommandService {
     public TenderDTO linkCrmOpportunity(Long id, String crmOpportunityId, String crmOpportunityName, Long userId) {
         log.debug("Linking CRM opportunity to tender id: {}", id);
         Tender existingTender = tenderRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Tender", id.toString()));
+                .orElseThrow(() -> new BusinessException(409, "标讯已被删除，无法关联CRM商机"));
         commandAccessGuard.assertCanUpdateTender(existingTender, userId);
         existingTender.setCrmOpportunityId(crmOpportunityId);
         existingTender.setCrmOpportunityName(crmOpportunityName);

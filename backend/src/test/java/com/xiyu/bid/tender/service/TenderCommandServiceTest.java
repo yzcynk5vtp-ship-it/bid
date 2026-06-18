@@ -5,6 +5,7 @@ import com.xiyu.bid.batch.repository.TenderAssignmentRecordRepository;
 import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
 import com.xiyu.bid.crm.domain.AssignmentResult;
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.exception.BusinessException;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
 import com.xiyu.bid.repository.TenderRepository;
@@ -23,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -175,5 +177,20 @@ class TenderCommandServiceTest {
         tenderCommandService.deleteTender(1L, 1L);
 
         verify(tenderRepository).delete(tender);
+    }
+
+    @Test
+    @DisplayName("CO-258: 关联CRM商机 - 标讯不存在时抛 409 BusinessException")
+    void linkCrmOpportunity_NotFound_ThrowsBusinessException409() {
+        when(tenderRepository.findById(99L)).thenReturn(java.util.Optional.empty());
+
+        BusinessException ex = assertThrows(
+                BusinessException.class,
+                () -> tenderCommandService.linkCrmOpportunity(99L, "CRM-1", "商机-1", 1L)
+        );
+
+        assertThat(ex.getCode()).isEqualTo(409);
+        assertThat(ex.getHttpStatus().value()).isEqualTo(409);
+        verify(tenderRepository, never()).save(any(Tender.class));
     }
 }

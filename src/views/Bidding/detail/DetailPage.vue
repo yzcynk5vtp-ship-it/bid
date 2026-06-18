@@ -1,6 +1,7 @@
 <template>
   <div class="bidding-detail-page">
-    <div v-if="tender" class="detail-content">
+    <TenderNotFound v-if="tenderNotFound" />
+  <div v-else-if="tender" class="detail-content">
       <!-- 头部信息卡 -->
       <div class="detail-header-card">
         <div class="header-top-row">
@@ -194,6 +195,7 @@ const TenderEvaluationForm = defineAsyncComponent(() => import('./TenderEvaluati
 const OperationLogTimeline = defineAsyncComponent(() => import('./components/OperationLogTimeline.vue'))
 const AssignDialog = defineAsyncComponent(() => import('../list/components/AssignDialog.vue'))
 const BasicInfoReadOnly = defineAsyncComponent(() => import('./components/BasicInfoReadOnly.vue'))
+const TenderNotFound = defineAsyncComponent(() => import('./components/TenderNotFound.vue'))
 const CrmOpportunitySelector = defineAsyncComponent(() => import('./components/CrmOpportunitySelector.vue'))
 import BottomActionBar from './BottomActionBar.vue'
 import FavoriteButton from '../list/components/FavoriteButton.vue'
@@ -203,6 +205,7 @@ const userStore = useUserStore()
 const userRole = computed(() => userStore.userRole?.toLowerCase() || 'staff')
 const {
   tender,
+  tenderNotFound,
   matchScore,
   matchScoreState,
   regionMeta,
@@ -338,7 +341,13 @@ async function onCrmOpportunityLinked({ opportunityId, opportunityName, evaluati
       if (evalResult?.success !== false) tenderEvaluation.value = evalResult?.data || null
     } catch { /* ignore */ }
   } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || 'CRM关联提交失败')
+    // CO-258: 404/409 是标讯已被删除，给出单一明确提示；其他错误复用后端 msg
+    const status = e?.response?.status
+    if (status === 404 || status === 409) {
+      ElMessage.warning('该标讯已被删除，无法关联CRM商机')
+    } else {
+      ElMessage.error(e?.response?.data?.msg || 'CRM关联提交失败')
+    }
   } finally {
     crmLinking.value = false
   }
