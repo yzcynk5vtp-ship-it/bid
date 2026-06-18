@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -33,15 +35,18 @@ public class WebhookEventListener {
     @Value("${webhook.crm.url:}")
     private String crmWebhookUrl;
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onTenderStatusChanged(TenderStatusChangedEvent event) {
+        log.info("WebhookEventListener received TenderStatusChangedEvent: tenderId={}, oldStatus={}, newStatus={}, externalId={}",
+                event.tenderId(), event.oldStatus(), event.newStatus(), event.externalId());
         if (crmWebhookUrl == null || crmWebhookUrl.isBlank()) {
-            log.debug("CRM webhook URL not configured, skipping enqueue for tender {}", event.tenderId());
+            log.warn("CRM webhook URL not configured, skipping enqueue for tender {}", event.tenderId());
             return;
         }
         Integer crmStatus = mapToCrmStatus(event.newStatus());
         if (crmStatus == null) {
-            log.debug("Tender status {} not a CRM terminal state, skip webhook for tender {}",
+            log.info("Tender status {} not a CRM terminal state, skip webhook for tender {}",
                     event.newStatus(), event.tenderId());
             return;
         }
@@ -54,6 +59,8 @@ public class WebhookEventListener {
                 .payload(buildPayload(event, crmStatus))
                 .status(WebhookDeliveryTaskStatus.PENDING)
                 .build());
+        log.info("Webhook delivery task enqueued for tender {}, crmStatus={}, url={}",
+                event.tenderId(), crmStatus, crmWebhookUrl);
     }
 
     private String buildBusinessKey(TenderStatusChangedEvent event) {
