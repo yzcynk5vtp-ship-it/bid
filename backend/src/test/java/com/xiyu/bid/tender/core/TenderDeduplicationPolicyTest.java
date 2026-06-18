@@ -127,4 +127,39 @@ class TenderDeduplicationPolicyTest {
             )).isTrue();
         }
     }
+
+    @Nested
+    @DisplayName("时间精度场景")
+    class TimePrecision {
+
+        @Test
+        @DisplayName("报名截止时间秒以下精度不同应判定为重复")
+        void shouldDetectDuplicate_whenRegDeadlineSubSecondDiffers() {
+            LocalDateTime withMillis = REG_DEADLINE.plusNanos(123_000_000);
+            assertThat(TenderDeduplicationPolicy.isDuplicate(
+                    PURCHASER_A, REG_DEADLINE, BID_OPEN_TIME,
+                    PURCHASER_A, withMillis, BID_OPEN_TIME
+            )).isTrue();
+        }
+
+        @Test
+        @DisplayName("开标时间秒以下精度不同应判定为重复")
+        void shouldDetectDuplicate_whenBidOpenTimeSubSecondDiffers() {
+            LocalDateTime withMillis = BID_OPEN_TIME.plusNanos(999_000_000);
+            assertThat(TenderDeduplicationPolicy.isDuplicate(
+                    PURCHASER_A, REG_DEADLINE, BID_OPEN_TIME,
+                    PURCHASER_A, REG_DEADLINE, withMillis
+            )).isTrue();
+        }
+
+        @Test
+        @DisplayName("报名截止时间秒级差异仍应判定为不重复")
+        void shouldNotDetectDuplicate_whenRegDeadlineSecondDiffers() {
+            LocalDateTime oneSecondLater = REG_DEADLINE.plusSeconds(1);
+            assertThat(TenderDeduplicationPolicy.isDuplicate(
+                    PURCHASER_A, REG_DEADLINE, BID_OPEN_TIME,
+                    PURCHASER_A, oneSecondLater, BID_OPEN_TIME
+            )).isFalse();
+        }
+    }
 }
