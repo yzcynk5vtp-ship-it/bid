@@ -9,6 +9,7 @@
 docs/implementation-notes/
 ├── README.md                              ← 你在这里（目录说明）
 ├── CO-212.md                              ← CO-212 实现笔记
+├── CO-261.md                              ← CO-261 标讯分配/转派通知 + NotificationController 权限修复
 ├── project-permission-audit.md            ← 项目权限审计笔记
 └── role-permission-audit.md               ← 角色权限审计笔记
 ```
@@ -18,6 +19,7 @@ docs/implementation-notes/
 | 文件 | 职责 | 维护频率 |
 |------|------|----------|
 | `CO-212.md` | CO-212 相关实现细节记录 | 低 |
+| `CO-261.md` | CO-261 标讯分配/转派后通知 + NotificationController 读取权限放开 | 低 |
 | `project-permission-audit.md` | 项目权限审计过程记录 | 低 |
 | `role-permission-audit.md` | 角色权限审计过程记录 | 低 |
 
