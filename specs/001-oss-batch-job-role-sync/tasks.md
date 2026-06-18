@@ -127,7 +127,7 @@ description: "Task list for OSS batch job/role lookup optimization"
 - [x] T029 [P] Run organization module test suite: `cd backend && mvn test -Dtest="com.xiyu.bid.integration.organization.**"` (full suite has pre-existing unrelated failures in tenderupload/collaboration modules)
 - [x] T030 Update `docs/generated/db-schema.md` if any schema changed (N/A)
 - [x] T031 Update `CLAUDE.md` if any startup command or environment variable changed (N/A)
-- [ ] T032 Commit all changes with message: `feat(organization): batch OSS job/role lookup and sysRoleList mapping (#001)`
+- [x] T032 Commit all changes with message: `feat(organization): batch OSS job/role lookup and sysRoleList mapping (#001)`
 
 ---
 

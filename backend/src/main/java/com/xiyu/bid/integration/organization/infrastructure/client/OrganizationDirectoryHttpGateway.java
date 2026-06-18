@@ -24,15 +24,17 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Optional;
 
 @Component
 @Conditional(OrganizationDirectoryBaseUrlConfiguredCondition.class)
@@ -41,12 +43,10 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
     private static final Logger log = LoggerFactory.getLogger(OrganizationDirectoryHttpGateway.class);
     private static final DateTimeFormatter ORG_API_DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private final RestTemplate restTemplate;
-    private final RestTemplate batchRestTemplate;
-    private final ObjectMapper objectMapper;
     private final OrganizationIntegrationProperties.Directory directory;
     private final OrganizationDirectoryJsonMapper mapper = new OrganizationDirectoryJsonMapper();
-    private final OrganizationDirectoryAuthHeaders authHeaders;
+    private final OrganizationDirectoryRestClient restClient;
+    private final OrganizationDirectoryBatchHttpClient batchClient;
 
     @Autowired
     public OrganizationDirectoryHttpGateway(
@@ -71,11 +71,11 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
             RestTemplate batchRestTemplate,
             ObjectMapper objectMapper,
             OrganizationIntegrationProperties properties) {
-        this.restTemplate = restTemplate;
-        this.batchRestTemplate = batchRestTemplate;
-        this.objectMapper = objectMapper;
         this.directory = properties.getDirectory();
-        this.authHeaders = new OrganizationDirectoryAuthHeaders(directory);
+        OrganizationDirectoryAuthHeaders authHeaders = new OrganizationDirectoryAuthHeaders(directory);
+        this.restClient = new OrganizationDirectoryRestClient(restTemplate, objectMapper, directory, authHeaders);
+        this.batchClient = new OrganizationDirectoryBatchHttpClient(
+                batchRestTemplate, objectMapper, directory, authHeaders);
     }
 
     @Override
@@ -96,7 +96,7 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
         form.add("deptId", deptId);
         form.add("del", "0");
         form.add("state", "0");
-        return postForm(url, form, context).map(mapper::department);
+        return restClient.postForm(url, form, context).map(mapper::department);
     }
 
     @Override
@@ -119,51 +119,15 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
         form.add("jobId", jobId);
         form.add("del", "0");
         form.add("state", "0");
-        return postForm(url, form, context).map(mapper::job);
+        return restClient.postForm(url, form, context).map(mapper::job);
     }
 
     @Override
-    public java.util.Map<String, OssUserJobAndRoleDto> getUserJobAndRoleListByJobNumbers(
+    public Map<String, OssUserJobAndRoleDto> getUserJobAndRoleListByJobNumbers(
             List<String> jobNumbers,
             OrganizationDirectoryLookupContext context
     ) {
-        String url = buildUrl(directory.getBatchJobRoleLookupPath());
-        if (url.isBlank() || jobNumbers == null || jobNumbers.isEmpty()) {
-            return java.util.Map.of();
-        }
-        int batchSize = Math.max(1, directory.getBatchQuerySize());
-        java.util.Map<String, OssUserJobAndRoleDto> allResults = new java.util.HashMap<>();
-        long startNs = System.nanoTime();
-        int requestCount = 0;
-        int responseCount = 0;
-        for (int i = 0; i < jobNumbers.size(); i += batchSize) {
-            List<String> batch = jobNumbers.subList(i, Math.min(i + batchSize, jobNumbers.size()));
-            requestCount += batch.size();
-            try {
-                Optional<JsonNode> response = postJsonBatch(url, Map.of("data", batch), context);
-                if (response.isPresent()) {
-                    List<OssUserJobAndRoleDto> batchResults = mapper.jobAndRoleList(response.get());
-                    for (OssUserJobAndRoleDto dto : batchResults) {
-                        if (dto.jobNumber() != null && !dto.jobNumber().isBlank()) {
-                            allResults.merge(dto.jobNumber(), dto, (existing, incoming) -> {
-                                log.warn("批量岗位/角色回查结果中工号重复，保留第一条: jobNumber={}", dto.jobNumber());
-                                return existing;
-                            });
-                            responseCount++;
-                        } else {
-                            log.warn("批量岗位/角色回查结果中存在空工号记录，已忽略");
-                        }
-                    }
-                }
-            } catch (RuntimeException ex) {
-                log.error("批量岗位/角色回查失败: url={}, batchSize={}, error={}", url, batch.size(), ex.getMessage(), ex);
-                // 批量查询失败不影响同步主流程，返回已获取的部分结果
-            }
-        }
-        long durationMs = (System.nanoTime() - startNs) / 1_000_000;
-        log.info("批量岗位/角色回查完成: url={}, requested={}, returned={}, durationMs={}",
-                url, requestCount, responseCount, durationMs);
-        return java.util.Map.copyOf(allResults);
+        return batchClient.getUserJobAndRoleListByJobNumbers(jobNumbers, context);
     }
 
     @Override
@@ -176,7 +140,7 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
         form.add("userId", userId);
         form.add("del", "0");
         form.add("state", "0");
-        return postForm(url, form, context).map(mapper::user);
+        return restClient.postForm(url, form, context).map(mapper::user);
     }
 
     @Override
@@ -221,7 +185,7 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
         }
         List<T> allResults = new ArrayList<>();
         int index = 0;
-        int maxPages = 100; // safety limit to prevent infinite loops
+        int maxPages = 100;
         int initialTotal = Integer.MAX_VALUE;
         for (int page = 0; page < maxPages; page++) {
             Map<String, Object> body = Map.of(
@@ -229,7 +193,7 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
                     "endTime", endAt.format(ORG_API_DTF),
                     "index", index
             );
-            Optional<JsonNode> response = postJson(url, body, context);
+            Optional<JsonNode> response = restClient.postJson(url, body, context);
             if (response.isEmpty()) {
                 break;
             }
@@ -239,7 +203,6 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
                 break;
             }
             allResults.addAll(pageResults);
-            // Use total field from response to determine stop condition
             JsonNode totalNode = root.path("total");
             if (totalNode.isInt()) {
                 if (initialTotal == Integer.MAX_VALUE) {
@@ -249,13 +212,11 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
                     break;
                 }
             }
-            // Calculate next page index: try object format first, then fallback to offset-based
             JsonNode data = root.path("data");
             JsonNode nextIndex = data.path("index");
             if (nextIndex.isInt() && nextIndex.asInt() > index) {
                 index = nextIndex.asInt();
             } else {
-                // Fallback: use last record's internal ID from the data array as next cursor
                 JsonNode dataArray = root.path("data");
                 if (dataArray.isArray() && dataArray.size() > 0) {
                     JsonNode lastElement = dataArray.get(dataArray.size() - 1);
@@ -266,129 +227,17 @@ public class OrganizationDirectoryHttpGateway implements OrganizationDirectoryGa
                     if (lastId > index) {
                         index = lastId;
                     } else {
-                        break; /* no progress */
+                        break;
                     }
                 } else {
-                    break; /* no data array found */
+                    break;
                 }
             }
         }
         return allResults;
     }
 
-    private Optional<JsonNode> postForm(
-            String url,
-            MultiValueMap<String, String> form,
-            OrganizationDirectoryLookupContext context
-    ) {
-        return executePost(url, new HttpEntity<>(form, formHeaders(context)), String.class);
-    }
-
-    private Optional<JsonNode> postJson(
-            String url,
-            Map<String, Object> body,
-            OrganizationDirectoryLookupContext context
-    ) {
-        try {
-            String jsonBody = objectMapper.writeValueAsString(body);
-            return executePost(url, new HttpEntity<>(jsonBody, jsonHeaders(context)), String.class);
-        } catch (JsonProcessingException ex) {
-            throw OrganizationDirectoryHttpGatewayException.retryable("请求序列化失败", ex);
-        }
-    }
-
-    private Optional<JsonNode> postJsonBatch(
-            String url,
-            Map<String, Object> body,
-            OrganizationDirectoryLookupContext context
-    ) {
-        try {
-            String jsonBody = objectMapper.writeValueAsString(body);
-            return executeBatchPost(url, new HttpEntity<>(jsonBody, jsonHeaders(context)), String.class);
-        } catch (JsonProcessingException ex) {
-            log.error("批量岗位/角色回查请求序列化失败: error={}", ex.getMessage(), ex);
-            return Optional.empty();
-        }
-    }
-
-    private HttpHeaders formHeaders(OrganizationDirectoryLookupContext context) {
-        HttpHeaders headers = authHeaders.headers(context == null ? OrganizationDirectoryLookupContext.empty() : context);
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        return headers;
-    }
-
-    private HttpHeaders jsonHeaders(OrganizationDirectoryLookupContext context) {
-        HttpHeaders headers = authHeaders.headers(context == null ? OrganizationDirectoryLookupContext.empty() : context);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        return headers;
-    }
-
-    private <T> Optional<JsonNode> executePost(String url, HttpEntity<T> entity, Class<String> responseType) {
-        if (url.isBlank()) {
-            return Optional.empty();
-        }
-        try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, responseType);
-            String preview = response.getBody();
-            if (preview != null && preview.length() > 200) {
-                preview = preview.substring(0, 200);
-            }
-            log.info("组织架构回查成功: url={}, status={}, response={}",
-                url, response.getStatusCode(), preview);
-            return OrganizationDirectoryHttpResponseHandler.parseResponse(objectMapper, response.getBody());
-        } catch (HttpClientErrorException.NotFound ex) {
-            return Optional.empty();
-        } catch (HttpStatusCodeException ex) {
-            if (ex.getStatusCode().is4xxClientError()) {
-                throw OrganizationDirectoryHttpGatewayException.nonRetryable("组织架构主数据接口拒绝请求", ex);
-            }
-            throw OrganizationDirectoryHttpGatewayException.retryable("组织架构主数据接口调用失败", ex);
-        } catch (JsonProcessingException | RestClientException ex) {
-            throw OrganizationDirectoryHttpGatewayException.retryable("组织架构主数据接口调用失败", ex);
-        }
-    }
-
-    private <T> Optional<JsonNode> executeBatchPost(String url, HttpEntity<T> entity, Class<String> responseType) {
-        if (url.isBlank()) {
-            return Optional.empty();
-        }
-        try {
-            ResponseEntity<String> response = batchRestTemplate.postForEntity(url, entity, responseType);
-            String preview = response.getBody();
-            if (preview != null && preview.length() > 200) {
-                preview = preview.substring(0, 200);
-            }
-            log.info("批量岗位/角色回查成功: url={}, status={}, response={}",
-                    url, response.getStatusCode(), preview);
-            return OrganizationDirectoryHttpResponseHandler.parseResponse(objectMapper, response.getBody());
-        } catch (HttpClientErrorException.NotFound ex) {
-            return Optional.empty();
-        } catch (HttpStatusCodeException ex) {
-            log.error("批量岗位/角色回查接口返回错误状态: url={}, status={}, body={}",
-                    url, ex.getStatusCode(), ex.getResponseBodyAsString(), ex);
-            return Optional.empty();
-        } catch (JsonProcessingException | RestClientException ex) {
-            log.error("批量岗位/角色回查接口调用失败: url={}, error={}", url, ex.getMessage(), ex);
-            return Optional.empty();
-        }
-    }
-
     private String buildUrl(String path) {
-        if (path == null || path.isBlank()) {
-            return "";
-        }
-        if (path.startsWith("http")) {
-            return path;
-        }
-        String base = trimRight(directory.getBaseUrl());
-        String cleanPath = trimLeft(path);
-        return base + "/" + cleanPath;
-    }
-
-    private String trimLeft(String value) {
-        return value == null ? "" : value.replaceFirst("^/+", "");
-    }
-    private String trimRight(String value) {
-        return value == null ? "" : value.replaceFirst("/+$", "");
+        return OrganizationDirectoryUrlBuilder.buildUrl(directory.getBaseUrl(), path);
     }
 }
