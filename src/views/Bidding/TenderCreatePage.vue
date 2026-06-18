@@ -152,6 +152,10 @@ async function handleSave() {
     if (!isEditMode.value) await fetchTenderDetail()
     router.push(`/bidding/${isEditMode.value ? editTenderId.value : createdTenderId.value}`)
   } catch (error) {
+    const conflictResponse = error?.response?.data
+    if (conflictResponse?.code === 409 || conflictResponse?.status === 409) {
+      if (handleCreateConflict(conflictResponse)) return
+    }
     if (!error?.isAxiosError && !error?.response) {
       ElMessage.error(error.message || (isEditMode.value ? '标讯更新失败' : '标讯入库失败'))
     }
