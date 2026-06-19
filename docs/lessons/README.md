@@ -10,6 +10,7 @@
 | `root-cause-analysis-co-264.md` | Bug 根因分析 | CRM更换商机双提示+props不同步 | 2026-06-18 |
 | `root-cause-analysis-co-266-co-267.md` | Bug 根因分析 | CRM推送客户信息字段名不一致导致前端不显示 | 2026-06-18 |
 | `root-cause-analysis-co-274.md` | Bug 根因分析 | 标讯快速投标未创建项目导致列表不显示 | 2026-06-19 |
+| `root-cause-analysis-h13-e2e-fix.md` | Bug 根因分析 | H13改造后E2E测试全面修复（token提取、mock断言、速率限制） | 2026-06-19 |
 | `lessons-learned.md` | 通用工程教训 | 后端接口契约变更必须同步前端所有入口 | 2026-06-19 |
 <<<<<<< HEAD
 | `crm-integration-lessons.md` | 外部集成经验 | CRM 接口字段映射、405 事故、code 字段错填、status 枚举映射错位、CO-277 id 反查 code | 2026-06-19 |

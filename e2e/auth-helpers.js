@@ -24,12 +24,23 @@ async function requestJson(url, options = {}) {
 
 // H13 根治: 从 Set-Cookie 提取 access_token (body 不再含 token)
 function extractAccessTokenFromResponse(response) {
+  // Node.js fetch 支持 getSetCookie() 返回所有 cookie 数组
+  const cookies = response.headers.getSetCookie?.() || []
+  for (const cookie of cookies) {
+    const match = cookie.match(/access_token=([^;]+)/)
+    if (match) {
+      return match[1]
+    }
+  }
+
+  // 降级：从 get('set-cookie') 解析（逗号分隔的情况）
   const setCookie = response.headers.get('set-cookie') || ''
   const match = setCookie.match(/access_token=([^;]+)/)
-  if (!match) {
-    throw new Error('Login response missing access_token cookie (H13)')
+  if (match) {
+    return match[1]
   }
-  return match[1]
+
+  throw new Error('Login response missing access_token cookie (H13)')
 }
 
 function extractUser(data) {
