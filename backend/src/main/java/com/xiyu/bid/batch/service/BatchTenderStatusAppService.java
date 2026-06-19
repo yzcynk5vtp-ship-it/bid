@@ -7,7 +7,9 @@ import com.xiyu.bid.batch.dto.BatchTenderStatusUpdateRequest;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.TenderRepository;
+import com.xiyu.bid.webhook.domain.TenderStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class BatchTenderStatusAppService {
     private final TenderRepository tenderRepository;
     private final BatchProjectAccessGuard projectAccessGuard;
     private final BatchOperationLogService batchOperationLogService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public BatchOperationResponse batchUpdateStatus(BatchTenderStatusUpdateRequest request, User currentUser) {
@@ -61,7 +64,11 @@ public class BatchTenderStatusAppService {
             projectAccessGuard.requireTender(tender.getId());
             TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), targetStatus);
             if (tender.getStatus() != targetStatus) {
+                Tender.Status previousStatus = tender.getStatus();
                 tender.setStatus(targetStatus);
+                eventPublisher.publishEvent(TenderStatusChangedEvent.of(
+                        tender.getId(), tender.getExternalId(),
+                        previousStatus, targetStatus, tender.getTitle()));
                 changedTenders.add(tender);
             }
             response.addSuccess(tender.getId());
