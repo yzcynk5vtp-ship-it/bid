@@ -80,3 +80,65 @@ ssh jetty@172.16.38.78 'ls /srv/www/xiyu-bid/assets/ | wc -l'
 ### 相关文档
 
 - `docs/lessons/root-cause-analysis-frontend-404.md` — 完整根因分析
+
+---
+
+## 3. 字段必填性变更必须同步前后端校验策略
+
+### 问题背景
+
+CO-281 要求「提交立项时项目类型字段改为非必填」。后端 `InitiationFieldPolicy` 中 `projectType` 原本通过 `requireNotNull` 强制校验：
+
+```java
+// backend/src/main/java/com/xiyu/bid/project/core/InitiationFieldPolicy.java（修复前）
+requireNotNull("projectType", input.projectType(), missing);
+```
+
+前端表单已允许留空，但后端拒绝，导致提交立项 422。
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 后端校验策略未随产品需求及时调整 | 字段必填性变更必须同时修改后端校验规则 | 任何字段必填/可选变更，需同步检查 DTO、FieldPolicy、数据库约束 |
+| 缺少针对可选字段的边界测试 | 仅测「必填缺失拒绝」不够，还要测「为空允许通过」 | 字段必填性变更时，同步调整正例/反例测试 |
+
+### 正确做法
+
+```java
+// 修复后：从必填列表中移除 projectType
+requireText("ownerUnit", input.ownerUnit(), missing);
+requirePositive("expectedBidders", input.expectedBidders(), missing);
+requireNotNull("customerType", input.customerType(), missing);
+requirePositiveAmount("annualRevenue", input.annualRevenue(), missing);
+requireNotNull("bidOpenTime", input.bidOpenTime(), missing);
+requirePositive("ownerUserId", input.ownerUserId(), missing);
+requireText("departmentSnapshot", input.departmentSnapshot(), missing);
+```
+
+对应测试从反例改为正例：
+
+```java
+@Test
+void projectType_optional() {
+    var in = new InitiationFieldPolicy.InitiationInput("国网", 3, 12, null,
+            InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
+            new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
+            new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+            null, null, null, null, null, null, null, null, null);
+    assertTrue(InitiationFieldPolicy.validate(in).allowed());
+}
+```
+
+### 验证命令
+
+```bash
+# 运行立项字段策略测试
+cd backend
+mvn test -Dtest=InitiationFieldPolicyTest
+```
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-co-279.md` — 同期立项相关根因分析
+- Issue: CO-281
