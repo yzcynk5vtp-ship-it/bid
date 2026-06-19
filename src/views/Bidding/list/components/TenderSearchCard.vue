@@ -10,7 +10,7 @@
         <el-cascader
           v-model="regionValue"
           :options="chinaRegionOptions"
-          :props="{ expandTrigger: 'hover', label: 'name', value: 'name', checkStrictly: true, emitPath: true }"
+          :props="REGION_CASCADER_PROPS"
           placeholder="全部"
           clearable
           filterable
@@ -87,7 +87,7 @@
 import { RefreshLeft, Search } from '@element-plus/icons-vue'
 import { SOURCE_PLATFORM_OPTIONS, PROJECT_TYPE_OPTIONS, CUSTOMER_TYPE_OPTIONS, PRIORITY_OPTIONS } from '../constants.js'
 import { chinaRegionOptions } from '@/components/common/chinaRegionData.js'
-import { useRegionCascaderValue } from '@/composables/useRegionCascaderValue.js'
+import { useRegionCascaderValue, REGION_CASCADER_PROPS } from '@/composables/useRegionCascaderValue.js'
 import { usersApi } from '@/api/modules/users.js'
 import { computed, reactive, ref } from 'vue'
 

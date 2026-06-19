@@ -13,7 +13,7 @@
               <el-cascader
                 v-model="regionCascaderValue"
                 :options="chinaRegionOptions"
-                :props="{ expandTrigger: 'hover', label: 'name', value: 'name', checkStrictly: true, emitPath: true }"
+                :props="REGION_CASCADER_PROPS"
                 placeholder="选择总部所在地"
                 clearable
                 filterable
@@ -102,7 +102,7 @@
 import { ref } from 'vue'
 import { DocumentCopy, Upload } from '@element-plus/icons-vue'
 import { chinaRegionOptions } from '@/components/common/chinaRegionData.js'
-import { useRegionCascaderValue } from '@/composables/useRegionCascaderValue.js'
+import { useRegionCascaderValue, REGION_CASCADER_PROPS } from '@/composables/useRegionCascaderValue.js'
 
 const innerFormRef = ref(null)
 
