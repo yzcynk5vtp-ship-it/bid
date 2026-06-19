@@ -75,6 +75,15 @@
   source: CO-274 复盘（PR #842）
   note: `proceedToBid` 失败被空 catch 吞掉，导致后端 404 对用户不可见。需补充错误反馈与 E2E 回归测试。
 
+### 接口规范设计缺陷类
+
+- area: 接口规范/CRM 对接（`docs/integration/integration-tender-api-v3.1.md` §3.2 推标讯接口 / `WebhookEventListener` / `TenderPushRequest`）
+  type: out-of-sync-doc
+  severity: medium
+  status: open
+  source: CO-277 深挖（CRM 实推商机主键 id，非编号 code）
+  note: 推标讯接口仅定义 `crmOpportunityId` 字段，CRM 据此推送**主键 id**（如 20916）；但 `bidInfoSync` 回传契约要求商机**编号 code**（CC... 格式）。CO-277 的"识别纯数字 id → 反查 code"本质是补偿这个设计缺陷，而非弯路。演进路径：接口规范新增 `crmOpportunityCode` 字段让 CRM 显式推 code，代码优先用 code（`firstNonBlank(crmOpportunityCode, crmOpportunityId)`），保留 id 反查作为兜底；需 CRM 团队配合改推送代码。当前不改动——CO-277 已生效，改接口需外部协调，且向后兼容仍需保留 id 反查。
+
 ### 待登记
 
 > 后续发现的技术债请追加到对应分类下，不要新建文件。
