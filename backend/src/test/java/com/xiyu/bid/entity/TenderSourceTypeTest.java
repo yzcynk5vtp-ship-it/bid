@@ -38,10 +38,10 @@ class TenderSourceTypeTest {
         }
 
         @Test
-        @DisplayName("BULK_IMPORT 序列化为中文标签 '批量导入'")
+        @DisplayName("BULK_IMPORT 序列化为中文标签 '人工录入'（与 MANUAL_SINGLE 同属人工录入大类）")
         void bulkImportSerializesToChinese() throws Exception {
             String json = mapper.writeValueAsString(Tender.SourceType.BULK_IMPORT);
-            assertThat(json).isEqualTo("\"批量导入\"");
+            assertThat(json).isEqualTo("\"人工录入\"");
         }
     }
 
@@ -112,8 +112,11 @@ class TenderSourceTypeTest {
                     .isSameAs(Tender.SourceType.fromValue("CRM 创建"));
             assertThat(Tender.SourceType.fromValue("MANUAL_SINGLE"))
                     .isSameAs(Tender.SourceType.fromValue("人工录入"));
+            // BULK_IMPORT label 与 MANUAL_SINGLE 同为"人工录入"（a484bdaa0 业务决策：批量导入归为人工录入大类），
+            // fromValue("人工录入") 遍历 values() 时先命中 MANUAL_SINGLE，故 BULK_IMPORT 无独立中文反查能力，
+            // 此处仅断言英文枚举名自匹配。
             assertThat(Tender.SourceType.fromValue("BULK_IMPORT"))
-                    .isSameAs(Tender.SourceType.fromValue("批量导入"));
+                    .isSameAs(Tender.SourceType.BULK_IMPORT);
         }
     }
 }
