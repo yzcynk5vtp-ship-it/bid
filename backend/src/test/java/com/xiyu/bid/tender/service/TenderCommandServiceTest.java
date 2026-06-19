@@ -12,7 +12,9 @@ import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.task.service.TaskService;
+import com.xiyu.bid.tender.dto.TenderAttachmentDTO;
 import com.xiyu.bid.tender.dto.TenderDTO;
+import com.xiyu.bid.tender.entity.TenderAttachment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -186,6 +189,56 @@ class TenderCommandServiceTest {
 
         assertThat(result.getTitle()).isEqualTo("更新后的标题");
         verify(tenderRepository).save(any(Tender.class));
+    }
+
+    @Test
+    @DisplayName("CO-263: 创建标讯时 attachments[0] 同步到 sourceDocument* 字段")
+    void createTender_WithAttachments_ShouldSyncFirstAttachmentToSourceDocument() {
+        TenderDTO dtoWithAttachment = TenderDTO.builder()
+                .title("带附件标讯")
+                .region("上海")
+                .status(Tender.Status.PENDING_ASSIGNMENT)
+                .attachments(List.of(TenderAttachmentDTO.builder()
+                        .fileName("招标文件.pdf")
+                        .fileType("application/pdf")
+                        .fileUrl("doc-insight://TENDER_INTAKE/manual-tender/hash-招标文件.pdf")
+                        .build()))
+                .build();
+
+        when(tenderRepository.save(any(Tender.class))).thenAnswer(invocation -> {
+            Tender saved = invocation.getArgument(0);
+            saved.setId(1L);
+            return saved;
+        });
+        when(autoAssignmentService.autoAssignIfPossible(any(Tender.class))).thenReturn(AssignmentResult.noMatch());
+
+        TenderDTO savedDto = tenderCommandService.createTender(dtoWithAttachment);
+
+        assertThat(savedDto.getSourceDocumentName()).isEqualTo("招标文件.pdf");
+        assertThat(savedDto.getSourceDocumentFileType()).isEqualTo("application/pdf");
+        assertThat(savedDto.getSourceDocumentFileUrl()).isEqualTo("doc-insight://TENDER_INTAKE/manual-tender/hash-招标文件.pdf");
+        verify(tenderAttachmentRepository).save(any(TenderAttachment.class));
+    }
+
+    @Test
+    @DisplayName("CO-263: 更新标讯时 attachments[0] 同步到 sourceDocument* 字段")
+    void updateTender_WithAttachments_ShouldSyncFirstAttachmentToSourceDocument() {
+        when(tenderRepository.findById(1L)).thenReturn(java.util.Optional.of(tender));
+        when(tenderRepository.save(any(Tender.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        TenderDTO updateDto = TenderDTO.builder()
+                .attachments(List.of(TenderAttachmentDTO.builder()
+                        .fileName("更新招标文件.docx")
+                        .fileType("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                        .fileUrl("doc-insight://TENDER_INTAKE/manual-tender/hash-更新招标文件.docx")
+                        .build()))
+                .build();
+
+        TenderDTO result = tenderCommandService.updateTender(1L, updateDto);
+
+        assertThat(result.getSourceDocumentName()).isEqualTo("更新招标文件.docx");
+        assertThat(result.getSourceDocumentFileType()).isEqualTo("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        assertThat(result.getSourceDocumentFileUrl()).isEqualTo("doc-insight://TENDER_INTAKE/manual-tender/hash-更新招标文件.docx");
     }
 
     @Test
