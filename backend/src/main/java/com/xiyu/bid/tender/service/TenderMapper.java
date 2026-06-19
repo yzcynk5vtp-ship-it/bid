@@ -161,9 +161,6 @@ public class TenderMapper {
                 .contactPhone2(dto.getContactPhone2())
                 .contactTel2(dto.getContactTel2())
                 .contactMail2(dto.getContactMail2())
-                .sourceDocumentName(dto.getSourceDocumentName())
-                .sourceDocumentFileType(dto.getSourceDocumentFileType())
-                .sourceDocumentFileUrl(dto.getSourceDocumentFileUrl())
                 .customerType(dto.getCustomerType())
                 .priority(dto.getPriority())
                 .description(dto.getDescription())
@@ -195,13 +192,11 @@ public class TenderMapper {
         if (dto.getStatus() != null) {
             builder.status(dto.getStatus());
         }
-        return builder.build();
+        return TenderAttachmentToSourceDocumentMapper.apply(builder.build(), dto);
     }
 
     public void updateEntity(Tender target, TenderDTO dto) {
-        if (target == null || dto == null) {
-            return;
-        }
+        if (target == null || dto == null) return;
         if (dto.getTitle() != null) target.setTitle(dto.getTitle());
         if (dto.getSource() != null) target.setSource(dto.getSource());
         if (dto.getBudget() != null) target.setBudget(dto.getBudget());
@@ -222,9 +217,6 @@ public class TenderMapper {
         if (dto.getContactPhone2() != null) target.setContactPhone2(dto.getContactPhone2());
         if (dto.getContactTel2() != null) target.setContactTel2(dto.getContactTel2());
         if (dto.getContactMail2() != null) target.setContactMail2(dto.getContactMail2());
-        if (dto.getSourceDocumentName() != null) target.setSourceDocumentName(dto.getSourceDocumentName());
-        if (dto.getSourceDocumentFileType() != null) target.setSourceDocumentFileType(dto.getSourceDocumentFileType());
-        if (dto.getSourceDocumentFileUrl() != null) target.setSourceDocumentFileUrl(dto.getSourceDocumentFileUrl());
         if (dto.getCustomerType() != null) target.setCustomerType(dto.getCustomerType());
         if (dto.getPriority() != null) target.setPriority(dto.getPriority());
         if (dto.getDescription() != null) target.setDescription(dto.getDescription());
@@ -253,6 +245,7 @@ public class TenderMapper {
         if (dto.getCrmOpportunityName() != null) target.setCrmOpportunityName(dto.getCrmOpportunityName());
         if (dto.getAbandonmentReason() != null) target.setAbandonmentReason(dto.getAbandonmentReason());
         if (dto.getBasicInfoSavedAt() != null) target.setBasicInfoSavedAt(dto.getBasicInfoSavedAt());
+        TenderAttachmentToSourceDocumentMapper.apply(target, dto);
     }
 
     public List<ContactDTO> buildContacts(Tender tender) {
