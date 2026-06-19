@@ -361,3 +361,91 @@ case LOST -> 3;        // 不变
 - [西域CRM商机对接接口.md](../integration/西域CRM商机对接接口.md) — bidInfoSync 契约（status 枚举已修正）
 - [WebhookEventListener.java](../../backend/src/main/java/com/xiyu/bid/webhook/application/WebhookEventListener.java) — mapToCrmStatus 映射
 - [WebhookEventListenerTest.java](../../backend/test/java/com/xiyu/bid/webhook/application/WebhookEventListenerTest.java) — status=6 断言
+
+---
+
+## 6. CRM 推送字段名 crmOpportunityId 与代码 crmId 不匹配——Jackson 静默丢弃，商机未关联（CO-276 / PR !844）
+
+> 来源：2026-06-18 tender 273 "放弃"后 CRM 商机 CC20260619283 状态未变事故复盘
+> 代码修复已通过 PR !844 合入 main，本节沉淀教训
+
+### 事故一句话总结
+
+CRM 推标讯时按接口文档传了 `crmOpportunityId` 字段（商机编号），但后端 DTO 字段名是 `crmId`。Spring Boot 默认 `FAIL_ON_UNKNOWN_PROPERTIES=false`，未知字段被**静默丢弃**，`crm_opportunity_id` 永远是 NULL。后续 tender "放弃"时 webhook 回传的 payload `code` 字段为空，CRM 匹配不到商机，状态同步失效——全程无任何报错或告警。
+
+### 根因：接口文档字段名 ≠ 代码字段名，Jackson 默认静默丢弃
+
+| 字段来源 | 字段名 | 语义 |
+|---|---|---|
+| CRM 接口文档 PUT /tenders/push | `crmOpportunityId` / `crmOpportunityName` | 商机编号 / 商机名称 |
+| 后端 `TenderPushRequest` / `TenderUpdateRequest` | `crmId` | 商机编号（code，CC... 格式） |
+
+两者语义完全相同，但字段名不同。Spring Boot 默认 Jackson 配置 `spring.jackson.deserialization.fail-on-unknown-properties=false`，未声明的字段不会抛异常，直接丢弃。于是 CRM 推送的 `crmOpportunityId` 被吞，`crmId` 保持 null，`CrmTenderLinkService.linkIfPresent` 直接 return，`crm_opportunity_id` 永远 NULL。
+
+### 决定性证据：生产 DB 直查 + 端到端验证
+
+**DB 取证 tender 273**（`jetty@172.16.38.78` 直连）：
+```
+status=ABANDONED, crm_opportunity_id=NULL, source_type=EXTERNAL_PLATFORM
+```
+`crm_opportunity_id` 为 NULL，证明 CRM 推送时商机编号从未被持久化。
+
+**端到端验证**（修复后手动补数据触发回传）：
+1. 由于 ABANDONED 是终态（`TenderStatusTransitionPolicy` 阻断任何状态转换），无法通过 API 重放放弃操作，改为直接 SQL 补 `crm_opportunity_id='CC20260619283'`
+2. 调用 `bidInfoSync` 接口传 `status=6`（弃标）
+3. CRM 商机项目状态从 `5-投标中` 变为 `6-弃标` ✅
+
+这一步同时验证了第 5 节的 status 枚举（6=弃标）和本节的字段名修复：填上正确的 `crm_opportunity_id` 后，回传链路立即恢复。
+
+### 修复内容（已通过 PR !844 合入 main）
+
+1. **DTO 补字段**：`TenderPushRequest` / `TenderUpdateRequest` 在 `crmId` 后新增 `crmOpportunityId` / `crmOpportunityName` 字段，与接口文档对齐
+2. **合并取值**：新增 `firstNonBlank(crmOpportunityId, crmId)` 工具方法，三个调用点统一使用：
+   - `pushTender` 创建分支：`isFromCrm = firstNonBlank(r.getCrmOpportunityId(), r.getCrmId()) != null`
+   - `pushTender` forceUpdate 分支：`String crmId = firstNonBlank(request.getCrmOpportunityId(), request.getCrmId())`
+   - `updateByExternalId`：局部变量 `crmId` 用合并取值，并回退持久化 `crmOpportunityName`
+   - `mapToEntity`：`isFromCrm` 判断用合并取值
+3. **诊断日志增强**：`pushTender` 入口日志同时记录 `crmId` 与 `crmOpportunityId`，下次再出现字段名不一致可一眼定位
+4. **测试覆盖**：3 个 Jackson 反序列化测试 + 3 个合并取值单测
+
+### 最大教训：Jackson 静默丢弃是字段名错配的隐形杀手
+
+本次最隐蔽的陷阱：**字段名不匹配不会报错，只会静默丢数据**。从 CRM 推送到 tender 创建全程 200 OK，日志里没有任何异常，`crm_opportunity_id` 默默变成 NULL，直到"放弃后 CRM 状态没变"才被发现——而这已经是数天后的下游症状。
+
+| 验证手段 | 结论 | 是否可靠 |
+|---|---|---|
+| 推送接口 HTTP 200 | "成功" | ❌ 不可靠，字段被吞也 200 |
+| 后端日志无异常 | "正常" | ❌ 不可靠，Jackson 丢弃不记日志 |
+| `tender.crm_opportunity_id` 字段值 | NULL → 错配；非 NULL → 正常 | ✅ 唯一可靠 |
+| CRM 前端商机状态是否同步变化 | 同步 → 链路通；未同步 → 链路断 | ✅ 端到端可靠 |
+
+**铁律**：外部系统推送类接口上线后，必须**反查落库字段值**确认数据真的进来了，不能只看 HTTP 200 和后端无异常。Jackson 默认配置是"宽容但致命"——它假设未知字段是版本演进的可接受情况，但对"字段名硬错配"这种 bug 毫无防御。
+
+### 通用规则：外部接口字段名必须与 DTO 声明对齐，且要在入口层验证
+
+1. **接口文档字段名 ≠ 代码字段名时，必须二选一对齐**——要么改 DTO 字段名匹配文档，要么文档改字段名匹配代码。本次选择 DTO 加字段（兼容两种字段名），因为 CRM 已按文档字段名对接，改文档会破坏既有契约
+2. **DTO 字段应与接口文档一一对应**，不要用内部缩写（`crmId`）替代文档原名（`crmOpportunityId`），否则字段名漂移只在端到端联调时才暴露
+3. **关闭 `FAIL_ON_UNKNOWN_PROPERTIES` 的代价**：Spring Boot 默认关闭它是为了前向兼容，但对关键字段错配毫无告警。对策是**对必填/关键字段做显式存在性校验**——本次的 `firstNonBlank` 合并取值就是一种软校验，配合诊断日志能在下次错配时快速定位
+4. **入口层诊断日志要记录文档字段名**，而不是只记录代码字段名。本次 `pushTender` 日志同时记录 `crmId` 和 `crmOpportunityId`，一眼就能看出 CRM 实际传了哪个
+5. **终态数据无法通过 API 重放验证**——ABANDONED 是终态，`TenderStatusTransitionPolicy` 阻断状态转换，`assertCrmLinkAllowed` 也会阻断关联。验证终态回传必须用"DB 直补数据 + 手动调 bidInfoSync"的旁路方式，不能依赖业务 API
+
+### 与第 4、5 节的关系：同一条回传链路的三道独立断点
+
+CO-263 系列（第 3、4、5 节）和 CO-276（本节）是**同一条 CRM 回传链路**上的三道独立断点，任一道断裂都会导致"放弃后 CRM 状态没变"：
+
+| 断点 | 节 | 表现 | 根因 |
+|---|---|---|---|
+| 出站 URL 配错 | 第 3 节 | 405 → DEAD_LETTER | webhook.crm.url 指向前端站 |
+| payload code 错填 | 第 4 节 | code:1 商机匹配失败 | code 填了 sourceId 而非商机编号 |
+| status 枚举错位 | 第 5 节 | code:0 但状态写错 | 文档枚举误写，1=弃标实为跟进中 |
+| **商机未关联** | **本节** | **code 为空，CRM 匹配不到** | **字段名 crmOpportunityId vs crmId，Jackson 丢弃** |
+
+三道断点症状相似（"放弃后 CRM 状态没变"），但根因完全独立。排查此类问题必须**逐段取证**：DB 看 `crm_opportunity_id` 是否非空 → webhook_delivery_logs 看 payload code/status 是否正确 → CRM 前端看实际状态是否变化。任一段断了都要单独修，不能用一个修复覆盖所有断点。
+
+### 相关文档
+
+- [西域CRM商机对接接口.md](../integration/西域CRM商机对接接口.md) — PUT 接口字段名 `crmOpportunityId`（已与代码对齐）
+- [TenderPushRequest.java](../../backend/src/main/java/com/xiyu/bid/integration/external/TenderPushRequest.java) — DTO 补 `crmOpportunityId`/`crmOpportunityName`
+- [TenderUpdateRequest.java](../../backend/src/main/java/com/xiyu/bid/integration/external/TenderUpdateRequest.java) — DTO 补同名字段
+- [TenderIntegrationService.java](../../backend/src/main/java/com/xiyu/bid/integration/external/TenderIntegrationService.java) — `firstNonBlank` 合并取值 + 诊断日志
+- [TenderRequestCrmOpportunityIdDeserializationTest.java](../../backend/src/test/java/com/xiyu/bid/integration/external/TenderRequestCrmOpportunityIdDeserializationTest.java) — Jackson 反序列化测试
