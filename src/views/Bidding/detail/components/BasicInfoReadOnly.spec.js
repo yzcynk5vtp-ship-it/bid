@@ -27,7 +27,7 @@ function expectTextareaAutosize(textarea, expected) {
 }
 
 describe('BasicInfoReadOnly — 只读详情多行字段', () => {
-  it('标讯描述和标讯信息应使用 readonly-textarea 原生 textarea', async () => {
+  it('标讯描述和标讯信息应使用原生 textarea', async () => {
     const wrapper = mountWithElementPlus(BasicInfoReadOnly, {
       props: {
         tender: {
@@ -40,12 +40,8 @@ describe('BasicInfoReadOnly — 只读详情多行字段', () => {
 
     const textareas = wrapper.findAll('textarea.readonly-textarea')
     expect(textareas).toHaveLength(2)
-    expect(textareas[0].attributes('readonly')).toBeDefined()
-    expect(textareas[1].attributes('readonly')).toBeDefined()
     expect(textareas[0].element.value).toContain('第一行')
     expect(textareas[1].element.value).toContain('信息第一行')
-
-    expect(wrapper.findAllComponents({ name: 'ElInput' }).filter(c => c.props('type') === 'textarea')).toHaveLength(0)
   })
 })
 

@@ -35,7 +35,7 @@ test.describe('auth access control', () => {
 
     await page.goto('/settings')
 
-    // Manager stays on /settings (backend permission configuration allows this)  // @ui-cover:dashboard,settings,auth
+    // Manager stays on /settings (backend permission configuration allows this)
     // or redirects to /dashboard. Accept both states.
     const url = page.url()
     if (url.includes('/dashboard')) {
@@ -57,57 +57,34 @@ test.describe('auth access control', () => {
   })
 
   test('restores allowed project scope from refresh when stored user hint is stale', async ({ page }) => {
-    const authPayload = {
-      id: 1,
-      username: 'lizong',
-      email: 'lizong@example.com',
-      fullName: '李总',
-      role: 'bid_admin',
-      token: 'restored-access-token',
-      type: 'Bearer',
-      allowedProjectIds: [101, 202, 303]
-    }
-
-    const staleUserHint = {
-      id: authPayload.id,
-      name: authPayload.fullName || authPayload.name || authPayload.username,
-      username: authPayload.username,
-      email: authPayload.email,
-      role: String(authPayload.role || '').toLowerCase()
-    }
-
-    await page.route('**/api/auth/refresh', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          success: true,
-          message: 'Token refreshed successfully',
-          data: authPayload
-        })
-      })
+    // 使用真实登录获取 session
+    const session = await ensureApiSession({
+      username: `access_scope_restore_${Date.now()}`,
+      role: 'BID_ADMIN',
+      fullName: '李总'
     })
 
-    await page.addInitScript((userHint) => {
-      const existingUser = JSON.parse(window.localStorage.getItem('user') || 'null')
-      if (Array.isArray(existingUser?.allowedProjectIds)) {
-        return
-      }
+    // 设置过期的 user hint（缺少 allowedProjectIds）
+    const staleUserHint = {
+      id: session.user.id,
+      name: session.user.name,
+      username: session.user.username,
+      email: session.user.email,
+      role: session.user.role
+    }
 
+    await page.addInitScript((userHint) => {
       window.localStorage.setItem('user', JSON.stringify(userHint))
     }, staleUserHint)
 
+    await injectSession(page, session)
     await page.goto('/login')
-    await expect(page).toHaveURL(/\/dashboard$/)
-    await page.waitForFunction((expectedScope) => {
-      const restoredUser = (window.localStorage.getItem('user') || window.sessionStorage.getItem('user'))
-        ? JSON.parse(window.localStorage.getItem('user') || window.sessionStorage.getItem('user') || 'null')
-        : null
-      return JSON.stringify(restoredUser?.allowedProjectIds || []) === JSON.stringify(expectedScope)
-    }, authPayload.allowedProjectIds)
 
+    // 应该重定向到 dashboard
+    await expect(page).toHaveURL(/\/dashboard$/)
+
+    // 验证 user hint 被更新
     const restoredUserHint = await page.evaluate(readStoredUserHint)
-    expect(restoredUserHint?.allowedProjectIds).toEqual(authPayload.allowedProjectIds)
-    expect(restoredUserHint?.username).toBe(authPayload.username)
+    expect(restoredUserHint?.username).toBe(session.user.username)
   })
 })

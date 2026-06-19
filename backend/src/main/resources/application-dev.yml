@@ -45,6 +45,9 @@ rate:
       window-seconds: 60
     login:
       max-attempts: 100
+    auth-account:
+      max: 1000
+      window-minutes: 15
 
 app:
   tender-processing:
