@@ -4,7 +4,20 @@
 
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
-import { useRegionCascaderValue } from './useRegionCascaderValue.js'
+import { useRegionCascaderValue, REGION_CASCADER_PROPS } from './useRegionCascaderValue.js'
+
+describe('REGION_CASCADER_PROPS', () => {
+  it('是冻结对象，含总部所在地 cascader 标准配置', () => {
+    expect(Object.isFrozen(REGION_CASCADER_PROPS)).toBe(true)
+    expect(REGION_CASCADER_PROPS).toEqual({
+      expandTrigger: 'hover',
+      label: 'name',
+      value: 'name',
+      checkStrictly: true,
+      emitPath: true,
+    })
+  })
+})
 
 describe('useRegionCascaderValue', () => {
   it('get: 字符串 → cascader 路径', () => {

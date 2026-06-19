@@ -25,7 +25,18 @@ import {
  *
  * 满足 RULES.md §2.6.1 提取条件（3 处引用、>80 行价值、消 39 行重复）。
  * 命名函数 export（避免 §2.6.2 Vite 异步 chunk 内联 + tree-shaking 截断函数体的问题）。
+
+ * 配套导出 REGION_CASCADER_PROPS：3 处调用方共享同一 cascader 配置，
+ * 避免 `:props="{ expandTrigger: 'hover', ... }"` 在模板里重复 3 次。
  */
+export const REGION_CASCADER_PROPS = Object.freeze({
+  expandTrigger: 'hover',
+  label: 'name',
+  value: 'name',
+  checkStrictly: true,
+  emitPath: true,
+})
+
 export function useRegionCascaderValue(getter, setter, options = {}) {
   const emptyValue = 'emptyValue' in options ? options.emptyValue : ''
 
@@ -46,7 +57,6 @@ export function useRegionCascaderValue(getter, setter, options = {}) {
 }
 
 function readValue(getter) {
-  const raw = getter()
-  // 兼容 getter 直接返回 string、ref.value 或 props.form.region
-  return raw == null ? '' : (typeof raw === 'string' ? raw : String(raw))
+  // getter 由调用方提供，返回 string 或 null/undefined（未选）；统一归一为 string
+  return getter() ?? ''
 }
