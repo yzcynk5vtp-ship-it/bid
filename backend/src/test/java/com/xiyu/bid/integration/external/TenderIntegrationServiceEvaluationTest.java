@@ -225,4 +225,108 @@ class TenderIntegrationServiceEvaluationTest {
         assertThat(rows).anyMatch(r -> "PROJECT_HIGHEST_DECISION_MAKER".equals(r.getRoleKey())
                 && "INFO_TENDENCY_BASIS".equals(r.getInfoKey()) && "长期合作".equals(r.getCellValue()));
     }
+
+    // ── EAV 格式测试（CO-266 修复）────────────────────────────────────────
+
+    /**
+     * 构建 EAV 格式的客户信息数据。
+     * EAV 格式：[{roleKey, infoKey, value, valueType}, ...]
+     * 与展平格式：[{roleKey, NAME: "xxx", CONTACT_INFO: "xxx"}, ...]
+     */
+    private TenderUpdateRequest.EvaluationUpdate buildEavEval(String roleKey, String infoKey, String value) {
+        Map<String, Object> eavRow = new LinkedHashMap<>();
+        eavRow.put("roleKey", roleKey);
+        eavRow.put("infoKey", infoKey);
+        eavRow.put("value", value);
+        eavRow.put("valueType", "TEXT");
+        return TenderUpdateRequest.EvaluationUpdate.builder()
+                .evaluationCustomerInfos(List.of(eavRow))
+                .build();
+    }
+
+    @Test
+    @DisplayName("EAV 格式的客户信息应正确保存（CO-266：外部接口传入 EAV 格式数据）")
+    void saveEvaluation_eavFormat_shouldSaveCorrectly() throws Exception {
+        Long tenderId = createTender();
+
+        // 模拟外部系统（如 CRM）通过 PUT /api/integration/tenders/{sourceSystem}/{sourceId}
+        // 发送 EAV 格式的客户数据（一次性传入所有数据，而非多次调用）
+        List<Map<String, Object>> eavData = List.of(
+                Map.of("roleKey", "DECISION_MAKER", "infoKey", "NAME", "value", "张三", "valueType", "TEXT"),
+                Map.of("roleKey", "DECISION_MAKER", "infoKey", "CONTACT_INFO", "value", "13800138000", "valueType", "TEXT"),
+                Map.of("roleKey", "INFLUENCER", "infoKey", "NAME", "value", "李四", "valueType", "TEXT")
+        );
+        TenderUpdateRequest.EvaluationUpdate eval = TenderUpdateRequest.EvaluationUpdate.builder()
+                .evaluationCustomerInfos(eavData)
+                .build();
+
+        invokeSaveEvaluation(tenderId, eval);
+
+        TenderEvaluation tenderEval = tenderEvaluationRepository.findByTenderId(tenderId).orElseThrow();
+        List<TenderEvaluationCustomerInfo> rows = customerInfoRepository.findByEvaluationId(tenderEval.getId());
+
+        // 验证数据正确保存
+        assertThat(rows).hasSize(3);
+        assertThat(rows).anyMatch(r -> "DECISION_MAKER".equals(r.getRoleKey())
+                && "NAME".equals(r.getInfoKey()) && "张三".equals(r.getCellValue()));
+        assertThat(rows).anyMatch(r -> "DECISION_MAKER".equals(r.getRoleKey())
+                && "CONTACT_INFO".equals(r.getInfoKey()) && "13800138000".equals(r.getCellValue()));
+        assertThat(rows).anyMatch(r -> "INFLUENCER".equals(r.getRoleKey())
+                && "NAME".equals(r.getInfoKey()) && "李四".equals(r.getCellValue()));
+    }
+
+    @Test
+    @DisplayName("EAV 格式二次更新应正确覆盖旧数据（CO-266）")
+    void saveEvaluation_eavFormatSecondUpdate_shouldOverwriteCorrectly() throws Exception {
+        Long tenderId = createTender();
+
+        // 首次保存
+        List<Map<String, Object>> firstData = List.of(
+                Map.of("roleKey", "DECISION_MAKER", "infoKey", "NAME", "value", "张三", "valueType", "TEXT"),
+                Map.of("roleKey", "DECISION_MAKER", "infoKey", "CONTACT_INFO", "value", "13800138000", "valueType", "TEXT")
+        );
+        invokeSaveEvaluation(tenderId, TenderUpdateRequest.EvaluationUpdate.builder()
+                .evaluationCustomerInfos(firstData).build());
+
+        // 二次更新（修改值）
+        List<Map<String, Object>> secondData = List.of(
+                Map.of("roleKey", "DECISION_MAKER", "infoKey", "NAME", "value", "王五", "valueType", "TEXT"),
+                Map.of("roleKey", "DECISION_MAKER", "infoKey", "POSITION", "value", "总经理", "valueType", "TEXT")
+        );
+        invokeSaveEvaluation(tenderId, TenderUpdateRequest.EvaluationUpdate.builder()
+                .evaluationCustomerInfos(secondData).build());
+
+        TenderEvaluation tenderEval = tenderEvaluationRepository.findByTenderId(tenderId).orElseThrow();
+        List<TenderEvaluationCustomerInfo> rows = customerInfoRepository.findByEvaluationId(tenderEval.getId());
+
+        // 验证数据已更新（最终状态只有 2 条：NAME=王五, POSITION）
+        assertThat(rows).hasSize(2);
+        assertThat(rows).anyMatch(r -> "DECISION_MAKER".equals(r.getRoleKey())
+                && "NAME".equals(r.getInfoKey()) && "王五".equals(r.getCellValue()));
+        assertThat(rows).anyMatch(r -> "DECISION_MAKER".equals(r.getRoleKey())
+                && "POSITION".equals(r.getInfoKey()) && "总经理".equals(r.getCellValue()));
+    }
+
+    @Test
+    @DisplayName("EAV 格式应支持 valueType 为空时默认 TEXT（CO-266）")
+    void saveEvaluation_eavFormatWithNullValueType_shouldDefaultToText() throws Exception {
+        Long tenderId = createTender();
+
+        Map<String, Object> eavRow = new LinkedHashMap<>();
+        eavRow.put("roleKey", "DECISION_MAKER");
+        eavRow.put("infoKey", "NAME");
+        eavRow.put("value", "张三");
+        // valueType 为 null
+        TenderUpdateRequest.EvaluationUpdate eval = TenderUpdateRequest.EvaluationUpdate.builder()
+                .evaluationCustomerInfos(List.of(eavRow))
+                .build();
+
+        invokeSaveEvaluation(tenderId, eval);
+
+        TenderEvaluation evaluation = tenderEvaluationRepository.findByTenderId(tenderId).orElseThrow();
+        List<TenderEvaluationCustomerInfo> rows = customerInfoRepository.findByEvaluationId(evaluation.getId());
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.get(0).getValueType()).isEqualTo(TenderEvaluationCustomerInfo.ValueType.TEXT);
+    }
 }

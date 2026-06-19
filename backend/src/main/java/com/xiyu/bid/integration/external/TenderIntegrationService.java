@@ -486,7 +486,9 @@ public class TenderIntegrationService {
             evalEntity.setBasic(basic);
         }
 
-        // 客户信息段（展平格式 → EAV）
+        // 客户信息段（支持两种格式）
+        // 1. 展平格式：[{roleKey: "客户A", NAME: "公司名", CONTACT_INFO: "联系人"}, ...]
+        // 2. EAV 格式：[{roleKey: "客户A", infoKey: "NAME", value: "公司名", valueType: "TEXT"}, ...]
         if (evaluationCustomerInfos != null) {
             // 关键修复：必须确保旧行先从数据库 DELETE，再 INSERT 新行。
             // Hibernate 默认 flush 顺序是 INSERT-before-DELETE（JPA 规范），
@@ -502,23 +504,53 @@ public class TenderIntegrationService {
                 evalEntity.getCustomerInfos().clear();
                 tenderEvaluationRepository.saveAndFlush(evalEntity);
             }
-            int roleIndex = 1;
-            for (Map<String, Object> roleData : evaluationCustomerInfos) {
-                String roleKey = (String) roleData.get("roleKey");
-                if (roleKey == null || roleKey.isBlank()) {
-                    roleKey = "EXTERNAL_ROLE_" + roleIndex;
+
+            // 检测是否为 EAV 格式（每个 Map 包含 infoKey 和 value 字段）
+            boolean isEavFormat = !evaluationCustomerInfos.isEmpty()
+                    && evaluationCustomerInfos.get(0).containsKey("infoKey")
+                    && evaluationCustomerInfos.get(0).containsKey("value");
+
+            if (isEavFormat) {
+                // EAV 格式处理：[{roleKey, infoKey, value, valueType}, ...]
+                for (Map<String, Object> row : evaluationCustomerInfos) {
+                    String roleKey = (String) row.get("roleKey");
+                    if (roleKey == null || roleKey.isBlank()) continue;
+                    String infoKey = normalizeCustomerInfoKey((String) row.get("infoKey"));
+                    if (infoKey == null) continue;
+                    String value = row.get("value") != null ? row.get("value").toString() : null;
+                    String valueTypeStr = (String) row.get("valueType");
+                    TenderEvaluationCustomerInfo.ValueType valueType =
+                            valueTypeStr != null ? TenderEvaluationCustomerInfo.ValueType.valueOf(valueTypeStr)
+                                    : TenderEvaluationCustomerInfo.ValueType.TEXT;
+
+                    TenderEvaluationCustomerInfo entity = new TenderEvaluationCustomerInfo();
+                    entity.setEvaluation(evalEntity);
+                    entity.setRoleKey(roleKey);
+                    entity.setInfoKey(infoKey);
+                    entity.setCellValue(value);
+                    entity.setValueType(valueType);
+                    evalEntity.getCustomerInfos().add(entity);
                 }
-                roleIndex++;
-                for (Map.Entry<String, Object> entry : roleData.entrySet()) {
-                    if ("roleKey".equals(entry.getKey()) || entry.getValue() == null) continue;
-                    String infoKey = normalizeCustomerInfoKey(entry.getKey());
-                    TenderEvaluationCustomerInfo row = new TenderEvaluationCustomerInfo();
-                    row.setEvaluation(evalEntity);
-                    row.setRoleKey(roleKey);
-                    row.setInfoKey(infoKey);
-                    row.setCellValue(entry.getValue().toString());
-                    row.setValueType(TenderEvaluationCustomerInfo.ValueType.TEXT);
-                    evalEntity.getCustomerInfos().add(row);
+            } else {
+                // 展平格式处理：[{roleKey, NAME: "xxx", CONTACT_INFO: "xxx", ...}, ...]
+                int roleIndex = 1;
+                for (Map<String, Object> roleData : evaluationCustomerInfos) {
+                    String roleKey = (String) roleData.get("roleKey");
+                    if (roleKey == null || roleKey.isBlank()) {
+                        roleKey = "EXTERNAL_ROLE_" + roleIndex;
+                    }
+                    roleIndex++;
+                    for (Map.Entry<String, Object> entry : roleData.entrySet()) {
+                        if ("roleKey".equals(entry.getKey()) || entry.getValue() == null) continue;
+                        String infoKey = normalizeCustomerInfoKey(entry.getKey());
+                        TenderEvaluationCustomerInfo row = new TenderEvaluationCustomerInfo();
+                        row.setEvaluation(evalEntity);
+                        row.setRoleKey(roleKey);
+                        row.setInfoKey(infoKey);
+                        row.setCellValue(entry.getValue().toString());
+                        row.setValueType(TenderEvaluationCustomerInfo.ValueType.TEXT);
+                        evalEntity.getCustomerInfos().add(row);
+                    }
                 }
             }
         }
