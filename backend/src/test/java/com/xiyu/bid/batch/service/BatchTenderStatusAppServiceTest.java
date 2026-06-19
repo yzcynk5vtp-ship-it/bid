@@ -9,8 +9,11 @@ import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
+import com.xiyu.bid.webhook.domain.TenderStatusChangedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +34,7 @@ class BatchTenderStatusAppServiceTest {
     private TenderRepository tenderRepository;
     private ProjectRepository projectRepository;
     private ProjectAccessScopeService projectAccessScopeService;
+    private ApplicationEventPublisher eventPublisher;
     private BatchTenderStatusAppService service;
 
     @BeforeEach
@@ -38,12 +42,14 @@ class BatchTenderStatusAppServiceTest {
         tenderRepository = mock(TenderRepository.class);
         projectRepository = mock(ProjectRepository.class);
         projectAccessScopeService = mock(ProjectAccessScopeService.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         IAuditLogService auditLogService = mock(IAuditLogService.class);
         BatchProjectAccessGuard projectAccessGuard = new BatchProjectAccessGuard(projectAccessScopeService, projectRepository);
         service = new BatchTenderStatusAppService(
                 tenderRepository,
                 projectAccessGuard,
-                new BatchOperationLogService(auditLogService)
+                new BatchOperationLogService(auditLogService),
+                eventPublisher
         );
     }
 
@@ -103,5 +109,40 @@ class BatchTenderStatusAppServiceTest {
         assertEquals(1, response.getFailureCount());
         assertEquals("PERMISSION_DENIED", response.getErrors().get(0).getErrorCode());
         verify(tenderRepository, never()).saveAll(anyList());
+    }
+
+    @Test
+    void shouldPublishTenderStatusChangedEventWhenStatusChanges() {
+        Tender bidded = Tender.builder().id(1L).status(Tender.Status.BIDDING)
+                .externalId("SRC:123").title("Tender-1").build();
+        when(tenderRepository.findById(1L)).thenReturn(Optional.of(bidded));
+        when(tenderRepository.saveAll(anyList())).thenReturn(List.of(bidded));
+
+        BatchTenderStatusUpdateRequest request = new BatchTenderStatusUpdateRequest();
+        request.setTenderIds(List.of(1L));
+        request.setStatus("WON");
+
+        service.batchUpdateStatus(request, null);
+
+        ArgumentCaptor<TenderStatusChangedEvent> captor =
+                ArgumentCaptor.forClass(TenderStatusChangedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertEquals(Tender.Status.BIDDING, captor.getValue().oldStatus());
+        assertEquals(Tender.Status.WON, captor.getValue().newStatus());
+        assertEquals(1L, captor.getValue().tenderId());
+    }
+
+    @Test
+    void shouldNotPublishEventWhenStatusUnchanged() {
+        Tender tracking = Tender.builder().id(1L).status(Tender.Status.TRACKING).build();
+        when(tenderRepository.findById(1L)).thenReturn(Optional.of(tracking));
+
+        BatchTenderStatusUpdateRequest request = new BatchTenderStatusUpdateRequest();
+        request.setTenderIds(List.of(1L));
+        request.setStatus("TRACKING");
+
+        service.batchUpdateStatus(request, null);
+
+        verify(eventPublisher, never()).publishEvent(any());
     }
 }
