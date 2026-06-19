@@ -43,6 +43,13 @@
   source: docs/generated/README.md
   note: 由 `scripts/generate-db-schema.mjs` 自动生成，跟随 Flyway 迁移刷新。
 
+- area: `docs/lessons/README.md`
+  type: out-of-sync-doc
+  severity: medium
+  status: resolved
+  source: knowledge-capture (CO-279 / CO-281 session)
+  note: 文件第 15 行残留未解决的 git 冲突标记 `<<<<<<< HEAD`，已在本 session 中修复，并补充 CO-279、spring-boot-actuator-gotchas 索引条目。建议后续提交前检查文档文件是否含冲突标记。
+
 ### 字段名双轨制
 
 - area: `backend/src/main/java/com/xiyu/bid/tender/core/TenderEvaluationCustomerInfoPolicy.java`

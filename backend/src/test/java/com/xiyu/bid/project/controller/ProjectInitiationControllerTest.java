@@ -19,12 +19,16 @@ import org.springframework.security.web.method.annotation.AuthenticationPrincipa
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
+
+import org.mockito.ArgumentCaptor;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -90,5 +94,29 @@ class ProjectInitiationControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.projectId").value(100L))
                 .andExpect(jsonPath("$.data.ownerUnit").value("西域事业部"));
+    }
+
+    @Test
+    void submit_AcceptsSpacedBidOpenTimeFormat() throws Exception {
+        InitiationViewDto dto = new InitiationViewDto();
+        dto.setProjectId(100L);
+        dto.setOwnerUnit("西域事业部");
+        when(service.submit(eq(100L), any(InitiationDto.class), eq(42L))).thenReturn(dto);
+
+        UserDetails principal = User.withUsername("sales").password("x").roles("STAFF").build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(principal, "x", principal.getAuthorities()));
+
+        String json = "{\"ownerUnit\":\"西域事业部\",\"bidOpenTime\":\"2026-06-19 14:38:00\"}";
+        mockMvc.perform(post("/api/projects/100/initiation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated());
+
+        ArgumentCaptor<InitiationDto> captor = ArgumentCaptor.forClass(InitiationDto.class);
+        verify(service).submit(eq(100L), captor.capture(), eq(42L));
+        org.junit.jupiter.api.Assertions.assertEquals(
+                LocalDateTime.of(2026, 6, 19, 14, 38, 0),
+                captor.getValue().getBidOpenTime());
     }
 }
