@@ -29,6 +29,10 @@ export function useTenderAiParse(form) {
   async function handleFileChange(file, fileList) {
     form.value.attachments = fileList
     const uploadFile = resolveUploadFile(file)
+    const fileIndex = fileList.findIndex(f => {
+      if (file?.uid && f?.uid) return f.uid === file.uid
+      return f.name === file?.name
+    })
     if (!uploadFile) return
     if (uploadFile.size > MAX_FILE_SIZE) {
       ElMessage.warning(`文件 "${uploadFile.name}" 超过 50MB 限制`)
@@ -47,7 +51,7 @@ export function useTenderAiParse(form) {
       const response = await tendersApi.parseTenderIntakeDocument(uploadFile, { entityId: 'create-tender' })
       if (!response?.success) throw new Error(response?.msg || '文档自动识别失败')
       applyParsedFields(response.data)
-      applyAttachmentFileUrl(uploadFile, response.data)
+      applyAttachmentFileUrl(file, uploadFile, response.data, fileIndex)
       return 'DeepSeek/AI 已识别附件内容，可继续编辑后保存'
     })
   }
@@ -126,27 +130,21 @@ export function useTenderAiParse(form) {
     }
   }
 
-  function applyAttachmentFileUrl(file, parseResult) {
+  function applyAttachmentFileUrl(file, uploadFile, parseResult, fileIndex) {
     const fileUrl = parseResult?.documentId || ''
     if (!fileUrl) return
-    // 把 AI 解析返回的 documentId 写入 attachments 中对应文件的 fileUrl
-    const targetName = file?.name || ''
+    // 用上传时记录的下标直接定位附件，避免同名文件覆盖错对象；与 useManualTenderCreate.js 保持一致。
     const attachments = form.value.attachments || []
-    const idx = attachments.findIndex(f => {
-      const fFile = resolveUploadFile(f)
-      return fFile?.name === targetName || f?.name === targetName
-    })
-    if (idx >= 0) {
-      attachments[idx] = {
-        ...attachments[idx],
-        name: attachments[idx].name || targetName,
-        type: attachments[idx].type || file?.type || '',
-        url: fileUrl,
-        fileUrl,
-        fileName: attachments[idx].fileName || targetName,
-        fileType: attachments[idx].fileType || file?.type || '',
-      }
-    }
+    const target = fileIndex >= 0 && attachments[fileIndex] ? attachments[fileIndex] : null
+    if (!target) return
+    const targetName = file?.name || uploadFile?.name || ''
+    const targetType = uploadFile?.type || file?.type || ''
+    target.name = target.name || targetName
+    target.type = target.type || targetType
+    target.fileName = target.fileName || targetName
+    target.fileType = target.fileType || targetType
+    target.url = fileUrl
+    target.fileUrl = fileUrl
   }
 
   return {
