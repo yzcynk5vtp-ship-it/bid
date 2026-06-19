@@ -20,6 +20,7 @@
 | 做架构设计 | `ARCHITECTURE.md` | 分层规则、db-schema 机器真相 |
 | 安全/权限/Mock | `SECURITY.md` | Mock 政策、Final Class Mock、权限守卫 |
 | 发起复杂任务 | `PLANS.md` | Spec Kit 门禁、exec-plans 落点 |
+| 收尾任务/清理分支 | `scripts/agent-finish-task.sh` | 三重合入检查、锁清理、锚点切换、远端分支删除 |
 | 启动服务/跑测试 | `CLAUDE.md` | 启动命令、环境变量、验证清单 |
 | 提交 PR/查门禁 | `RELIABILITY.md` | 14 道门禁、文件锁、回滚手册、PR 创建 |
 | 查产品需求 | `PRODUCT_SENSE.md` | 产品蓝图、PRD |
@@ -32,6 +33,8 @@
 - **"早操SOP"** → `git fetch origin && git rebase origin/main && bash scripts/sync-env.sh .`
 - **"开个任务/开个分支 XX"** → `scripts/agent-start-task.sh <当前agent名> <XX> origin/main --in-place`
 - **"早操SOP + 开个分支 XX"** → 同上，相当于 `--in-place` 一次完成全部流程
+- **"收个任务/收尾"** → `scripts/agent-finish-task.sh`（三重合入检查 + 锁清理 + 切回锚点 + 可选删除远端分支，支持 `--dry-run` 预览）
+- **"健康检查"** → `npm run agent:health-check`（跨 worktree 聚合 sidecar/backend/frontend 健康状态）
 
 ## 文件树概览
 
@@ -52,6 +55,8 @@
 │   ├── exec-plans/        ← 执行计划（active/completed/tech-debt-tracker）
 │   ├── generated/         ← 机器生成真相（db-schema.md）
 │   ├── references/        ← 外部知识内部化（ehsy-sdk/wangeditor/markitdown）
+│   │                       （含 vue-gotchas/crm-field-mapping/crm-integration-lessons）
+│   ├── permission-matrix/ ← 权限矩阵审计
 │   ├── plans/             ← 活跃开发计划
 │   ├── architecture/      ← 架构设计文档
 │   ├── specs/             ← 需求规格
