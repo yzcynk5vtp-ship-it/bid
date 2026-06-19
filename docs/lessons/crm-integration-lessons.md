@@ -451,3 +451,92 @@ CO-263 系列（第 3、4、5 节）和 CO-276（本节）是**同一条 CRM 回
 - [TenderUpdateRequest.java](../../backend/src/main/java/com/xiyu/bid/integration/external/TenderUpdateRequest.java) — DTO 补同名字段
 - [TenderIntegrationService.java](../../backend/src/main/java/com/xiyu/bid/integration/external/TenderIntegrationService.java) — `firstNonBlank` 合并取值 + 诊断日志
 - [TenderRequestCrmOpportunityIdDeserializationTest.java](../../backend/src/test/java/com/xiyu/bid/integration/external/TenderRequestCrmOpportunityIdDeserializationTest.java) — Jackson 反序列化测试
+
+## 7. CRM 推 crmOpportunityId 实传商机主键 id 非 code，按 id 反查 code（CO-277 / PR !846）
+
+> 来源：2026-06-19 tender 275（CC20260619285）部署 CO-276 后回调仍失败事故复盘
+> 代码修复已通过 PR !846 合入 main，文档纠正已通过 PR !847 合入 main
+
+### 事故一句话总结
+
+CO-276 修复字段名不匹配（crmOpportunityId vs crmId）后，新商机 CC20260619285 回调**仍失败**。根因：CO-276 误以为 CRM 推的 `crmOpportunityId` 是商机编号 code（CC... 格式），实测 CRM 推的是商机**主键 id**（纯数字如 20916）。`applyCrmLinkAndAssignment` 一律按 code 查 pageList，id 格式必然反查失败；降级分支把 id 直接存入 `crm_opportunity_id`，导致回传 bidInfoSync 的 `code="20916"`，CRM 按编号匹配失败。
+
+### 根因：CO-276 的错误假设 + 降级分支的数据污染
+
+CO-276 修了"字段名不匹配"，但没发现"语义也不匹配"。整个 CO-276 分析基于**我方接口文档 `integration-tender-api-v3.1.md` 的示例值**（`"crmOpportunityId": "CC20260619283"`），而非 CRM 实际推送行为。因为当时没有诊断日志记录 `crmOpportunityId` 的实际值，全程只看到 `crm_opportunity_id=NULL`（字段被吞），看不到 CRM 到底推了什么。
+
+CO-276 加了诊断日志 `pushTender received: ... crmOpportunityId=...` 后，CO-277 才第一次看到真实值：
+
+```
+pushTender received: sourceSystem=CRM, sourceId=245, crmId=null,
+                     crmOpportunityId=20916, crmOpportunityName=cye测试3
+```
+
+`crmOpportunityId=20916` 是纯数字，是商机主键 id，不是 code（CC20260619285）。两者完全不同。
+
+原 `applyCrmLinkAndAssignment` 的致命路径：
+1. 收到 `crmId=20916`（实为 id）→ 调 `findProjectLeaderByChanceCode("20916")` 把 id 当 code 查
+2. CRM pageList 按 code 精确匹配 `"20916"`，找不到（真 code 是 `CC20260619285`）→ 返回 null
+3. 降级分支：`tender.setCrmOpportunityId("20916")` 直接把 id 存入 → `crm_opportunity_id=20916`（错误）
+4. 外层 `linkByChanceIdIfPresent` 兜底因"已有值"被跳过 → 正确 code 无法回填
+5. 回传时 bidInfoSync `code="20916"` → CRM 按编号匹配失败 → **回调失败**
+
+### 决定性证据：端到端验证日志（tender 276，商机 CC20260619286）
+
+部署 CO-277 修复后，用户创建新商机 CC20260619286 触发回调，日志铁证：
+
+```
+pushTender received: sourceSystem=CRM, sourceId=246, crmId=null,
+                     crmOpportunityId=20917, crmOpportunityName=cye测试4
+Applying CRM link for tender id=null, crmId=20917
+findProjectLeaderByChanceId: id=20917, code=CC20260619286, leader=张义春, leaderNo=01896
+CRM link: ... for crmId=CC20260619286        ← 落库的是 code（反查后）
+CRM link: tender status set to EVALUATED for crmId=CC20260619286
+```
+
+CO-277 的 id 反查 code 逻辑被实际触发：`id=20917 → code=CC20260619286`。废弃后 CRM 商机 projectStatus 从 5（投标中）变为 6（弃标），**回调成功**（用户确认）。
+
+### 修复内容（已通过 PR !846 合入 main）
+
+`CrmTenderLinkService.applyCrmLinkAndAssignment`：
+1. 新增 `tryParseChanceId(String crmId)`：纯数字解析为 Long（视为 id），非纯数字返回 null（视为 code）
+2. `crmId` 为纯数字时调 `findProjectLeaderByChanceId(id)` 按 id 反查详情拿 code；否则保持原 `findProjectLeaderByChanceCode` 逻辑
+3. **关键**：id 格式反查失败时，**不把 id 存入 `crm_opportunity_id`**（保持 null），让外层 `linkByChanceIdIfPresent` 兜底有机会用 sourceId 反查正确 code；code 格式仍直接存入
+
+测试：新增 3 个用例（id 反查存 code / id 反查失败不存 / code 格式原逻辑），`CrmTenderLinkServiceTest` + `TenderIntegrationServiceUpdateCrmLinkTest` + `TenderRequestCrmOpportunityIdDeserializationTest` 共 24 测试全绿。
+
+### 数据修正
+
+tender 275 `crm_opportunity_id` 已由 `20916` 手动 SQL 修正为 `CC20260619285`（id 格式错误数据无法通过回传修复，因 ABANDONED 是终态）。
+
+### 最大教训：接口文档的字段语义必须用实际推送日志验证，不能只看文档示例值
+
+本次最隐蔽的陷阱：**CO-276 的整个分析建立在我方接口文档示例值（CC...）上，而非 CRM 实际行为**。我方文档 `integration-tender-api-v3.1.md` 写"crmOpportunityId 是 CRM 商机编号（CC... 格式）"——这是**我们对 CRM 的要求**，不是 CRM 的实际行为。CRM 实际推 id，我方文档却假设推 code，导致 CO-276 修了字段名却没修语义。
+
+| 验证手段 | 结论 | 是否可靠 |
+|---|---|---|
+| 我方接口文档示例值 | "CC... 格式" | ❌ 不可靠，是我们的期望，不是 CRM 行为 |
+| 推送接口 HTTP 200 | "成功" | ❌ 不可靠，字段语义错也 200 |
+| `crm_opportunity_id` 字段值 | NULL → 字段被吞；纯数字 → 存了 id；CC... → 存了 code | ✅ 部分可靠，但看不到 CRM 推什么 |
+| **`pushTender received` 诊断日志** | **直接看 crmOpportunityId 实际值** | **✅ 唯一可靠** |
+
+**通用规则**：对接外部系统时，字段语义（是 id 还是 code？是枚举名还是枚举值？）必须用**实际推送/响应日志**验证，不能只看接口文档。文档是对方写的或我们写的期望，都可能失真。诊断日志要记录原始字段值（非脱敏的业务标识），这是验证字段语义的唯一手段。
+
+### 与第 6 节的关系：CO-276 修字段名，CO-277 修字段语义
+
+CO-276（第 6 节）和 CO-277（本节）是同一字段 `crmOpportunityId` 的两道独立断点：
+
+| 断点 | 节 | 表现 | 根因 |
+|---|---|---|---|
+| 字段名不匹配 | 第 6 节 | crmOpportunityId 被 Jackson 丢弃，crm_opportunity_id=NULL | 字段名 crmOpportunityId vs crmId |
+| **字段语义不匹配** | **本节** | **crmOpportunityId=20916 被当 code 查失败，降级存 id** | **CRM 推 id，代码假设推 code** |
+
+CO-276 修了"字段名"让值能进来，CO-277 修了"字段语义"让值被正确处理。两道断点症状相似（回调失败），但根因独立。CO-276 没发现语义问题，因为它没看实际推送值——这正是本节"最大教训"的来源。
+
+### 相关文档
+
+- [CrmTenderLinkService.java](../../backend/src/main/java/com/xiyu/bid/integration/external/CrmTenderLinkService.java) — `applyCrmLinkAndAssignment` id 反查 code + `tryParseChanceId`
+- [CrmTenderLinkServiceTest.java](../../backend/src/test/java/com/xiyu/bid/integration/external/CrmTenderLinkServiceTest.java) — 3 个 CO-277 新用例
+- [CrmProjectLeaderService.java](../../backend/src/main/java/com/xiyu/bid/crm/application/CrmProjectLeaderService.java) — `findProjectLeaderByChanceId` 按 id 反查
+- [西域CRM商机对接接口.md](../integration/西域CRM商机对接接口.md) — CustomerChanceVO schema：`id`=主键id、`code`=商机编号（四源证据）
+- [V118__fix_crm_opportunity_id_type.sql](../../backend/src/main/resources/db/migration/V118__fix_crm_opportunity_id_type.sql) — 列存 code 设计 + CO-277 背景注释
