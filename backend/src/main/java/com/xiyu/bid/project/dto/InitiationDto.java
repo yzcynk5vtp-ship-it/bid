@@ -4,6 +4,7 @@
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.xiyu.bid.project.core.InitiationFieldPolicy;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +30,7 @@ public class InitiationDto {
     private BigDecimal annualRevenue;
     /** 年度电商采购额(万)。蓝图 §3.3.1.1 新增。 */
     private BigDecimal annualEcommerceAmount;
+    @JsonDeserialize(using = LenientLocalDateTimeDeserializer.class)
     private LocalDateTime bidOpenTime;
     private Long ownerUserId;
     private String departmentSnapshot;
