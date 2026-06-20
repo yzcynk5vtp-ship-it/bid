@@ -47,8 +47,9 @@ class TenderIntegrationServiceUpdateCrmLinkTest {
                 tenderMapper, evaluationMapper);
         TenderEvaluationIntegrationService evaluationService = new TenderEvaluationIntegrationService(
                 tenderEvaluationRepository, evaluationMapper);
+        TenderIntegrationHelper helper = new TenderIntegrationHelper(tenderRepository);
         commandService = new TenderIntegrationCommandService(
-                tenderRepository, attachmentRepository, crmTenderLinkService, mapper, evaluationService);
+                tenderRepository, attachmentRepository, crmTenderLinkService, mapper, evaluationService, helper);
         when(tenderRepository.save(any(Tender.class))).thenAnswer(inv -> inv.getArgument(0));
         TenderDTO stubDto = TenderDTO.builder().build();
         when(tenderMapper.toDTO(any(Tender.class))).thenReturn(stubDto);

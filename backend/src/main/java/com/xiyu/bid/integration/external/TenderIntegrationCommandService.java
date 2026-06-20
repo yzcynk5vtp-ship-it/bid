@@ -27,6 +27,7 @@ public class TenderIntegrationCommandService {
     private final CrmTenderLinkService crmTenderLinkService;
     private final TenderIntegrationMapper mapper;
     private final TenderEvaluationIntegrationService evaluationService;
+    private final TenderIntegrationHelper helper;
 
     /**
      * 幂等推送标讯。
@@ -50,7 +51,7 @@ public class TenderIntegrationCommandService {
      */
     @Transactional
     public TenderDTO updateByExternalId(String sourceSystem, String sourceId, TenderUpdateRequest request) {
-        Tender tender = resolveTenderForUpdate(sourceSystem, sourceId, request.getTenderId());
+        Tender tender = helper.resolveTender(sourceSystem, sourceId, request.getTenderId());
         String externalId = tender.getExternalId();
 
         applyUpdateFields(tender, request);
@@ -129,35 +130,6 @@ public class TenderIntegrationCommandService {
                 .status("CREATED")
                 .message("标讯创建成功")
                 .build();
-    }
-
-    private Tender resolveTenderForUpdate(String sourceSystem, String sourceId, Long tenderId) {
-        if (tenderId != null) {
-            Tender tender = tenderRepository.findById(tenderId)
-                    .orElseThrow(() -> new com.xiyu.bid.exception.ResourceNotFoundException(
-                            "标讯不存在: id=" + tenderId));
-            if (sourceSystem != null && !sourceSystem.isBlank() && !"_".equals(sourceSystem)
-                    && sourceId != null && !sourceId.isBlank() && !"_".equals(sourceId)) {
-                String expectedExternalId = TenderIntegrationMapper.buildExternalId(sourceSystem, sourceId);
-                if (tender.getExternalId() != null && !tender.getExternalId().equals(expectedExternalId)) {
-                    throw new IllegalArgumentException(
-                            "tenderId=" + tenderId + " 的 externalId="
-                            + tender.getExternalId() + " 与路径 sourceSystem=" + sourceSystem
-                            + " sourceId=" + sourceId + " 不匹配");
-                }
-            }
-            return tender;
-        }
-
-        if (sourceSystem != null && !sourceSystem.isBlank() && !"_".equals(sourceSystem)
-                && sourceId != null && !sourceId.isBlank() && !"_".equals(sourceId)) {
-            String externalId = TenderIntegrationMapper.buildExternalId(sourceSystem, sourceId);
-            return tenderRepository.findByExternalId(externalId)
-                    .orElseThrow(() -> new com.xiyu.bid.exception.ResourceNotFoundException(
-                            "标讯不存在: " + externalId));
-        }
-
-        throw new IllegalArgumentException("tenderId 与 (sourceSystem, sourceId) 至少需要传一组");
     }
 
     private void applyUpdateFields(Tender tender, TenderUpdateRequest request) {
