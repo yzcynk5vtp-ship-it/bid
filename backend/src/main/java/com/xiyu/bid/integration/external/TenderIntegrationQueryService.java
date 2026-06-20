@@ -21,7 +21,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class TenderIntegrationQueryService {
 
-    private final TenderIntegrationHelper helper;
+    private final TenderIntegrationResolver helper;
     private final TenderAttachmentRepository attachmentRepository;
     private final TenderIntegrationMapper mapper;
 

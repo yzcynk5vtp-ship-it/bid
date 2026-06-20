@@ -47,7 +47,7 @@ class TenderIntegrationServicePushEvaluationTest {
         TenderEvaluationIntegrationService evaluationService = new TenderEvaluationIntegrationService(
                 tenderEvaluationRepository,
                 evaluationMapper);
-        TenderIntegrationHelper helper = new TenderIntegrationHelper(tenderRepository);
+        TenderIntegrationResolver helper = new TenderIntegrationResolver(tenderRepository);
         commandService = new TenderIntegrationCommandService(
                 tenderRepository,
                 mock(TenderAttachmentRepository.class),

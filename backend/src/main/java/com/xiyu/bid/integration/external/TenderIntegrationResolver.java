@@ -6,12 +6,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 外部标讯集成共享工具。
+ * 外部标讯集成标讯解析器。
  * 提取 QueryService 和 CommandService 共用的 tender 解析逻辑。
  */
 @Component
 @RequiredArgsConstructor
-public class TenderIntegrationHelper {
+public class TenderIntegrationResolver {
 
     private final TenderRepository tenderRepository;
 

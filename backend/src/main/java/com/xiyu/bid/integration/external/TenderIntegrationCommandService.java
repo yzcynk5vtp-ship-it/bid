@@ -27,7 +27,7 @@ public class TenderIntegrationCommandService {
     private final CrmTenderLinkService crmTenderLinkService;
     private final TenderIntegrationMapper mapper;
     private final TenderEvaluationIntegrationService evaluationService;
-    private final TenderIntegrationHelper helper;
+    private final TenderIntegrationResolver helper;
 
     /**
      * 幂等推送标讯。
