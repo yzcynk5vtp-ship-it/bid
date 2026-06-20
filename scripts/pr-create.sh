@@ -133,18 +133,23 @@ payload = {
 print(json.dumps(payload))
 '
     )"
+    # 用 mktemp 而不是硬编码 /tmp/pr-create-response.json，避免并发调用
+    # 互相覆盖。脚本退出时自动清理（trap EXIT）。
+    _pr_resp="$(mktemp -t pr-create-response.XXXXXX.json)"
+    trap 'rm -f "$_pr_resp"' EXIT
     curl -s -X POST "https://gitee.com/api/v5/repos/${repo_path}/pulls" \
       -H "Content-Type: application/json;charset=UTF-8" \
-      -d "$json_payload" -o /tmp/pr-create-response.json -w "HTTP %{http_code}\n" \
-    && python3 -c "
-import sys, json
+      -d "$json_payload" -o "$_pr_resp" -w "HTTP %{http_code}\n" \
+    && PR_RESP="$_pr_resp" python3 -c "
+import os, sys, json
+resp_path = os.environ['PR_RESP']
 try:
-    d = json.load(open('/tmp/pr-create-response.json'))
+    d = json.load(open(resp_path))
 except Exception as e:
     print('❌ ERROR: 无法解析 Gitee 响应', file=sys.stderr)
     print('  异常:', e, file=sys.stderr)
     print('  原始响应（前 500 字符）:', file=sys.stderr)
-    with open('/tmp/pr-create-response.json') as f:
+    with open(resp_path) as f:
         print(f.read()[:500], file=sys.stderr)
     sys.exit(2)
 pr_number = d.get('number')
