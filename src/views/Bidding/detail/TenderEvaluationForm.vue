@@ -66,13 +66,20 @@
             :error="recommendationErrors.reason"
             required
           >
+            <textarea
+              v-if="isRecommendationReadOnly"
+              :value="form.recommendation.reason || '-'"
+              rows="10"
+              readonly
+              class="readonly-textarea"
+            />
             <el-input
+              v-else
               v-model="form.recommendation.reason"
               type="textarea"
               :autosize="{ minRows: 4, maxRows: 10 }"
               placeholder="请填写理由（选择不投标时必填）"
               maxlength="5000"
-              :readonly="isRecommendationReadOnly"
             />
           </el-form-item>
         </el-form>
@@ -191,5 +198,20 @@ defineExpose({ handleSubmit, handleSaveDraft, handleBid, handleAbandon })
   justify-content: flex-end;
   gap: 12px;
   margin-top: 16px;
+}
+
+.readonly-textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 5px 11px;
+  border: 1px solid var(--gray-100, #E8E8E8);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  color: var(--text-primary-ui, #303133);
+  background: var(--bg-subtle, #F5F7FA);
+  resize: vertical;
+  overflow-y: scroll;
 }
 </style>
