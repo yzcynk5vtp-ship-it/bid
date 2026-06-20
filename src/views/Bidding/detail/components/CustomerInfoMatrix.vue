@@ -16,7 +16,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import CustomerInfoMatrixTable from './CustomerInfoMatrixTable.vue'
-import { CUSTOMER_INFO_COLUMNS, CUSTOMER_INFO_ROWS, getCustomerInfoRoleLabel } from './customerInfoMatrixConfig.js'
+import { CUSTOMER_INFO_COLUMNS, getCustomerInfoRoleLabel } from './customerInfoMatrixConfig.js'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -53,26 +53,15 @@ function hasCustomerInfoValue(row) {
 }
 
 function mergeData(incoming) {
-  const map = new Map()
-  if (Array.isArray(incoming)) {
-    for (const item of incoming) {
-      if (item?.roleKey) map.set(item.roleKey, item)
-    }
-  }
-  const fixedKeys = new Set(CUSTOMER_INFO_ROWS.map(r => r.roleKey))
-  const fixedRows = CUSTOMER_INFO_ROWS.map((r) => {
-    const existing = map.get(r.roleKey)
-    return existing ? { ...makeEmptyRow(r), ...existing, roleKey: r.roleKey, roleLabel: r.roleLabel } : makeEmptyRow(r)
-  })
-  const extraRows = Array.isArray(incoming)
-    ? incoming
-      .filter(item => item?.roleKey && !fixedKeys.has(item.roleKey))
-      .map(item => {
-        const roleLabel = getCustomerInfoRoleLabel(item.roleKey, item.roleLabel)
-        return { ...makeEmptyRow({ roleKey: item.roleKey, roleLabel }), ...item, roleKey: item.roleKey, roleLabel }
-      })
-    : []
-  return [...fixedRows, ...extraRows].filter(hasCustomerInfoValue)
+  if (!Array.isArray(incoming)) return []
+
+  return incoming
+    .filter(item => item?.roleKey)
+    .map(item => {
+      const roleLabel = getCustomerInfoRoleLabel(item.roleKey, item.roleLabel)
+      return { ...makeEmptyRow({ roleKey: item.roleKey, roleLabel }), ...item, roleKey: item.roleKey, roleLabel }
+    })
+    .filter(hasCustomerInfoValue)
 }
 
 const localData = ref(mergeData(props.modelValue))

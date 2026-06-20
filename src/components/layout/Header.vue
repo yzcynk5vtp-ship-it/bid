@@ -179,16 +179,19 @@ const roleTextMap = {
   admin: '管理员',
   manager: '经理',
   sales: '项目负责人',
-  staff: '员工',
-  guest: '游客'
+  staff: '员工'
 }
 
-const userAvatar = computed(() => {
-  const name = userStore.currentUser?.name || '游客'
-  return name.charAt(0).toUpperCase()
+const userName = computed(() => {
+  if (userStore.isRestoringSession) return '加载中'
+  return userStore.userName || '用户'
 })
-const userName = computed(() => userStore.currentUser?.name || '游客')
-const userRoleText = computed(() => userStore.currentUser?.roleName || roleTextMap[userStore.userRole] || '游客')
+const userAvatar = computed(() => userName.value.charAt(0).toUpperCase() || '用')
+const userRoleText = computed(() => {
+  if (userStore.isRestoringSession) return '加载中'
+  if (!userStore.currentUser) return '用户'
+  return userStore.currentUser?.roleName || roleTextMap[userStore.userRole] || '用户'
+})
 const canAccessSettings = computed(() => userStore.hasPermission('settings'))
 
 const handleToggle = () => {
