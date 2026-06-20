@@ -142,3 +142,199 @@ mvn test -Dtest=InitiationFieldPolicyTest
 
 - `docs/lessons/root-cause-analysis-co-279.md` — 同期立项相关根因分析
 - Issue: CO-281
+
+---
+
+## 4. 回滚 PR 前必须确认根因，避免回滚正确修复
+
+### 问题背景
+
+2026-06-20 CO-280 排查过程中，PR !884 修改 `TenderIntegrationMapper.toDownloadUrl()` 添加 `publicBaseUrl` 配置（方向正确），但当时误判根因为"下载端点不支持外部 URL"。PR !886 实现代理下载后**错误回滚**了 PR !884 的修改。部署后 CRM 实测仍失败（用户报错 URL 显示 `crm-test.ehsy.com` 域名），才重新识别真正根因是**相对路径跨域**问题。最终 PR !890 重新实现 PR !884 的方向 + 保留 PR !886 的代理下载，问题才彻底修复。
+
+### 事故时间线
+
+| 时间 | 操作 | 判断 |
+|------|------|------|
+| 初次排查 | 发现 `DocInsightController.download()` 拒绝 `http(s)://` URL 返回 400 | 误判为唯一根因 |
+| PR !884 | 添加 `publicBaseUrl` 配置（方向正确） | ✅ 正确方向 |
+| PR !886 | 实现代理下载 + **回滚 PR !884** | ❌ 错误回滚 |
+| 部署后验证 | 西域内部下载测试通过 | ❌ 同源场景验证不可靠 |
+| CRM 实测 | 用户报错 URL 显示 `crm-test.ehsy.com` 域名 | ✅ 暴露真正根因 |
+| PR !890 | 重新实现 `publicBaseUrl` + 保留代理下载 | ✅ 彻底修复 |
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 误判根因后回滚了正确修复 | 回滚 PR 前必须确认根因，不能因为"看起来修了另一个问题"就回滚 | 回滚前用"五个为什么"追问根因，确认被回滚的修复与根因无关 |
+| 只测同源场景就认为修复生效 | 同源场景下相对路径正常，掩盖了跨域问题 | 跨系统 bug 必须用真实外部系统场景验证 |
+| 多个根因可能同时存在 | 修复一个不代表另一个不存在 | 排查时列出所有可能的根因，逐一验证，不能"修了一个就收工" |
+
+### 操作规范（建议固化到 CLAUDE.md / RULES.md）
+
+1. **回滚 PR 前必须确认根因**：用"五个为什么"追问，确认被回滚的修复与根因无关。如果不确定，保留修复并观察。
+2. **跨系统 bug 必须用真实外部系统场景验证**：不能只测同源访问，必须模拟外部系统的调用场景（如 CRM 实际点击附件）。
+3. **排查时列出所有可能的根因**：逐一验证，不能"修了一个就收工"。本次同时存在两个根因（下载端点拒绝外部 URL + 相对路径跨域），只修第一个就认为修复完成，导致问题反复。
+4. **回滚操作需要显式记录理由**：commit message 或 PR 描述中必须写明"为什么回滚"、"确认了什么根因"。
+
+### 验证方法
+
+```bash
+# 回滚前自检清单
+1. 我确认了真正的根因是什么吗？（用五个为什么追问）
+2. 被回滚的修复与根因无关吗？
+3. 我用真实场景（非同源）验证过修复无效吗？
+4. 回滚后我会重新实现这个修复吗？如果会，为什么要回滚？
+
+# 跨系统 bug 验证清单
+1. 我模拟了外部系统的调用场景吗？
+2. 我检查了外部系统实际收到的数据吗？（如 CRM 拿到的 URL）
+3. 我验证了端到端流程吗？（如 CRM 用户实际点击附件）
+```
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-co-280.md` — CO-280 完整根因分析
+- `docs/lessons/crm-integration-lessons.md` §8 — 跨系统 URL 推送通用规则
+
+---
+
+## 5. 部署期间并发部署导致 502：ShutdownHook 卡住 + jar 替换导致 NoClassDefFoundError
+
+### 问题背景
+
+2026-06-20 CO-280 修复部署后，用户报告"服务器端测试系统无法登录"，报错 `502 Bad Gateway`。排查发现：我在 14:59 部署了 `e6ea9a0cb-co280-proxy`，有人在 15:24:57 从 `172.16.86.222` 部署了新版本 `df340211-api8080-co282`。部署过程中 `systemctl restart` 触发 SIGTERM，ShutdownHook 卡住 1 分钟（jar 被替换导致 `NoClassDefFoundError`），systemd 超时 SIGKILL，新进程启动期间 Nginx 返回 502，持续约 1 分 30 秒。
+
+### 事故时间线
+
+| 时间 (CST) | 事件 | 影响 |
+|------------|------|------|
+| 14:59:34 | 我部署 `e6ea9a0cb-co280-proxy` | 服务正常 |
+| 15:24:57 | 有人从 `172.16.86.222` 部署 `df340211-api8080-co282` | 开始替换 jar |
+| 15:25:27 | 后端收到 SIGTERM，开始 ShutdownHook | 服务开始关闭 |
+| 15:25:27-15:26:27 | ShutdownHook 执行缓慢（1 分钟），出现大量 `NoClassDefFoundError` | 服务不可用 |
+| 15:26:28 | systemd 超时 SIGKILL，进程被强制终止 | 服务完全中断 |
+| 15:26:29 | systemd 自动重启，新进程启动 | 服务恢复中 |
+| 15:26:48 | 应用启动完成（19.679 秒） | 服务恢复 |
+| 15:27+ | readiness 一度 OUT_OF_SERVICE，现已恢复 UP | 502 消失 |
+
+### 根因分析
+
+**直接原因**：部署期间 `systemctl restart` 触发服务重启，重启期间 Nginx 无法连接后端导致 502。
+
+**深层原因**：
+
+1. **jar 被替换后 ShutdownHook 失效**：部署脚本先替换 jar 文件，再执行 `systemctl restart`。Spring Boot 的 ShutdownHook 在执行时需要加载类（Tomcat/Redis/Kafka 等），但此时 jar 已被替换，classloader 引用的类已变化，导致 `NoClassDefFoundError`，ShutdownHook 卡住。
+
+2. **systemd 超时 SIGKILL**：`TimeoutStopSec` 默认 90 秒，ShutdownHook 卡住 1 分钟后 systemd 发送 SIGKILL 强制终止。这会导致：
+   - 正在处理的请求被中断
+   - 数据库连接未正常关闭
+   - 缓存数据可能丢失
+
+3. **并发部署无锁机制**：多个 agent/人可以同时执行部署脚本，没有部署锁或互斥机制。
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 并发部署导致 502 | 部署期间不能并发部署 | 部署前确认没有其他人在部署，或引入部署锁 |
+| jar 替换后 ShutdownHook 失效 | 先停服务再替换 jar，不能先替换再 restart | 部署顺序：stop → 替换 jar → start |
+| ShutdownHook 卡住 1 分钟 | NoClassDefFoundError 导致 ShutdownHook 无法正常执行 | 避免在 ShutdownHook 中加载新类 |
+| systemd SIGKILL | 强制终止可能导致数据丢失 | 配置合理的 `TimeoutStopSec`，监控 ShutdownHook 执行时间 |
+| 502 持续 1 分 30 秒 | 服务重启期间 Nginx 无健康检查兜底 | Nginx 配置 `proxy_next_upstream` 或维护页面 |
+
+### 正确做法
+
+```bash
+# 1. 部署前检查是否有其他部署在进行
+ssh jetty@172.16.38.78 "sudo systemctl status xiyu-bid-backend | grep 'Active:' | head -1"
+# 如果服务正在重启（activating/deactivating），等待完成后再部署
+
+# 2. 正确的部署顺序：先停服务 → 替换 jar → 启动服务
+sudo systemctl stop xiyu-bid-backend
+sudo cp /opt/xiyu-bid/incoming/app.jar /opt/xiyu-bid/shared/backend/app.jar
+sudo systemctl start xiyu-bid-backend
+
+# 3. 等待健康检查恢复
+for i in $(seq 1 30); do
+  if curl -s http://127.0.0.1:8080/actuator/health | grep -q '"status":"UP"'; then
+    echo "Service is UP"
+    break
+  fi
+  echo "Waiting for service... ($i/30)"
+  sleep 5
+done
+
+# 4. 验证服务完全恢复
+curl -s http://127.0.0.1:8080/actuator/health
+curl -s http://127.0.0.1:8080/actuator/health/readiness
+```
+
+### systemd 配置优化建议
+
+```ini
+# /etc/systemd/system/xiyu-bid-backend.service
+[Service]
+# 给 ShutdownHook 足够时间优雅关闭
+TimeoutStopSec=120
+# 失败后自动重启，但避免频繁重启
+Restart=always
+RestartSec=10
+# 启动失败保护
+StartLimitIntervalSec=60
+StartLimitBurst=3
+```
+
+### Nginx 502 兜底配置
+
+```nginx
+# /etc/nginx/conf.d/xiyu-bid.conf
+location /api/ {
+    proxy_pass http://127.0.0.1:8080;
+    # 后端不可用时返回维护页面，而非 502
+    error_page 502 503 504 /maintenance.html;
+    # 健康检查（nginx-plus 或第三方模块）
+    # proxy_next_upstream off;  # 单实例部署，不要尝试下一个 upstream
+}
+
+location = /maintenance.html {
+    root /srv/www/xiyu-bid;
+    internal;
+}
+```
+
+### 部署协作规范（建议固化到 CLAUDE.md / RULES.md）
+
+1. **部署前确认无人正在部署**：检查 `systemctl status` 和最近部署日志，确认服务稳定运行后再开始部署。
+2. **部署顺序：stop → 替换 → start**：不能先替换 jar 再 `restart`，避免 ShutdownHook 因 jar 变化而失效。
+3. **部署后等待健康检查恢复**：不能部署完就离开，必须等待 `health` + `readiness` 全部 UP。
+4. **部署后通知团队**：在协作群通知"已部署版本 X，服务已恢复"，避免其他人误判 502 为故障。
+5. **502 排查第一步**：检查 `systemctl status` 和 `journalctl`，确认是否有人正在部署。
+
+### 502 排查命令
+
+```bash
+# 1. 检查服务状态（是否正在重启）
+sudo systemctl status xiyu-bid-backend
+
+# 2. 检查最近部署日志（是否有人刚部署）
+sudo journalctl -u xiyu-bid-backend --since "10 minutes ago" | grep -iE 'SIGTERM|SIGKILL|Started|Stopped|deploy'
+
+# 3. 检查部署历史（是否并发部署）
+ls -lt /opt/xiyu-bid/backups/ | head -5
+cat /opt/xiyu-bid/deployed-release.json
+
+# 4. 检查健康检查
+curl -s http://127.0.0.1:8080/actuator/health
+curl -s http://127.0.0.1:8080/actuator/health/readiness
+
+# 5. 检查 Nginx 错误日志
+sudo tail -20 /var/log/nginx/error.log
+```
+
+### 相关文档
+
+- `scripts/release/remote-deploy.sh` — 远程部署脚本
+- `scripts/release/package-release.sh` — 打包脚本
+- `/etc/systemd/system/xiyu-bid-backend.service` — systemd 服务配置
+- `/etc/nginx/conf.d/xiyu-bid.conf` — Nginx 配置

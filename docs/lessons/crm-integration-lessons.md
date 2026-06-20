@@ -590,3 +590,106 @@ CRM 推送标讯附件时，`fileUrl` 字段传入的已经是我们系统的下
 - [TenderMapper.java](../../backend/src/main/java/com/xiyu/bid/tender/service/TenderMapper.java) — 委托 `TenderIntegrationMapper.toDownloadUrl()`
 - [TenderQueryService.java](../../backend/src/main/java/com/xiyu/bid/tender/service/TenderQueryService.java) — 详情查询附件转换
 - [root-cause-analysis-co-283.md](./root-cause-analysis-co-283.md) — 完整根因分析
+
+---
+
+## 8. 跨系统推送 URL 必须返回完整地址，相对路径只在同源可用（CO-280 / PR !890）
+
+> 来源：2026-06-20 CRM 用户点击附件跳转主页事故复盘
+> 代码修复已通过 PR !890 合入 main，本节沉淀教训
+
+### 事故一句话总结
+
+西域推送给 CRM 的附件 URL 是相对路径 `/api/doc-insight/download?fileUrl=...`，CRM 前端（`crm-test.ehsy.com`）渲染 `<a href="/api/...">` 时浏览器拼接 CRM 域名，请求发到 CRM 而非西域（`winbid-test.ehsy.com`），CRM 作为 Vue SPA 返回 `index.html` 兜底，浏览器跳转到 CRM 主页 `#/index/work-place`，用户无法下载文件。
+
+### 根因：相对路径跨域失效
+
+| 场景 | URL 格式 | 同源部署（西域内部） | 跨系统推送（→ CRM） |
+|---|---|---|---|
+| 相对路径 `/api/...` | ✅ 浏览器拼接当前域名，Nginx 反代到后端 | ❌ 浏览器拼接 CRM 域名，请求发到 CRM |
+| 完整 URL `https://winbid-test.ehsy.com/api/...` | ✅ 直接请求西域 | ✅ 直接请求西域 |
+
+**关键认知**：相对路径依赖"当前页面域名 = API 域名"这一假设。同源部署时成立（西域前端通过 Nginx 反代 `/api/`），跨系统推送时失效（CRM 前端域名 ≠ 西域 API 域名）。
+
+### 决定性证据：tender 312 端到端验证
+
+**修复前**（用户报错的 URL）：
+```
+https://crm-test.ehsy.com/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2F...#/index/work-place
+```
+浏览器在 CRM 域名下点击相对路径 → 拼接 CRM 域名 → CRM 返回 index.html → 跳转主页。
+
+**修复后**（API 返回的 URL）：
+```
+attachment[0].fileUrl: https://winbid-test.ehsy.com/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2FTENDER_INTAKE%2Fcreate-tender%2F8ed887d6d13c-%E5%A4%8D%E7%9B%98%E6%8A%A5%E5%91%8A.docx
+```
+完整 URL → 浏览器直接请求西域 → 下载成功（HTTP 200, 10237 字节, 有效 .docx）。
+
+### 修复内容（已通过 PR !890 合入 main）
+
+1. **`TenderIntegrationMapper` 添加 `publicBaseUrl` 配置**：通过 `@Value` + static setter 注入，保持 `toDownloadUrl()` 静态方法签名不变
+2. **`toDownloadUrl()` 返回完整 URL**：配置了 `publicBaseUrl` 时拼接域名前缀，未配置时返回相对路径（同源兼容）
+3. **新增 `toFullUrl()` 处理三种 URL 格式**：
+   - `doc-insight://` → 走 `toDownloadUrl()` 编码 + 拼接
+   - `/api/...` → 直接补全 `publicBaseUrl` 前缀
+   - `http(s)://` → 原样返回（已是完整 URL）
+4. **`normalizeFileUrls()` 改用 `toFullUrl()`**：覆盖所有 URL 格式，不再只处理 `doc-insight://`
+5. **保留 CO-283 幂等性**：已是 `/api/...` 下载地址的不再二次包装
+
+### 配置方式
+
+```yaml
+# backend/src/main/resources/application-prod.yml
+xiyu:
+  public-base-url: ${XIYU_PUBLIC_BASE_URL:}
+```
+
+```bash
+# /etc/xiyu-bid/backend.env（生产环境）
+XIYU_PUBLIC_BASE_URL=https://winbid-test.ehsy.com
+```
+
+开发环境默认为空（同源部署），生产环境通过环境变量注入完整域名。
+
+### 最大教训：跨系统 URL 必须是完整地址，相对路径是同源特权
+
+本次最隐蔽的陷阱：**相对路径在同源部署下完全正常，跨系统推送时才暴露问题**。西域系统内部测试永远发现不了这个 bug，因为浏览器和 API 同域名，相对路径拼接后正好命中 Nginx 反代。
+
+| 验证手段 | 结论 | 是否可靠 |
+|---|---|---|
+| 西域系统内部点击附件下载 | "正常" | ❌ 不可靠，同源场景下相对路径正常 |
+| CRM 推送的 `http(s)://` 外部 URL 下载 | "正常" | ❌ 不可靠，走的是代理下载路径，不是相对路径 |
+| **CRM 系统实际点击附件** | **跳转主页 → 跨域问题** | **✅ 唯一可靠** |
+
+**铁律**：跨系统推送的 URL 必须是完整地址（含协议+域名）。相对路径是同源部署的特权，不能假设外部系统会通过反代访问你的 API。
+
+### 通用规则：跨系统 URL 处理的三种格式
+
+1. **`doc-insight://`（内部协议）**：必须通过下载端点转换，URL 生成方法负责编码 + 拼接域名
+2. **`/api/...`（相对路径）**：同源可用，跨系统需补全域名前缀
+3. **`http(s)://`（完整 URL）**：原样返回，不二次处理
+
+URL 转换方法应同时处理三种格式，并保持幂等性（已是下载地址的不二次包装）。
+
+### 与 CO-283 的关系：幂等性 + 完整 URL
+
+CO-283（PR !889）修复了 `toDownloadUrl()` 的双重嵌套问题（已是 `/api/...` 的不再二次包装），CO-280（PR !890）在此基础上添加了 `publicBaseUrl` 支持。两个 PR 修改同一方法，合并时需同时保留：
+
+| 断点 | PR | 表现 | 根因 |
+|---|---|---|---|
+| 双重嵌套 | CO-283 (!889) | `/api/...` 被二次包装成 `/api/...?fileUrl=/api/...` | `toDownloadUrl()` 未识别已是下载地址 |
+| **跨域失效** | **CO-280 (!890)** | **相对路径跨系统推送时拼接错误域名** | **`toDownloadUrl()` 返回相对路径，未补全域名** |
+
+### 走过的弯路：PR !884 错误回滚
+
+PR !884 曾尝试添加 `publicBaseUrl` 配置（方向正确），但当时误判根因为"下载端点不支持外部 URL"，PR !886 实现了代理下载后错误回滚了 PR !884。直到 CRM 实测仍失败（用户报错 URL 显示 `crm-test.ehsy.com` 域名），才重新识别真正根因是相对路径跨域问题。
+
+**教训**：回滚 PR 前必须确认根因。本次 PR !884 方向正确但被错误回滚，导致问题多绕了一圈才修复。详见 `docs/lessons/root-cause-analysis-co-280.md` "为什么之前没有提前发现"小节。
+
+### 相关文档
+
+- [root-cause-analysis-co-280.md](./root-cause-analysis-co-280.md) — 完整根因分析
+- [TenderIntegrationMapper.java](../../backend/src/main/java/com/xiyu/bid/integration/external/TenderIntegrationMapper.java) — `toDownloadUrl()` + `toFullUrl()` + `prependPublicBaseUrl()`
+- [TenderIntegrationMapperToDownloadUrlTest.java](../../backend/src/test/java/com/xiyu/bid/integration/external/TenderIntegrationMapperToDownloadUrlTest.java) — 12 个测试场景
+- [application-prod.yml](../../backend/src/main/resources/application-prod.yml) — `xiyu.public-base-url` 配置
+- [integration-tender-api-v3.1.md](../integration-tender-api-v3.1.md) — CRM 推标讯接口契约（fileUrl 字段）
