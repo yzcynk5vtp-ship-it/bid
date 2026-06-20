@@ -47,12 +47,14 @@ class TenderIntegrationServicePushEvaluationTest {
         TenderEvaluationIntegrationService evaluationService = new TenderEvaluationIntegrationService(
                 tenderEvaluationRepository,
                 evaluationMapper);
+        TenderIntegrationResolver helper = new TenderIntegrationResolver(tenderRepository);
         commandService = new TenderIntegrationCommandService(
                 tenderRepository,
                 mock(TenderAttachmentRepository.class),
                 mock(CrmTenderLinkService.class),
                 mapper,
-                evaluationService);
+                evaluationService,
+                helper);
     }
 
     private TenderPushRequest.EvaluationUpdate buildEval(String roleKey, String infoKey, String value) {

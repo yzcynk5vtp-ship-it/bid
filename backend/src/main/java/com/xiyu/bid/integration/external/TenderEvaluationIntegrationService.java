@@ -9,6 +9,7 @@ import com.xiyu.bid.tender.entity.TenderEvaluationRecommendation;
 import com.xiyu.bid.tender.repository.TenderEvaluationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,7 @@ public class TenderEvaluationIntegrationService {
     /**
      * 保存评估数据（支持创建和更新）。
      */
+    @Transactional
     public void saveEvaluation(Long tenderId, EvaluationBasicDTO evaluationBasic,
                                List<Map<String, Object>> evaluationCustomerInfos,
                                EvaluationRecommendationDTO evaluationRecommendation) {

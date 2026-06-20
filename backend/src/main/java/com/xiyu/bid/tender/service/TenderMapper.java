@@ -1,6 +1,7 @@
 package com.xiyu.bid.tender.service;
 
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.integration.external.TenderIntegrationMapper;
 import com.xiyu.bid.tender.entity.TenderAttachment;
 import com.xiyu.bid.tender.dto.ContactDTO;
 import com.xiyu.bid.tender.dto.TenderAttachmentDTO;
@@ -292,9 +293,6 @@ public class TenderMapper {
     }
 
     private static String toDownloadUrl(String fileUrl) {
-        if (fileUrl != null && fileUrl.startsWith("doc-insight://")) {
-            return "/api/doc-insight/download?fileUrl=" + java.net.URLEncoder.encode(fileUrl, java.nio.charset.StandardCharsets.UTF_8);
-        }
-        return fileUrl;
+        return TenderIntegrationMapper.toDownloadUrl(fileUrl);
     }
 }

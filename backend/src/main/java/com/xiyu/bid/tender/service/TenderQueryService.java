@@ -7,6 +7,7 @@ import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.tender.entity.TenderAttachment;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.exception.ResourceNotFoundException;
+import com.xiyu.bid.integration.external.TenderIntegrationMapper;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
 import com.xiyu.bid.repository.TenderRepository;
@@ -60,17 +61,10 @@ public class TenderQueryService {
                 .map(a -> TenderAttachmentDTO.builder()
                         .fileName(a.getFileName())
                         .fileType(a.getFileType())
-                        .fileUrl(toDownloadUrl(a.getFileUrl()))
+                        .fileUrl(TenderIntegrationMapper.toDownloadUrl(a.getFileUrl()))
                         .build())
                 .collect(Collectors.toList()));
         return dto;
-    }
-
-    private static String toDownloadUrl(String fileUrl) {
-        if (fileUrl != null && fileUrl.startsWith("doc-insight://")) {
-            return "/api/doc-insight/download?fileUrl=" + java.net.URLEncoder.encode(fileUrl, java.nio.charset.StandardCharsets.UTF_8);
-        }
-        return fileUrl;
     }
 
     public List<TenderDTO> getTendersByStatus(Tender.Status status) {
