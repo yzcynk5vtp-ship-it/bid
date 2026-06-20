@@ -82,4 +82,40 @@ class TenderIntegrationServiceMapToEntityTest {
         assertThat(t.getSourceType()).isEqualTo(Tender.SourceType.EXTERNAL_PLATFORM);
         assertThat(t.getStatus()).isEqualTo(Tender.Status.PENDING_ASSIGNMENT);
     }
+
+    @Test
+    @DisplayName("CO-283: toDownloadUrl 对 doc-insight:// URL 转换为下载地址")
+    void toDownloadUrl_docInsightUrl_convertsToDownloadUrl() {
+        String url = mapper.toDownloadUrl("doc-insight://TENDER_INTAKE/abc/file.pdf");
+
+        assertThat(url).isEqualTo("/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2FTENDER_INTAKE%2Fabc%2Ffile.pdf");
+    }
+
+    @Test
+    @DisplayName("CO-283: toDownloadUrl 对已转换的下载地址保持幂等，避免双重嵌套")
+    void toDownloadUrl_alreadyDownloadUrl_returnsAsIs() {
+        String existing = "/api/doc-insight/download?fileUrl=https%3A%2F%2Fcrm.ehsy.com%2Ffile.pdf";
+
+        String url = mapper.toDownloadUrl(existing);
+
+        assertThat(url).isEqualTo(existing);
+    }
+
+    @Test
+    @DisplayName("CO-283: toDownloadUrl 对普通外部 URL 原样返回")
+    void toDownloadUrl_externalUrl_returnsAsIs() {
+        String external = "https://crm.ehsy.com/attachment/file.pdf";
+
+        String url = mapper.toDownloadUrl(external);
+
+        assertThat(url).isEqualTo(external);
+    }
+
+    @Test
+    @DisplayName("CO-283: toDownloadUrl 对空值保持空值")
+    void toDownloadUrl_nullOrBlank_returnsAsIs() {
+        assertThat(mapper.toDownloadUrl(null)).isNull();
+        assertThat(mapper.toDownloadUrl("")).isEmpty();
+        assertThat(mapper.toDownloadUrl("   ")).isEqualTo("   ");
+    }
 }

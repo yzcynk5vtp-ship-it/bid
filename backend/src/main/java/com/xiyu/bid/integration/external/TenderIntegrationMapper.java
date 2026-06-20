@@ -212,7 +212,17 @@ public class TenderIntegrationMapper {
     // ── 工具方法 ──────────────────────────────────────────────────────────────
 
     public static String toDownloadUrl(String u) {
-        return "/api/doc-insight/download?fileUrl=" + URLEncoder.encode(u, StandardCharsets.UTF_8);
+        if (u == null || u.isBlank()) {
+            return u;
+        }
+        // 已是下载地址，避免 CO-283 双重嵌套
+        if (u.startsWith("/api/doc-insight/download?")) {
+            return u;
+        }
+        if (u.startsWith("doc-insight://")) {
+            return "/api/doc-insight/download?fileUrl=" + URLEncoder.encode(u, StandardCharsets.UTF_8);
+        }
+        return u;
     }
 
     static String buildExternalId(String sourceSystem, String sourceId) {
