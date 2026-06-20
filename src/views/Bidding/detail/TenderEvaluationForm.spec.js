@@ -259,7 +259,7 @@ describe('TenderEvaluationForm — instance-level permission matrix (V130 3-sect
     expect(wrapper.findComponent({ name: 'CustomerInfoMatrix' }).exists()).toBe(true)
   })
 
-  it('renders section 3: 投标负责人建议 fields', () => {
+  it('renders section 3: 项目负责人建议 fields', () => {
     const wrapper = makeWrapper({ canFill: true, canDecide: false, evaluation: null })
     const text = wrapper.text()
     expect(text).toContain('是否投标')

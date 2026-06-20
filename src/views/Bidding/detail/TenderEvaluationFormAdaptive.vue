@@ -70,8 +70,8 @@
             />
           </el-collapse-item>
 
-          <!-- Section 3: 投标负责人建议 -->
-          <el-collapse-item title="三、投标负责人建议" name="recommendation">
+          <!-- Section 3: 项目负责人建议 -->
+          <el-collapse-item title="三、项目负责人建议" name="recommendation">
             <el-form :model="modelValue.recommendation" label-width="140px" :disabled="disabled">
               <el-form-item label="是否投标" prop="shouldBid">
                 <el-select v-model="modelValue.recommendation.shouldBid" placeholder="请选择" clearable style="width: 200px" @change="handleShouldBidChange">

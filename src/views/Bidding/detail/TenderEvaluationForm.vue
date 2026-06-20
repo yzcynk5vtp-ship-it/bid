@@ -35,8 +35,8 @@
         />
       </el-collapse-item>
 
-      <!-- Section 3: 投标负责人建议 -->
-      <el-collapse-item title="三、投标负责人建议" name="recommendation">
+      <!-- Section 3: 项目负责人建议 -->
+      <el-collapse-item title="三、项目负责人建议" name="recommendation">
         <el-form
           :model="form.recommendation"
           label-width="140px"
