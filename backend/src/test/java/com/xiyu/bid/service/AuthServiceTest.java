@@ -11,6 +11,7 @@ import com.xiyu.bid.entity.RoleProfile;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.RefreshSessionRepository;
 import com.xiyu.bid.repository.UserRepository;
+import com.xiyu.bid.integration.organization.application.OrganizationUserSyncWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -182,6 +183,92 @@ class AuthServiceTest {
         authService.logout("legacy-token", null);
 
         verify(tokenRevocationService, never()).revoke(any(), any());
+    }
+
+    @Test
+    void login_ossUserWithLocalPassword_shouldFallbackToLocalAuthWhenOssFails() {
+        User user = buildOssUser();
+        String encodedPassword = "$2a$10$localpasshash";
+        user.setPassword(encodedPassword);
+        LoginRequest request = new LoginRequest();
+        request.setUsername("00444");
+        request.setPassword("localpass");
+
+        OssDelegationService ossDelegationService = mock(OssDelegationService.class);
+        authService = new AuthService(
+                userRepository,
+                refreshSessionRepository,
+                projectAccessScopeService,
+                dataScopeConfigService,
+                passwordEncoder,
+                jwtUtil,
+                authenticationManager,
+                roleProfileService,
+                tokenRevocationService,
+                ossDelegationService
+        );
+        ReflectionTestUtils.setField(authService, "refreshExpiration", 7 * 24 * 60 * 60 * 1000L);
+
+        when(userRepository.findByUsername("00444")).thenReturn(Optional.of(user));
+        when(ossDelegationService.authenticate(user, "localpass")).thenReturn(false);
+        when(passwordEncoder.matches("localpass", encodedPassword)).thenReturn(true);
+        when(jwtUtil.generateAccessToken("00444")).thenReturn("access-token");
+        when(projectAccessScopeService.getAllowedProjectIds(user)).thenReturn(List.of());
+        when(projectAccessScopeService.getAllowedDepartmentCodes(user)).thenReturn(List.of());
+        when(dataScopeConfigService.getRoleMenuPermissions(user)).thenReturn(List.of());
+
+        AuthSessionResult result = authService.login(request);
+
+        verify(ossDelegationService).authenticate(user, "localpass");
+        assertThat(result.getAccessToken()).isEqualTo("access-token");
+    }
+
+    @Test
+    void login_ossUserWithLockedPassword_shouldThrowWhenOssFails() {
+        User user = buildOssUser();
+        user.setPassword(OrganizationUserSyncWriter.LOCKED_PASSWORD_HASH);
+        LoginRequest request = new LoginRequest();
+        request.setUsername("00444");
+        request.setPassword("anypass");
+
+        OssDelegationService ossDelegationService = mock(OssDelegationService.class);
+        authService = new AuthService(
+                userRepository,
+                refreshSessionRepository,
+                projectAccessScopeService,
+                dataScopeConfigService,
+                passwordEncoder,
+                jwtUtil,
+                authenticationManager,
+                roleProfileService,
+                tokenRevocationService,
+                ossDelegationService
+        );
+        ReflectionTestUtils.setField(authService, "refreshExpiration", 7 * 24 * 60 * 60 * 1000L);
+
+        when(userRepository.findByUsername("00444")).thenReturn(Optional.of(user));
+        when(ossDelegationService.authenticate(user, "anypass")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(org.springframework.security.authentication.BadCredentialsException.class);
+
+        verify(ossDelegationService).authenticate(user, "anypass");
+        verify(passwordEncoder, never()).matches(any(), any());
+    }
+
+    private User buildOssUser() {
+        return User.builder()
+                .id(2L)
+                .username("00444")
+                .email("caiqin@xiyu.com")
+                .fullName("蔡勤")
+                .role(User.Role.STAFF)
+                .roleProfile(RoleProfile.builder().id(2L).code("bid_specialist").name("投标专员").build())
+                .enabled(true)
+                .password("encoded")
+                .externalOrgSourceApp("oss")
+                .externalOrgUserId("oss-00444")
+                .build();
     }
 
     private User buildUser() {

@@ -29,7 +29,10 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 public class OrganizationUserSyncWriter {
-    private static final String LOCKED_PASSWORD_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoOHIhi4YhML26vP7Hk1UR93E1Vda8yI9W";
+    public static final String LOCKED_PASSWORD_HASH = "$2a$10$7EqJtq98hPqEX7fNZaFWoOHIhi4YhML26vP7Hk1UR93E1Vda8yI9W";
+
+    /** 默认测试密码 123456 的 BCrypt 编码，用于 OSS 同步员工本地登录。 */
+    public static final String DEFAULT_PASSWORD_HASH = "$2a$10$N9qo8uLOickgx2ZMRZoMy.MqrqhmM6JGKpS4G3R1G2JH8YpfB0Bqy";
 
     private final UserRepository userRepository;
     private final RoleProfileRepository roleProfileRepository;
@@ -73,7 +76,7 @@ public class OrganizationUserSyncWriter {
                 allowAdminElevation
         );
         user.setUsername(plan.username());
-        user.setPassword(user.getPassword() == null ? LOCKED_PASSWORD_HASH : user.getPassword());
+        user.setPassword(user.getPassword() == null ? DEFAULT_PASSWORD_HASH : user.getPassword());
         user.setEmail(plan.email());
         user.setFullName(plan.fullName());
         user.setPhone(plan.phone());
