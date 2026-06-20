@@ -56,13 +56,20 @@
         prop="unfavorableItems"
         :error="errors.unfavorableItems"
       >
+        <textarea
+          v-if="disabled"
+          :value="localBasic.unfavorableItems || '-'"
+          rows="10"
+          readonly
+          class="readonly-textarea"
+        />
         <el-input
+          v-else
           v-model="localBasic.unfavorableItems"
           type="textarea"
           :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写招标文件中的不利项"
           maxlength="5000"
-          :disabled="disabled"
         />
       </el-form-item>
 
@@ -71,13 +78,20 @@
         prop="riskAssessment"
         :error="errors.riskAssessment"
       >
+        <textarea
+          v-if="disabled"
+          :value="localBasic.riskAssessment || '-'"
+          rows="10"
+          readonly
+          class="readonly-textarea"
+        />
         <el-input
+          v-else
           v-model="localBasic.riskAssessment"
           type="textarea"
           :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写风险预判"
           maxlength="5000"
-          :disabled="disabled"
         />
       </el-form-item>
 
@@ -96,13 +110,20 @@
         label="是否了解评标全流程"
         prop="processKnowledge"
       >
+        <textarea
+          v-if="disabled"
+          :value="localBasic.processKnowledge || '-'"
+          rows="10"
+          readonly
+          class="readonly-textarea"
+        />
         <el-input
+          v-else
           v-model="localBasic.processKnowledge"
           type="textarea"
           :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写对评标流程的了解程度"
           maxlength="5000"
-          :disabled="disabled"
         />
       </el-form-item>
 
@@ -110,13 +131,20 @@
         label="需要的支持及备注"
         prop="supportNotes"
       >
+        <textarea
+          v-if="disabled"
+          :value="localBasic.supportNotes || '-'"
+          rows="10"
+          readonly
+          class="readonly-textarea"
+        />
         <el-input
+          v-else
           v-model="localBasic.supportNotes"
           type="textarea"
           :autosize="{ minRows: 3, maxRows: 10 }"
           placeholder="请填写需要的支持及备注"
           maxlength="5000"
-          :disabled="disabled"
         />
       </el-form-item>
     </div>
@@ -191,5 +219,21 @@ const localBasic = computed({
 
 .field-group :deep(.el-textarea__inner) {
   min-height: 72px !important;
+}
+
+.readonly-textarea {
+  width: 100%;
+  max-width: 360px;
+  min-height: 72px;
+  padding: 5px 11px;
+  border: 1px solid var(--gray-100, #E8E8E8);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  color: var(--text-primary-ui, #303133);
+  background: var(--bg-subtle, #F5F7FA);
+  resize: vertical;
+  overflow-y: scroll;
 }
 </style>

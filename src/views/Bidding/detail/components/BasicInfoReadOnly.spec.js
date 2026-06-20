@@ -26,8 +26,8 @@ function expectTextareaAutosize(textarea, expected) {
   expect(textarea.props('autosize')).toEqual(expected)
 }
 
-describe('BasicInfoReadOnly — 只读详情多行字段', () => {
-  it('标讯描述和标讯信息应使用原生 textarea', async () => {
+describe('BasicInfoReadOnly — 只读详情多行字段绕过 Element Plus 滚动条 bug', () => {
+  it('标讯描述和标讯信息应使用原生 <textarea readonly> 而非 el-input', async () => {
     const wrapper = mountWithElementPlus(BasicInfoReadOnly, {
       props: {
         tender: {
@@ -38,10 +38,21 @@ describe('BasicInfoReadOnly — 只读详情多行字段', () => {
     })
     await wrapper.vm.$nextTick()
 
-    const textareas = wrapper.findAll('textarea.readonly-textarea')
-    expect(textareas).toHaveLength(2)
-    expect(textareas[0].element.value).toContain('第一行')
-    expect(textareas[1].element.value).toContain('信息第一行')
+    // 原生 textarea 渲染，内容正确显示
+    const nativeTextareas = wrapper.findAll('textarea.readonly-textarea')
+    expect(nativeTextareas).toHaveLength(2)
+    expect(nativeTextareas[0].element.value).toContain('第一行')
+    expect(nativeTextareas[1].element.value).toContain('信息第一行')
+
+    // el-input type=textarea 不应存在（已替换为原生）
+    const elTextareas = wrapper.findAllComponents({ name: 'ElInput' }).filter(c => c.props('type') === 'textarea')
+    expect(elTextareas).toHaveLength(0)
+
+    // 验证原生 textarea 的属性
+    expect(nativeTextareas[0].attributes('readonly')).toBeDefined()
+    expect(nativeTextareas[0].attributes('rows')).toBe('10')
+    expect(nativeTextareas[1].attributes('readonly')).toBeDefined()
+    expect(nativeTextareas[1].attributes('rows')).toBe('10')
   })
 })
 

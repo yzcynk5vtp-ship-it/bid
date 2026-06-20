@@ -1,12 +1,19 @@
 <template>
   <div class="gap-upload-wrapper">
+    <textarea
+      v-if="disabled"
+      :value="localGap || '-'"
+      rows="10"
+      readonly
+      class="readonly-textarea"
+    />
     <el-input
+      v-else
       v-model="localGap"
       type="textarea"
       :autosize="{ minRows: 3, maxRows: 10 }"
       placeholder="请填写项目计划差距（可选）"
       maxlength="5000"
-      :disabled="disabled"
     />
     <div v-if="!disabled" class="gap-file-upload">
       <el-upload :with-credentials="true"
@@ -153,5 +160,20 @@ function beforeGapUpload(file) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.readonly-textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 5px 11px;
+  border: 1px solid var(--gray-100, #E8E8E8);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.5;
+  color: var(--text-primary-ui, #303133);
+  background: var(--bg-subtle, #F5F7FA);
+  resize: vertical;
+  overflow-y: scroll;
 }
 </style>
