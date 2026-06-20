@@ -4,6 +4,7 @@ package com.xiyu.bid.service;
 import com.xiyu.bid.crm.application.OssDelegationService;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.entity.RoleProfileCatalog;
+import com.xiyu.bid.integration.organization.application.OrganizationUserSyncWriter;
 
 import com.xiyu.bid.dto.AuthResponse;
 import com.xiyu.bid.dto.AuthSessionResult;
@@ -103,36 +104,43 @@ public class AuthService {
     public AuthSessionResult login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException(USER_NOT_FOUND));
-
         // 组织架构同步用户（有 externalOrgSourceApp），委托给西域 OSS 统一认证
         if (user.getExternalOrgSourceApp() != null && !user.getExternalOrgSourceApp().isBlank()) {
             if (!ossDelegationService.authenticate(user, request.getPassword())) {
-                throw new BadCredentialsException("Invalid username or password");
+                if (!isLocalPasswordValid(user, request.getPassword())) {
+                    throw new BadCredentialsException("Invalid username or password");
+                }
             }
             return loginWithoutPassword(user);
         }
-
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         String token = jwtUtil.generateAccessToken(user.getUsername());
         String refreshToken = createRefreshSession(user);
         log.info("User logged in: {}", user.getUsername());
-
         return AuthSessionResult.builder()
-                .authResponse(AuthResponse.from(
-                        null,
-                        user,
+                .authResponse(AuthResponse.from(null, user,
                         projectAccessScopeService.getAllowedProjectIds(user),
                         projectAccessScopeService.getAllowedDepartmentCodes(user),
-                        dataScopeConfigService.getRoleMenuPermissions(user)
-                ))
+                        dataScopeConfigService.getRoleMenuPermissions(user)))
                 .refreshToken(refreshToken)
                 .accessToken(token)
                 .build();
+    }
+
+    /** OSS 同步用户 OSS 认证失败时的本地密码回退验证。 */
+    private boolean isLocalPasswordValid(User user, String rawPassword) {
+        String password = user.getPassword();
+        if (password == null || password.isBlank()
+                || password.equals(OrganizationUserSyncWriter.LOCKED_PASSWORD_HASH)) {
+            return false;
+        }
+        try {
+            return passwordEncoder.matches(rawPassword, password);
+        } catch (IllegalArgumentException e) {
+            log.warn("Local password validation failed for user: {}", user.getUsername());
+            return false;
+        }
     }
 
     @Transactional
@@ -140,18 +148,14 @@ public class AuthService {
         if (!Boolean.TRUE.equals(user.getEnabled())) {
             throw new InsufficientAuthenticationException("User account is disabled");
         }
-
         String token = jwtUtil.generateAccessToken(user.getUsername());
         String refreshToken = createRefreshSession(user);
         log.info("User logged in via SSO/WeCom: {}", user.getUsername());
         return AuthSessionResult.builder()
-                .authResponse(AuthResponse.from(
-                        null,
-                        user,
+                .authResponse(AuthResponse.from(null, user,
                         projectAccessScopeService.getAllowedProjectIds(user),
                         projectAccessScopeService.getAllowedDepartmentCodes(user),
-                        dataScopeConfigService.getRoleMenuPermissions(user)
-                ))
+                        dataScopeConfigService.getRoleMenuPermissions(user)))
                 .refreshToken(refreshToken)
                 .accessToken(token)
                 .build();
@@ -232,33 +236,26 @@ public class AuthService {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new InsufficientAuthenticationException("Refresh token is required");
         }
-
         RefreshSession session = refreshSessionRepository.findByTokenHash(hashToken(refreshToken))
                 .orElseThrow(() -> new InsufficientAuthenticationException("Refresh token is invalid"));
-
         LocalDateTime now = LocalDateTime.now();
         if (session.getRevokedAt() != null || session.getExpiresAt().isBefore(now)) {
             throw new InsufficientAuthenticationException("Refresh token is no longer valid");
         }
-
         User user = session.getUser();
         if (!Boolean.TRUE.equals(user.getEnabled())) {
             throw new InsufficientAuthenticationException("User account is disabled");
         }
-
         String accessToken = jwtUtil.generateAccessToken(user.getUsername());
         session.setRevokedAt(now);
         refreshSessionRepository.save(session);
         String rotatedRefreshToken = createRefreshSession(user);
         log.info("Token refreshed for user: {}", user.getUsername());
         return AuthSessionResult.builder()
-                .authResponse(AuthResponse.from(
-                        null,
-                        user,
+                .authResponse(AuthResponse.from(null, user,
                         projectAccessScopeService.getAllowedProjectIds(user),
                         projectAccessScopeService.getAllowedDepartmentCodes(user),
-                        dataScopeConfigService.getRoleMenuPermissions(user)
-                ))
+                        dataScopeConfigService.getRoleMenuPermissions(user)))
                 .refreshToken(rotatedRefreshToken)
                 .accessToken(accessToken)
                 .build();
