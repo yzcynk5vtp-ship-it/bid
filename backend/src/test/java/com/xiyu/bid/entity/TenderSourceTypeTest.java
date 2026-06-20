@@ -38,10 +38,10 @@ class TenderSourceTypeTest {
         }
 
         @Test
-        @DisplayName("BULK_IMPORT 序列化为中文标签 '人工录入'（与 MANUAL_SINGLE 同属人工录入大类）")
+        @DisplayName("BULK_IMPORT 序列化为中文标签 '批量导入'")
         void bulkImportSerializesToChinese() throws Exception {
             String json = mapper.writeValueAsString(Tender.SourceType.BULK_IMPORT);
-            assertThat(json).isEqualTo("\"人工录入\"");
+            assertThat(json).isEqualTo("\"批量导入\"");
         }
     }
 
