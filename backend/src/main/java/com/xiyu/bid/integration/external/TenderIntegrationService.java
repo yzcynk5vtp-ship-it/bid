@@ -4,6 +4,7 @@ import com.xiyu.bid.tender.dto.TenderDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 外部标讯同步核心服务（接口规范 v2.0）。
@@ -29,6 +30,7 @@ public class TenderIntegrationService {
      * - 已存在：返回 DUPLICATE
      * - 不存在：创建并返回 CREATED
      */
+    @Transactional
     public TenderPushResponse pushTender(TenderPushRequest request, Long userId) {
         return commandService.pushTender(request, userId);
     }
@@ -36,6 +38,7 @@ public class TenderIntegrationService {
     /**
      * 按 externalId 或 tenderId 查询标讯详情（二选一必传）。
      */
+    @Transactional(readOnly = true)
     public TenderDTO getByExternalId(String sourceSystem, String sourceId, Long tenderId) {
         return queryService.getByExternalId(sourceSystem, sourceId, tenderId);
     }
@@ -43,6 +46,7 @@ public class TenderIntegrationService {
     /**
      * 按 externalId 或 tenderId 更新标讯字段（二选一必传）。
      */
+    @Transactional
     public TenderDTO updateByExternalId(String sourceSystem, String sourceId, TenderUpdateRequest request) {
         return commandService.updateByExternalId(sourceSystem, sourceId, request);
     }

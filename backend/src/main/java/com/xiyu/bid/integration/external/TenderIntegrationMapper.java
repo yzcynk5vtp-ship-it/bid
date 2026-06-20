@@ -211,7 +211,7 @@ public class TenderIntegrationMapper {
 
     // ── 工具方法 ──────────────────────────────────────────────────────────────
 
-    static String toDownloadUrl(String u) {
+    public static String toDownloadUrl(String u) {
         return "/api/doc-insight/download?fileUrl=" + URLEncoder.encode(u, StandardCharsets.UTF_8);
     }
 
