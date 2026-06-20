@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -15,13 +16,18 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,6 +41,9 @@ class DocInsightControllerTest {
     private MockMvc mockMvc;
     private DocInsightController controller;
 
+    @TempDir
+    Path tempUploadDir;
+
     /** 合法的 PDF multipart file（1 字节）。 */
     private static final MockMultipartFile VALID_FILE =
             new MockMultipartFile("file", "test.pdf", "application/pdf", "X".getBytes());
@@ -43,6 +52,7 @@ class DocInsightControllerTest {
     void setUp() {
         controller = new DocInsightController(docInsightService);
         ReflectionTestUtils.setField(controller, "maxUploadMb", 50);
+        ReflectionTestUtils.setField(controller, "configuredUploadDir", tempUploadDir.toString());
 
         mockMvc = MockMvcBuilders
                 .standaloneSetup(controller)
@@ -242,5 +252,94 @@ class DocInsightControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.documentId").value("doc://test"));
+    }
+
+    // ── /download – 本地文件下载（doc-insight://）─────────────────────────────
+
+    @Test
+    @DisplayName("GET /download doc-insight:// 本地文件存在时返回 200 和文件流")
+    void download_localFileExists_returns200() throws Exception {
+        // 准备本地文件
+        Path file = tempUploadDir.resolve("TENDER_INTAKE").resolve("abc123-test.pdf");
+        Files.createDirectories(file.getParent());
+        Files.write(file, "test content".getBytes());
+
+        String fileUrl = "doc-insight://TENDER_INTAKE/abc123-test.pdf";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition",
+                        "attachment; filename=\"test.pdf\""))
+                .andExpect(content().contentType("application/pdf"));
+    }
+
+    @Test
+    @DisplayName("GET /download doc-insight:// 本地文件不存在时返回 404")
+    void download_localFileNotExists_returns404() throws Exception {
+        String fileUrl = "doc-insight://TENDER_INTAKE/nonexistent.pdf";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /download 路径遍历攻击（..）返回 400")
+    void download_pathTraversal_returns400() throws Exception {
+        String fileUrl = "doc-insight://../../../etc/passwd";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /download 无效 URL 格式（非 doc-insight:// 也非 http(s)://）返回 400")
+    void download_invalidUrlFormat_returns400() throws Exception {
+        String fileUrl = "ftp://example.com/file.pdf";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.msg").value("无效的文件 URL 格式"));
+    }
+
+    @Test
+    @DisplayName("GET /download 空 fileUrl 返回 400")
+    void download_emptyFileUrl_returns400() throws Exception {
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", ""))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /download doc-insight:// 路径越界返回 400")
+    void download_localPathEscapesUploadRoot_returns400() throws Exception {
+        // 构造一个能绕过 startsWith 检查但实际越界的路径
+        String fileUrl = "doc-insight://TENDER_INTAKE/../../../etc/passwd";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ── /download – 外部 URL 代理下载（http(s)://）────────────────────────────
+    // 注意：代理下载涉及真实 HTTP 请求，无法在单元测试中验证完整流程。
+    // 这里只验证 URL 路由逻辑：http(s):// URL 不会返回 400 "无效的文件 URL 格式"。
+    // 完整的代理下载验证在服务器集成测试中完成。
+
+    @Test
+    @DisplayName("GET /download https:// URL 路由到代理下载（不返回 400 无效格式）")
+    void download_httpsUrl_doesNotReturnInvalidFormat() throws Exception {
+        // https:// URL 应该走代理下载分支，不会返回 "无效的文件 URL 格式"
+        // 由于没有真实的 HTTP 服务器，会返回 502 BAD_GATEWAY（代理下载失败）
+        // 但绝不会返回 400 "无效的文件 URL 格式"
+        String fileUrl = "https://example.com/nonexistent/file.pdf";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    // 应该是 502（代理下载失败）而不是 400（无效格式）
+                    if (status == 400) {
+                        throw new AssertionError(
+                                "https:// URL 不应返回 400 无效格式，实际: " + status +
+                                " msg: " + result.getResponse().getContentAsString());
+                    }
+                });
     }
 }

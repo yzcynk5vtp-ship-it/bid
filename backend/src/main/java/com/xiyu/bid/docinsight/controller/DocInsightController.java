@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -132,53 +134,86 @@ public class DocInsightController {
         return ResponseEntity.ok(ApiResponse.success("文档解析完成", result));
     }
 
-    /**
-     * 下载已存储的文件。
-     * 通过 doc-insight:// 格式的 fileUrl 定位文件并返回文件流。
-     * 用于标讯详情页展示"标讯文件"下载链接。
-     */
+    /** 下载已存储的文件。支持 doc-insight://（本地）和 http(s)://（CRM 推送附件代理下载，CO-280）。 */
     @GetMapping("/download")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> download(@RequestParam("fileUrl") String fileUrl) {
-        if (fileUrl == null || !fileUrl.startsWith("doc-insight://")) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IllegalArgumentException("文件 URL 不能为空");
+        }
+        if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+            return downloadExternal(fileUrl);
+        }
+        if (!fileUrl.startsWith("doc-insight://")) {
             throw new IllegalArgumentException("无效的文件 URL 格式");
         }
-
         String relativePath = fileUrl.substring("doc-insight://".length());
         if (relativePath.isBlank() || relativePath.contains("..")) {
             throw new IllegalArgumentException("无效的文件路径");
         }
-
         Path uploadRoot = resolveUploadRoot();
         Path targetPath = uploadRoot.resolve(relativePath).normalize();
         if (!targetPath.startsWith(uploadRoot.toAbsolutePath().normalize())) {
             throw new IllegalArgumentException("文件路径越界");
         }
-
         if (!Files.exists(targetPath)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "文件不存在");
         }
-
         String fileName = targetPath.getFileName().toString();
-        // 去除 hash 前缀（如 "abc123-原始文件名.pdf" → "原始文件名.pdf"）
         String displayName = fileName.contains("-") ? fileName.substring(fileName.indexOf('-') + 1) : fileName;
-        String contentType = inferContentType(displayName);
-
         long fileSize;
         try {
             fileSize = Files.size(targetPath);
         } catch (IOException e) {
             throw new IllegalStateException("无法读取文件大小", e);
         }
-
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + sanitizeFilename(displayName) + "\"");
-        headers.setContentType(MediaType.parseMediaType(contentType));
+        headers.setContentType(MediaType.parseMediaType(inferContentType(displayName)));
         headers.setContentLength(fileSize);
+        return new ResponseEntity<>(new FileSystemResource(targetPath), headers, HttpStatus.OK);
+    }
 
-        Resource resource = new FileSystemResource(targetPath);
+    /** 代理下载外部 URL 文件。使用 UrlResource 流式转发，不缓存到内存/磁盘。 */
+    private ResponseEntity<Resource> downloadExternal(String fileUrl) {
+        UrlResource resource;
+        String displayName;
+        long fileSize;
+        try {
+            URI uri = URI.create(fileUrl);
+            displayName = extractFileNameFromPath(uri.getPath());
+            resource = new UrlResource(uri);
+            if (!resource.exists()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "外部文件不存在");
+            }
+            fileSize = resource.contentLength();
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "无法下载外部文件: " + e.getMessage(), e);
+        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + sanitizeFilename(displayName) + "\"");
+        headers.setContentType(MediaType.parseMediaType(inferContentType(displayName)));
+        if (fileSize > 0) {
+            headers.setContentLength(fileSize);
+        }
         return new ResponseEntity<>(resource, headers, HttpStatus.OK);
+    }
+
+    /** 从 URL 路径提取文件名（URL 解码），失败回退为 "attachment"。 */
+    private String extractFileNameFromPath(String path) {
+        if (path == null || path.isBlank()) return "attachment";
+        String name = path.substring(path.lastIndexOf('/') + 1);
+        if (name.isBlank()) return "attachment";
+        try {
+            return java.net.URLDecoder.decode(name, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return name;
+        }
     }
 
     private Path resolveUploadRoot() {
@@ -237,9 +272,7 @@ public class DocInsightController {
         }
     }
 
-    /**
-     * storagePath 必须非空且不包含路径遍历字符（.. ），防止目录穿越攻击。
-     */
+    /** storagePath 必须非空且不包含路径遍历字符（.. ），防止目录穿越攻击。 */
     private void validateStoragePath(String storagePath) {
         if (storagePath == null || storagePath.isBlank()) {
             throw new IllegalArgumentException("存储路径不能为空");
@@ -249,9 +282,7 @@ public class DocInsightController {
         }
     }
 
-    /**
-     * fileName 必须非空，防止后端解析时无法确定文件类型。
-     */
+    /** fileName 必须非空，防止后端解析时无法确定文件类型。 */
     private void validateFileName(String fileName) {
         if (fileName == null || fileName.isBlank()) {
             throw new IllegalArgumentException("文件名不能为空");
