@@ -1,9 +1,0 @@
-version: 1
-task: "kimi-harden-agent-start-task"
-locks:
-  - path: ".githooks/post-checkout"
-    scope: "file"
-    owner: "agent"
-    branch: "agent/kimi/harden-agent-start-task"
-    expiresAt: "2026-06-21T02:26:58.223Z"
-    reason: "新增 post-checkout hook，同步 .agent-task-context"
