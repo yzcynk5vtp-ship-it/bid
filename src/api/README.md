@@ -16,6 +16,7 @@
 | `index.js` | 导出入口 | 统一导出所有 API 模块 |
 | `authNormalizer.js` | 纯 DTO 工具 | 认证响应用户信息归一化 |
 | `authStoreBridge.js` | 桥接模块 | HTTP 客户端与 Pinia 认证状态同步 |
+| `session.js` | 会话提示 | HttpOnly Cookie 模式下的历史 token 清理、用户提示读写和坏缓存清理 |
 | `modules/` | 目录 | 按业务模块拆分的 API 调用函数 |
 | `trendradar.js` | 趋势雷达 | 趋势雷达相关 API |
 
@@ -58,3 +59,4 @@
 - 2026-04-30: 退役死代码 —— 删除零调用者的 `mock-adapters/` 目录和 `examples.js` 文档文件，随带清理 `.env.mock` 模板（`config.js` 早已硬编码 API 模式，不读 `VITE_API_MODE`）。
 - 2026-05-15: `systemIntegration.js` 增加组织架构 operations/status、窗口同步、单用户/单部门重同步与死信事件重放真实 API 封装。
 - 2026-05-16: 组织架构 operations/status 保留 `failedCount` 兼容字段，语义限定为遗留 `FAILED` 事件计数。
+- 2026-06-20: `session.js` 对旧 `user` hint 增加结构校验，清理坏缓存，避免旧匿名/空用户提示污染认证展示。

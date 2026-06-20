@@ -53,7 +53,7 @@ describe('CustomerInfoMatrix', () => {
     expect(table.props('localData')).toEqual([])
   })
 
-  it('keeps preset role rows visible when they contain customer info', () => {
+  it('renders only provided preset role rows when they contain customer info', () => {
     const wrapper = mount(CustomerInfoMatrix, {
       props: {
         modelValue: [
@@ -79,7 +79,7 @@ describe('CustomerInfoMatrix', () => {
     })
   })
 
-  it('keeps preset role rows visible when clear winner bid info is false', () => {
+  it('renders a provided preset role row when clear winner bid info is false', () => {
     const wrapper = mount(CustomerInfoMatrix, {
       props: {
         modelValue: [
@@ -100,6 +100,59 @@ describe('CustomerInfoMatrix', () => {
       roleKey: 'PROJECT_HIGHEST_DECISION_MAKER',
       roleLabel: '项目最高决策人',
       INFO_CLEAR_WINNER_BID: false,
+    })
+  })
+
+  it('does not fill the other preset rows when fixed roles are provided', () => {
+    const wrapper = mount(CustomerInfoMatrix, {
+      props: {
+        modelValue: [
+          {
+            roleKey: 'PROJECT_HIGHEST_DECISION_MAKER',
+            NAME: '李四',
+          },
+          {
+            roleKey: 'EXPERT_1',
+            NAME: '王五',
+          },
+        ],
+      },
+      global: { stubs: globalStubs },
+    })
+
+    const table = wrapper.findComponent({ name: 'CustomerInfoMatrixTable' })
+    const localData = table.props('localData')
+
+    expect(localData).toHaveLength(2)
+    expect(localData.map(row => row.roleKey)).toEqual([
+      'PROJECT_HIGHEST_DECISION_MAKER',
+      'EXPERT_1',
+    ])
+  })
+
+  it('filters rows without any customer info values', () => {
+    const wrapper = mount(CustomerInfoMatrix, {
+      props: {
+        modelValue: [
+          {
+            roleKey: 'PROJECT_HIGHEST_DECISION_MAKER',
+          },
+          {
+            roleKey: 'EXPERT_1',
+            NAME: '王五',
+          },
+        ],
+      },
+      global: { stubs: globalStubs },
+    })
+
+    const table = wrapper.findComponent({ name: 'CustomerInfoMatrixTable' })
+    const localData = table.props('localData')
+
+    expect(localData).toHaveLength(1)
+    expect(localData[0]).toMatchObject({
+      roleKey: 'EXPERT_1',
+      NAME: '王五',
     })
   })
 

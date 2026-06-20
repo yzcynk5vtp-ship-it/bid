@@ -17,6 +17,34 @@ const getBrowserStorages = () => {
   return [window.localStorage, window.sessionStorage].filter(Boolean)
 }
 
+const hasText = (value) => typeof value === 'string' && value.trim() !== ''
+
+const hasUserIdentityHint = (user) => {
+  if (!user || typeof user !== 'object' || Array.isArray(user)) return false
+  return user.id != null || hasText(user.name) || hasText(user.fullName) || hasText(user.username) || hasText(user.employeeNumber)
+}
+
+const normalizeStoredUserHint = (user) => {
+  if (!hasUserIdentityHint(user)) return null
+
+  const displayName = hasText(user.name)
+    ? user.name
+    : hasText(user.fullName)
+      ? user.fullName
+      : hasText(user.username)
+        ? user.username
+        : user.employeeNumber
+
+  return {
+    ...user,
+    name: displayName,
+  }
+}
+
+const clearStoredUserHint = () => {
+  getBrowserStorages().forEach((storage) => storage.removeItem(USER_KEY))
+}
+
 // SECURITY (H13 根治 2026-06-14): access token 改由后端 HttpOnly; Secure; SameSite=Lax cookie 投递,
 // 前端 JS 不再持有/持久化 token (XSS 不可达). setAccessToken 降级为清理历史残留的 no-op,
 // 保留导出签名避免调用方 import 报错.
@@ -51,8 +79,14 @@ export const getStoredUser = () => {
   }
 
   try {
-    return JSON.parse(raw)
+    const user = normalizeStoredUserHint(JSON.parse(raw))
+    if (!user) {
+      clearStoredUserHint()
+      return null
+    }
+    return user
   } catch {
+    clearStoredUserHint()
     return null
   }
 }

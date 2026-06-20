@@ -29,8 +29,17 @@ server {
         proxy_read_timeout 60s;
     }
 
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+    }
+
     # SPA fallback
     location / {
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
         try_files $uri $uri/ /index.html;
     }
 }
