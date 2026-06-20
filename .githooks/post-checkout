@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# .githooks/post-checkout — keep .agent-task-context in sync for persistent agent worktrees.
+#
+# When an agent switches branches inside its persistent worktree (e.g. between
+# agent/<name>-init and agent/<name>/<task>), this hook rewrites .agent-task-context
+# so that housekeeping scripts and the agent itself always see the current task.
+#
+# Activation: runs automatically once core.hooksPath is set to .githooks.
+# See scripts/install-githooks.sh for setup.
+
+set -euo pipefail
+
+PREV_HEAD="${1:-}"
+NEW_HEAD="${2:-}"
+IS_BRANCH_CHECKOUT="${3:-0}"
+
+# Only run on actual branch checkouts, not file checkouts.
+if [[ "$IS_BRANCH_CHECKOUT" != "1" ]]; then
+  exit 0
+fi
+
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+WORKTREE_PATH="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+
+if [[ -z "$CURRENT_BRANCH" || -z "$WORKTREE_PATH" ]]; then
+  exit 0
+fi
+
+WORKTREE_NAME="$(basename "$WORKTREE_PATH")"
+
+# Match agent/<name>-init or agent/<name>/<task>
+if [[ ! "$CURRENT_BRANCH" =~ ^agent/([^/]+)(-init|/.+)$ ]]; then
+  exit 0
+fi
+
+AGENT_NAME="${BASH_REMATCH[1]}"
+
+# Only act inside the agent's persistent worktree.
+if [[ "$WORKTREE_NAME" != "$AGENT_NAME" ]]; then
+  exit 0
+fi
+
+CONTEXT_FILE="$WORKTREE_PATH/.agent-task-context"
+TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+if [[ "$CURRENT_BRANCH" == "agent/${AGENT_NAME}-init" ]]; then
+  cat > "$CONTEXT_FILE" <<EOF
+agent=$AGENT_NAME
+branch=$CURRENT_BRANCH
+worktree=$WORKTREE_PATH
+repo_root=$WORKTREE_PATH
+mode=anchor
+updated_at=$TIMESTAMP
+EOF
+else
+  TASK_SLUG="${CURRENT_BRANCH#agent/${AGENT_NAME}/}"
+  cat > "$CONTEXT_FILE" <<EOF
+agent=$AGENT_NAME
+task=$TASK_SLUG
+branch=$CURRENT_BRANCH
+base=origin/main
+worktree=$WORKTREE_PATH
+repo_root=$WORKTREE_PATH
+mode=in-place
+updated_at=$TIMESTAMP
+EOF
+fi

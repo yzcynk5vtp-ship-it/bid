@@ -17,6 +17,7 @@ Options:
   --touch <path>         Run who-touches preflight check for a planned change path.
   --force-touch-conflict Continue even if who-touches finds active agent branches.
   --push                 Push the new branch to origin after initialization completes.
+  --force                强制创建独立 worktree，即使持久区已有未完成的 in-place 任务。
   --lock-reason <reason> Reason used for all initial locks.
   --lock-days <days>     Lock lifetime in days. Default: 1.
   --dry-run              Print the planned operations without changing files.
@@ -54,6 +55,7 @@ LOCK_SCOPES=()
 TOUCH_PATHS=()
 FORCE_TOUCH_CONFLICT=0
 AUTO_PUSH=0
+FORCE=0
 
 POSITIONAL_REST=()
 while [[ $# -gt 0 ]]; do
@@ -98,6 +100,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --push)
       AUTO_PUSH=1
+      shift
+      ;;
+    --force)
+      FORCE=1
       shift
       ;;
     --lock-reason)
@@ -153,12 +159,37 @@ if [[ ! "$LOCK_DAYS" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Resolve the true repository root even when this script is invoked from inside a worktree.
+# git rev-parse --git-common-dir points to the shared .git directory; its parent is the main repo root.
+resolve_repo_root() {
+  local fallback="$1"
+  local git_common_dir
+  git_common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+  if [[ -n "$git_common_dir" ]]; then
+    if [[ "$git_common_dir" == /* ]]; then
+      (cd "$git_common_dir/.." && pwd)
+      return
+    else
+      local wt_root
+      wt_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+      if [[ -n "$wt_root" ]]; then
+        (cd "$wt_root/$git_common_dir/.." && pwd)
+        return
+      fi
+    fi
+  fi
+  echo "$fallback"
+}
+
+REPO_ROOT="$(resolve_repo_root "$(cd "$SCRIPT_DIR/.." && pwd)")"
 WORKTREES_ROOT="${WORKTREES_ROOT:-$HOME/xiyu/worktrees}"
+INVOCATION_WORKTREE_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "$REPO_ROOT")"
+PERSISTENT_WORKTREE="$WORKTREES_ROOT/$AGENT_NAME"
+
 if [[ "$IN_PLACE" == "1" ]]; then
   # --in-place 模式：在当前 worktree 内创建分支
-  WORKTREE_PATH="$REPO_ROOT"
+  WORKTREE_PATH="$INVOCATION_WORKTREE_ROOT"
   WORKTREE_NAME="$(basename "$WORKTREE_PATH")"
   CREATE_WORKTREE=0
 else
@@ -168,9 +199,41 @@ else
 fi
 BRANCH_NAME="agent/$AGENT_NAME/$TASK_SLUG"
 WORKTREE_CREATED=0
+BRANCH_CREATED=0
 LOCKS_ACQUIRED=0
 ACQUIRED_LOCK_PATHS=()
 ACQUIRED_LOCK_SCOPES=()
+
+# Detect the current branch checked out in a worktree directory (if present).
+worktree_branch() {
+  local wt_path="$1"
+  if [[ -d "$wt_path" ]]; then
+    git -C "$wt_path" rev-parse --abbrev-ref HEAD 2>/dev/null || true
+  fi
+}
+
+# Warn when the agent's persistent worktree is already busy with an in-place task branch.
+check_active_inplace_task() {
+  local agent="$1"
+  local new_branch="$2"
+  local persistent_wt="$WORKTREES_ROOT/$agent"
+  if [[ ! -d "$persistent_wt" ]]; then
+    return 0
+  fi
+  local current_branch
+  current_branch="$(worktree_branch "$persistent_wt")"
+  if [[ -z "$current_branch" || "$current_branch" == "agent/${agent}-init" ]]; then
+    return 0
+  fi
+  if [[ "$current_branch" == "$new_branch" ]]; then
+    return 0
+  fi
+  echo "agent-start-task: 检测到 '$agent' 的持久工作区正忙于其他任务分支: $current_branch" >&2
+  echo "  持久工作区: $persistent_wt" >&2
+  echo "  新任务分支: $new_branch" >&2
+  echo "  规则：持久工作区应串行处理任务；如需并行开发，请使用 --force 强制创建独立 worktree。" >&2
+  return 1
+}
 
 run_touch_preflight() {
   if [[ "${#TOUCH_PATHS[@]}" -eq 0 ]]; then
@@ -235,12 +298,7 @@ cleanup_on_error() {
     git worktree remove "$WORKTREE_PATH" --force >/dev/null 2>&1 || true
   fi
 
-  if [[ "$CREATE_WORKTREE" == "0" ]]; then
-    # --in-place 模式：只清理分支
-    if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
-      git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
-    fi
-  else
+  if [[ "$BRANCH_CREATED" == "1" ]]; then
     if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
       git branch -D "$BRANCH_NAME" >/dev/null 2>&1 || true
     fi
@@ -256,6 +314,24 @@ fi
 if [[ ! "$TASK_SLUG" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
   echo "agent-start-task: invalid task slug '$TASK_SLUG'." >&2
   exit 1
+fi
+
+# 检查分支是否已存在（dry-run 也应提前报错，避免给出误导性预期）
+if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
+  echo "agent-start-task: branch already exists: $BRANCH_NAME" >&2
+  echo "  如需继续在该分支上工作，请在对应 worktree 中切换到此分支。" >&2
+  exit 1
+fi
+
+# 检查同一任务是否已在持久工作区以 in-place 方式存在
+if [[ "$IN_PLACE" != "1" ]]; then
+  if ! check_active_inplace_task "$AGENT_NAME" "$BRANCH_NAME"; then
+    if [[ "$FORCE" != "1" ]]; then
+      echo "agent-start-task: 使用 --force 可忽略此警告并继续创建独立 worktree。" >&2
+      exit 1
+    fi
+    echo "agent-start-task: --force 已设置，继续创建独立 worktree（请确认这是并行开发需求）。" >&2
+  fi
 fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
@@ -298,12 +374,6 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-# 检查分支是否已存在
-if git show-ref --verify --quiet "refs/heads/$BRANCH_NAME"; then
-  echo "agent-start-task: branch already exists: $BRANCH_NAME" >&2
-  exit 1
-fi
-
 # --in-place 模式：确认当前在锚点分支上，pull 最新 main，再切分支
 if [[ "$IN_PLACE" == "1" ]]; then
   current_branch="$(git rev-parse --abbrev-ref HEAD)"
@@ -322,13 +392,14 @@ if [[ "$IN_PLACE" == "1" ]]; then
   # -------------------------------------
   echo "agent-start-task: creating branch $BRANCH_NAME in current worktree..."
   git checkout -b "$BRANCH_NAME"
+  BRANCH_CREATED=1
   cat > "$WORKTREE_PATH/.agent-task-context" <<EOF
 agent=$AGENT_NAME
 task=$TASK_SLUG
 branch=$BRANCH_NAME
 base=$BASE_REF
 worktree=$WORKTREE_PATH
-repo_root=$REPO_ROOT
+repo_root=$WORKTREE_PATH
 mode=in-place
 created_from_branch=$(git rev-parse --abbrev-ref HEAD | sed "s/.*/agent\/${AGENT_NAME}-init/")
 created_from_rev=$(git rev-parse HEAD)
@@ -438,6 +509,7 @@ mkdir -p "$WORKTREES_ROOT"
 git fetch origin --prune
 git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH" "$BASE_REF"
 WORKTREE_CREATED=1
+BRANCH_CREATED=1
 
 cat > "$WORKTREE_PATH/.agent-task-context" <<EOF
 agent=$AGENT_NAME
@@ -445,7 +517,7 @@ task=$TASK_SLUG
 branch=$BRANCH_NAME
 base=$BASE_REF
 worktree=$WORKTREE_PATH
-repo_root=$REPO_ROOT
+repo_root=$WORKTREE_PATH
 created_from_branch=$(git rev-parse --abbrev-ref HEAD)
 created_from_rev=$(git rev-parse HEAD)
 created_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")

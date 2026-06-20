@@ -285,6 +285,25 @@ else
   fi
 fi
 
+# ── 15. Agent 多任务分支软性检查 ─────────────────────────
+echo "── Agent 任务分支集中度 ──"
+if [[ "$branch" == agent/* ]]; then
+  agent_name="${branch#agent/}"
+  agent_name="${agent_name%%/*}"
+  agent_task_branches=$(git branch --list "agent/${agent_name}/*" 2>/dev/null | sed 's/^[ *+] //' | grep -v "^agent/${agent_name}-init$" || true)
+  agent_task_count=$(echo "$agent_task_branches" | grep -cE '^agent/' || true)
+  if [[ "${agent_task_count:-0}" -gt 1 ]]; then
+    echo -e "${YELLOW}⚠${NC} Agent '$agent_name' 当前有 ${agent_task_count} 个活跃任务分支（不含 -init 锚点）"
+    echo "$agent_task_branches" | sed 's/^/    - /'
+    echo "   建议：任务完成后及时清理本地分支，避免并行任务冲突。"
+    SKIPD=$((SKIPD + 1))
+  else
+    pass "Agent 任务分支集中度良好"
+  fi
+else
+  skip "非 agent 分支"
+fi
+
 # ── 汇总 ────────────────────────────────────────────────
 echo ""
 echo "─────────────────────────"
