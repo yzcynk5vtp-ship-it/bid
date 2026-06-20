@@ -15,8 +15,8 @@ backlinks:
   - implementation/xiyu-pending-confirmations
   - integration-oa-crm
 created: 2026-04-28
-updated: 2026-06-15
-health_checked: 2026-06-15
+updated: 2026-06-20
+health_checked: 2026-06-20
 ---
 # 组织架构对接 - 客户事件库 SDK 方案
 

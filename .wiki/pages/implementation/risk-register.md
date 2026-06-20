@@ -17,8 +17,8 @@ backlinks:
   - implementation/weekly-status
   - implementation/xiyu-pending-confirmations
 created: 2026-04-21
-updated: 2026-05-28
-health_checked: 2026-06-13
+updated: 2026-06-20
+health_checked: 2026-06-20
 ---
 # 实施风险台账
 

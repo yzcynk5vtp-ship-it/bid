@@ -8,8 +8,8 @@ sources:
 backlinks:
   - _index
 created: 2026-05-20
-updated: 2026-05-20
-health_checked: 2026-06-13
+updated: 2026-06-20
+health_checked: 2026-06-20
 ---
 # 4.4 知识库产品需求文档 (PRD)
 

@@ -11,8 +11,8 @@ backlinks:
   - implementation/xiyu-pending-confirmations
   - integration-organization-event-sdk
 created: 2026-05-07
-updated: 2026-06-13
-health_checked: 2026-06-13
+updated: 2026-06-20
+health_checked: 2026-06-20
 ---
 # CRM 对接规范
 

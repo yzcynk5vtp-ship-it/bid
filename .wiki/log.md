@@ -3,6 +3,16 @@
 > 按时间倒序记录所有 Wiki 操作。每条记录以 `## [日期] 操作类型 | 说明` 格式开头。
 > 可用 `grep "^## \[" .wiki/log.md | tail -5` 查看最近 5 条。
 
+## [2026-06-20] update | 生产测试服务器 172.16.38.78 部署实录与 health check 超时修复
+
+- 更新页面：`.wiki/pages/deployment.md`
+  - 新增 §9「生产测试服务器（172.16.38.78）部署实录」
+  - 补充环境拓扑、打包命令、产物校验、deploy.env 示例、部署后验证清单
+  - 记录 `remote-deploy.sh` health check 超时问题与 PR !876 修复
+  - 更新 frontmatter：`updated: 2026-06-20`、`health_checked: 2026-06-20`
+- 代码修复：PR !876 将 `scripts/release/remote-deploy.sh` 健康检查等待从 120 秒延长至 240 秒
+- 部署验证：2026-06-20 成功部署 `337fc79a5` 与 `d180f1395` 到 `172.16.38.78`，后端 `/actuator/health` 最终 `UP`
+
 ## [2026-06-15] update | OSS 组织架构同步角色白名单与 admin 升级规则归档
 - 更新页面：`.wiki/pages/integration-organization-event-sdk.md`（角色映射与白名单章节）
 - 更新配置模板：`docs/integration/organization-role-filter-config.yml`
