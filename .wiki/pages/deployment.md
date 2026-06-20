@@ -30,8 +30,8 @@ backlinks:
   - requirements
   - team-and-timeline
 created: 2026-04-15
-updated: 2026-05-28
-health_checked: 2026-06-16
+updated: 2026-06-20
+health_checked: 2026-06-20
 ---
 # 部署与上线
 
@@ -330,3 +330,129 @@ CONFIRM_RESTORE=YES bash scripts/release/restore-db.sh <backup-file>
 | 监控指标 | Micrometer + Prometheus：JVM、HTTP 请求、连接池、业务指标 |
 | 日志 | Logback，开发 DEBUG 控制台、生产 INFO 文件 + 结构化日志，AOP 审计切面 |
 | 告警 | 健康异常、5xx 持续、连接池耗尽、内存超阈值 |
+
+---
+
+## 9. 生产测试服务器（172.16.38.78）部署实录
+
+本节记录 `winbid-01` / `winbid-01.test` / `winbid-test.ehsy.com`（内网入口 `http://172.16.38.78:8080`）的真实部署经验。
+
+### 9.1 环境拓扑
+
+| 组件 | 配置 |
+|------|------|
+| 主机 | `winbid-01`（`172.16.38.78`） |
+| OS | CentOS 7 / Alibaba Cloud Linux |
+| 前端生效目录 | `/srv/www/xiyu-bid` |
+| 后端 jar | `/opt/xiyu-bid/shared/backend/app.jar` |
+| 后端服务 | `xiyu-bid-backend`（systemd，以 `jetty` 用户运行） |
+| 后端监听端口 | `18080` |
+| Nginx 入口 | `80` / `8080` 反代到 `127.0.0.1:18080`；前端静态资源由 Nginx 直接服务 |
+| 数据库 | MySQL 8.0 RDS（`winbid-01.test.rds.ehsy.com`） |
+| Java | `/opt/xiyu-tools/jdk-21/bin/java` |
+
+### 9.2 部署前必做
+
+1. 确认本地工作区在最新 `origin/main`：
+   ```bash
+   git fetch origin && git rebase origin/main && bash scripts/sync-env.sh .
+   ```
+2. 创建预部署 DB 备份：
+   ```bash
+   # 在服务器上执行（需 sudo 读取 /etc/xiyu-bid/backend.env）
+   source /etc/xiyu-bid/backend.env
+   export MYSQL_PWD="$DB_PASSWORD"
+   mysqldump -h"$DB_HOST" -P"$DB_PORT" -u"$DB_USERNAME" --single-transaction --routines --triggers "$DB_NAME" \
+     | gzip > /opt/xiyu-bid/db-backups/xiyu_bid-<commit>-pre-deploy-<timestamp>.sql.gz
+   ```
+3. 确认回滚锚点：
+   - 上一个稳定 release 目录：`/opt/xiyu-bid/releases/<previous-release-id>`
+   - 上一个稳定后端 jar：`/opt/xiyu-bid/releases/<previous-release-id>/backend/app.jar`
+   - 上一个稳定前端：`/opt/xiyu-bid/releases/<previous-release-id>/frontend`
+
+### 9.3 打包命令
+
+```bash
+rm -rf backend/target
+RELEASE_ID=<commit-short-sha> VITE_API_BASE_URL= bash scripts/release/package-release.sh
+```
+
+- `VITE_API_BASE_URL=`（显式空值）表示前端走同源相对路径，匹配 Nginx 统一入口 `http://172.16.38.78:8080`。
+- 若完全省略 `VITE_API_BASE_URL`，会 fallback 到 dev 地址 `127.0.0.1:18080`，导致浏览器端 CORS 失败。
+
+### 9.4 产物校验
+
+```bash
+# 1. 确认前端 JS 没有写死 dev API 地址
+rg "127\.0\.0\.1:18080|localhost:18080" ".release/<release-id>/frontend/assets"/*.js
+# 期望无输出
+
+# 2. 确认 jar 内 Flyway 迁移无重复版本
+jar tf .release/<release-id>/backend/app.jar | rg 'BOOT-INF/classes/db/migration-mysql/V[0-9]+__' \
+  | sed -E 's#.*\/(V[0-9]+)__.*#\1#' | sort | uniq -d
+# 期望无输出
+```
+
+### 9.5 部署命令
+
+```bash
+# 上传并激活（在本地工作区执行）
+scp .release/xiyu-bid-release-<release-id>.tar.gz jetty@172.16.38.78:/opt/xiyu-bid/incoming/
+scp deploy-<release-id>.env jetty@172.16.38.78:/opt/xiyu-bid/incoming/
+ssh jetty@172.16.38.78 'bash -lc "source /opt/xiyu-bid/incoming/deploy-<release-id>.env && bash -s"' < scripts/release/remote-deploy.sh
+```
+
+`deploy.env` 关键变量示例：
+
+```bash
+RELEASE_ARCHIVE=/opt/xiyu-bid/incoming/xiyu-bid-release-<release-id>.tar.gz
+RELEASE_ID=<release-id>
+APP_ROOT=/opt/xiyu-bid
+RELEASES_DIR=/opt/xiyu-bid/releases
+FRONTEND_PUBLIC_DIR=/srv/www/xiyu-bid
+BACKEND_SERVICE_NAME=xiyu-bid-backend
+BACKEND_RUNTIME_DIR=/opt/xiyu-bid/shared/backend
+BACKEND_JAR_PATH=/opt/xiyu-bid/shared/backend/app.jar
+DEPLOYED_RELEASE_RECORD=/opt/xiyu-bid/deployed-release.json
+HEALTHCHECK_URL=http://127.0.0.1:8080/actuator/health
+SYSTEMCTL_SUDO=true
+```
+
+### 9.6 健康检查超时问题
+
+**现象**：`remote-deploy.sh` 部署后 health check 返回 `503`，脚本退出，但等待约 2.5 分钟后后端 `/actuator/health` 自行恢复 `UP`。
+
+**根因**：Spring Boot `ApplicationReadyEvent` 监听者 `OrganizationEventSdkKafkaStarter` 需要完成事件库 SDK 注册并启动 Kafka Consumer，在 `winbid-01` 上耗时约 151 秒；原脚本仅等待 60 × 2 秒 = 120 秒，因此提前判定失败。
+
+**修复**：PR !876 将 `scripts/release/remote-deploy.sh` 的 health check 循环从 60 次增加到 120 次，最大等待时间延长至 4 分钟。
+
+```bash
+# 修复后
+for _ in {1..120}; do
+  if curl -fsS "$HEALTHCHECK_URL" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+```
+
+**验证**：2026-06-20 重新部署 `d180f1395` 时，脚本成功等待到 `UP` 并正常退出。
+
+### 9.7 部署后验证清单
+
+```bash
+# 服务端
+sudo systemctl is-active xiyu-bid-backend
+curl -fsS http://127.0.0.1:8080/actuator/health
+curl -fsS http://127.0.0.1:8080/actuator/health/liveness
+curl -fsS http://127.0.0.1:8080/actuator/health/readiness
+
+# 公网（本地执行）
+curl -fsS -o /dev/null -w "%{http_code}\n" http://172.16.38.78:8080/
+curl -fsS http://172.16.38.78:8080/actuator/health
+```
+
+### 9.8 已知限制
+
+- 完整登录态业务 smoke 需要 `PROD_SMOKE_USERNAME` / `PROD_SMOKE_PASSWORD`，目前作为 GitHub/Gitee secrets 管理，本地手动部署时通常不携带。
+- `/actuator/prometheus` 在 `protected` 模式下对匿名请求返回 `403`，属于预期行为。

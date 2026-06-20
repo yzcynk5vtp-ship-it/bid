@@ -233,7 +233,7 @@ function rebuildWikiHome(records) {
       space: 'engineering',
       category: 'guide',
       tags: ['首页', '导航', 'wiki'],
-      sources: ['WIKI.md', '.wiki/INDEX.md', '.wiki/PAGE_INDEX.md'],
+      sources: ['docs/specs/WIKI.md', '.wiki/INDEX.md', '.wiki/PAGE_INDEX.md'],
       backlinks: [],
       created: today,
       updated: today,

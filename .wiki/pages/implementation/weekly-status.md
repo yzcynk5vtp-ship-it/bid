@@ -15,8 +15,8 @@ backlinks:
   - implementation/risk-register
   - implementation/xiyu-pending-confirmations
 created: 2026-04-21
-updated: 2026-06-13
-health_checked: 2026-06-13
+updated: 2026-06-20
+health_checked: 2026-06-20
 ---
 # 实施周报与例会纪要模板
 
