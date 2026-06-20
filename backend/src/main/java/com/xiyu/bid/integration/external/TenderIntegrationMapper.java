@@ -8,6 +8,7 @@ import com.xiyu.bid.tender.entity.TenderAttachment;
 import com.xiyu.bid.tender.service.TenderMapper;
 import com.xiyu.bid.util.InputSanitizer;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.URLEncoder;
@@ -26,6 +27,19 @@ public class TenderIntegrationMapper {
 
     private final TenderMapper tenderMapper;
     private final TenderEvaluationIntegrationMapper evaluationMapper;
+
+    /**
+     * 公开端点根地址（如 https://winbid-test.ehsy.com）。
+     * 用于生成可跨域访问的完整下载 URL，供外部系统（如 CRM）直接渲染。
+     * 开发环境默认为空，返回相对路径（同源部署）。
+     * 使用 static + setter 注入，使静态方法 toDownloadUrl 也能读取配置。
+     */
+    private static String publicBaseUrl;
+
+    @Value("${xiyu.public-base-url:}")
+    public void setPublicBaseUrl(String value) {
+        TenderIntegrationMapper.publicBaseUrl = value;
+    }
 
     /**
      * 将推送请求映射为 Tender 实体。
@@ -192,37 +206,62 @@ public class TenderIntegrationMapper {
 
     /**
      * 将 doc-insight:// 格式的 URL 转换为可直接下载的 URL。
+     * 同时处理已被 TenderMapper 转换为 /api/... 相对路径的 URL，补全为完整 URL。
      */
     void normalizeFileUrls(TenderDTO dto) {
-        if (dto.getSourceDocumentFileUrl() != null && dto.getSourceDocumentFileUrl().startsWith("doc-insight://")) {
-            dto.setSourceDocumentFileUrl(toDownloadUrl(dto.getSourceDocumentFileUrl()));
-        }
-        if (dto.getBidNoticeFileUrl() != null && dto.getBidNoticeFileUrl().startsWith("doc-insight://")) {
-            dto.setBidNoticeFileUrl(toDownloadUrl(dto.getBidNoticeFileUrl()));
-        }
+        dto.setSourceDocumentFileUrl(toFullUrl(dto.getSourceDocumentFileUrl()));
+        dto.setBidNoticeFileUrl(toFullUrl(dto.getBidNoticeFileUrl()));
         if (dto.getAttachments() != null) {
-            dto.getAttachments().forEach(a -> {
-                if (a.getFileUrl() != null && a.getFileUrl().startsWith("doc-insight://")) {
-                    a.setFileUrl(toDownloadUrl(a.getFileUrl()));
-                }
-            });
+            dto.getAttachments().forEach(a -> a.setFileUrl(toFullUrl(a.getFileUrl())));
         }
     }
 
     // ── 工具方法 ──────────────────────────────────────────────────────────────
 
+    /**
+     * 构造附件下载 URL。
+     * 若配置了 xiyu.public-base-url，返回完整 URL（供外部系统跨域访问）；
+     * 否则返回相对路径（同源部署场景）。
+     * 幂等：已是下载地址的不再二次包装（CO-283）。
+     */
     public static String toDownloadUrl(String u) {
         if (u == null || u.isBlank()) {
             return u;
         }
         // 已是下载地址，避免 CO-283 双重嵌套
         if (u.startsWith("/api/doc-insight/download?")) {
-            return u;
+            return prependPublicBaseUrl(u);
         }
         if (u.startsWith("doc-insight://")) {
-            return "/api/doc-insight/download?fileUrl=" + URLEncoder.encode(u, StandardCharsets.UTF_8);
+            return prependPublicBaseUrl("/api/doc-insight/download?fileUrl=" + URLEncoder.encode(u, StandardCharsets.UTF_8));
         }
         return u;
+    }
+
+    /**
+     * 将相对路径 /api/... 补全为完整 URL（若配置了 publicBaseUrl）。
+     * 用于处理已被 TenderMapper.toDTO() 转换过的 URL（doc-insight:// → /api/...）。
+     * http(s):// 等已是完整 URL 的直接返回。
+     */
+    static String toFullUrl(String url) {
+        if (url == null) return null;
+        if (url.startsWith("doc-insight://")) {
+            return toDownloadUrl(url);
+        }
+        if (url.startsWith("/api/")) {
+            return prependPublicBaseUrl(url);
+        }
+        return url;
+    }
+
+    /**
+     * 若配置了 publicBaseUrl，将相对路径补全为完整 URL；否则原样返回。
+     */
+    private static String prependPublicBaseUrl(String relative) {
+        if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
+            return relative;
+        }
+        return publicBaseUrl + relative;
     }
 
     static String buildExternalId(String sourceSystem, String sourceId) {

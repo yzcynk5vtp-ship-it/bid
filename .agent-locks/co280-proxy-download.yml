@@ -1,9 +1,0 @@
-version: 1
-task: "co280-proxy-download"
-locks:
-  - path: "backend/src/main/resources/application-prod.yml"
-    scope: "file"
-    owner: "agent"
-    branch: "agent/trae/co280-proxy-download"
-    expiresAt: "2026-06-21T06:10:49.403Z"
-    reason: "CO-280: 回滚 PR !884 错误添加的 xiyu.public-base-url 配置"
