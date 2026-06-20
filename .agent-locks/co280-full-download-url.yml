@@ -1,0 +1,9 @@
+version: 1
+task: "co280-full-download-url"
+locks:
+  - path: "backend/src/main/resources/application-prod.yml"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/trae/co280-full-download-url"
+    expiresAt: "2026-06-21T07:41:59.687Z"
+    reason: "CO-280: 重新添加 xiyu.public-base-url 配置，修复 CRM 跨域下载"
