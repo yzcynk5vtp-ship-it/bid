@@ -45,6 +45,65 @@ describe('BasicInfoReadOnly — 只读详情多行字段', () => {
   })
 })
 
+describe('BasicInfoReadOnly — 附件下载链接应拼接 API_BASE_URL', () => {
+  async function mountComponentWithBaseUrl(baseUrl, tender) {
+    vi.resetModules()
+    vi.doMock('@/api/config.js', () => ({
+      API_BASE_URL: baseUrl,
+    }))
+    const { default: BasicInfoReadOnlyDynamic } = await import('./BasicInfoReadOnly.vue')
+    return mountWithElementPlus(BasicInfoReadOnlyDynamic, { props: { tender } })
+  }
+
+  it('doc-insight:// 协议 URL 在开发环境应拼接完整后端地址', async () => {
+    const wrapper = await mountComponentWithBaseUrl('http://127.0.0.1:18089', {
+      attachments: [
+        { fileName: '招标文件.pdf', fileType: 'application/pdf', fileUrl: 'doc-insight://TENDER_INTAKE/create/hash-file.pdf' },
+      ],
+    })
+    await wrapper.vm.$nextTick()
+
+    const anchors = wrapper.findAll('a').filter(a => a.attributes('href')?.startsWith('http://127.0.0.1:18089/api/doc-insight/download'))
+    expect(anchors.length).toBeGreaterThan(0)
+    expect(anchors[0].attributes('href')).toContain('fileUrl=doc-insight%3A%2F%2FTENDER_INTAKE')
+  })
+
+  it('doc-insight:// 协议 URL 在生产环境（API_BASE_URL 为空）应保持同源相对路径', async () => {
+    const wrapper = await mountComponentWithBaseUrl('', {
+      attachments: [
+        { fileName: '招标文件.pdf', fileType: 'application/pdf', fileUrl: 'doc-insight://TENDER_INTAKE/create/hash-file.pdf' },
+      ],
+    })
+    await wrapper.vm.$nextTick()
+
+    const anchors = wrapper.findAll('a').filter(a => a.attributes('href')?.startsWith('/api/doc-insight/download'))
+    expect(anchors.length).toBeGreaterThan(0)
+    expect(anchors[0].attributes('href')).toContain('fileUrl=doc-insight%3A%2F%2FTENDER_INTAKE')
+    expect(anchors[0].attributes('href')).not.toContain('http://')
+  })
+
+  it('后端已转换的 /api/... 相对路径在开发环境也应拼接完整后端地址', async () => {
+    const wrapper = await mountComponentWithBaseUrl('http://127.0.0.1:18089', {
+      sourceDocumentName: '原始标讯.pdf',
+      sourceDocumentFileUrl: '/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2FTENDER%2Fhash-file.pdf',
+    })
+    await wrapper.vm.$nextTick()
+
+    const anchors = wrapper.findAll('a').filter(a => a.attributes('href')?.startsWith('http://127.0.0.1:18089/api/doc-insight/download'))
+    expect(anchors.length).toBeGreaterThan(0)
+  })
+
+  it('空 URL 应返回空字符串', async () => {
+    const wrapper = await mountComponentWithBaseUrl('http://127.0.0.1:18089', {
+      attachments: [],
+    })
+    await wrapper.vm.$nextTick()
+
+    const anchors = wrapper.findAll('a').filter(a => a.attributes('href') && a.attributes('href').length > 0)
+    expect(anchors).toHaveLength(0)
+  })
+})
+
 describe('BasicFieldsSection — 评估表基础段多行字段启用 autosize', () => {
   it('招标文件不利项、风险预判、了解流程、支持备注应启用 autosize', async () => {
     const wrapper = mountWithElementPlus(BasicFieldsSection, {
