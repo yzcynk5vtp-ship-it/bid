@@ -72,8 +72,17 @@ export async function uploadTaskDeliverables(task, deliverableFiles, { projectSt
   }
 }
 
+export function canCurrentUserUploadTaskDeliverables(task, userStore = {}) {
+  const currentUserId = userStore.currentUser?.id
+  return currentUserId != null && task?.assigneeId != null && String(currentUserId) === String(task.assigneeId)
+}
+
 export async function uploadTaskDeliverablesWithFallback(task, deliverableFiles, deps, fallbackMessage, message) {
   if (!deliverableFiles?.length) return true
+  if (!canCurrentUserUploadTaskDeliverables(task, deps?.userStore)) {
+    message?.warning?.('仅任务执行人本人可上传交付物，请让执行人打开任务后上传')
+    return false
+  }
   try {
     await uploadTaskDeliverables(task, deliverableFiles, deps)
     return true
