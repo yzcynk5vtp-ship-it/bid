@@ -9,6 +9,7 @@ import com.xiyu.bid.tender.repository.TenderEvaluationRepository;
 import com.xiyu.bid.tender.service.TenderEvaluationSubmissionMapper;
 import com.xiyu.bid.tender.service.TenderMapper;
 import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
+import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ class TenderIntegrationServiceEvaluationTest {
     @Autowired private TenderRepository tenderRepository;
     @Autowired private TenderEvaluationRepository tenderEvaluationRepository;
     @Autowired private TenderEvaluationCustomerInfoRepository customerInfoRepository;
+    @Autowired private ProjectDocumentRepository projectDocumentRepository;
 
     private TenderEvaluationIntegrationService evaluationService;
 
@@ -44,7 +46,8 @@ class TenderIntegrationServiceEvaluationTest {
                 mock(TenderEvaluationSubmissionMapper.class));
         evaluationService = new TenderEvaluationIntegrationService(
                 tenderEvaluationRepository,
-                evaluationMapper);
+                evaluationMapper,
+                projectDocumentRepository);
     }
 
     private Long createTender() {

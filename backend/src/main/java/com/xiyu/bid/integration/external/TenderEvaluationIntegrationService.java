@@ -1,13 +1,14 @@
 package com.xiyu.bid.integration.external;
 
 import com.xiyu.bid.tender.dto.EvaluationBasicDTO;
+import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.tender.dto.EvaluationRecommendationDTO;
 import com.xiyu.bid.tender.entity.TenderEvaluation;
 import com.xiyu.bid.tender.entity.TenderEvaluationBasic;
 import com.xiyu.bid.tender.entity.TenderEvaluationCustomerInfo;
 import com.xiyu.bid.tender.entity.TenderEvaluationRecommendation;
 import com.xiyu.bid.tender.repository.TenderEvaluationRepository;
-import lombok.RequiredArgsConstructor;
+import com.xiyu.bid.tender.service.TenderEvaluationGapFilesSync;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,11 +21,19 @@ import java.util.Map;
  * 负责评估数据的保存和转换。
  */
 @Service
-@RequiredArgsConstructor
 public class TenderEvaluationIntegrationService {
 
     private final TenderEvaluationRepository tenderEvaluationRepository;
     private final TenderEvaluationIntegrationMapper mapper;
+    private final TenderEvaluationGapFilesSync gapFilesSync;
+
+    public TenderEvaluationIntegrationService(TenderEvaluationRepository tenderEvaluationRepository,
+                                              TenderEvaluationIntegrationMapper mapper,
+                                              ProjectDocumentRepository projectDocumentRepository) {
+        this.tenderEvaluationRepository = tenderEvaluationRepository;
+        this.mapper = mapper;
+        this.gapFilesSync = new TenderEvaluationGapFilesSync(projectDocumentRepository);
+    }
 
     /**
      * 保存评估数据（支持创建和更新）。
@@ -56,6 +65,10 @@ public class TenderEvaluationIntegrationService {
         }
 
         tenderEvaluationRepository.save(evalEntity);
+
+        // CO-262: 将 CRM 推送的 GAP 附件引用（外部 URL）持久化到 project_documents 表，
+        // 与 TenderEvaluationSubmissionService 保持一致的替换语义。
+        gapFilesSync.applyGapFiles(tenderId, evaluationBasic);
     }
 
     private void applyEvaluationBasic(TenderEvaluation evalEntity, EvaluationBasicDTO b) {

@@ -6,6 +6,7 @@ import com.xiyu.bid.tender.dto.TenderDTO;
 import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
 import com.xiyu.bid.tender.repository.TenderEvaluationRepository;
 import com.xiyu.bid.tender.service.TenderEvaluationSubmissionMapper;
+import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.tender.service.TenderMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,6 +37,7 @@ class TenderIntegrationServiceUpdateCrmLinkTest {
     @Mock private TenderEvaluationRepository tenderEvaluationRepository;
     @Mock private TenderEvaluationSubmissionMapper submissionMapper;
     @Mock private CrmTenderLinkService crmTenderLinkService;
+    @Mock private ProjectDocumentRepository projectDocumentRepository;
 
     private TenderIntegrationCommandService commandService;
 
@@ -46,7 +48,7 @@ class TenderIntegrationServiceUpdateCrmLinkTest {
         TenderIntegrationMapper mapper = new TenderIntegrationMapper(
                 tenderMapper, evaluationMapper);
         TenderEvaluationIntegrationService evaluationService = new TenderEvaluationIntegrationService(
-                tenderEvaluationRepository, evaluationMapper);
+                tenderEvaluationRepository, evaluationMapper, projectDocumentRepository);
         TenderIntegrationResolver helper = new TenderIntegrationResolver(tenderRepository);
         commandService = new TenderIntegrationCommandService(
                 tenderRepository, attachmentRepository, crmTenderLinkService, mapper, evaluationService, helper);

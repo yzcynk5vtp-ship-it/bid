@@ -27,11 +27,11 @@ import java.util.List;
  * <p>仅处理外部 URL 引用（fileName + fileUrl），不处理用户上传的 MultipartFile
  * （后者由 {@link TenderEvaluationDocumentService#uploadDocument} 负责）。
  */
-class TenderEvaluationGapFilesSync {
+public class TenderEvaluationGapFilesSync {
 
     private final ProjectDocumentRepository projectDocumentRepository;
 
-    TenderEvaluationGapFilesSync(ProjectDocumentRepository projectDocumentRepository) {
+    public TenderEvaluationGapFilesSync(ProjectDocumentRepository projectDocumentRepository) {
         this.projectDocumentRepository = projectDocumentRepository;
     }
 
@@ -48,7 +48,7 @@ class TenderEvaluationGapFilesSync {
      *
      * @return 持久化后的 GAP 附件列表（用于回填 DTO）；若未做任何变更则返回当前已有列表
      */
-    List<ProjectDocument> applyGapFiles(Long tenderId, EvaluationBasicDTO basic) {
+    public List<ProjectDocument> applyGapFiles(Long tenderId, EvaluationBasicDTO basic) {
         // P1-3: basic 为 null 或 projectPlanGapFiles 为 null 时，保留已有附件
         if (basic == null || basic.projectPlanGapFiles() == null) {
             return loadExisting(tenderId);
