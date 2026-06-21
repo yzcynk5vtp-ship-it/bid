@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
+import static com.xiyu.bid.apikey.infrastructure.ApiKeyAuthConstants.DEFAULT_QUERY_PARAM;
+
 /**
  * 附件下载 URL 转换器（CO-280 403 修复）。
  *
@@ -142,11 +144,37 @@ public class TenderAttachmentUrlResolver {
         return url;
     }
 
+    /**
+     * 将 URL 转换为集成下载端点，并附加 api_key 查询参数（CO-280 修复）。
+     *
+     * <p>CRM 用户在浏览器中直接点击下载链接时，无法携带自定义 HTTP Header。
+     * 通过将 api_key 附加到 URL 查询参数，配合 {@code ApiKeyAuthenticationFilter}
+     * 同时支持 Header 和 URL 参数两种认证方式，实现"点击即下载"。
+     *
+     * @param url 原始 fileUrl（doc-insight:// / http(s):// / 已是下载地址的 URL）
+     * @param apiKey 明文 API Key（为 null 或空串时退化为无参数版本）
+     * @return 集成下载端点 URL，含 api_key 查询参数（当 apiKey 非空时）
+     */
+    public static String toIntegrationFullUrl(String url, String apiKey) {
+        String result = toIntegrationFullUrl(url);
+        if (apiKey != null && !apiKey.isBlank() && result != null
+                && result.contains("/api/integration/tenders/attachments/download")) {
+            return appendApiKeyParam(result, apiKey);
+        }
+        return result;
+    }
+
     /** 若配置了 publicBaseUrl，将相对路径补全为完整 URL；否则原样返回。 */
     private static String prependPublicBaseUrl(String relative) {
         if (publicBaseUrl == null || publicBaseUrl.isBlank()) {
             return relative;
         }
         return publicBaseUrl + relative;
+    }
+
+    /** 附加 api_key 查询参数到 URL，正确处理已有 query string 的情况。 */
+    private static String appendApiKeyParam(String url, String apiKey) {
+        char separator = url.contains("?") ? '&' : '?';
+        return url + separator + DEFAULT_QUERY_PARAM + "=" + apiKey;
     }
 }
