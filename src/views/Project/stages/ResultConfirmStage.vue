@@ -116,6 +116,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Delete, Plus, UploadFilled } from '@element-plus/icons-vue'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
+import { getResultConfirmNextTab } from '@/constants/projectStages.js'
 import { getApiUrl } from '@/api/config.js'
 import { useUserStore } from '@/stores/user.js'
 
@@ -150,7 +151,7 @@ function selectResult(value) {
 const evidenceFiles = ref([])
 const existing = ref(null)
 const submitting = ref(false)
-const resultNextTab = computed(() => (form.resultType === 'WON' || form.resultType === 'LOST') ? 'RETROSPECTIVE' : 'CLOSED')
+const resultNextTab = computed(() => getResultConfirmNextTab(form.resultType))
 
 const uploadUrl = computed(() => getApiUrl(`/api/projects/${props.projectId}/documents`))
 const acceptedTypes = '.pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx'

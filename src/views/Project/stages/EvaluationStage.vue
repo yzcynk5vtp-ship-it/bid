@@ -50,6 +50,7 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user.js'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
+import { STAGE_TRANSITION_MAP } from '@/constants/projectStages.js'
 import EvaluationEvidenceUpload from './components/EvaluationEvidenceUpload.vue'
 
 const props = defineProps({ projectId: { type: [String, Number], required: true } })
@@ -124,7 +125,7 @@ async function handleSubmit() {
     evaluationDone.value = true
     ElMessage.success('提交成功，已推进至结果确认阶段')
     emit('advanced')
-    emit('switch-tab', 'RESULT_PENDING')
+    emit('switch-tab', STAGE_TRANSITION_MAP.EVALUATING)
   } catch (e) {
     ElMessage.error(e?.response?.data?.msg || '提交失败')
   } finally {
