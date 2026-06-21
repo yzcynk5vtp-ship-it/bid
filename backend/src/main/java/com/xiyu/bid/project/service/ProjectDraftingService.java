@@ -136,7 +136,7 @@ public class ProjectDraftingService {
     }
 
     /**
-     * 提交投标：审核通过 + 闸门通过后推进到 EVALUATING 阶段。
+     * 提交投标：投标文件审核通过后推进到 EVALUATING 阶段。
      */
     @Auditable(action = "SUBMIT_BID", entityType = "Project",
             description = "提交投标并推进到评标阶段")
@@ -171,14 +171,6 @@ public class ProjectDraftingService {
         var reviewDecision = BidReviewPolicy.canSubmitBid(parseStatus(reviewState.status()));
         if (!reviewDecision.allowed()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, reviewDecision.reason());
-        }
-
-        // 校验任务闸门
-        AllTasksCompletedPolicy.Decision d = gateDecision(projectId);
-        if (!d.allowed()) {
-            int incomplete = ((AllTasksCompletedPolicy.Decision.Deny) d).incompleteCount();
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "仍有 " + incomplete + " 个任务未完成，无法提交投标");
         }
 
         ProjectStage currentStage = projectStageService.currentStage(projectId);

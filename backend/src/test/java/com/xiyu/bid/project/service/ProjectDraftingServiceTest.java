@@ -1,5 +1,5 @@
 // Input: ProjectDraftingService 行为
-// Output: Mockito 单元测试覆盖 assignLeads + gateAdvanceToEvaluation (happy + deny)
+// Output: Mockito 单元测试覆盖 assignLeads + gateAdvanceToEvaluation + submitBid
 // Pos: backend test source
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.service;
@@ -29,6 +29,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -210,6 +211,23 @@ class ProjectDraftingServiceTest {
                         && "IN_PROGRESS".equals(e.getSubStage())
                         && e.getEvaluationStartedAt() != null
                         && "".equals(e.getNotes())));
+    }
+
+    @Test
+    void submitBid_approvedReview_allowsIncompleteTasks() {
+        prepareSubmitBidHappyPath();
+        when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
+                Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.IN_PROGRESS).build()));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "sales")));
+        prepareLeadAssignment(1L, 2L);
+
+        var view = service.submitBid(1L, 1L);
+
+        assertThat(view).isNotNull();
+        verify(projectStageService).requestTransition(
+                eq(1L),
+                eq(ProjectStage.EVALUATING),
+                any());
     }
 
     @Test
