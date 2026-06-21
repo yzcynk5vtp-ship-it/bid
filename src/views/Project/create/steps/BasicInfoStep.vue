@@ -44,6 +44,7 @@
             :step="10"
             controls-position="right"
             style="width: 200px"
+            @focus="handleBudgetFocus"
           />
         </el-form-item>
 
@@ -178,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, shallowRef } from 'vue'
+import { ref, shallowRef, nextTick } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AdaptiveFormPage from '@/components/common/AdaptiveFormPage.vue'
@@ -225,6 +226,14 @@ async function handleSyncFromCRM() {
     ElMessage.error('CRM数据同步失败')
   } finally {
     syncing.value = false
+  }
+}
+
+function handleBudgetFocus() {
+  if (basicForm.value.budget === 0) {
+    nextTick(() => {
+      basicForm.value.budget = null
+    })
   }
 }
 
