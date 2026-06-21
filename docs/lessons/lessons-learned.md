@@ -600,4 +600,77 @@ git diff --stat
 
 ---
 
+## 9. 同一接口错误形态变化时，必须重新看真实服务器日志
+
+### 问题背景
+
+2026-06-21 修复 `POST /api/projects/{id}/drafting/submit-bid` 的 409 后，用户再次验证发现同一接口变成 500。第一轮根因是 `submitBid` 误复用任务完成闸门；第二轮如果继续沿用这个结论，很容易误判。按用户要求直接看服务器日志后，确认阶段已经成功切到 `EVALUATING`，新的失败发生在后置通知插入：`Column 'created_by' cannot be null`。
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 同一接口从 409 变成 500 | 错误形态变化通常意味着执行路径已经越过旧故障点 | 不得把上一轮根因自动套用到新错误 |
+| 只看浏览器 500 | 浏览器只告诉你结果，不告诉你数据库/事务失败点 | 500 必须查看服务端日志，定位第一条 ERROR/SQL 异常 |
+| 后置通知失败掩盖主链路成功 | 日志中 `Project stage transitioned` 先出现，说明主链路已推进 | 排查时区分主业务链路和副作用链路 |
+
+### 操作规范
+
+1. 同一接口错误码或错误消息变化时，重新建立调用链，不沿用上轮结论。
+2. 500/事务异常优先看服务器日志，特别是第一条 SQL 异常和业务日志的先后顺序。
+3. 日志里若先出现主业务成功日志、再出现副作用失败，应优先检查通知、审计、异步/同步副作用写入。
+
+### 验证命令
+
+```bash
+# 真实服务器上按时间窗口查看后端日志，定位第一条异常
+ssh jetty@172.16.38.78 'journalctl -u xiyu-bid-backend --since "10 minutes ago" | grep -E "Project stage transitioned|SQL Error|created_by|sendNotification failed"'
+```
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-submit-bid-review-gate.md` — 第一轮 409 根因分析
+- `docs/lessons/root-cause-analysis-stage-notification-created-by.md` — 第二轮 500 根因分析
+
+---
+
+## 10. PR 已合入后追加修复，要先确认 merge-base 再判断是更新旧 PR 还是开新 PR
+
+### 问题背景
+
+`submit-bid` 第一轮修复已通过 PR `!923` 合入 `origin/main`。随后针对服务器日志暴露的通知 `created_by` 500 问题继续在原任务分支提交修复。推送前查看提交图发现首个修复提交已在 `origin/main`，当前分支相对 `origin/main` 只剩后续通知修复提交。按统一脚本 `scripts/pr-create.sh` 创建 PR 时，系统创建了新的 PR `!925`，而不是更新已合入的 `!923`。
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 以为仍在更新旧 PR | 旧 PR 可能已经合入，分支上的后续提交相对 main 是新变更 | 收尾前必须查看 `merge-base` 和 `origin/main..HEAD` |
+| 只看本地分支名 | 分支名相同不代表 PR 状态相同 | 以提交图和远端 PR 状态为准 |
+| PR 创建/更新行为不确定 | 项目统一脚本会按当前远端状态处理 Gitee PR | 不手动网页操作，使用 `scripts/pr-create.sh` 并如实记录结果 |
+
+### 操作规范
+
+1. 追加修复前先执行 `git fetch origin`，确认 `origin/main` 最新。
+2. 推送/建 PR 前执行 `git log --oneline origin/main..HEAD`，确认本次 PR 实际包含哪些提交。
+3. 如果旧 PR 已合入，后续修复应作为新 PR 说明上下文，不强行改写已合入历史。
+4. PR 操作使用项目统一脚本 `scripts/pr-create.sh`，不要手工网页创建或更新。
+
+### 验证命令
+
+```bash
+# 确认当前分支相对 main 的真实差异
+git fetch origin
+git log --oneline origin/main..HEAD
+git diff --stat origin/main...HEAD
+
+# 查看提交图，判断旧提交是否已合入 main
+git log --graph --oneline --decorate --boundary --max-count=25 --all
+```
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-stage-notification-created-by.md` — 后续修复的技术根因
+- `scripts/pr-create.sh` — 项目统一 PR 创建脚本
+
+---
 

@@ -51,3 +51,46 @@ CO-262 修复 CRM 商机关联回填的 GAP 附件未持久化问题时，最初
 
 - `docs/lessons/root-cause-analysis-co262-crm-eval-gap-files.md` — 完整根因分析
 - `docs/lessons/crm-integration-lessons.md` §9 — CRM 集成经验
+
+---
+
+## 2. 阶段变更通知必须携带明确 actor，旧签名使用系统 actor 兜底
+
+> 决策日期：2026-06-21
+> 决策者：zcode
+> 状态：已采纳
+
+### 背景
+
+`POST /api/projects/{id}/drafting/submit-bid` 在阶段成功切到 `EVALUATING` 后，发送阶段变更通知时触发数据库错误：`Column 'created_by' cannot be null`。根因是 `ProjectNotificationService.notifyStageTransition(projectId, fromStage, toStage)` 的旧三参签名没有 actor 参数，通知创建最终把 null 写入 `notification.created_by`。
+
+### 决策
+
+新增 actor-aware 的四参 `notifyStageTransition(projectId, fromStage, toStage, userId)`；`submitBid` 调用四参方法并传入 `currentUserId`。保留旧三参方法以兼容既有调用，但旧签名统一委托到 `SYSTEM_USER_ID = 0L`，禁止再向通知创建链路传 null actor。
+
+### 备选方案（及否决理由）
+
+| 方案 | 优点 | 缺点 | 是否采纳 |
+|------|------|------|---------|
+| 四参方法传真实 actor，旧三参用系统 actor 兜底 | 最小改动；保留兼容；submitBid 审计主体准确 | `0L` 仍是约定值，不一定有真实用户记录 | ✅ |
+| 全量修改所有调用方，删除三参签名 | 语义最清晰，编译期强制 actor | 改动范围大，超出本次 500 修复范围 | ❌ 本次只做直接相关最小修复 |
+| 放宽 `notification.created_by` 数据库约束 | 可避免 null 插入失败 | 破坏审计完整性，掩盖调用方问题 | ❌ 不符合审计字段非空语义 |
+| 在 `sendNotification` catch 后吞掉异常 | 表面避免接口 500 | JPA/事务可能已被污染，且 null createdBy 仍未解决 | ❌ 治标不治本 |
+
+### 权衡与约束
+
+- `submitBid` 这类用户触发动作必须传真实 `currentUserId`，保证通知审计可追溯。
+- 旧三参方法只作为兼容入口；新代码应优先使用四参签名。
+- `SYSTEM_USER_ID = 0L` 是最小兼容方案。如果未来外键或审计要求 `created_by` 必须对应真实用户，应引入正式系统用户账号或调整通知创建人模型。
+
+### 影响范围
+
+- `backend/src/main/java/com/xiyu/bid/project/notification/ProjectNotificationService.java`
+- `backend/src/main/java/com/xiyu/bid/project/service/ProjectDraftingService.java`
+- `backend/src/test/java/com/xiyu/bid/project/notification/ProjectNotificationServiceTest.java`
+- `backend/src/test/java/com/xiyu/bid/project/service/ProjectDraftingServiceTest.java`
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-stage-notification-created-by.md` — 完整根因分析
+- `docs/lessons/lessons-learned.md` §9 — 同一接口错误形态变化时的日志排查教训
