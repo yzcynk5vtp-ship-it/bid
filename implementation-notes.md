@@ -146,3 +146,24 @@
 - 已先补 `ProjectAccessScopeServiceTest` 回归测试，RED 阶段确认生产代码缺少任务执行人项目范围。
 - GREEN 后运行 `mvn test -Dtest=ProjectAccessScopeServiceTest` 通过。
 - 补跑 `mvn test -Dtest=ProjectAccessGuardCoverageTest` 通过。
+
+# CO-290 提交投标未完成任务闸门修复实施记录
+
+## 问题口径
+
+- 投标文件审核通过后，用户点击项目详情页“提交投标”，后端 `POST /api/projects/{projectId}/drafting/submit-bid` 返回 409：`仍有 1 个任务未完成，无法提交投标`。
+- 本次只处理提交投标被未完成任务阻断的问题；控制台中 `/api/tenders/206`、`/api/projects/*/initiation`、`/api/tenders/206/evaluation` 的 404 视为不同链路，未纳入本次范围。
+
+## 决策与权衡
+
+- `submitBid` 已有投标文件审核通过校验，本次按新文档审核流语义，让审核通过后的提交投标不再复用“全部任务已完成”闸门。
+- 保留 `/drafting/advance` 的全部任务完成校验，避免影响仍依赖任务完成推进阶段的旧入口。
+- 不修改 `AllTasksCompletedPolicy`，也不把 `REVIEW` 视为完成态；任务终态仍只有 `COMPLETED` / `CANCELLED`。
+- 未调整权限、阶段状态机、前端按钮或数据库结构。
+
+## 验证
+
+- TDD RED：新增 `ProjectDraftingServiceTest.submitBid_approvedReview_allowsIncompleteTasks` 后，确认原实现返回 409。
+- GREEN：移除 `submitBid` 内未完成任务闸门后，单测 `mvn test -Dtest=ProjectDraftingServiceTest#submitBid_approvedReview_allowsIncompleteTasks` 通过。
+- 回归：`mvn test -Dtest=ProjectDraftingServiceTest,AllTasksCompletedPolicyTest,BidReviewPolicyTest` 通过，54 tests。
+- 补充权限覆盖：`mvn test -Dtest=ProjectAccessGuardCoverageTest` 通过。
