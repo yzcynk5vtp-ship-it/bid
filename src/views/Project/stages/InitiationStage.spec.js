@@ -140,7 +140,7 @@ describe('InitiationStage — PRD §4.3 4-section layout', () => {
     expect(wrapper.vm.form.depositAmount).toBe(123.45)
   })
 
-  it('filters bidding leader candidates to sales role', async () => {
+  it('does not hard-limit bidding leader candidates to sales role', async () => {
     projectLifecycleApi.getInitiation.mockRejectedValue({ response: { status: 404 } })
     usersApi.search.mockResolvedValue([
       { id: 1, name: '销售负责人', employeeNumber: 'S001', roleCode: 'sales' },
@@ -151,8 +151,7 @@ describe('InitiationStage — PRD §4.3 4-section layout', () => {
 
     await wrapper.vm.searchLeader('张')
 
-    expect(wrapper.vm.leaderOptions).toHaveLength(1)
-    expect(wrapper.vm.leaderOptions[0].id).toBe(1)
+    expect(wrapper.vm.leaderOptions.map(u => u.id)).toEqual([1, 2])
   })
 
   it('filters bidding assistant candidates to bid specialist role', async () => {

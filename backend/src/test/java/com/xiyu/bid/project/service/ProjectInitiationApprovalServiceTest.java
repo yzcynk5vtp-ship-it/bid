@@ -115,7 +115,7 @@ class ProjectInitiationApprovalServiceTest {
     }
 
     @Test
-    void approve_bidSpecialistAsPrimaryLead_422() {
+    void approve_bidSpecialistAsPrimaryLead_allowed() {
         ProjectInitiationDetails details = ProjectInitiationDetails.builder()
                 .id(1L)
                 .projectId(100L)
@@ -123,37 +123,22 @@ class ProjectInitiationApprovalServiceTest {
                 .locked(Boolean.FALSE)
                 .build();
         when(initiationRepo.findByProjectId(100L)).thenReturn(Optional.of(details));
-        when(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "bid_specialist")));
+        when(projectStageService.currentStage(100L)).thenReturn(ProjectStage.INITIATED);
+        when(initiationRepo.save(any(ProjectInitiationDetails.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(projectRepository.findById(100L))
+                .thenReturn(Optional.of(Project.builder().id(100L).name("测试项目").build()));
+        when(leadRepo.save(any(ProjectLeadAssignment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
         InitiationApprovalRequest req = InitiationApprovalRequest.builder()
                 .primaryLeadUserId(3L)
                 .build();
 
-        assertThatThrownBy(() -> service.approve(100L, req, 5L))
-                .isInstanceOf(ResponseStatusException.class);
-        verify(leadRepo, org.mockito.Mockito.never()).save(any(ProjectLeadAssignment.class));
-    }
+        service.approve(100L, req, 5L);
 
-    @Test
-    void approve_salesAsSecondaryLead_422() {
-        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
-                .id(1L)
-                .projectId(100L)
-                .reviewStatus(InitiationReviewStatus.PENDING_REVIEW.name())
-                .locked(Boolean.FALSE)
-                .build();
-        when(initiationRepo.findByProjectId(100L)).thenReturn(Optional.of(details));
-        when(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "sales")));
-        when(userRepository.findById(4L)).thenReturn(Optional.of(user(4L, "sales")));
-
-        InitiationApprovalRequest req = InitiationApprovalRequest.builder()
-                .primaryLeadUserId(3L)
-                .secondaryLeadUserId(4L)
-                .build();
-
-        assertThatThrownBy(() -> service.approve(100L, req, 5L))
-                .isInstanceOf(ResponseStatusException.class);
-        verify(leadRepo, org.mockito.Mockito.never()).save(any(ProjectLeadAssignment.class));
+        verify(leadRepo).save(org.mockito.ArgumentMatchers.argThat(assignment ->
+                Long.valueOf(3L).equals(assignment.getPrimaryLeadUserId())));
     }
 
     @Test

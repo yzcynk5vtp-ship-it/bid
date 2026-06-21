@@ -208,19 +208,20 @@
 
 ## 问题口径
 
-- 线上“投标负责人也提交不了”的直接原因不是提交投标按钮权限本身，而是项目负责人分配数据与提交投标授权模型不一致。
-- `submitBid` 授权要求：`sales` 用户必须匹配 `primaryLeadUserId`，`bid_specialist` 用户必须匹配 `secondaryLeadUserId`。
-- 线上数据把 `bid_specialist` 用户写进了 `primaryLeadUserId`，因此该用户即使被页面显示为“投标负责人”，后端仍会按角色-字段映射拒绝提交投标。
+- 线上“投标负责人也提交不了”的直接原因是授权模型把 `bid_specialist` 只当作辅助人员匹配 `secondaryLeadUserId`。
+- 业务更正：投标负责人不应硬限制为 `sales`（投标项目负责人）；实际通常会选择 `bid_specialist`（投标专员）担任投标负责人。
+- 因此，`bid_specialist` 被写入 `primaryLeadUserId` 是合法业务数据，不应要求管理员改成主/副字段互换。
 
 ## 决策与权衡
 
-- 不放宽 `submitBid` 授权策略；该策略与 CO-290 的角色边界一致，直接放宽会让投标专员越权作为主负责人提交。
-- 在两个写入入口兜底：立项审批通过时分配团队、标书制作阶段重新分配主/副负责人，都校验主负责人必须是 `sales`、辅助人员必须是 `bid_specialist`。
-- 前端审批分配下拉也按角色过滤，减少错误选择；但后端仍作为最终强校验，防止绕过前端或历史入口写入脏数据。
-- 用户搜索 DTO 增加 `roleCode` 字段供前端过滤；不返回邮箱、密码等敏感字段。
-- 不做数据库迁移批量修历史数据；本次先阻止新增错误分配，线上已有错误项目需要由管理员重新分配主/副负责人。
+- 放宽提交投标授权：`bid_specialist` 匹配 `primaryLeadUserId` 或 `secondaryLeadUserId` 均可提交；`sales` 仍只匹配 `primaryLeadUserId`。
+- 移除立项审批和标书制作阶段分配主/副负责人时的角色硬校验，保留“主负责人必填、主/副不能相同”等结构校验。
+- 前端“投标负责人”搜索不再过滤为 `sales`，避免再次挡住正常选择投标专员；“投标辅助人员”搜索仍保留 `bid_specialist` 过滤。
+- 用户搜索 DTO 保留 `roleCode` 字段，供辅助人员筛选和后续展示使用；不返回邮箱、密码等敏感字段。
+- 不需要数据库迁移；既有 `bid_specialist` 作为 `primaryLeadUserId` 的线上项目在新授权下可直接提交。
 
 ## 验证
 
-- 后端：`mvn -f backend/pom.xml -Dtest=UserSearchServiceTest,UserSearchControllerTest,ProjectDraftingServiceTest,ProjectInitiationApprovalServiceTest test` 通过，37 tests。
-- 前端：`pnpm vitest run src/views/Project/stages/InitiationStage.spec.js src/api/modules/users.spec.js` 通过，13 tests。
+- 后端：`mvn -f backend/pom.xml -Dtest=BidSubmissionAuthorizationPolicyTest,ProjectDraftingServiceTest,ProjectInitiationApprovalServiceTest,UserSearchServiceTest,UserSearchControllerTest test` 通过，57 tests。
+- 前端：`pnpm vitest run src/composables/projectDetail/useProjectDraftingPermissions.spec.js src/views/Project/stages/InitiationStage.spec.js src/api/modules/users.spec.js` 通过，70 tests（保留既有 Element Plus stub 警告）。
+- 质量检查：`git diff --check && npm run check:line-budgets && npm run agent:lock-check:changed` 通过。

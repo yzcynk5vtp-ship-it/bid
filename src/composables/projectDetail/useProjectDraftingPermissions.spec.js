@@ -17,7 +17,7 @@ function resolveDraftingRoleGroup(role) {
 }
 
 // 对齐 useProjectDraftingPermissions.js 中 canSubmitBid 的完整逻辑
-// sales 仅匹配 primaryLeadId，bid_specialist 仅匹配 secondaryLeadId
+// sales 仅匹配 primaryLeadId，bid_specialist 匹配 primaryLeadId 或 secondaryLeadId
 function computeCanSubmitBid(role, opts = {}) {
   const group = resolveDraftingRoleGroup(role)
   if (group === 'admin_lead') return true
@@ -27,7 +27,8 @@ function computeCanSubmitBid(role, opts = {}) {
     return !!(opts.primaryLeadId && String(opts.primaryLeadId) === uid)
   }
   if (role === 'bid_specialist') {
-    return !!(opts.secondaryLeadId && String(opts.secondaryLeadId) === uid)
+    return !!((opts.primaryLeadId && String(opts.primaryLeadId) === uid)
+      || (opts.secondaryLeadId && String(opts.secondaryLeadId) === uid))
   }
   return false
 }
@@ -101,8 +102,8 @@ describe('canSubmitBid — lead_assist 组项目级负责人匹配', () => {
   it('bid_specialist 匹配 secondaryLeadId → true', () => {
     expect(computeCanSubmitBid('bid_specialist', { currentUserId: 20, primaryLeadId: 10, secondaryLeadId: 20 })).toBe(true)
   })
-  it('bid_specialist 匹配 primaryLeadId → false（bid_specialist 只能匹配 secondaryLead）', () => {
-    expect(computeCanSubmitBid('bid_specialist', { currentUserId: 10, primaryLeadId: 10, secondaryLeadId: 20 })).toBe(false)
+  it('bid_specialist 匹配 primaryLeadId → true（投标专员可作为投标负责人）', () => {
+    expect(computeCanSubmitBid('bid_specialist', { currentUserId: 10, primaryLeadId: 10, secondaryLeadId: 20 })).toBe(true)
   })
   it('bid_specialist 无 currentUserId → false', () => {
     expect(computeCanSubmitBid('bid_specialist', { primaryLeadId: 10, secondaryLeadId: 20 })).toBe(false)
@@ -110,7 +111,7 @@ describe('canSubmitBid — lead_assist 组项目级负责人匹配', () => {
   it('bid_specialist 都不匹配 → false', () => {
     expect(computeCanSubmitBid('bid_specialist', { currentUserId: 99, primaryLeadId: 10, secondaryLeadId: 20 })).toBe(false)
   })
-  it('bid_specialist 无 secondaryLeadId → false', () => {
+  it('bid_specialist 仅 primaryLeadId 不匹配且无 secondaryLeadId → false', () => {
     expect(computeCanSubmitBid('bid_specialist', { currentUserId: 20, primaryLeadId: 10 })).toBe(false)
   })
 })

@@ -105,7 +105,7 @@ class BidSubmissionAuthorizationPolicyTest {
         assertThat(d.allowed()).isFalse();
     }
 
-    // ── bid_specialist：仅匹配 secondaryLeadUserId ───────────────────────────
+    // ── bid_specialist：匹配 primaryLeadUserId 或 secondaryLeadUserId ──────────
 
     @Test
     void canSubmitBid_bidSpecialist_asSecondaryLead_allowed() {
@@ -114,10 +114,9 @@ class BidSubmissionAuthorizationPolicyTest {
     }
 
     @Test
-    void canSubmitBid_bidSpecialist_asPrimaryLead_denied() {
-        // bid_specialist 只能匹配 secondaryLead，不能匹配 primaryLead
+    void canSubmitBid_bidSpecialist_asPrimaryLead_allowed() {
         var d = BidSubmissionAuthorizationPolicy.canSubmitBid("bid_specialist", 1L, lead(1L, 2L));
-        assertThat(d.allowed()).isFalse();
+        assertThat(d.allowed()).isTrue();
     }
 
     @Test

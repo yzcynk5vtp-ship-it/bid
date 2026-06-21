@@ -18,7 +18,7 @@ import com.xiyu.bid.project.entity.ProjectLeadAssignment;
  *   <li>需项目级负责人分配：
  *     <ul>
  *       <li>{@code sales} → 必须匹配 {@code ProjectLeadAssignment.primaryLeadUserId}</li>
- *       <li>{@code bid_specialist} → 必须匹配 {@code ProjectLeadAssignment.secondaryLeadUserId}</li>
+ *       <li>{@code bid_specialist} → 匹配 {@code primaryLeadUserId} 或 {@code secondaryLeadUserId}</li>
  *     </ul>
  *   </li>
  *   <li>其他角色：直接拒绝</li>
@@ -53,9 +53,11 @@ public final class BidSubmissionAuthorizationPolicy {
             matched = lead.getPrimaryLeadUserId() != null
                     && lead.getPrimaryLeadUserId().equals(currentUserId);
         } else if (RoleProfileCatalog.BID_SPECIALIST_CODE.equals(roleCode)) {
-            // bid_specialist 投标专员：仅匹配 secondaryLeadUserId
-            matched = lead.getSecondaryLeadUserId() != null
-                    && lead.getSecondaryLeadUserId().equals(currentUserId);
+            // bid_specialist 投标专员：可作为投标负责人(primary)或投标辅助人员(secondary)
+            matched = (lead.getPrimaryLeadUserId() != null
+                    && lead.getPrimaryLeadUserId().equals(currentUserId))
+                    || (lead.getSecondaryLeadUserId() != null
+                    && lead.getSecondaryLeadUserId().equals(currentUserId));
         } else {
             // 防御性兜底：SUBMIT_BID_LEAD_REQUIRED_ROLES 未来新增角色时未在此处补分支会显式拒绝
             return Decision.deny(Decision.Cause.IDENTITY, "当前角色无项目级负责人匹配规则");
