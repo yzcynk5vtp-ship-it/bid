@@ -119,3 +119,30 @@
 
 - P1：后端来源过滤归一化现在会跳过空值、去重，并在查询 `CRM创建` 时兼容历史 `CRM 创建` 数据；外部集成映射改为复用 `Tender.SourceType` 标签，降低后端标签重复维护风险。
 - P2：前端新增共享来源标签常量，标讯中心筛选、标讯源配置、手工创建默认值、列表展示和项目列表展示统一复用同一组来源标签；保留 `CRM 创建` 和 `批量导入` 作为历史数据展示兼容入口，不作为新的配置/筛选项。
+
+# CO-293 跨部门协同任务执行人项目可见性修复实施记录
+
+## 问题口径
+
+- 跨部门协同人员被分配为项目任务执行人后，应该能查看该任务所属项目，否则无法进入项目上下文处理任务。
+- 本次将问题定位在统一项目访问范围，而不是前端列表展示或菜单权限。
+
+## 决策与权衡
+
+- 最小改动放在 `ProjectAccessScopeService`：把“当前用户作为任务执行人的项目”纳入项目可访问 ID 集合。
+- 不调整角色菜单、数据范围配置或前端路由；`bid_other_dept` 的基础数据权限仍保持受限，只因具体任务分配获得对应项目可见性。
+- 不修改任务流转策略；执行人是否能提交/审核仍由既有 `ProjectTaskAuthorizationPolicy` 控制。
+- 不新增数据库迁移；直接复用已有 `tasks.assignee_id` 与 `tasks.project_id` 数据。
+
+## 权限边界补充
+
+- 2026-06-21 复核 Linear CO-293 原文后，确认“处理待办”入口是工作台跳转 `/project?tab=todo`，不是通知卡片直达单个任务；因此 P0 需要项目列表包含任务执行人所属项目。
+- 本次按 Linear P0 处理为“项目级可见性”：任务执行人可在项目列表看到对应项目，并通过项目详情入口。项目详情内部模块/tab 级隔离属于 Linear 记录的 P1，未在本次最小修复中实现。
+- 已复核项目工作流任务与普通任务均落在 `tasks` 表，对应 `com.xiyu.bid.entity.Task` / `TaskRepository`，本次没有接入错误的任务表。
+- 既有 `TaskProjectVisibilityPolicy` 中 `allowedProjectIds` 为空时视为全量可见，而 `ProjectAccessScopeService` 的项目列表过滤中空集合代表无可见项目；这是既有语义不一致。本次不顺手修改，避免扩大 CO-293 范围，但后续做 P1 或任务权限收口时应统一该语义。
+
+## 验证
+
+- 已先补 `ProjectAccessScopeServiceTest` 回归测试，RED 阶段确认生产代码缺少任务执行人项目范围。
+- GREEN 后运行 `mvn test -Dtest=ProjectAccessScopeServiceTest` 通过。
+- 补跑 `mvn test -Dtest=ProjectAccessGuardCoverageTest` 通过。
