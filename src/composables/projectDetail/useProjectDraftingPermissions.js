@@ -25,8 +25,8 @@
  * 角色代码说明（RoleProfile）：
  * - bid_admin  → 投标管理员（蓝图"投标管理员/组长"）
  * - bid_lead   → 投标组长（蓝图"投标管理员/组长"）
- * - sales      → 投标负责人（蓝图"投标负责人/辅助人"）
- * - bid_specialist → 投标辅助人员（蓝图"投标负责人/辅助人"）
+ * - sales      → 投标项目负责人（蓝图"投标负责人/辅助人"）
+ * - bid_specialist → 投标专员，可作为投标负责人或辅助人员（蓝图"投标负责人/辅助人"）
  * - admin      → 系统管理员（归入"投标管理员/组长"权限组）
  * - 其他（admin_staff, bid_other_dept, staff 等）→ 默认可见页面，但无特殊操作权限
  */
@@ -151,12 +151,13 @@ export function useProjectDraftingPermissions(opts = {}) {
     const primaryLeadId = resolveOpt(opts.primaryLeadId)
     const secondaryLeadId = resolveOpt(opts.secondaryLeadId)
     // sales（投标项目负责人）仅匹配 primaryLeadId
-    // bid_specialist（投标专员）仅匹配 secondaryLeadId
+    // bid_specialist（投标专员）可作为投标负责人或辅助人员
     if (role.value === 'sales') {
       return !!(primaryLeadId && String(primaryLeadId) === uid)
     }
     if (role.value === 'bid_specialist') {
-      return !!(secondaryLeadId && String(secondaryLeadId) === uid)
+      return !!((primaryLeadId && String(primaryLeadId) === uid)
+        || (secondaryLeadId && String(secondaryLeadId) === uid))
     }
     return false
   })

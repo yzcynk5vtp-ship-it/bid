@@ -31,7 +31,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -66,8 +65,6 @@ class ProjectDraftingServiceTest {
     @Test
     void assignLeads_happy_createsAndReturns() {
         when(leadRepo.findByProjectId(1L)).thenReturn(Optional.empty());
-        when(userRepository.findById(10L)).thenReturn(Optional.of(mockUser(10L, "sales")));
-        when(userRepository.findById(20L)).thenReturn(Optional.of(mockUser(20L, "bid_specialist")));
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of());
         var view = service.assignLeads(1L,
                 ProjectLeadAssignmentRequest.builder()
@@ -79,25 +76,12 @@ class ProjectDraftingServiceTest {
     }
 
     @Test
-    void assignLeads_bidSpecialistAsPrimaryLead_422() {
-        when(userRepository.findById(10L)).thenReturn(Optional.of(mockUser(10L, "bid_specialist")));
-        assertThatThrownBy(() -> service.assignLeads(1L,
-                ProjectLeadAssignmentRequest.builder().primaryLeadUserId(10L).build(), 99L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting("statusCode").isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-        verify(leadRepo, never()).save(any(ProjectLeadAssignment.class));
-    }
-
-    @Test
-    void assignLeads_salesAsSecondaryLead_422() {
-        when(userRepository.findById(10L)).thenReturn(Optional.of(mockUser(10L, "sales")));
-        when(userRepository.findById(20L)).thenReturn(Optional.of(mockUser(20L, "sales")));
-        assertThatThrownBy(() -> service.assignLeads(1L,
-                ProjectLeadAssignmentRequest.builder()
-                        .primaryLeadUserId(10L).secondaryLeadUserId(20L).build(), 99L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting("statusCode").isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
-        verify(leadRepo, never()).save(any(ProjectLeadAssignment.class));
+    void assignLeads_bidSpecialistAsPrimaryLead_allowed() {
+        when(leadRepo.findByProjectId(1L)).thenReturn(Optional.empty());
+        when(taskRepository.findByProjectId(1L)).thenReturn(List.of());
+        var view = service.assignLeads(1L,
+                ProjectLeadAssignmentRequest.builder().primaryLeadUserId(10L).build(), 99L);
+        assertThat(view.getPrimaryLeadUserId()).isEqualTo(10L);
     }
 
     @Test
@@ -294,14 +278,12 @@ class ProjectDraftingServiceTest {
     }
 
     @Test
-    void submitBid_bidSpecialist_asPrimaryLead_denied_403() {
-        // bid_specialist 只能匹配 secondaryLead，不能匹配 primaryLead
+    void submitBid_bidSpecialist_asPrimaryLead_allowed() {
         prepareSubmitBidHappyPath();
         when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid_specialist")));
-        prepareLeadAssignment(1L, 2L);  // bid_specialist 用户=1 是 primaryLead，不是 secondaryLead
-        assertThatThrownBy(() -> service.submitBid(1L, 1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting("statusCode").isEqualTo(HttpStatus.FORBIDDEN);
+        prepareLeadAssignment(1L, 2L);  // bid_specialist 用户=1 是 primaryLead
+        var view = service.submitBid(1L, 1L);
+        assertThat(view).isNotNull();
     }
 
     @Test

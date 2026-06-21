@@ -1,12 +1,11 @@
 // Input: 项目 id、leads 请求、当前用户；依赖 ProjectLeadAssignmentRepository + TaskRepository + ProjectStageService
-// Output: ProjectDraftingViewDto；主/副投标负责人角色校验；纯编排，核心规则委托给 AllTasksCompletedPolicy / BidReviewPolicy；§3.6 CLOSED 全字段锁定
+// Output: ProjectDraftingViewDto；主/副投标负责人分配；纯编排，核心规则委托给 AllTasksCompletedPolicy / BidReviewPolicy；§3.6 CLOSED 全字段锁定
 // Pos: project/service/ - 编排层
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.service;
 
 import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.entity.Project;
-import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.exception.ResourceNotFoundException;
@@ -80,7 +79,6 @@ public class ProjectDraftingService {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
                     "主/副负责人不能相同");
         }
-        assertLeadRoles(req.getPrimaryLeadUserId(), req.getSecondaryLeadUserId());
         ProjectLeadAssignment entity = leadRepo.findByProjectId(projectId)
                 .orElseGet(() -> ProjectLeadAssignment.builder().projectId(projectId).build());
         entity.setPrimaryLeadUserId(req.getPrimaryLeadUserId());
@@ -214,26 +212,6 @@ public class ProjectDraftingService {
     private Project mustGetProject(Long projectId) {
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", String.valueOf(projectId)));
-    }
-
-    private void assertLeadRoles(Long primaryLeadUserId, Long secondaryLeadUserId) {
-        User primaryLead = userRepository.findById(primaryLeadUserId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                        "投标负责人不存在"));
-        if (!RoleProfileCatalog.SALES_CODE.equals(primaryLead.getRoleCode())) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                    "投标负责人必须选择投标项目负责人角色");
-        }
-        if (secondaryLeadUserId == null) {
-            return;
-        }
-        User secondaryLead = userRepository.findById(secondaryLeadUserId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                        "投标辅助人员不存在"));
-        if (!RoleProfileCatalog.BID_SPECIALIST_CODE.equals(secondaryLead.getRoleCode())) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
-                    "投标辅助人员必须选择投标专员角色");
-        }
     }
 
     private void ensureEvaluationInitialized(Long projectId, Long userId) {
