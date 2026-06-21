@@ -231,6 +231,7 @@ public class CrmChanceService {
      * @return true 回传成功，false 回传失败
      */
     public boolean bidInfoSync(BidInfoSyncDTO bidInfoSync) {
+        log.info("CRM bidInfoSync request: payload={}", bidInfoSync);
         String token = authService.getValidToken();
         String baseUrl = properties.getEffectiveChanceBaseUrl();
         String path = properties.getChance().getBidInfoSyncPath();
@@ -243,9 +244,12 @@ public class CrmChanceService {
         }
 
         if (!response.success()) {
-            log.warn("CRM bidInfoSync failed: code={}, msg={}", response.code(), response.msg());
+            log.warn("CRM bidInfoSync failed: code={}, msg={}, payload={}",
+                    response.code(), response.msg(), bidInfoSync);
             return false;
         }
+        log.info("CRM bidInfoSync success: code={}, msg={}, payload={}",
+                response.code(), response.msg(), bidInfoSync);
         return true;
     }
 
