@@ -179,6 +179,7 @@ public class ProjectResultRegistrationService {
             if (isBlankRow(row)) continue;
             ProjectResultCompetitor entity = ProjectResultCompetitor.builder()
                     .resultId(resultId)
+                    .name(row.name())
                     .discount(row.discount())
                     .paymentTerm(row.paymentTerm())
                     .notes(row.notes())
