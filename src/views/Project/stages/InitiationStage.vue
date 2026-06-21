@@ -205,11 +205,11 @@ const locked = computed(() => reviewStatus.value === 'PENDING_REVIEW' || reviewS
 // 审批模式：投标管理员/组长 查看 PENDING_REVIEW 的立项；改用 roleCode 以匹配 bid_admin 等新角色值
 const userRole = computed(() => userStore.currentUser?.roleCode || userStore.currentUser?.role || '')
 const isApprovalMode = computed(() => isBidManager(userRole.value) && reviewStatus.value === 'PENDING_REVIEW')
-// 人员搜索
-const leaderOptions = ref([]); const leaderSearching = ref(false)
-async function searchLeader(q) { if (!q || q.length < 1) return; leaderSearching.value = true; try { const r = await usersApi.search(q, 15); leaderOptions.value = (Array.isArray(r) ? r : []).map(u => ({ ...u, _label: u.name + '（' + (u.employeeId || '') + '）- ' + (u.departmentName || u.deptName || '') })) } catch { leaderOptions.value = [] } finally { leaderSearching.value = false } }
-const assistantOptions = ref([]); const assistantSearching = ref(false)
-async function searchAssistant(q) { if (!q || q.length < 1) return; assistantSearching.value = true; try { const r = await usersApi.search(q, 15); assistantOptions.value = (Array.isArray(r) ? r : []).map(u => ({ ...u, _label: u.name + '（' + (u.employeeId || '') + '）- ' + (u.departmentName || u.deptName || '') })) } catch { assistantOptions.value = [] } finally { assistantSearching.value = false } }
+const BID_LEADER_ROLE = 'sales'; const BID_ASSISTANT_ROLE = 'bid_specialist'
+function roleOptions(users, roleCode) { return (Array.isArray(users) ? users : []).filter(u => String(u?.roleCode || u?.role || '').trim().toLowerCase() === roleCode).map(u => ({ ...u, _label: u.name + '（' + (u.employeeId || u.employeeNumber || '') + '）- ' + (u.departmentName || u.deptName || '') })) }
+const leaderOptions = ref([]); const leaderSearching = ref(false); const assistantOptions = ref([]); const assistantSearching = ref(false)
+async function searchLeader(q) { if (!q || q.length < 1) return; leaderSearching.value = true; try { const r = await usersApi.search(q, 15); leaderOptions.value = roleOptions(r, BID_LEADER_ROLE) } catch { leaderOptions.value = [] } finally { leaderSearching.value = false } }
+async function searchAssistant(q) { if (!q || q.length < 1) return; assistantSearching.value = true; try { const r = await usersApi.search(q, 15); assistantOptions.value = roleOptions(r, BID_ASSISTANT_ROLE) } catch { assistantOptions.value = [] } finally { assistantSearching.value = false } }
 const approvalForm = reactive({ biddingLeaderId: null, biddingLeaderLabel: '', biddingAssistantId: null, biddingAssistantLabel: '' })
 const uploadUrl = '/api/upload'
 const uploadHeaders = computed(() => { const t = userStore?.token; return t ? { Authorization: 'Bearer ' + t } : {} })
@@ -274,7 +274,7 @@ function handleAmountBlur(field) { if (form[field] == null || form[field] === ''
 
 onMounted(load)
 
-defineExpose({ load, handleAmountFocus, handleAmountBlur })
+defineExpose({ load, handleAmountFocus, handleAmountBlur, searchLeader, searchAssistant, leaderOptions, assistantOptions })
 </script>
 <style scoped>
 .initiation-stage { display: flex; flex-direction: column; gap: 16px; }

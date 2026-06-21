@@ -15,6 +15,9 @@ vi.mock('@/api/modules/projectLifecycle.js', () => ({
     updateInitiation: vi.fn(),
   },
 }))
+vi.mock('@/api/modules/users.js', () => ({
+  usersApi: { search: vi.fn() },
+}))
 vi.mock('@/api/modules/ai.js', () => ({
   scoreAnalysisApi: { generatePreview: vi.fn() },
 }))
@@ -23,6 +26,7 @@ vi.mock('element-plus', () => ({
 }))
 
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
+import { usersApi } from '@/api/modules/users.js'
 import InitiationStage from './InitiationStage.vue'
 
 const stubs = {
@@ -134,5 +138,35 @@ describe('InitiationStage — PRD §4.3 4-section layout', () => {
     wrapper.vm.form.depositAmount = 123.45
     wrapper.vm.handleAmountFocus('depositAmount')
     expect(wrapper.vm.form.depositAmount).toBe(123.45)
+  })
+
+  it('filters bidding leader candidates to sales role', async () => {
+    projectLifecycleApi.getInitiation.mockRejectedValue({ response: { status: 404 } })
+    usersApi.search.mockResolvedValue([
+      { id: 1, name: '销售负责人', employeeNumber: 'S001', roleCode: 'sales' },
+      { id: 2, name: '投标专员', employeeNumber: 'B001', roleCode: 'bid_specialist' },
+    ])
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    await wrapper.vm.searchLeader('张')
+
+    expect(wrapper.vm.leaderOptions).toHaveLength(1)
+    expect(wrapper.vm.leaderOptions[0].id).toBe(1)
+  })
+
+  it('filters bidding assistant candidates to bid specialist role', async () => {
+    projectLifecycleApi.getInitiation.mockRejectedValue({ response: { status: 404 } })
+    usersApi.search.mockResolvedValue([
+      { id: 1, name: '销售负责人', employeeNumber: 'S001', roleCode: 'sales' },
+      { id: 2, name: '投标专员', employeeNumber: 'B001', roleCode: 'bid_specialist' },
+    ])
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    await wrapper.vm.searchAssistant('李')
+
+    expect(wrapper.vm.assistantOptions).toHaveLength(1)
+    expect(wrapper.vm.assistantOptions[0].id).toBe(2)
   })
 })
