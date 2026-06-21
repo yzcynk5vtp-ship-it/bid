@@ -25,6 +25,7 @@ import java.util.Optional;
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private static final List<String> API_KEY_HEADERS = List.of("X-API-Key", "X-Api-Key");
+    private static final List<String> API_KEY_PARAMS = List.of("api_key", "api-key", "X-API-Key", "X-Api-Key");
 
     private final ApiKeyService apiKeyService;
 
@@ -36,11 +37,22 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String requestUri = request.getRequestURI();
+
+        // CO-280: 优先从 Header 读取，回落到 URL 查询参数。
+        // 浏览器点击下载链接时无法携带自定义 Header，通过 URL 参数实现认证。
         String rawKey = API_KEY_HEADERS.stream()
                 .map(request::getHeader)
                 .filter(StringUtils::hasText)
                 .findFirst()
                 .orElse(null);
+
+        if (rawKey == null || rawKey.isBlank()) {
+            rawKey = API_KEY_PARAMS.stream()
+                    .map(request::getParameter)
+                    .filter(StringUtils::hasText)
+                    .findFirst()
+                    .orElse(null);
+        }
 
         log.debug("ApiKeyFilter: uri={} hasKey={}", requestUri, StringUtils.hasText(rawKey));
 
@@ -50,10 +62,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // H7 fix 2026-06-13: /api/integration/** 与 /api/external/** 都是外部 API 网关,
-        // 必须带 X-API-Key 头才能继续。无 key 时直接 401,不再让请求穿透到 controller。
+        // 必须带 X-API-Key 头或 api_key 查询参数才能继续。无 key 时直接 401,不再让请求穿透到 controller。
         if (!StringUtils.hasText(rawKey)) {
-            log.warn("Missing API key header for {}", requestUri);
-            sendError(response, 401, "Missing X-API-Key header");
+            log.warn("Missing API key header or query parameter for {}", requestUri);
+            sendError(response, 401, "Missing X-API-Key header or api_key parameter");
             return;
         }
 

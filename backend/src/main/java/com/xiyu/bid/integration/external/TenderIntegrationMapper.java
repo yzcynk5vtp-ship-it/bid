@@ -205,6 +205,23 @@ public class TenderIntegrationMapper {
         }
     }
 
+    /**
+     * 将 URL 标准化为集成下载端点并附加 api_key 查询参数（CO-280 修复）。
+     *
+     * <p>此版本供 {@link TenderIntegrationController} 在已知 API Key 时使用，
+     * 生成的 URL 可被浏览器直接点击访问（无需额外 Header）。
+     *
+     * @param dto  待标准化的 DTO
+     * @param apiKey 明文 API Key（为 null 或空串时等同于无参数版本）
+     */
+    void normalizeFileUrls(TenderDTO dto, String apiKey) {
+        dto.setSourceDocumentFileUrl(TenderAttachmentUrlResolver.toIntegrationFullUrl(dto.getSourceDocumentFileUrl(), apiKey));
+        dto.setBidNoticeFileUrl(TenderAttachmentUrlResolver.toIntegrationFullUrl(dto.getBidNoticeFileUrl(), apiKey));
+        if (dto.getAttachments() != null) {
+            dto.getAttachments().forEach(a -> a.setFileUrl(TenderAttachmentUrlResolver.toIntegrationFullUrl(a.getFileUrl(), apiKey)));
+        }
+    }
+
     // ── 工具方法 ──────────────────────────────────────────────────────────────
 
     /**
