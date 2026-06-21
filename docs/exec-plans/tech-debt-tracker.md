@@ -18,6 +18,29 @@
 
 来源：`SECURITY.md §Mock 政策` 与 `docs/reports/`、`backend/implementation-notes.md`。
 
+### 安全权限类
+
+- area: `backend/src/main/java/com/xiyu/bid/tender/controller/TenderTransferController.java`
+  type: security
+  severity: high
+  status: resolved
+  source: 权限矩阵审计报告（2026-06-17）§5.3 第1项
+  note: 转派接口 Controller 层仅 `isAuthenticated()`，任何登录用户可调用。已修复：方法级注解 `@PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")` 限制为投标管理员/组长。
+
+- area: `backend/src/main/java/com/xiyu/bid/tender/controller/TenderController.java`
+  type: security
+  severity: high
+  status: resolved
+  source: 权限矩阵审计报告（2026-06-17）§5.3 第2项
+  note: 编辑/删除接口白名单含 `ROLE_STAFF`，bid_specialist 可越权操作。已修复：`PUT/DELETE /api/tenders/{id}` 收窄为 `hasAnyRole('ADMIN', 'MANAGER')`。
+
+- area: `backend/src/main/java/com/xiyu/bid/tender/controller/TenderController.java`
+  type: security
+  severity: medium
+  status: resolved
+  source: 权限矩阵审计报告（2026-06-17）§5.2 第4项 / §6 P1
+  note: `participateBid`（投标决策）和 `abandonBid`（弃标决策）接口缺少 `@PreAuthorize`，仅依赖 Service 层校验，防护层过薄。已修复：添加 `@PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")` 限制为投标管理员/组长。
+
 ### 遗留清理类
 
 - area: `frontendDemo` 适配层 / `demoPersistence`
