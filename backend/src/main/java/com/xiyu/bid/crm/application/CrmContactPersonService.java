@@ -45,7 +45,6 @@ public class CrmContactPersonService {
      * @return 对接人列表；查询失败返回空列表
      */
     public List<ContactPersonInfoVO> pageList(Long ccId) {
-        log.info("CRM contact-person page-list request: ccId={}", ccId);
         String token = authService.getValidToken();
         String baseUrl = properties.getEffectiveContactPersonBaseUrl();
         String path = properties.getContactPerson().getPageListPath();
@@ -59,13 +58,11 @@ public class CrmContactPersonService {
         }
 
         if (!response.success() || response.data() == null) {
-            log.warn("CRM contact-person page-list failed: ccId={}, code={}, msg={}", ccId, response.code(), response.msg());
+            log.warn("CRM contact-person page-list failed: code={}, msg={}", response.code(), response.msg());
             return Collections.emptyList();
         }
 
-        List<ContactPersonInfoVO> result = parseListResponse(response.data());
-        log.info("CRM contact-person page-list success: ccId={}, count={}", ccId, result.size());
-        return result;
+        return parseListResponse(response.data());
     }
 
     private List<ContactPersonInfoVO> parseListResponse(JsonNode data) {

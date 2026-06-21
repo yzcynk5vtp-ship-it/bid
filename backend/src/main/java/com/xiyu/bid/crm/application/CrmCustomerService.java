@@ -27,7 +27,6 @@ public class CrmCustomerService {
     }
 
     public CrmResponseHandler.CrmApiResponse searchCustomers(String keyword, int pageSize) {
-        log.info("CRM searchCustomers request: keyword={}, pageSize={}", keyword, pageSize);
         String token = authService.getValidToken();
         Map<String, Object> body = Map.of("keyword", keyword, "pageSize", Math.min(pageSize, 20));
         String baseUrl = properties.getEffectiveCustomerBaseUrl();
@@ -39,19 +38,13 @@ public class CrmCustomerService {
             token = authService.getValidToken();
             response = httpClient.post(baseUrl, path, token, body);
         }
-        log.info("CRM searchCustomers response: keyword={}, code={}, msg={}",
-                keyword, response.code(), response.msg());
         return response;
     }
 
     public CrmResponseHandler.CrmApiResponse getCustomerContacts(List<String> customerIds) {
-        log.info("CRM getCustomerContacts request: customerIds={}", customerIds);
         String token = authService.getValidToken();
         String baseUrl = properties.getEffectiveCustomerBaseUrl();
         String path = properties.getCustomer().getContactsPath();
-        CrmResponseHandler.CrmApiResponse response = httpClient.post(baseUrl, path, token, Map.of("customerIds", customerIds));
-        log.info("CRM getCustomerContacts response: customerIds={}, code={}, msg={}",
-                customerIds, response.code(), response.msg());
-        return response;
+        return httpClient.post(baseUrl, path, token, Map.of("customerIds", customerIds));
     }
 }
