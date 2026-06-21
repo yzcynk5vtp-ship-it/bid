@@ -66,6 +66,8 @@ class ProjectDraftingServiceTest {
     @Test
     void assignLeads_happy_createsAndReturns() {
         when(leadRepo.findByProjectId(1L)).thenReturn(Optional.empty());
+        when(userRepository.findById(10L)).thenReturn(Optional.of(mockUser(10L, "sales")));
+        when(userRepository.findById(20L)).thenReturn(Optional.of(mockUser(20L, "bid_specialist")));
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of());
         var view = service.assignLeads(1L,
                 ProjectLeadAssignmentRequest.builder()
@@ -74,6 +76,28 @@ class ProjectDraftingServiceTest {
         assertThat(view.getPrimaryLeadUserId()).isEqualTo(10L);
         assertThat(view.getSecondaryLeadUserId()).isEqualTo(20L);
         assertThat(view.getGateReady()).isTrue();
+    }
+
+    @Test
+    void assignLeads_bidSpecialistAsPrimaryLead_422() {
+        when(userRepository.findById(10L)).thenReturn(Optional.of(mockUser(10L, "bid_specialist")));
+        assertThatThrownBy(() -> service.assignLeads(1L,
+                ProjectLeadAssignmentRequest.builder().primaryLeadUserId(10L).build(), 99L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode").isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        verify(leadRepo, never()).save(any(ProjectLeadAssignment.class));
+    }
+
+    @Test
+    void assignLeads_salesAsSecondaryLead_422() {
+        when(userRepository.findById(10L)).thenReturn(Optional.of(mockUser(10L, "sales")));
+        when(userRepository.findById(20L)).thenReturn(Optional.of(mockUser(20L, "sales")));
+        assertThatThrownBy(() -> service.assignLeads(1L,
+                ProjectLeadAssignmentRequest.builder()
+                        .primaryLeadUserId(10L).secondaryLeadUserId(20L).build(), 99L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode").isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        verify(leadRepo, never()).save(any(ProjectLeadAssignment.class));
     }
 
     @Test

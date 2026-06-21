@@ -1,5 +1,5 @@
 // Input: search query + optional limit from controller
-// Output: List<UserSearchResult> projection (id, name, role only)
+// Output: List<UserSearchResult> projection (id, name, role, roleCode only)
 // Pos: Service/用户搜索服务（只读，DTO 投影）
 package com.xiyu.bid.mention.service;
 
@@ -40,7 +40,8 @@ public class UserSearchService {
                 u.getFullName(),
                 u.getEmployeeNumber(),
                 u.getRole() == null ? null : u.getRole().name(),
-                u.getDepartmentName()))
+                u.getDepartmentName(),
+                u.getRoleCode()))
             .toList();
     }
 

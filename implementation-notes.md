@@ -203,3 +203,24 @@
 - 本次新增四参 `notifyStageTransition(..., userId)`，`submitBid` 传入当前提交人作为通知创建人；旧三参方法保留并使用系统用户 `0L` 兜底，避免其他旧调用继续传空。
 - 新增回归测试锁定：阶段变更通知使用真实操作者；旧三参签名也不再传 `null createdBy`。
 - 回归：`mvn test -Dtest=ProjectNotificationServiceTest,ProjectDraftingServiceTest,AllTasksCompletedPolicyTest,BidReviewPolicyTest,ProjectAccessGuardCoverageTest` 通过，83 tests。
+
+# 提交投标负责人角色分配修复实施记录
+
+## 问题口径
+
+- 线上“投标负责人也提交不了”的直接原因不是提交投标按钮权限本身，而是项目负责人分配数据与提交投标授权模型不一致。
+- `submitBid` 授权要求：`sales` 用户必须匹配 `primaryLeadUserId`，`bid_specialist` 用户必须匹配 `secondaryLeadUserId`。
+- 线上数据把 `bid_specialist` 用户写进了 `primaryLeadUserId`，因此该用户即使被页面显示为“投标负责人”，后端仍会按角色-字段映射拒绝提交投标。
+
+## 决策与权衡
+
+- 不放宽 `submitBid` 授权策略；该策略与 CO-290 的角色边界一致，直接放宽会让投标专员越权作为主负责人提交。
+- 在两个写入入口兜底：立项审批通过时分配团队、标书制作阶段重新分配主/副负责人，都校验主负责人必须是 `sales`、辅助人员必须是 `bid_specialist`。
+- 前端审批分配下拉也按角色过滤，减少错误选择；但后端仍作为最终强校验，防止绕过前端或历史入口写入脏数据。
+- 用户搜索 DTO 增加 `roleCode` 字段供前端过滤；不返回邮箱、密码等敏感字段。
+- 不做数据库迁移批量修历史数据；本次先阻止新增错误分配，线上已有错误项目需要由管理员重新分配主/副负责人。
+
+## 验证
+
+- 后端：`mvn -f backend/pom.xml -Dtest=UserSearchServiceTest,UserSearchControllerTest,ProjectDraftingServiceTest,ProjectInitiationApprovalServiceTest test` 通过，37 tests。
+- 前端：`pnpm vitest run src/views/Project/stages/InitiationStage.spec.js src/api/modules/users.spec.js` 通过，13 tests。

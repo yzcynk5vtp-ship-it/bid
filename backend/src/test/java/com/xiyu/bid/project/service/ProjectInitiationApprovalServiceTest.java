@@ -73,6 +73,19 @@ class ProjectInitiationApprovalServiceTest {
                 .thenReturn(ProjectStage.DRAFTING);
     }
 
+    private static com.xiyu.bid.entity.RoleProfile roleProfile(String code) {
+        return com.xiyu.bid.entity.RoleProfile.builder().code(code).build();
+    }
+
+    private static User user(Long id, String roleProfileCode) {
+        return User.builder()
+                .id(id)
+                .fullName("用户" + id)
+                .role(User.Role.STAFF)
+                .roleProfile(roleProfile(roleProfileCode))
+                .build();
+    }
+
     @Test
     void approve_shouldCreateArchiveAfterStageTransition() {
         ProjectInitiationDetails details = ProjectInitiationDetails.builder()
@@ -89,6 +102,7 @@ class ProjectInitiationApprovalServiceTest {
                 .thenReturn(Optional.of(Project.builder().id(100L).name("测试项目").build()));
         when(leadRepo.save(any(ProjectLeadAssignment.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "sales")));
 
         InitiationApprovalRequest req = InitiationApprovalRequest.builder()
                 .primaryLeadUserId(3L)
@@ -98,6 +112,48 @@ class ProjectInitiationApprovalServiceTest {
 
         verify(projectArchiveWorkflowService, times(1))
                 .createArchive(100L, "测试项目", "ACTIVE");
+    }
+
+    @Test
+    void approve_bidSpecialistAsPrimaryLead_422() {
+        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
+                .id(1L)
+                .projectId(100L)
+                .reviewStatus(InitiationReviewStatus.PENDING_REVIEW.name())
+                .locked(Boolean.FALSE)
+                .build();
+        when(initiationRepo.findByProjectId(100L)).thenReturn(Optional.of(details));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "bid_specialist")));
+
+        InitiationApprovalRequest req = InitiationApprovalRequest.builder()
+                .primaryLeadUserId(3L)
+                .build();
+
+        assertThatThrownBy(() -> service.approve(100L, req, 5L))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(leadRepo, org.mockito.Mockito.never()).save(any(ProjectLeadAssignment.class));
+    }
+
+    @Test
+    void approve_salesAsSecondaryLead_422() {
+        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
+                .id(1L)
+                .projectId(100L)
+                .reviewStatus(InitiationReviewStatus.PENDING_REVIEW.name())
+                .locked(Boolean.FALSE)
+                .build();
+        when(initiationRepo.findByProjectId(100L)).thenReturn(Optional.of(details));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "sales")));
+        when(userRepository.findById(4L)).thenReturn(Optional.of(user(4L, "sales")));
+
+        InitiationApprovalRequest req = InitiationApprovalRequest.builder()
+                .primaryLeadUserId(3L)
+                .secondaryLeadUserId(4L)
+                .build();
+
+        assertThatThrownBy(() -> service.approve(100L, req, 5L))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(leadRepo, org.mockito.Mockito.never()).save(any(ProjectLeadAssignment.class));
     }
 
     @Test
@@ -116,6 +172,7 @@ class ProjectInitiationApprovalServiceTest {
                 .thenReturn(Optional.of(Project.builder().id(100L).name("测试项目").build()));
         when(leadRepo.save(any(ProjectLeadAssignment.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        when(userRepository.findById(3L)).thenReturn(Optional.of(user(3L, "sales")));
 
         InitiationApprovalRequest req = InitiationApprovalRequest.builder()
                 .primaryLeadUserId(3L)

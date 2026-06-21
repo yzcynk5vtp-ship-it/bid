@@ -70,8 +70,8 @@ class UserSearchServiceTest {
         List<UserSearchResult> results = service.search("ali", 5);
 
         assertThat(results).hasSize(2);
-        assertThat(results.get(0)).isEqualTo(new UserSearchResult(3L, "Alice Smith", null, "STAFF", null));
-        assertThat(results.get(1)).isEqualTo(new UserSearchResult(4L, "Bob Lee", null, "MANAGER", null));
+        assertThat(results.get(0)).isEqualTo(new UserSearchResult(3L, "Alice Smith", null, "STAFF", null, "staff"));
+        assertThat(results.get(1)).isEqualTo(new UserSearchResult(4L, "Bob Lee", null, "MANAGER", null, "manager"));
     }
 
     @Test
@@ -113,8 +113,9 @@ class UserSearchServiceTest {
         assertThat(r.id()).isEqualTo(3L);
         assertThat(r.name()).isEqualTo("Alice");
         assertThat(r.role()).isEqualTo("ADMIN");
-        // Record has exactly 3 components; no email/password accessor exists.
-        assertThat(UserSearchResult.class.getRecordComponents()).hasSize(5);
+        assertThat(r.roleCode()).isEqualTo("admin");
+        // Record exposes only search-list display fields; no email/password accessor exists.
+        assertThat(UserSearchResult.class.getRecordComponents()).hasSize(6);
         long leaky = IntStream.range(0, UserSearchResult.class.getRecordComponents().length)
             .filter(i -> {
                 String n = UserSearchResult.class.getRecordComponents()[i].getName();
@@ -134,5 +135,6 @@ class UserSearchServiceTest {
         List<UserSearchResult> results = service.search("x", 10);
 
         assertThat(results.get(0).role()).isNull();
+        assertThat(results.get(0).roleCode()).isEqualTo("staff");
     }
 }
