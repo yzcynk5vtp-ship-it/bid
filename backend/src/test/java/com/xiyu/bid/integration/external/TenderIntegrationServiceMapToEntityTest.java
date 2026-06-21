@@ -142,4 +142,49 @@ class TenderIntegrationServiceMapToEntityTest {
         assertThat(mapper.toEntity(minute).getDeadline()).hasToString("2026-12-31T23:59");
         assertThat(mapper.toEntity(second).getDeadline()).hasToString("2026-12-31T23:59:30");
     }
+
+    @Test
+    @DisplayName("parseDateTime null 和空白字符串返回 null")
+    void parseDateTime_nullAndBlank_returnsNull() {
+        assertThat(TenderIntegrationMapper.parseDateTime("test", null)).isNull();
+        assertThat(TenderIntegrationMapper.parseDateTime("test", "")).isNull();
+        assertThat(TenderIntegrationMapper.parseDateTime("test", "   ")).isNull();
+    }
+
+    @Test
+    @DisplayName("parseDateTime 空格分隔的日期时间自动替换为 T")
+    void parseDateTime_spaceSeparator_replacedWithT() {
+        var result = TenderIntegrationMapper.parseDateTime("test", "2026-06-20 10:30");
+        assertThat(result).hasToString("2026-06-20T10:30");
+    }
+
+    @Test
+    @DisplayName("parseDateTime 分钟级格式自动补全秒")
+    void parseDateTime_minutePrecision_autoCompletesSeconds() {
+        var result = TenderIntegrationMapper.parseDateTime("test", "2026-06-20T10:30");
+        assertThat(result).hasToString("2026-06-20T10:30");
+    }
+
+    @Test
+    @DisplayName("parseDateTime 秒级格式正常解析")
+    void parseDateTime_secondPrecision_parsesCorrectly() {
+        var result = TenderIntegrationMapper.parseDateTime("test", "2026-06-20T10:30:45");
+        assertThat(result).hasToString("2026-06-20T10:30:45");
+    }
+
+    @Test
+    @DisplayName("parseDateTime 格式错误时错误消息包含字段名")
+    void parseDateTime_invalidFormat_messageContainsFieldName() {
+        assertThatThrownBy(() -> TenderIntegrationMapper.parseDateTime("bidOpeningTime", "2026-13-32T25:60"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("bidOpeningTime");
+    }
+
+    @Test
+    @DisplayName("parseDateTime 仅日期格式被拒绝")
+    void parseDateTime_dateOnly_rejected() {
+        assertThatThrownBy(() -> TenderIntegrationMapper.parseDateTime("dueDate", "2026-12-31"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("dueDate");
+    }
 }

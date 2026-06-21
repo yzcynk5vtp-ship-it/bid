@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.List;
 import java.util.Map;
@@ -339,5 +340,24 @@ class OrganizationUserSyncWriterTest {
         role.setName(code);
         role.setEnabled(true);
         return role;
+    }
+
+    @Test
+    @DisplayName("DEFAULT_PASSWORD_HASH must be a valid BCrypt hash that matches '123456'")
+    void defaultPasswordHash_validBcrypt_matches123456() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        assertThat(encoder.matches("123456", OrganizationUserSyncWriter.DEFAULT_PASSWORD_HASH))
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("LOCKED_PASSWORD_HASH must be a valid BCrypt hash")
+    void lockedPasswordHash_validBcrypt_format() {
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        assertThat(encoder.matches("any_password", OrganizationUserSyncWriter.LOCKED_PASSWORD_HASH))
+                .isFalse();
+        assertThat(OrganizationUserSyncWriter.LOCKED_PASSWORD_HASH)
+                .startsWith("$2a$")
+                .hasSize(60);
     }
 }
