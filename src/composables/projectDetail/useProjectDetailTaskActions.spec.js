@@ -198,11 +198,11 @@ describe('useProjectDetailTaskActions', () => {
     consoleWarnSpy.mockRestore()
   })
 
-  it('API 项目新增任务后把表单交付物上传为任务交付物', async () => {
+  it('API 项目新增任务后把执行人本人表单交付物上传为任务交付物', async () => {
     const file = new File(['交付物内容'], '技术方案.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
     const createTask = vi.fn().mockResolvedValue({
       success: true,
-      data: { id: 606, title: '准备交付物任务', status: 'TODO' },
+      data: { id: 606, title: '准备交付物任务', assigneeId: 9, status: 'TODO' },
     })
     const addDeliverable = vi.fn().mockResolvedValue({ id: 902, name: '技术方案.docx', url: '/files/902' })
     const state = {
@@ -226,7 +226,7 @@ describe('useProjectDetailTaskActions', () => {
 
     await handleSaveTask({
       mode: 'create',
-      data: { name: '准备交付物任务', priority: 'medium', deliverableFiles: [file] },
+      data: { name: '准备交付物任务', priority: 'medium', assigneeId: 9, deliverableFiles: [file] },
     })
 
     expect(addDeliverable).toHaveBeenCalledWith('12', 606, expect.objectContaining({
@@ -238,6 +238,46 @@ describe('useProjectDetailTaskActions', () => {
     }))
     expect(state.project.value.tasks[0].deliverables).toEqual([expect.objectContaining({ id: 902 })])
     expect(state.project.value.tasks[0].hasDeliverable).toBe(true)
+  })
+
+  it('API 项目新增任务选择他人为执行人时不立即上传交付物', async () => {
+    const file = new File(['交付物内容'], '他人交付物.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+    const createTask = vi.fn().mockResolvedValue({
+      success: true,
+      data: { id: 607, title: '他人执行任务', assigneeId: 10, status: 'TODO' },
+    })
+    const addDeliverable = vi.fn()
+    const warning = vi.fn()
+    const done = vi.fn()
+    const state = {
+      project: ref({ id: 12, name: '测试项目', tasks: [] }),
+      activities: ref([]),
+      scoreDraftDialogVisible: ref(false),
+      currentTask: ref(null),
+      taskDialogVisible: ref(false),
+    }
+
+    const { handleSaveTask } = useProjectDetailTaskActions({
+      route: { params: { id: '12' } },
+      userStore: { userName: '测试用户', currentUser: { id: 9 } },
+      projectStore: { addDeliverable },
+      projectsApi: { createTask },
+      isApiProject: ref(true),
+      message: { success: vi.fn(), error: vi.fn(), warning },
+      state,
+      workflow: {},
+    })
+
+    await handleSaveTask({
+      mode: 'create',
+      data: { name: '他人执行任务', priority: 'medium', assigneeId: 10, deliverableFiles: [file] },
+      done,
+    })
+
+    expect(addDeliverable).not.toHaveBeenCalled()
+    expect(warning).toHaveBeenCalledWith('仅任务执行人本人可上传交付物，请让执行人打开任务后上传')
+    expect(done).not.toHaveBeenCalled()
+    expect(state.project.value.tasks[0]).toEqual(expect.objectContaining({ id: 607, assigneeId: 10 }))
   })
 
   it('API 项目新增任务无附件时不调用 uploadTaskAttachment', async () => {
@@ -855,11 +895,12 @@ describe('handleSaveTask edit branch', () => {
     const updateTask = vi.fn().mockResolvedValue({
       id: 7,
       title: 'New',
+      assigneeId: 1,
       status: 'TODO',
       priority: 'HIGH',
     })
     const addDeliverable = vi.fn().mockResolvedValue({ id: 903, name: '编辑交付物.pdf', url: '/files/903' })
-    const tasks = [{ id: 7, name: 'Old', status: 'TODO', deliverables: [] }]
+    const tasks = [{ id: 7, name: 'Old', assigneeId: 1, status: 'TODO', deliverables: [] }]
     const { ctx, state } = buildEditCtx({ updateTask, projectTasks: tasks })
     ctx.projectStore.addDeliverable = addDeliverable
 
