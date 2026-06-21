@@ -38,7 +38,6 @@
 
         <el-form-item label="预算(万元)" prop="budget">
           <el-input-number
-            ref="budgetInputRef"
             v-model="basicForm.budget"
             :min="0"
             :precision="2"
@@ -198,7 +197,6 @@ const emit = defineEmits(['platform-change', 'competitors-change', 'sync-crm-dat
 
 const formRef = ref(null)
 const adaptiveForm = shallowRef(null)
-const budgetInputRef = ref(null)
 const syncing = ref(false)
 const syncedFromCRM = ref(false)
 
@@ -232,9 +230,8 @@ async function handleSyncFromCRM() {
 }
 
 function handleBudgetFocus() {
-  const inputEl = budgetInputRef.value?.$el?.querySelector('input')
-  if (inputEl && basicForm.value.budget != null) {
-    inputEl.select()
+  if (basicForm.value.budget === 0) {
+    basicForm.value.budget = null
   }
 }
 
