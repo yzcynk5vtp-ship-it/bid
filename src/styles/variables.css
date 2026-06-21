@@ -87,10 +87,24 @@
   --bg-card: #FFFFFF;
   --bg-subtle: #F5F7FA;
   --bg-white: #FFFFFF;
+  --bg-white-rgb: 255, 255, 255;
   --bg-muted: #FAFAFA;
   --bg-muted-2: #F9FAFB;
   --accent-blue: var(--brand-xiyu-logo);
   --accent-blue-light: var(--brand-xiyu-logo-light);
+
+  /* 系统信息面板专用色 */
+  --system-info-primary: #446b49;
+  --system-info-primary-rgb: 68, 107, 73;
+  --system-info-text: #2c3e2e;
+  --system-info-text-rgb: 48, 64, 37;
+  --system-info-text-secondary: #556b56;
+  --system-info-text-tertiary: #6a826c;
+  --system-info-text-muted: #7d967e;
+  --system-info-bg: #fbfcfb;
+  --system-info-bg-elevated: #f7faf7;
+  --system-info-success: #67c23a;
+  --system-info-success-rgb: 103, 194, 58;
 
   /* 焦点状态颜色 */
   --focus-primary: rgba(46, 118, 89, 0.4);
