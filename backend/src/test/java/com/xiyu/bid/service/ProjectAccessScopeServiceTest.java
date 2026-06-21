@@ -3,11 +3,13 @@ package com.xiyu.bid.service;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.admin.service.ProjectGroupService;
 import com.xiyu.bid.entity.Project;
+import com.xiyu.bid.entity.RoleProfile;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.matrixcollaboration.repository.CrmCustomerPermissionRepository;
 import com.xiyu.bid.matrixcollaboration.repository.ProjectMemberRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
+import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,11 +52,14 @@ class ProjectAccessScopeServiceTest {
     @Mock
     private ProjectLeadAssignmentRepository leadAssignmentRepository;
 
+    @Mock
+    private TaskRepository taskRepository;
+
     private ProjectAccessScopeService projectAccessScopeService;
 
     @BeforeEach
     void setUp() {
-        projectAccessScopeService = new ProjectAccessScopeService(userRepository, projectRepository, dataScopeConfigService, projectGroupService, projectMemberRepository, crmCustomerPermissionRepository, leadAssignmentRepository);
+        projectAccessScopeService = new ProjectAccessScopeService(userRepository, projectRepository, dataScopeConfigService, projectGroupService, projectMemberRepository, crmCustomerPermissionRepository, leadAssignmentRepository, taskRepository);
         SecurityContextHolder.clearContext();
     }
 
@@ -128,6 +133,32 @@ class ProjectAccessScopeServiceTest {
         ));
 
         assertThat(filtered).extracting(Project::getId).containsExactly(1L);
+    }
+
+    @Test
+    void getAllowedProjectIds_ShouldIncludeAssignedTaskProjects() {
+        // CO-293 P0: a task assignee gets project-level visibility for the assigned task's project.
+        // Module/tab-level restrictions remain a follow-up concern and are not modeled here.
+        User user = User.builder()
+                .id(803L)
+                .username("cross-dept-task-assignee")
+                .role(User.Role.STAFF)
+                .roleProfile(RoleProfile.builder().code("bid_other_dept").name("跨部门协同人员").build())
+                .enabled(true)
+                .build();
+
+        when(dataScopeConfigService.getAccessProfile(user)).thenReturn(DataScopeConfigService.AccessProfile.builder()
+                .dataScope("self")
+                .build());
+        when(projectRepository.findAccessibleProjectIdsByUserId(803L)).thenReturn(List.of());
+        when(projectGroupService.getGrantedProjectIds(user)).thenReturn(List.of());
+        when(projectMemberRepository.findByUserId(anyLong())).thenReturn(List.of());
+        when(crmCustomerPermissionRepository.findByUserId(anyLong())).thenReturn(List.of());
+        when(leadAssignmentRepository.findByPrimaryLeadUserId(803L)).thenReturn(List.of());
+        when(leadAssignmentRepository.findBySecondaryLeadUserId(803L)).thenReturn(List.of());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(803L)).thenReturn(List.of(400L));
+
+        assertThat(projectAccessScopeService.getAllowedProjectIds(user)).containsExactly(400L);
     }
 
     @Test

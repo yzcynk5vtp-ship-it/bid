@@ -2,6 +2,8 @@ package com.xiyu.bid.repository;
 
 import com.xiyu.bid.entity.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -25,6 +27,9 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
      * 根据受托人ID查找任务
      */
     List<Task> findByAssigneeId(Long assigneeId);
+
+    @Query("SELECT DISTINCT t.projectId FROM Task t WHERE t.assigneeId = :assigneeId")
+    List<Long> findDistinctProjectIdsByAssigneeId(@Param("assigneeId") Long assigneeId);
 
     List<Task> findByAssigneeIdIn(Collection<Long> assigneeIds);
 

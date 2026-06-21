@@ -15,6 +15,7 @@ import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.admin.service.ProjectGroupService;
+import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -44,6 +45,7 @@ public class ProjectAccessScopeService {
     private final ProjectMemberRepository projectMemberRepository;
     private final CrmCustomerPermissionRepository crmCustomerPermissionRepository;
     private final ProjectLeadAssignmentRepository leadAssignmentRepository;
+    private final TaskRepository taskRepository;
 
     public List<Long> getAllowedProjectIds(User user) {
         if (user == null || RoleProfileCatalog.ADMIN_CODE.equalsIgnoreCase(user.getRoleCode())) {
@@ -73,6 +75,9 @@ public class ProjectAccessScopeService {
         allowedIds.addAll(leadAssignmentRepository.findBySecondaryLeadUserId(user.getId()).stream()
                 .map(a -> a.getProjectId())
                 .collect(Collectors.toList()));
+
+        // Add projects where current user owns assigned project tasks
+        allowedIds.addAll(taskRepository.findDistinctProjectIdsByAssigneeId(user.getId()));
 
         // Add projects from CRM-authorized customers
         List<String> crmCustomerIds = crmCustomerPermissionRepository.findByUserId(user.getId()).stream()
