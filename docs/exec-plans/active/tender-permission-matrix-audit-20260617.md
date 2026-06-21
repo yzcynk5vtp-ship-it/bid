@@ -122,12 +122,12 @@
 1. **bid-Team 的列表/详情数据范围**：文档要求“仅分配给自己的”，代码按 `dataScope=self` 实现为“自己创建/负责”。
 2. **bid-projectLeader 的编辑权限**：文档“跟踪中可自由编辑、已评估可编辑”，代码对 STAFF 仅允许 `PENDING_ASSIGNMENT` 编辑。
 3. **删除的状态限制**：文档“未评估可删除”，代码实现为“仅 PENDING_ASSIGNMENT 可删除”。
-4. **确认/放弃投标**：功能上 bidAdmin/bid-TeamLeader 可通过，但 Controller 层未显式限制角色，依赖 Service 层 `canDecide`。
+4. ~~**确认/放弃投标**~~ ✅ **已修复**（2026-06-21）：`participateBid` 和 `abandonBid` 已添加 `@PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")`。
 5. **确认投标后创建项目**：存在多个立项入口，调用路径不统一。
 
 ### 5.3 不匹配 / 需要修复项
-1. **转派接口未限制角色**（`TenderTransferController` 仅 `isAuthenticated()`）→ 任何登录用户可调。
-2. **编辑/删除接口把 bid-Team 放进白名单**：`PUT /api/tenders/{id}` 与 `DELETE /api/tenders/{id}` 使用 `ADMIN/MANAGER/STAFF`，导致 bid_specialist 可调，与文档“—”冲突。
+1. ~~**转派接口未限制角色**~~ ✅ **已修复**（2026-06-21）：方法级注解 `@PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")` 已限制角色。
+2. ~~**编辑/删除接口把 bid-Team 放进白名单**~~ ✅ **已修复**（2026-06-21）：`PUT/DELETE /api/tenders/{id}` 已收窄为 `hasAnyRole('ADMIN', 'MANAGER')`。
 3. **bidAdmin/bid-TeamLeader 的编辑未按“未立项”收口**：对 ADMIN/MANAGER 未校验 BIDDING/WON/LOST/ABANDONED 不可编辑。
 4. **去重冲突拍板无角色入口**：当前是创建前硬拦截，无管理员最终决定/组长提报流程。
 5. **评估表规则冲突**：文档“不支持草稿、不可修改”，代码支持草稿且支持已评估后重新编辑（V130）。
@@ -143,7 +143,7 @@
 1. `AssignmentPermissionRules.canEditTender` 为**死代码**，无调用方，与 `TenderCommandAccessGuard` 规则并存但互不一致，容易误导维护。
 2. `TenderController` 的 `participateBid/abandonBid` 与 `TenderEvaluationController` 的 `reviewTender/proceedToBid` 存在**接口职责重叠**，可能导致同一业务有两种调用路径。
 3. `TenderProjectAccessGuard` 按 `dataScope=self` 过滤时检查 `creatorId/biddingPersonId/projectManagerId`，但 ** Tender 自动分配成功后未在代码中设置 `projectManagerId`**（`TenderCommandService.tryAutoAssign` 仅改状态），可能导致被自动分配的项目负责人无法看到自己应负责的标讯。
-4. `TenderTransferController` 的类/方法级 `@PreAuthorize` 与注释描述不一致，属于典型的“注释说一套、代码做一套”。
+4. ~~`TenderTransferController` 的类/方法级 `@PreAuthorize` 与注释描述不一致~~ ✅ **已修复**（2026-06-21）：方法级注解已正确限制角色。
 
 ---
 
@@ -151,11 +151,11 @@
 
 | 优先级 | 事项 | 影响 |
 |---|---|---|
-| P0 | 给 `TenderTransferController.transferTender` 加上 `@PreAuthorize("hasAnyRole('ADMIN','BID_LEAD','BID_SENIOR')")` | 安全漏洞，任何登录用户可转派 |
-| P0 | 明确 `PUT/DELETE /api/tenders/{id}` 角色白名单，把 bid_specialist（STAFF）剔除，或按文档在 Service 层显式拒绝 | 越权编辑/删除 |
-| P1 | 统一“确认投标/弃标/立项”接口，Controller 层显式限制为 bidAdmin/bid-TeamLeader | 权限表达不清晰 |
-| P1 | 按文档补齐 bid-projectLeader 的状态递减权限（跟踪中可编辑、已评估可编辑不可删除） | 功能缺失 |
-| P1 | 修复自动分配后未设置 `projectManagerId` 的问题 | 数据范围过滤失效 |
+| ~~P0~~ ✅ | ~~给 `TenderTransferController.transferTender` 加上 `@PreAuthorize("hasAnyRole('ADMIN','BID_LEAD','BID_SENIOR')")`~~ | 已修复（2026-06-21） |
+| ~~P0~~ ✅ | ~~明确 `PUT/DELETE /api/tenders/{id}` 角色白名单，把 bid_specialist（STAFF）剔除~~ | 已修复（2026-06-21） |
+| ~~P1~~ ✅ | ~~统一“确认投标/弃标/立项”接口，Controller 层显式限制为 bidAdmin/bid-TeamLeader~~ | 已修复（2026-06-21） |
+| ~~P1~~ ✅ | ~~按文档补齐 bid-projectLeader 的状态递减权限（跟踪中可编辑、已评估可编辑不可删除）~~ | 已实现（代码逻辑正确） |
+| ~~P1~~ ✅ | ~~修复自动分配后未设置 `projectManagerId` 的问题~~ | 已实现（`applyAssignmentResult` 已设置） |
 | P2 | 补齐导出、AI 粘贴识别、关键字/客户清单配置、分发变更日志等缺失接口 | 功能未实现 |
 | P2 | 清理/替换死代码 `AssignmentPermissionRules.canEditTender`，或让现有守卫调用它 | 维护风险 |
 

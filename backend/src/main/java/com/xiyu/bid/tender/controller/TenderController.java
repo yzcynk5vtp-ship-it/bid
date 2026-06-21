@@ -137,6 +137,7 @@ public class TenderController {
     }
 
     @PostMapping("/{id}/participate")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     @Operation(summary = "投标决策")
     public ResponseEntity<ApiResponse<TenderBidResponse>> participateBid(@PathVariable Long id, @AuthenticationPrincipal UserDetails user) {
         rejectDemoMutation(id);
@@ -145,6 +146,7 @@ public class TenderController {
     }
 
     @PostMapping("/{id}/abandon")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
     @Operation(summary = "弃标决策")
     public ResponseEntity<ApiResponse<TenderBidResponse>> abandonBid(@PathVariable Long id, @Valid @RequestBody TenderAbandonRequest req, @AuthenticationPrincipal UserDetails user) {
         rejectDemoMutation(id);
