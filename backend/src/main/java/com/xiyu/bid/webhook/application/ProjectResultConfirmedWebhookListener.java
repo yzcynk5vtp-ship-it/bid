@@ -6,6 +6,7 @@ package com.xiyu.bid.webhook.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xiyu.bid.crm.application.CrmProjectLeaderService;
 import com.xiyu.bid.crm.infrastructure.dto.BidInfoInnerDTO;
 import com.xiyu.bid.crm.infrastructure.dto.BidInfoSyncDTO;
 import com.xiyu.bid.entity.Tender;
@@ -51,6 +52,7 @@ public class ProjectResultConfirmedWebhookListener {
     private final WebhookDeliveryTaskRepository taskRepository;
     private final TenderRepository tenderRepository;
     private final ObjectMapper objectMapper;
+    private final CrmProjectLeaderService crmProjectLeaderService;
 
     @Value("${webhook.crm.url:}")
     private String crmWebhookUrl;
@@ -70,14 +72,15 @@ public class ProjectResultConfirmedWebhookListener {
             return;
         }
         // 取标讯关联的 CRM 商机编号/名称，用于填充 bidInfoSync 的 code/name 字段。
-        // code 必须是 CRM 商机编号（crm_opportunity_id），而非 externalId 的 sourceId 部分。
-        // 无关联商机时 code/name 填空字符串，CRM 侧接受。
+        // code 必须是 CRM 商机编号（CC 前缀格式如 CC20260621323），而非商机主键 id（纯数字如 20942）。
+        // CO-277: CRM 推送时可能传数字 id，CrmTenderLinkService 反查失败会降级存数字 id。
+        // 此处再次反查确保 code 是 CC 前缀格式，避免 CRM bidInfoSync 返回 code:1。
         Tender tender = tenderRepository.findById(event.tenderId()).orElse(null);
         if (tender == null) {
             log.warn("Tender {} not found, skip webhook (cannot resolve crm opportunity code)", event.tenderId());
             return;
         }
-        String crmOpportunityCode = tender.getCrmOpportunityId() != null ? tender.getCrmOpportunityId() : "";
+        String crmOpportunityCode = resolveCrmOpportunityCode(tender.getCrmOpportunityId());
         String crmOpportunityName = tender.getCrmOpportunityName() != null ? tender.getCrmOpportunityName() : "";
         taskRepository.save(WebhookDeliveryTask.builder()
                 .tenderId(event.tenderId())
@@ -111,6 +114,49 @@ public class ProjectResultConfirmedWebhookListener {
             case FAILED -> 4;
             case ABANDONED -> 6;
         };
+    }
+
+    /**
+     * 解析 CRM 商机编号（CC 前缀格式）。
+     * <p>CO-277: tender.crm_opportunity_id 可能存的是商机主键 id（纯数字如 20942），
+     * 而非商机编号 code（CC 前缀如 CC20260621323）。CRM bidInfoSync 接口期望 code 格式。
+     * <p>若 crmOpportunityId 为纯数字，调用 CRM detail 接口反查 code；
+     * 反查失败则降级用原值（CRM 可能仍返回 code:1，但至少有审计线索）。
+     * <p>若 crmOpportunityId 已是 CC 前缀格式或为空，直接返回。
+     */
+    private String resolveCrmOpportunityCode(String crmOpportunityId) {
+        if (crmOpportunityId == null || crmOpportunityId.isBlank()) {
+            return "";
+        }
+        // 非纯数字 → 已是 code 格式，直接返回
+        Long chanceId = tryParseChanceId(crmOpportunityId);
+        if (chanceId == null) {
+            return crmOpportunityId;
+        }
+        // 纯数字 → 调用 CRM 反查 code
+        try {
+            CrmProjectLeaderService.ProjectLeaderResult leader =
+                    crmProjectLeaderService.findProjectLeaderByChanceId(chanceId);
+            if (leader != null && leader.opportunityCode() != null && !leader.opportunityCode().isBlank()) {
+                log.info("Resolved crmOpportunityId: id={} → code={}", chanceId, leader.opportunityCode());
+                return leader.opportunityCode();
+            }
+            log.warn("resolveCrmOpportunityCode: CRM returned no code for chanceId={}, using raw id as fallback", chanceId);
+        } catch (RuntimeException e) {
+            log.error("resolveCrmOpportunityCode: CRM lookup failed for chanceId={}, using raw id as fallback: {}",
+                    chanceId, e.getMessage());
+        }
+        // 降级：返回原值（数字 id），CRM 会返回 code:1 但至少有审计线索
+        return crmOpportunityId;
+    }
+
+    private Long tryParseChanceId(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /**

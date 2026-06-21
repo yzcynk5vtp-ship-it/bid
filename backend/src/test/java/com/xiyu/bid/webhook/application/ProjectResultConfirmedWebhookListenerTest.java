@@ -3,6 +3,7 @@ package com.xiyu.bid.webhook.application;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.crm.application.CrmProjectLeaderService;
 import com.xiyu.bid.project.core.BidResultType;
 import com.xiyu.bid.project.domain.ProjectResultConfirmedEvent;
 import com.xiyu.bid.repository.TenderRepository;
@@ -46,10 +47,11 @@ class ProjectResultConfirmedWebhookListenerTest {
 
     @Mock private WebhookDeliveryTaskRepository taskRepository;
     @Mock private TenderRepository tenderRepository;
+    @Mock private CrmProjectLeaderService crmProjectLeaderService;
 
     private ProjectResultConfirmedWebhookListener listener(String url) {
         ProjectResultConfirmedWebhookListener l = new ProjectResultConfirmedWebhookListener(
-                taskRepository, tenderRepository, new ObjectMapper());
+                taskRepository, tenderRepository, new ObjectMapper(), crmProjectLeaderService);
         ReflectionTestUtils.setField(l, "crmWebhookUrl", url);
         return l;
     }
@@ -156,6 +158,43 @@ class ProjectResultConfirmedWebhookListenerTest {
         JsonNode inner = root.path("bidInfoList").get(0);
         assertThat(inner.path("code").asText()).isEmpty();
         assertThat(inner.path("name").asText()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("crm_opportunity_id 是纯数字 id → 调用 CRM 反查 code，payload 用 CC 前缀格式")
+    void crmOpportunityIdIsNumeric_resolvesToCodeViaCrm() throws Exception {
+        Tender t = tender();
+        t.setCrmOpportunityId("20942"); // 数字 id（CO-277 场景）
+        when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(t));
+        when(crmProjectLeaderService.findProjectLeaderByChanceId(20942L))
+                .thenReturn(new CrmProjectLeaderService.ProjectLeaderResult(
+                        null, null, CRM_OPPORTUNITY_NAME, CRM_OPPORTUNITY_CODE));
+
+        listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.LOST));
+
+        WebhookDeliveryTask saved = captureSaved();
+        JsonNode root = new ObjectMapper().readTree(saved.getPayload());
+        JsonNode inner = root.path("bidInfoList").get(0);
+        // payload code 应该是反查到的 CC 前缀格式，而非数字 id
+        assertThat(inner.path("code").asText()).isEqualTo(CRM_OPPORTUNITY_CODE);
+        assertThat(inner.path("status").asInt()).isEqualTo(3); // LOST → 3
+    }
+
+    @Test
+    @DisplayName("crm_opportunity_id 是纯数字 id 但 CRM 反查失败 → 降级用原值，仍入队")
+    void crmOpportunityIdIsNumeric_crmLookupFails_fallbackToRawId() throws Exception {
+        Tender t = tender();
+        t.setCrmOpportunityId("20942");
+        when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(t));
+        when(crmProjectLeaderService.findProjectLeaderByChanceId(20942L)).thenReturn(null);
+
+        listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.LOST));
+
+        WebhookDeliveryTask saved = captureSaved();
+        JsonNode root = new ObjectMapper().readTree(saved.getPayload());
+        JsonNode inner = root.path("bidInfoList").get(0);
+        // 降级：用原数字 id（CRM 会返回 code:1 但有审计线索）
+        assertThat(inner.path("code").asText()).isEqualTo("20942");
     }
 
     private WebhookDeliveryTask captureSaved() {

@@ -202,7 +202,16 @@ public class TenderIntegrationCommandService {
         tender.setEvaluationSource(Tender.EvaluationSource.CRM_PUSH);
         tender.setStatus(Tender.Status.EVALUATED);
         if (tender.getCrmOpportunityId() == null || tender.getCrmOpportunityId().isBlank()) {
-            tender.setCrmOpportunityId(crmId);
+            // CO-277 接收侧修复被 applyCrmFallback 绕过的根因修复：
+            // applyCrmLinkAndAssignment 在 crmId 是纯数字 id 且反查失败/异常时保持 null（CO-277 修复），
+            // 但本方法紧接着检查 null 并直接存入原始 crmId，导致数字 id 被落库，后续 webhook 回传
+            // 用 id 当 code，CRM 按编号匹配失败（tender 319 案例：crmId=20942 被直接存入，
+            // 回传 bidInfoSync code="20942" → CRM 返回 code:1）。
+            // 修复：纯数字 crmId 不在此处存入，保持 null 让外层 linkByChanceIdIfPresent 兜底
+            //（用 sourceId 反查 code）；非纯数字（code 格式）保持原逻辑直接存入。
+            if (crmId == null || crmId.isBlank() || !crmId.trim().matches("\\d+")) {
+                tender.setCrmOpportunityId(crmId);
+            }
         }
         if (crmOpportunityName != null && !crmOpportunityName.isBlank()
                 && (tender.getCrmOpportunityName() == null || tender.getCrmOpportunityName().isBlank())) {
