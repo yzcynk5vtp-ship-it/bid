@@ -58,6 +58,24 @@ function normalizeProjectExpense(item = {}) {
   }
 }
 
+function buildDocumentFormData(file, data, taskId, documentCategory) {
+  const formData = new FormData()
+  formData.set('file', file)
+  formData.set('name', data.name || file.name || '文件')
+  formData.set('size', data.size || formatFileSize(file))
+  formData.set('fileType', data.fileType || file.type || '')
+  formData.set('documentCategory', documentCategory)
+  formData.set('linkedEntityType', 'TASK')
+  formData.set('linkedEntityId', String(taskId))
+  if (data.uploaderId != null) {
+    formData.set('uploaderId', String(data.uploaderId))
+  }
+  if (data.uploaderName) {
+    formData.set('uploaderName', data.uploaderName)
+  }
+  return formData
+}
+
 function extractExpenseItems(payload) {
   if (Array.isArray(payload)) return payload
   if (Array.isArray(payload?.content)) return payload.content
@@ -293,24 +311,17 @@ export const useProjectStore = defineStore('project', {
     },
 
     async uploadTaskAttachment(projectId, taskId, data = {}) {
+      if (!projectId) {
+        throw new Error('项目ID不能为空')
+      }
+      if (!taskId) {
+        throw new Error('任务ID不能为空')
+      }
       const file = data.file || null
       if (!file) {
         throw new Error('任务附件文件不能为空')
       }
-      const formData = new FormData()
-      formData.set('file', file)
-      formData.set('name', data.name || file.name || '任务附件')
-      formData.set('size', data.size || formatFileSize(file))
-      formData.set('fileType', data.fileType || file.type || '')
-      formData.set('documentCategory', 'TASK_ATTACHMENT')
-      formData.set('linkedEntityType', 'TASK')
-      formData.set('linkedEntityId', String(taskId))
-      if (data.uploaderId != null) {
-        formData.set('uploaderId', String(data.uploaderId))
-      }
-      if (data.uploaderName) {
-        formData.set('uploaderName', data.uploaderName)
-      }
+      const formData = buildDocumentFormData(file, data, taskId, 'TASK_ATTACHMENT')
       const uploadResult = await projectsApi.uploadDocument(projectId, formData)
       if (!uploadResult?.success || !uploadResult?.data) {
         throw new Error(uploadResult?.message || '上传任务附件失败')
@@ -328,35 +339,29 @@ export const useProjectStore = defineStore('project', {
     },
 
     async addDeliverable(projectId, taskId, data = {}) {
+      if (!projectId) {
+        throw new Error('项目ID不能为空')
+      }
+      if (!taskId) {
+        throw new Error('任务ID不能为空')
+      }
       const file = data.file || null
+      if (!file) {
+        throw new Error('任务交付物文件不能为空')
+      }
       let uploadedDocument = null
 
-      if (file) {
-        const formData = new FormData()
-        formData.set('file', file)
-        formData.set('name', data.name || file.name || '任务交付物')
-        formData.set('size', data.size || formatFileSize(file))
-        formData.set('fileType', data.fileType || file.type || '')
-        formData.set('documentCategory', 'TASK_DELIVERABLE')
-        formData.set('linkedEntityType', 'TASK')
-        formData.set('linkedEntityId', String(taskId))
-        if (data.uploaderId != null) {
-          formData.set('uploaderId', String(data.uploaderId))
-        }
-        if (data.uploaderName) {
-          formData.set('uploaderName', data.uploaderName)
-        }
-        const uploadResult = await projectsApi.uploadDocument(projectId, formData)
-        if (!uploadResult?.success || !uploadResult?.data) {
-          throw new Error(uploadResult?.message || '上传任务交付物失败')
-        }
-        uploadedDocument = uploadResult.data
+      const formData = buildDocumentFormData(file, data, taskId, 'TASK_DELIVERABLE')
+      const uploadResult = await projectsApi.uploadDocument(projectId, formData)
+      if (!uploadResult?.success || !uploadResult?.data) {
+        throw new Error(uploadResult?.message || '上传任务交付物失败')
       }
+      uploadedDocument = uploadResult.data
 
       const payload = {
         name: data.name || uploadedDocument?.name || file?.name || '任务交付物',
         deliverableType: data.deliverableType || 'DOCUMENT',
-        size: uploadedDocument?.size || data.size || (file ? formatFileSize(file) : null),
+        size: uploadedDocument?.size || data.size || formatFileSize(file),
         fileType: uploadedDocument?.fileType || data.fileType || file?.type || null,
         url: uploadedDocument?.fileUrl || data.url || null,
       }
