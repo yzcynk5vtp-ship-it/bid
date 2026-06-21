@@ -50,10 +50,7 @@ public class CrmMessageService {
                 "flag", flag
         );
 
-        log.info("CRM sendMessage request: title={}, recipients={}, flag={}", title, recipientNos.size(), flag);
-        CrmResponseHandler.CrmApiResponse response = httpClient.post(baseUrl, path, token, body);
-        log.info("CRM sendMessage response: title={}, recipients={}, code={}, msg={}",
-                title, recipientNos.size(), response.code(), response.msg());
-        return response;
+        log.info("Sending CRM message: title={}, recipients={}, flag={}", title, recipientNos.size(), flag);
+        return httpClient.post(baseUrl, path, token, body);
     }
 }

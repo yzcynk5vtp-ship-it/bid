@@ -8,8 +8,10 @@ import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStatusPolicy;
 import com.xiyu.bid.project.dto.ProjectDTO;
 import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.entity.ProjectResult;
 import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
+import com.xiyu.bid.project.repository.ProjectResultRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.tender.entity.TenderEvaluation;
@@ -49,6 +51,9 @@ public class ProjectQueryService {
     /** Evaluation repo for sub-stage in EVALUATING stage. */
     private final ProjectEvaluationRepository
             projectEvaluationRepository;
+
+    /** Project result repo for bidStatus computation. */
+    private final ProjectResultRepository projectResultRepository;
 
     /** Demo mode toggles and data for e2e tests. */
     private final DemoModeService demoModeService;
@@ -116,6 +121,12 @@ public class ProjectQueryService {
                 : tenderEvaluationRepository.findByTenderIdIn(tenderIds).stream()
                         .collect(Collectors.toMap(TenderEvaluation::getTenderId, Function.identity()));
 
+        // Batch-fetch project results for bidStatus computation
+        Map<Long, String> projectResultMap = projectResultRepository
+                .findByProjectIdIn(projects.stream().map(ProjectDTO::getId).collect(Collectors.toList()))
+                .stream()
+                .collect(Collectors.toMap(ProjectResult::getProjectId, ProjectResult::getResultType));
+
         for (ProjectDTO dto : projects) {
             ProjectInitiationDetails det =
                     detailsMap.get(dto.getId());
@@ -153,9 +164,13 @@ public class ProjectQueryService {
 
             ProjectStage stage = resolveStage(dto.getStage());
             boolean submitted = isInitiationSubmitted(det);
+            // Populate bidResultStatus from the actual project result (project_result table),
+            // not from ProjectInitiationDetails.bid_result_status (which may be NULL).
+            // This ensures bidStatus reflects the real result type after result registration.
+            String bidResult = projectResultMap.getOrDefault(dto.getId(), dto.getBidResultStatus());
             dto.setBidStatus(ProjectStatusPolicy.compute(
                     stage,
-                    dto.getBidResultStatus(),
+                    bidResult,
                     submitted).name());
 
             if (stage == ProjectStage.EVALUATING) {
