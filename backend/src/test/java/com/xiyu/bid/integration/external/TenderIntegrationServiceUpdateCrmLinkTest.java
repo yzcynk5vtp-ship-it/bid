@@ -204,4 +204,56 @@ class TenderIntegrationServiceUpdateCrmLinkTest {
         assertThat(tender.getEvaluationSource()).isEqualTo(Tender.EvaluationSource.CRM_PUSH);
         assertThat(tender.getStatus()).isEqualTo(Tender.Status.EVALUATED);
     }
+
+    @Test
+    @DisplayName("CO-277 接收侧根因修复: crmId 是纯数字 id 且反查失败时, applyCrmFallback 不应把 id 存入 crm_opportunity_id")
+    void updateByExternalId_numericIdCrmId_crmLookupFails_fallbackDoesNotSetId() {
+        // 场景：CRM 推送 crmOpportunityId=20942（纯数字 id），CrmTenderLinkService 反查失败（token 异常等）
+        // CO-277 修复：applyCrmLinkAndAssignment 异常 catch 分支保持 null
+        // 本修复：applyCrmFallback 不应把纯数字 id 存入，保持 null 让 linkByChanceIdIfPresent 兜底
+        Tender tender = createExistingTender();
+        when(tenderRepository.findByExternalId("crm:test-001")).thenReturn(Optional.of(tender));
+
+        // 模拟 CrmTenderLinkService.linkIfPresent 反查失败（什么都不做，保持 crmOpportunityId=null）
+        org.mockito.Mockito.doNothing().when(crmTenderLinkService).linkIfPresent(any(Tender.class), any());
+
+        TenderUpdateRequest request = TenderUpdateRequest.builder()
+                .crmOpportunityId("20942")
+                .crmOpportunityName("cye测试21对接人")
+                .build();
+
+        commandService.updateByExternalId("crm", "test-001", request);
+
+        // 关键断言：纯数字 id 不应被存入 crm_opportunity_id
+        assertThat(tender.getCrmOpportunityId())
+                .as("纯数字 id 不应被存入 crm_opportunity_id（CO-277 接收侧根因修复）")
+                .isNull();
+        // 但 crmOpportunityName 仍应被设置（name 不影响 CRM 匹配）
+        assertThat(tender.getCrmOpportunityName()).isEqualTo("cye测试21对接人");
+        assertThat(tender.getEvaluationSource()).isEqualTo(Tender.EvaluationSource.CRM_PUSH);
+        assertThat(tender.getStatus()).isEqualTo(Tender.Status.EVALUATED);
+    }
+
+    @Test
+    @DisplayName("CO-277 接收侧根因修复: crmId 是 code 格式（CC...）时, applyCrmFallback 保持原逻辑直接存入")
+    void updateByExternalId_codeFormatCrmId_crmLookupFails_fallbackSetsCode() {
+        // 场景：CRM 推送 crmOpportunityId=CC20260621323（code 格式），CrmTenderLinkService 反查失败
+        // 期望：code 格式仍走原逻辑直接存入（code 是 CRM 期望的格式，不会导致匹配失败）
+        Tender tender = createExistingTender();
+        when(tenderRepository.findByExternalId("crm:test-001")).thenReturn(Optional.of(tender));
+
+        org.mockito.Mockito.doNothing().when(crmTenderLinkService).linkIfPresent(any(Tender.class), any());
+
+        TenderUpdateRequest request = TenderUpdateRequest.builder()
+                .crmOpportunityId("CC20260621323")
+                .crmOpportunityName("cye弃标111")
+                .build();
+
+        commandService.updateByExternalId("crm", "test-001", request);
+
+        assertThat(tender.getCrmOpportunityId()).isEqualTo("CC20260621323");
+        assertThat(tender.getCrmOpportunityName()).isEqualTo("cye弃标111");
+        assertThat(tender.getEvaluationSource()).isEqualTo(Tender.EvaluationSource.CRM_PUSH);
+        assertThat(tender.getStatus()).isEqualTo(Tender.Status.EVALUATED);
+    }
 }
