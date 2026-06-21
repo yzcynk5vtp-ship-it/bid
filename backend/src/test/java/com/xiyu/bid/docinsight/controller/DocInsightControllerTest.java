@@ -11,6 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,6 +22,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -326,20 +328,78 @@ class DocInsightControllerTest {
     @Test
     @DisplayName("GET /download https:// URL 路由到代理下载（不返回 400 无效格式）")
     void download_httpsUrl_doesNotReturnInvalidFormat() throws Exception {
-        // https:// URL 应该走代理下载分支，不会返回 "无效的文件 URL 格式"
-        // 由于没有真实的 HTTP 服务器，会返回 502 BAD_GATEWAY（代理下载失败）
-        // 但绝不会返回 400 "无效的文件 URL 格式"
         String fileUrl = "https://example.com/nonexistent/file.pdf";
 
         mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
                 .andExpect(result -> {
                     int status = result.getResponse().getStatus();
-                    // 应该是 502（代理下载失败）而不是 400（无效格式）
                     if (status == 400) {
                         throw new AssertionError(
                                 "https:// URL 不应返回 400 无效格式，实际: " + status +
                                 " msg: " + result.getResponse().getContentAsString());
                     }
                 });
+    }
+
+    @Test
+    @DisplayName("GET /download http:// URL 也路由到代理下载")
+    void download_httpUrl_alsoRoutesToProxyDownload() throws Exception {
+        String fileUrl = "http://example.com/nonexistent/file.pdf";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 400) {
+                        throw new AssertionError(
+                                "http:// URL 不应返回 400 无效格式，实际: " + status);
+                    }
+                });
+    }
+
+    @Test
+    @DisplayName("GET /download https:// URL 返回 502 BAD_GATEWAY 当外部服务器不可达")
+    void download_externalUrlUnreachable_returns502() throws Exception {
+        String fileUrl = "https://localhost:12345/nonexistent/file.pdf";
+
+        mockMvc.perform(get("/api/doc-insight/download").param("fileUrl", fileUrl))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status != HttpStatus.NOT_FOUND.value() && status != HttpStatus.BAD_GATEWAY.value()) {
+                        throw new AssertionError("外部 URL 应返回 404 或 502，实际: " + status);
+                    }
+                });
+    }
+
+    @Test
+    @DisplayName("extractFileNameFromPath 正确提取普通文件名")
+    void extractFileNameFromPath_regularFilename() {
+        assertThat(extractFileNameFromPath("/path/to/file.pdf")).isEqualTo("file.pdf");
+        assertThat(extractFileNameFromPath("/file.pdf")).isEqualTo("file.pdf");
+        assertThat(extractFileNameFromPath("file.pdf")).isEqualTo("file.pdf");
+    }
+
+    @Test
+    @DisplayName("extractFileNameFromPath URL 解码中文文件名")
+    void extractFileNameFromPath_urlEncodedChinese() {
+        assertThat(extractFileNameFromPath("/path/%E6%A0%87%E8%AE%AF%E6%96%87%E4%BB%B6.pdf"))
+                .isEqualTo("标讯文件.pdf");
+    }
+
+    @Test
+    @DisplayName("extractFileNameFromPath 路径为空时返回 attachment")
+    void extractFileNameFromPath_emptyPath_returnsAttachment() {
+        assertThat(extractFileNameFromPath(null)).isEqualTo("attachment");
+        assertThat(extractFileNameFromPath("")).isEqualTo("attachment");
+        assertThat(extractFileNameFromPath("/")).isEqualTo("attachment");
+    }
+
+    @Test
+    @DisplayName("extractFileNameFromPath 解码失败时返回原始名称")
+    void extractFileNameFromPath_decodeFailure_returnsOriginal() {
+        assertThat(extractFileNameFromPath("/path/%XXinvalid")).isEqualTo("%XXinvalid");
+    }
+
+    private String extractFileNameFromPath(String path) {
+        return ReflectionTestUtils.invokeMethod(controller, "extractFileNameFromPath", path);
     }
 }
