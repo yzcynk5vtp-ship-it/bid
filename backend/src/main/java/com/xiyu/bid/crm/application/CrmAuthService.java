@@ -64,14 +64,33 @@ public class CrmAuthService {
             try {
                 String baseUrl = properties.getEffectiveAuthBaseUrl();
                 String path = properties.getAuth().getLogoutPath();
-                httpClient.post(baseUrl, path, token.accessToken(), null);
+                LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+                httpClient.postForm(baseUrl, path, formData, token.accessToken());
+                log.info("OSS logout called: baseUrl={}, path={}", baseUrl, path);
             } catch (RuntimeException e) {
-                log.warn("CRM logout request failed (non-fatal): {}", e.getMessage());
+                log.warn("OSS logout request failed (non-fatal): {}", e.getMessage());
             }
         }
         ossTokenCache.clear();
         crmTokenCache.clear();
         log.info("CRM token caches cleared (logout)");
+    }
+
+    public void logoutByToken(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) {
+            return;
+        }
+        try {
+            String baseUrl = properties.getEffectiveAuthBaseUrl();
+            String path = properties.getAuth().getLogoutPath();
+            LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            httpClient.postForm(baseUrl, path, formData, accessToken);
+            log.info("OSS logout by token: baseUrl={}, path={}", baseUrl, path);
+        } catch (RuntimeException e) {
+            log.warn("OSS logout by token failed (non-fatal): {}", e.getMessage());
+        }
+        ossTokenCache.clear();
+        crmTokenCache.clear();
     }
 
     public void handleUnauthorized() {
