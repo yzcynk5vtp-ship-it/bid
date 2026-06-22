@@ -83,7 +83,7 @@ class OpenAiBidAgentConfigurationResolverTest {
     }
 
     @Test
-    void resolve_shouldIgnoreActiveOpenAiProviderAndUseDeepSeekKey() {
+    void resolve_shouldUseActiveProviderWhenConfigured() {
         AiConfigService aiConfigService = mock(AiConfigService.class);
         Environment environment = mock(Environment.class);
         when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
@@ -98,10 +98,9 @@ class OpenAiBidAgentConfigurationResolverTest {
 
         OpenAiBidAgentRequestConfig config = resolver.resolve("tender document analysis");
 
-        assertThat(config.apiKey()).isEqualTo("sk-deepseek");
+        assertThat(config.apiKey()).isEqualTo("sk-openai");
         assertThat(config.apiStyle()).isEqualTo(OpenAiBidAgentApiStyle.CHAT_COMPLETIONS);
-        assertThat(config.baseUrl()).isEqualTo("https://api.deepseek.com");
-        verify(aiConfigService, never()).resolveAiApiKey("openai");
+        assertThat(config.baseUrl()).isEqualTo("https://api.openai.com");
     }
 
     @Test
@@ -212,7 +211,15 @@ class OpenAiBidAgentConfigurationResolverTest {
         Environment environment = mock(Environment.class);
         AiProviderCatalog aiProviderCatalog = mock(AiProviderCatalog.class);
         when(aiProviderCatalog.normalize("deepseek")).thenReturn("deepseek");
-        when(aiProviderCatalog.environmentKeys("deepseek")).thenReturn(List.of("DEEPSEEK_API_KEY_MISSING_TEST"));
+        when(aiProviderCatalog.environmentKeys("deepseek")).thenReturn(List.of("DEEPSEEK_API_KEY"));
+        when(aiProviderCatalog.defaultActiveProvider()).thenReturn("deepseek");
+        when(aiProviderCatalog.defaultProviderSetting("deepseek")).thenReturn(SettingsResponse.AiProviderSetting.builder()
+                .providerCode("deepseek")
+                .providerName("DeepSeek")
+                .enabled(true)
+                .baseUrl("https://api.deepseek.com/chat/completions")
+                .model("deepseek-chat")
+                .build());
         when(aiConfigService.getInternalAiModelConfig()).thenReturn(aiModelConfig(
                 "deepseek",
                 "https://api.deepseek.com/chat/completions",
