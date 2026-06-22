@@ -11,7 +11,7 @@
 | `root-cause-analysis-co-266-co-267.md` | Bug 根因分析 | CRM推送客户信息字段名不一致导致前端不显示 | 2026-06-18 |
 | `root-cause-analysis-co-274.md` | Bug 根因分析 | 标讯快速投标未创建项目导致列表不显示 | 2026-06-19 |
 | `root-cause-analysis-h13-e2e-fix.md` | Bug 根因分析 | H13改造后E2E测试全面修复（token提取、mock断言、速率限制） | 2026-06-19 |
-| `lessons-learned.md` | 通用工程教训 | 后端接口契约变更必须同步前端所有入口、字段必填性变更、前端热更新部署、PR 回滚前必须确认根因、部署期间并发部署导致 502、部署后验证四层模型、stash 丢失找回、同一接口错误形态变化先看日志、PR 已合入后追加修复先确认 merge-base | 2026-06-21 |
+| `lessons-learned.md` | 通用工程教训 | 后端接口契约变更必须同步前端所有入口、字段必填性变更、前端热更新部署、PR 回滚前必须确认根因、部署期间并发部署导致 502、部署后验证四层模型、stash 丢失找回、同一接口错误形态变化先看日志、PR 已合入后追加修复先确认 merge-base、业务异常消息应包含系统上下文、服务器部署 jar 验证四原则 | 2026-06-22 |
 | `crm-integration-lessons.md` | 外部集成经验 | CRM 接口字段映射、405 事故、code 字段错填、status 枚举映射错位、CO-277 id 反查 code、CO-283 附件 URL 双重嵌套、CO-280 跨域 URL 完整地址、CO-262 GAP 附件持久化 | 2026-06-20 |
 | `root-cause-analysis-frontend-404.md` | Bug 根因分析 | 前端热更新部署时动态 import chunk 被误删导致 404 | 2026-06-19 |
 | `root-cause-analysis-co-279.md` | Bug 根因分析 | 提交立项 `bidOpenTime` 日期格式解析失败 | 2026-06-19 |

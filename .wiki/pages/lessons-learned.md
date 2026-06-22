@@ -493,3 +493,55 @@ $ git branch -r --contains 29bd3bc91
 | 日期 | 分支 | 变更内容 |
 |------|------|----------|
 | 2026-06-19 | `agent/zcode/fix-crm-opportunity-code`（PR !827） | 重新发起被 PR !820 编号复用误导而丢失的核心修复（status 1→6 + code 改用 crm_opportunity_id）；沉淀本节 PR 合并验证 checklist |
+| 2026-06-22 | `agent/cursor/co-301-tender-duplicate-message`（PR !958） | 标讯去重拦截错误消息从"标讯已存在"改为"投标管理系统该标讯已存在"（3 处源码 + 4 个测试类 + E2E 测试）；沉淀"业务异常消息应包含系统上下文"经验；部署时发现 Maven 缓存旧 class、SSH 中文乱码误判，沉淀"服务器部署 jar 验证四原则" |
+
+---
+
+## 八、服务器部署 jar 验证四原则（2026-06-22）
+
+> 来源：CO-301 部署排查
+
+### 8.1 问题
+
+代码已合入 main 并打包 jar 部署到服务器，但运行时仍返回旧文案。排查发现：
+1. 打包时 Maven 缓存了旧 class 文件，jar 中实际内容未更新
+2. 仅检查 jar 大小无法发现内容差异
+3. SSH 终端中文编码导致 javap 输出乱码，误判为旧版本
+4. 最终通过 `jar uf` 局部更新 class 文件解决
+
+### 8.2 四原则
+
+| 原则 | 说明 |
+|------|------|
+| **打包后必须验证 jar 内容** | 不能只检查 jar 大小，用 `javap -v` 检查关键 class 常量池 |
+| **`mvn clean` 后重新打包** | 不依赖增量编译，确保使用最新编译结果 |
+| **用 `xxd` 字节比较验证** | SSH 终端中文乱码时，用 `xxd \| grep` 或 `diff <(xxd) <(xxd)` 比较 |
+| **用 `jar uf` 局部更新** | 只更新修改的 class 文件，无需重新打包整个 jar |
+
+### 8.3 验证命令
+
+```bash
+# 打包前先 clean
+cd backend && mvn clean compile spring-boot:repackage -DskipTests
+
+# 验证 jar 中关键 class 的常量池
+unzip -p target/bid-poc-1.0.3.jar BOOT-INF/classes/.../Foo.class | javap -v - 2>/dev/null | grep -A5 "Constant pool"
+
+# 服务器上用 xxd 验证（避免中文乱码）
+ssh server 'unzip -p /opt/.../app.jar BOOT-INF/classes/.../Foo.class | xxd | grep -A2 "e68a 95"'
+
+# 局部更新 jar
+jar uf app.jar BOOT-INF/classes/.../Foo.class
+
+# 字节级比较
+diff <(unzip -p local.jar BOOT-INF/classes/.../Foo.class | xxd) \
+     <(ssh server 'unzip -p remote.jar BOOT-INF/classes/.../Foo.class | xxd')
+```
+
+### 8.4 防复发检查清单
+
+- [ ] `mvn clean` 后重新打包，不依赖增量编译
+- [ ] 打包后用 `javap -v` 验证关键 class 常量池内容
+- [ ] 服务器验证用 `xxd` 字节比较，不依赖 SSH 中文显示
+- [ ] 如需快速更新，用 `jar uf` 局部替换 class 文件
+- [ ] 部署后通过 API 实测验证功能（而非仅检查 actuator 状态）
