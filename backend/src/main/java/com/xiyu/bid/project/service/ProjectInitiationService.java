@@ -46,19 +46,6 @@ public class ProjectInitiationService {
 
     @Auditable(action = "SUBMIT_INITIATION", entityType = "ProjectInitiationDetails", description = "提交项目立项审核")
     public InitiationViewDto submit(Long projectId, InitiationDto req, Long currentUserId) {
-        try {
-            return doSubmit(projectId, req, currentUserId);
-        } catch (ResponseStatusException ex) {
-            log.warn("Initiation submit failed: projectId={}, userId={}, status={}, reason={}",
-                    projectId, currentUserId, ex.getStatusCode(), ex.getReason());
-            throw ex;
-        } catch (RuntimeException ex) {
-            log.error("Initiation submit error: projectId={}, userId={}", projectId, currentUserId, ex);
-            throw ex;
-        }
-    }
-
-    private InitiationViewDto doSubmit(Long projectId, InitiationDto req, Long currentUserId) {
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
         var project = mustGetProject(projectId);
 
@@ -109,16 +96,7 @@ public class ProjectInitiationService {
 
     @Auditable(action = "UPDATE_INITIATION", entityType = "ProjectInitiationDetails", description = "更新项目立项")
     public InitiationViewDto update(Long projectId, InitiationDto req, Long currentUserId) {
-        try {
-            return doUpdate(projectId, req, currentUserId);
-        } catch (ResponseStatusException ex) {
-            log.warn("Initiation update failed: projectId={}, userId={}, status={}, reason={}",
-                    projectId, currentUserId, ex.getStatusCode(), ex.getReason());
-            throw ex;
-        } catch (RuntimeException ex) {
-            log.error("Initiation update error: projectId={}, userId={}", projectId, currentUserId, ex);
-            throw ex;
-        }
+        return doUpdate(projectId, req, currentUserId);
     }
 
     private InitiationViewDto doUpdate(Long projectId, InitiationDto req, Long currentUserId) {

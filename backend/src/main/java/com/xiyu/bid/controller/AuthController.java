@@ -84,31 +84,26 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         sanitizeRegisterRequest(request);
         AuthResponse response = authService.register(request);
-        log.info("Auth register success: username={}, email={}", request.getUsername(), request.getEmail());
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("User registered successfully", response));
+        log.info("Auth register success: user={}, emailDomain={}", usernameFingerprint(request.getUsername()), emailDomain(request.getEmail()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("User registered successfully", response));
     }
 
     @PostMapping("/login")
     @PreAuthorize(PERMIT_ALL_EXPR)
     public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
         String username = request.getUsername();
-        if (username != null) {
-            request.setUsername(InputSanitizer.sanitizeString(username, 50));
-        }
-        if (request.getPassword() != null) {
-            request.setPassword(request.getPassword().trim());
-        }
+        String userFp = usernameFingerprint(username);
+        if (username != null) request.setUsername(InputSanitizer.sanitizeString(username, 50));
+        if (request.getPassword() != null) request.setPassword(request.getPassword().trim());
         try {
             AuthSessionResult sessionResult = authService.login(request);
-            log.info("Auth login success: username={}, rememberMe={}", username, request.getRememberMe());
+            log.info("Auth login success: user={}, rememberMe={}", userFp, request.getRememberMe());
             return ResponseEntity.ok()
                     .header(HttpHeaders.SET_COOKIE, buildRefreshCookie(sessionResult.getRefreshToken(), Boolean.TRUE.equals(request.getRememberMe())).toString())
                     .header(HttpHeaders.SET_COOKIE, buildAccessCookie(sessionResult.getAccessToken()).toString())
                     .body(ApiResponse.success("Login successful", sessionResult.getAuthResponse()));
         } catch (RuntimeException ex) {
-            log.warn("Auth login failed: username={}, reason={}", username, ex.getMessage());
+            log.warn("Auth login failed: user={}, reason={}", userFp, ex.getMessage());
             throw ex;
         }
     }
@@ -188,9 +183,7 @@ public class AuthController {
             @Valid @RequestBody ResetPasswordRequest request
     ) {
         passwordResetService.resetPassword(request.token(), request.newPassword());
-        log.info("Auth reset-password: tokenPrefix={}",
-                request.token() != null && request.token().length() > 8
-                        ? request.token().substring(0, 8) + "***" : "***");
+        log.info("Auth reset-password: tokenProvided={}", request.token() != null);
         return ResponseEntity.ok(ApiResponse.success("Password has been reset successfully", null));
     }
 
@@ -241,15 +234,26 @@ public class AuthController {
     }
 
     private void sanitizeRegisterRequest(RegisterRequest request) {
-        if (request.getUsername() != null) {
+        if (request.getUsername() != null)
             request.setUsername(InputSanitizer.sanitizeString(request.getUsername(), 50));
-        }
-        if (request.getEmail() != null) {
+        if (request.getEmail() != null)
             request.setEmail(InputSanitizer.sanitizeString(request.getEmail(), 100));
-        }
-        if (request.getFullName() != null) {
+        if (request.getFullName() != null)
             request.setFullName(InputSanitizer.sanitizeString(request.getFullName(), 100));
-        }
+    }
+
+    /** username 指纹 (前 2 字符+长度+4 位 hash) / email 域部分 (避免 PII 直存)。 */
+    private static String usernameFingerprint(String username) {
+        if (username == null || username.isEmpty()) return "<empty>";
+        int len = username.length();
+        String prefix = len > 2 ? username.substring(0, 2) : username;
+        return String.format("%s*len%d#%04d", prefix, len, Math.abs(username.hashCode()) % 10000);
+    }
+
+    private static String emailDomain(String email) {
+        if (email == null) return "<empty>";
+        int at = email.indexOf('@');
+        return at >= 0 && at < email.length() - 1 ? email.substring(at) : "<invalid>";
     }
 
     private String extractRefreshToken(HttpServletRequest request) {
@@ -272,9 +276,7 @@ public class AuthController {
     private ResponseCookie buildRefreshCookie(String token, boolean persistent) {
         ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from(refreshCookieName, token)
                 .httpOnly(true).secure(refreshCookieSecure).sameSite(refreshCookieSameSite).path("/");
-        if (persistent) {
-            b.maxAge(Duration.ofMillis(refreshExpiration));
-        }
+        if (persistent) b.maxAge(Duration.ofMillis(refreshExpiration));
         return b.build();
     }
 
