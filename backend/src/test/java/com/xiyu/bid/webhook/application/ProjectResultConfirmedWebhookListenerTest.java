@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.project.core.BidResultType;
 import com.xiyu.bid.project.domain.ProjectResultConfirmedEvent;
+import com.xiyu.bid.project.service.ProjectResultPayloadAssembler;
+import com.xiyu.bid.projectworkflow.entity.ProjectDocument;
+import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.repository.TenderRepository;
+import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.webhook.infrastructure.CrmOpportunityCodeResolver;
 import com.xiyu.bid.webhook.infrastructure.WebhookDeliveryTask;
 import com.xiyu.bid.webhook.infrastructure.WebhookDeliveryTaskRepository;
@@ -52,10 +56,15 @@ class ProjectResultConfirmedWebhookListenerTest {
     @Mock private WebhookDeliveryTaskRepository taskRepository;
     @Mock private TenderRepository tenderRepository;
     @Mock private CrmOpportunityCodeResolver crmOpportunityCodeResolver;
+    @Mock private ProjectDocumentRepository projectDocumentRepository;
+    @Mock private UserRepository userRepository;
 
     private ProjectResultConfirmedWebhookListener listener(String url) {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ProjectResultPayloadAssembler assembler = new ProjectResultPayloadAssembler(
+                tenderRepository, userRepository, projectDocumentRepository, objectMapper);
         ProjectResultConfirmedWebhookListener l = new ProjectResultConfirmedWebhookListener(
-                taskRepository, tenderRepository, new ObjectMapper(), crmOpportunityCodeResolver);
+                taskRepository, tenderRepository, objectMapper, crmOpportunityCodeResolver, assembler);
         ReflectionTestUtils.setField(l, "crmWebhookUrl", url);
         return l;
     }
@@ -90,6 +99,13 @@ class ProjectResultConfirmedWebhookListenerTest {
     @DisplayName("WON → CRM status=2, bidInfoList 格式正确")
     void won_mapsToCrmStatus2() throws Exception {
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(tender()));
+        ProjectDocument doc = ProjectDocument.builder()
+                .id(1032L).projectId(PROJECT_ID)
+                .name("中标通知书-中石化MRO采购框架协议.pdf")
+                .size("2048000")
+                .fileUrl("https://bid.xiyu.com/api/projects/128/documents/1032/download")
+                .uploaderName("张三").build();
+        when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of(doc));
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.WON));
 
@@ -113,12 +129,30 @@ class ProjectResultConfirmedWebhookListenerTest {
         assertThat(feedback.path("reason").asText()).isEqualTo("WON");
         assertThat(feedback.path("vendor").asText()).isEqualTo("京东企业购");
         assertThat(feedback.path("operator").asText()).isEqualTo("张三");
+        // CO-300: evidenceFiles, competitors, systemName
+        assertThat(feedback.has("evidenceFiles")).isTrue();
+        assertThat(feedback.path("evidenceFiles").isArray()).isTrue();
+        assertThat(feedback.path("evidenceFiles").size()).isEqualTo(1);
+        assertThat(feedback.path("evidenceFiles").get(0).path("fileName").asText())
+                .isEqualTo("中标通知书-中石化MRO采购框架协议.pdf");
+        assertThat(feedback.path("evidenceFiles").get(0).path("fileUrl").asText())
+                .isEqualTo("https://bid.xiyu.com/api/projects/128/documents/1032/download");
+        assertThat(feedback.path("evidenceFiles").get(0).path("fileSize").asLong()).isEqualTo(2048000L);
+        assertThat(feedback.has("competitors")).isTrue();
+        assertThat(feedback.path("competitors").isArray()).isTrue();
+        assertThat(feedback.path("competitors").size()).isEqualTo(1);
+        assertThat(feedback.path("competitors").get(0).path("name").asText()).isEqualTo("京东企业购");
+        assertThat(feedback.path("competitors").get(0).path("discount").asText()).isEqualTo("95折");
+        assertThat(feedback.path("competitors").get(0).path("paymentTerm").asText()).isEqualTo("月结60天");
+        assertThat(feedback.path("competitors").get(0).path("notes").asText()).isEqualTo("含仓储");
+        assertThat(feedback.path("systemName").asText()).isEqualTo("西域数智化投标管理平台");
     }
 
     @Test
     @DisplayName("LOST → CRM status=3")
     void lost_mapsToCrmStatus3() throws Exception {
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(tender()));
+        when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of());
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.LOST));
 
@@ -131,6 +165,7 @@ class ProjectResultConfirmedWebhookListenerTest {
     @DisplayName("FAILED → CRM status=4")
     void failed_mapsToCrmStatus4() throws Exception {
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(tender()));
+        when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of());
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.FAILED));
 
@@ -164,6 +199,7 @@ class ProjectResultConfirmedWebhookListenerTest {
         t.setCrmOpportunityId(null);
         t.setCrmOpportunityName(null);
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(t));
+        when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of());
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.WON));
 
@@ -181,6 +217,7 @@ class ProjectResultConfirmedWebhookListenerTest {
         t.setCrmOpportunityId("20942"); // 数字 id（CO-277 场景）
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(t));
         when(crmOpportunityCodeResolver.resolve("20942")).thenReturn(CRM_OPPORTUNITY_CODE);
+        when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of());
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.LOST));
 
@@ -199,6 +236,7 @@ class ProjectResultConfirmedWebhookListenerTest {
         t.setCrmOpportunityId("20942");
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(t));
         when(crmOpportunityCodeResolver.resolve("20942")).thenReturn("20942");
+        when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of());
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.LOST));
 
