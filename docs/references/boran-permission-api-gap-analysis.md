@@ -82,29 +82,58 @@ app.crm.auth.oauth-login-path: ${XIYU_CRM_AUTH_OAUTH_LOGIN_PATH:/oauth/login}
 
 ### 2.2 接口 2：根据 token 获取员工信息 `/oauth/getUserInfo`
 
-**状态**：❌ 路径不一致
+**状态**：❌ **未按文档实现**（多项关键差异）
 
 **YApi**：https://yapi.ehsy.com/project/406/interface/api/23358
 
-**文档要求**：调用 `/oauth/getUserInfo`
+---
 
-**当前实现**：
-- 使用 `/employee/info` 接口
+#### 泊冉文档要求
+
+| 项目 | 值 |
+|------|-----|
+| HTTP 方法 | `GET` |
+| 接口路径 | `/oauth/getUserInfo` |
+| Content-Type | `application/x-www-form-urlencoded`（虽然是 GET） |
+| Authorization | `Bearer <token>`（作为 Header） |
+| 请求参数 | token 在 Authorization Header 中 |
+| 响应字段 | id, userId, username, nickName, phone, email, deptId, deptName, deptPath, jobId, jobName, isManager, createAt, updateAt, status |
+
+---
+
+#### 当前实现
+
+**调用链**：
+
+```
+CrmController.getEmployee(@PathVariable String token)
+    └─► CrmEmployeeService.getEmployeeByToken(String employeeToken)
+            └─► CrmHttpClient.post(baseUrl, path, token, Map.of("token", employeeToken))
+                    └─► POST /employee/info (JSON body)
+```
 
 **代码引用**：
 
 ```java
-// CrmProperties.java:189
-private String employeePath = "/employee/info";
-
-// CrmProperties.java:176-190
-@Data
-public static class CrmAuthPaths {
-    private String oauthLoginPath = "/oauth/login";
-    private String logoutPath = "/auth/logout";        // ❌ 路径不一致
-    private String menuTreePath = "/menu/tree";
-    private String employeePath = "/employee/info";      // ❌ 应该是 /oauth/getUserInfo
+// CrmController.java:71-78
+@GetMapping("/employees/{token}")
+public ResponseEntity<ApiResponse<Object>> getEmployee(@PathVariable String token) {
+    var response = employeeService.getEmployeeByToken(token);
+    // ...
 }
+
+// CrmEmployeeService.java:24-30
+public CrmResponseHandler.CrmApiResponse getEmployeeByToken(String employeeToken) {
+    String token = authService.getValidOssToken();           // 先获取 OSS token
+    String baseUrl = properties.getEffectiveAuthBaseUrl();
+    String path = properties.getAuth().getEmployeePath();    // = "/employee/info"
+    return httpClient.post(baseUrl, path, token,
+            Map.of("token", employeeToken));                // POST JSON body
+}
+
+// CrmHttpClient.java:86-89 (executePost)
+headers.setContentType(MediaType.APPLICATION_JSON);          // ⚠️ JSON
+headers.setBearerAuth(accessToken);                          // 先获取的 OSS token
 ```
 
 **配置**：
@@ -114,22 +143,140 @@ public static class CrmAuthPaths {
 app.crm.auth.employee-path: ${XIYU_CRM_AUTH_EMPLOYEE_PATH:/employee/info}
 ```
 
-**使用情况**：
-- `OssDelegationService` 使用此路径验证用户
-- 未在 `CrmAuthService` 中直接使用
+---
 
-**差距分析**：
+#### 差距分析（关键）
 
-| 项目 | 文档要求 | 当前实现 | 影响 |
-|------|---------|---------|------|
-| 接口路径 | `/oauth/getUserInfo` | `/employee/info` | 可能返回不同数据 |
-| 鉴权方式 | Bearer token | Bearer token | 一致 |
-| 响应格式 | 员工信息 | 员工信息 | 可能不同 |
+| # | 项目 | 泊冉文档要求 | 当前实现 | 影响 | 严重度 |
+|---|------|-------------|---------|------|--------|
+| 1 | HTTP 方法 | `GET` | `POST` | ⚠️ 方法不一致 | 🔴 高 |
+| 2 | 接口路径 | `/oauth/getUserInfo` | `/employee/info` | 🔴 完全不同 | 🔴 高 |
+| 3 | Content-Type | `application/x-www-form-urlencoded` | `application/json` | ⚠️ 格式差异 | 🟡 中 |
+| 4 | 请求方式 | Bearer token 在 Header | token 在 JSON body | 🔴 完全差异 | 🔴 高 |
+| 5 | 响应字段 | 14 个字段（见上） | 未解析（直接返回 JsonNode） | ❌ 未使用 | 🟡 中 |
+| 6 | 字段对应 | — | 部分字段有对应 | ❌ 不完整 | 🟡 中 |
 
-**需要确认**：
-1. OSS 系统是否同时提供两个路径？
-2. 两个接口返回的数据格式是否相同？
-3. 是否可以替换为 `/oauth/getUserInfo`？
+**字段对应关系**：
+
+| 泊冉字段 | OrganizationUserSnapshot 字段 | 说明 |
+|---------|------------------------------|------|
+| id | — | ❌ 无对应 |
+| userId | externalUserId | ⚠️ 名称不同 |
+| username | username | ✅ 对应 |
+| nickName | fullName | ⚠️ 名称不同 |
+| phone | phone | ✅ 对应 |
+| email | email | ✅ 对应 |
+| deptId | departmentCode | ⚠️ 名称不同 |
+| deptName | departmentName | ✅ 对应 |
+| deptPath | — | ❌ 无对应 |
+| jobId | jobId | ✅ 对应 |
+| jobName | — | ❌ 无对应（OssUserJobAndRoleDto 有） |
+| isManager | — | ❌ 无对应 |
+| status | enabled | ⚠️ 名称不同，类型不同 |
+
+---
+
+#### 调用场景分析
+
+| 场景 | 当前实现 | 是否按文档实现 |
+|------|---------|--------------|
+| 登录后获取员工信息 | ❌ 不在登录流程中 | 否 |
+| 根据 token 获取员工信息 | ⚠️ 调用 `/employee/info`（POST）而非 `/oauth/getUserInfo`（GET） | 否 |
+| 组织架构同步 | 使用 `/subscription/msg/user`（POST form-urlencoded） | 否 |
+
+**当前 `CrmEmployeeService.getEmployeeByToken()` 的实际用途**：
+- 被 `CrmController.getEmployee()` 暴露给前端
+- 前端可以根据某个 token 获取员工信息
+- **不是登录流程的一部分**
+
+---
+
+#### 最小修改方案
+
+**前提**：OSS 系统提供 `/oauth/getUserInfo` 接口且功能相同
+
+**方案 A：仅修改配置路径（如果两个接口兼容）**
+
+```yaml
+# application.yml
+app:
+  crm:
+    auth:
+      employee-path: ${XIYU_CRM_AUTH_EMPLOYEE_PATH:/oauth/getUserInfo}
+```
+
+**方案 B：改造 `CrmEmployeeService`（如果接口不兼容）**
+
+需要新增 GET 方法到 `CrmHttpClient`：
+
+```java
+// CrmHttpClient.java 新增
+public CrmResponseHandler.CrmApiResponse get(String baseUrl, String path, String accessToken) {
+    String url = baseUrl + path;
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(accessToken);
+    TraceHeaderInjector.inject(headers);
+    HttpEntity<Void> request = new HttpEntity<>(headers);
+    try {
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+        return CrmResponseHandler.parse(response.getBody());
+    } catch (RuntimeException e) {
+        log.error("CRM GET failed: {}", e.getMessage());
+        return CrmResponseHandler.CrmApiResponse.parseError(e.getMessage());
+    }
+}
+
+// CrmEmployeeService.java 修改
+public CrmResponseHandler.CrmApiResponse getEmployeeByToken(String employeeToken) {
+    String baseUrl = properties.getEffectiveAuthBaseUrl();
+    String path = properties.getAuth().getEmployeePath();  // /oauth/getUserInfo
+    return httpClient.get(baseUrl, path, employeeToken);    // Bearer token 直接用传入的 token
+}
+```
+
+---
+
+#### 结论
+
+**接口 2 未按泊冉文档实现**：
+- 接口路径不同
+- HTTP 方法不同（GET vs POST）
+- 请求格式不同（Header vs JSON body）
+- 不在登录流程中调用
+
+**是否需要修改**：
+- 如果 OSS 系统同时提供 `/employee/info` 和 `/oauth/getUserInfo`，且功能相同 → 仅修改配置路径
+- 如果需要严格按泊冉文档实现 → 方案 B
+
+---
+
+#### 需要确认的问题
+
+| # | 问题 | 重要性 |
+|---|------|--------|
+| Q1 | OSS 系统是否同时提供 `/oauth/getUserInfo` 和 `/employee/info`？ | 🔴 高 |
+| Q2 | 两个接口返回的数据格式是否相同？ | 🔴 高 |
+| Q3 | 当前 `/employee/info` 接口是否已在前端使用？ | 🟡 中 |
+| Q4 | 是否需要将此接口集成到登录流程中？ | 🟡 中 |
+
+---
+
+#### 测试用例建议
+
+```java
+@Test
+void shouldCallGetEndpointWithBearerToken() {
+    // Given
+    when(httpClient.get(any(), eq("/oauth/getUserInfo"), eq("user-token")))
+        .thenReturn(mockResponse);
+
+    // When
+    CrmResponseHandler.CrmApiResponse response = employeeService.getEmployeeByToken("user-token");
+
+    // Then
+    verify(httpClient).get(baseUrl, "/oauth/getUserInfo", "user-token");
+}
+```
 
 ---
 
