@@ -1,6 +1,6 @@
 package com.xiyu.bid.tender.service;
 
-import com.xiyu.bid.crm.application.CrmChanceService;
+import com.xiyu.bid.crm.application.CrmCustomerLeaderQueryService;
 import com.xiyu.bid.crm.application.CustomerLeaderResult;
 import com.xiyu.bid.crm.domain.CrmProjectMapping;
 import com.xiyu.bid.crm.domain.CrmProjectMappingRepository;
@@ -22,14 +22,14 @@ import java.util.Optional;
  * <p>集成点：
  * <ul>
  *   <li>查询 CrmProjectMapping 表进行本地匹配</li>
- *   <li>调用 CRM 商机接口实时查询客户负责人</li>
+ *   <li>调用 CRM 客户负责人查询服务实时查询</li>
  *   <li>记录分配日志（INFO/DEBUG 级别，不影响业务流程）</li>
  * </ul>
  *
  * <p>副作用边界：
  * <ul>
  *   <li>Repository 查询（CrmProjectMappingRepository）</li>
- *   <li>CRM HTTP 调用（CrmChanceService）</li>
+ *   <li>CRM HTTP 调用（CrmCustomerLeaderQueryService）</li>
  *   <li>日志记录</li>
  * </ul>
  */
@@ -43,20 +43,20 @@ public class TenderAutoAssignmentService {
     /** 映射仓储. */
     private final CrmProjectMappingRepository mappingRepository;
 
-    /** CRM 商机服务. */
-    private final CrmChanceService crmChanceService;
+    /** CRM 客户负责人查询服务. */
+    private final CrmCustomerLeaderQueryService customerLeaderQueryService;
 
     /**
      * 构造器.
      *
      * @param repo 映射仓储
-     * @param crmChanceService CRM 商机服务
+     * @param customerLeaderQueryService CRM 客户负责人查询服务
      */
     public TenderAutoAssignmentService(
             final CrmProjectMappingRepository repo,
-            final CrmChanceService crmChanceService) {
+            final CrmCustomerLeaderQueryService customerLeaderQueryService) {
         this.mappingRepository = repo;
-        this.crmChanceService = crmChanceService;
+        this.customerLeaderQueryService = customerLeaderQueryService;
     }
 
     /**
@@ -167,7 +167,7 @@ public class TenderAutoAssignmentService {
 
         try {
             CustomerLeaderResult leader =
-                    crmChanceService.findLeaderByGroupName(purchaserName);
+                    customerLeaderQueryService.findLeaderByGroupName(purchaserName);
 
             if (leader == null) {
                 LOG.debug("No CRM leader found for: {}", purchaserName);

@@ -260,103 +260,18 @@ class CrmChanceServiceTest {
         assertThat(captor.getAllValues().get(1).body().evaluationStartTime()).startsWith("2026-06-04");
     }
 
-    // ── CO-302: findLeaderByGroupName 测试 ─────────────────────────────────────────────────────────────
 
-    @Test
-    @DisplayName("findLeaderByGroupName_groupName为空_返回null")
-    void findLeaderByGroupName_nullGroupName_returnsNull() {
-        CustomerLeaderResult result = service.findLeaderByGroupName(null);
-
-        assertThat(result).isNull();
-        verify(httpClient, never()).post(any(), any(), any(), any(CustomerChancePageRequest.class));
+    private CrmResponseHandler.CrmApiResponse unauthorizedCrmResponse() {
+        return CrmResponseHandler.parse("{\"code\":401,\"msg\":\"unauthorized\",\"data\":null}");
     }
 
-    @Test
-    @DisplayName("findLeaderByGroupName_groupName为空白_返回null")
-    void findLeaderByGroupName_blankGroupName_returnsNull() {
-        CustomerLeaderResult result = service.findLeaderByGroupName("   ");
-
-        assertThat(result).isNull();
-        verify(httpClient, never()).post(any(), any(), any(), any(CustomerChancePageRequest.class));
-    }
-
-    @Test
-    @DisplayName("findLeaderByGroupName_CRM返回商机列表_返回第一条负责人信息")
-    void findLeaderByGroupName_crmReturnsChances_returnsFirstLeader() {
-        String groupName = "上海西域采购中心";
-        String responseBody = """
-                {"code":0,"totalCount":2,"pageSize":10,"pageIndex":1,"dataList":[\
-                {"id":1,"code":"CC1","name":"商机1","groupName":"上海西域采购中心","projectLeaderName":"张三","projectLeaderNo":"10001"},\
-                {"id":2,"code":"CC2","name":"商机2","groupName":"上海西域采购中心","projectLeaderName":"李四","projectLeaderNo":"10002"}\
-                ]}
-                """;
-        when(httpClient.post(any(), any(), eq("token"), any(CustomerChancePageRequest.class)))
-                .thenReturn(CrmResponseHandler.parse(responseBody));
-
-        CustomerLeaderResult result = service.findLeaderByGroupName(groupName);
-
-        assertThat(result).isNotNull();
-        assertThat(result.groupName()).isEqualTo("上海西域采购中心");
-        assertThat(result.projectLeaderName()).isEqualTo("张三");
-        assertThat(result.projectLeaderNo()).isEqualTo("10001");
-
-        ArgumentCaptor<CustomerChancePageRequest> captor = ArgumentCaptor.forClass(CustomerChancePageRequest.class);
-        verify(httpClient).post(any(), any(), eq("token"), captor.capture());
-        assertThat(captor.getValue().body().groupName()).containsExactly(groupName);
-    }
-
-    @Test
-    @DisplayName("findLeaderByGroupName_CRM返回空列表_返回null")
-    void findLeaderByGroupName_crmReturnsEmpty_returnsNull() {
-        String groupName = "未知客户";
-        String emptyBody = "{\"code\":0,\"totalCount\":0,\"pageSize\":10,\"pageIndex\":1,\"dataList\":[]}";
-        when(httpClient.post(any(), any(), eq("token"), any(CustomerChancePageRequest.class)))
-                .thenReturn(CrmResponseHandler.parse(emptyBody));
-
-        CustomerLeaderResult result = service.findLeaderByGroupName(groupName);
-
-        assertThat(result).isNull();
-    }
-
-    @Test
-    @DisplayName("findLeaderByGroupName_商机负责人姓名为空_返回null")
-    void findLeaderByGroupName_leaderNameBlank_returnsNull() {
-        String groupName = "无负责人客户";
-        String responseBody = """
-                {"code":0,"totalCount":1,"pageSize":10,"pageIndex":1,"dataList":[\
-                {"id":1,"code":"CC1","name":"商机1","groupName":"无负责人客户","projectLeaderName":"","projectLeaderNo":""}\
-                ]}
-                """;
-        when(httpClient.post(any(), any(), eq("token"), any(CustomerChancePageRequest.class)))
-                .thenReturn(CrmResponseHandler.parse(responseBody));
-
-        CustomerLeaderResult result = service.findLeaderByGroupName(groupName);
-
-        assertThat(result).isNull();
-    }
-
-    @Test
-    @DisplayName("findLeaderByGroupName_token获取失败_返回null")
-    void findLeaderByGroupName_tokenFailure_returnsNull() {
-        when(authService.getValidToken()).thenThrow(new IllegalStateException("CRM auth failed"));
-
-        CustomerLeaderResult result = service.findLeaderByGroupName("上海西域采购中心");
-
-        assertThat(result).isNull();
-        verify(httpClient, never()).post(any(), any(), any(), any(CustomerChancePageRequest.class));
+    private CrmResponseHandler.CrmApiResponse emptyCrmResponse() {
+        return CrmResponseHandler.parse("{\"code\":200,\"msg\":\"success\",\"data\":{\"list\":[],\"totalCount\":0,\"pageSize\":10,\"pageIndex\":1}}");
     }
 
     private CustomerChanceDTO selectAllBody() {
         return new CustomerChanceDTO(
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null, true, null, null, null);
-    }
-
-    private CrmResponseHandler.CrmApiResponse emptyCrmResponse() {
-        return CrmResponseHandler.parse("{\"code\":0,\"totalCount\":0,\"pageSize\":10,\"pageIndex\":1,\"dataList\":[]}");
-    }
-
-    private CrmResponseHandler.CrmApiResponse unauthorizedCrmResponse() {
-        return CrmResponseHandler.parse("{\"code\":401,\"msg\":\"unauthorized\",\"data\":null}");
     }
 }

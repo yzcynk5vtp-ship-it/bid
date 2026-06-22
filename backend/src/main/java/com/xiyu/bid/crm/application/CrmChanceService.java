@@ -286,32 +286,4 @@ public class CrmChanceService {
      * @param groupName 客户名（对应标讯的 purchaserName）
      * @return 项目负责人信息；{@code null} 表示查询失败或未找到
      */
-    public CustomerLeaderResult findLeaderByGroupName(String groupName) {
-        if (groupName == null || groupName.isBlank()) {
-            log.debug("findLeaderByGroupName skipped: groupName is null/blank");
-            return null;
-        }
-
-        CustomerChancePageRequest request = buildGroupRequest(groupName.trim(), 1, 10);
-        CrmChancePageResult result = doPageList(request);
-
-        if (result.list().isEmpty()) {
-            log.debug("findLeaderByGroupName: no opportunity found for groupName={}", groupName);
-            return null;
-        }
-
-        CustomerChanceVO first = result.list().get(0);
-        if (first.projectLeaderName() == null || first.projectLeaderName().isBlank()) {
-            log.info("findLeaderByGroupName: groupName={} has no projectLeaderName", groupName);
-            return null;
-        }
-
-        log.info("findLeaderByGroupName: groupName={}, leader={}, leaderNo={}",
-                groupName, first.projectLeaderName(), first.projectLeaderNo());
-        return new CustomerLeaderResult(
-                first.groupName(),
-                first.projectLeaderName(),
-                first.projectLeaderNo()
-        );
-    }
 }

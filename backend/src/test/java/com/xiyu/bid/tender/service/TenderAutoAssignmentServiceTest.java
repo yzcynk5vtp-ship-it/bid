@@ -1,6 +1,6 @@
 package com.xiyu.bid.tender.service;
 
-import com.xiyu.bid.crm.application.CrmChanceService;
+import com.xiyu.bid.crm.application.CrmCustomerLeaderQueryService;
 import com.xiyu.bid.crm.application.CustomerLeaderResult;
 import com.xiyu.bid.crm.domain.CrmProjectMapping;
 import com.xiyu.bid.crm.domain.CrmProjectMappingRepository;
@@ -31,14 +31,14 @@ class TenderAutoAssignmentServiceTest {
     private CrmProjectMappingRepository mappingRepository;
 
     @Mock
-    private CrmChanceService crmChanceService;
+    private CrmCustomerLeaderQueryService customerLeaderQueryService;
 
     private TenderAutoAssignmentService autoAssignmentService;
     private Tender tender;
 
     @BeforeEach
     void setUp() {
-        autoAssignmentService = new TenderAutoAssignmentService(mappingRepository, crmChanceService);
+        autoAssignmentService = new TenderAutoAssignmentService(mappingRepository, customerLeaderQueryService);
         tender = Tender.builder()
                 .id(1L)
                 .title("测试标讯")
@@ -146,7 +146,7 @@ class TenderAutoAssignmentServiceTest {
         assertThat(result.isMatched()).isTrue();
         assertThat(result.projectManagerName()).isEqualTo("王五");
         assertThat(result.projectManagerId()).isEqualTo("10086");
-        verify(crmChanceService, never()).findLeaderByGroupName(anyString());
+        verify(customerLeaderQueryService, never()).findLeaderByGroupName(anyString());
     }
 
     @Test
@@ -159,7 +159,7 @@ class TenderAutoAssignmentServiceTest {
         // CRM 返回负责人信息
         CustomerLeaderResult crmLeader =
                 new CustomerLeaderResult("上海西域采购中心", "张三", "10001");
-        when(crmChanceService.findLeaderByGroupName("上海西域采购中心"))
+        when(customerLeaderQueryService.findLeaderByGroupName("上海西域采购中心"))
                 .thenReturn(crmLeader);
 
         AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
@@ -168,7 +168,7 @@ class TenderAutoAssignmentServiceTest {
         assertThat(result.projectManagerName()).isEqualTo("张三");
         assertThat(result.projectManagerId()).isEqualTo("10001");
         verify(mappingRepository).findByPurchaserName("上海西域采购中心");
-        verify(crmChanceService).findLeaderByGroupName("上海西域采购中心");
+        verify(customerLeaderQueryService).findLeaderByGroupName("上海西域采购中心");
     }
 
     @Test
@@ -176,7 +176,7 @@ class TenderAutoAssignmentServiceTest {
     void autoAssignIfPossible_BothNoMatch_ShouldReturnNoMatch() {
         when(mappingRepository.findByPurchaserName("上海西域采购中心"))
                 .thenReturn(Optional.empty());
-        when(crmChanceService.findLeaderByGroupName("上海西域采购中心"))
+        when(customerLeaderQueryService.findLeaderByGroupName("上海西域采购中心"))
                 .thenReturn(null);
 
         AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
@@ -189,7 +189,7 @@ class TenderAutoAssignmentServiceTest {
     void autoAssignIfPossible_CrmException_ShouldReturnNoMatch() {
         when(mappingRepository.findByPurchaserName("上海西域采购中心"))
                 .thenReturn(Optional.empty());
-        when(crmChanceService.findLeaderByGroupName("上海西域采购中心"))
+        when(customerLeaderQueryService.findLeaderByGroupName("上海西域采购中心"))
                 .thenThrow(new RuntimeException("CRM connection timeout"));
 
         AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
@@ -205,7 +205,7 @@ class TenderAutoAssignmentServiceTest {
         AssignmentResult result = autoAssignmentService.tryAutoAssignFromCrm(tender);
 
         assertThat(result.isMatched()).isFalse();
-        verify(crmChanceService, never()).findLeaderByGroupName(anyString());
+        verify(customerLeaderQueryService, never()).findLeaderByGroupName(anyString());
     }
 
     @Test
@@ -213,7 +213,7 @@ class TenderAutoAssignmentServiceTest {
     void tryAutoAssignFromCrm_CrmLeaderFound_ShouldReturnMatched() {
         CustomerLeaderResult crmLeader =
                 new CustomerLeaderResult("上海西域采购中心", "李四", "10002");
-        when(crmChanceService.findLeaderByGroupName("上海西域采购中心"))
+        when(customerLeaderQueryService.findLeaderByGroupName("上海西域采购中心"))
                 .thenReturn(crmLeader);
 
         AssignmentResult result = autoAssignmentService.tryAutoAssignFromCrm(tender);
@@ -226,7 +226,7 @@ class TenderAutoAssignmentServiceTest {
     @Test
     @DisplayName("tryAutoAssignFromCrm_CRM返回null_返回noMatch")
     void tryAutoAssignFromCrm_CrmReturnsNull_ShouldReturnNoMatch() {
-        when(crmChanceService.findLeaderByGroupName("上海西域采购中心"))
+        when(customerLeaderQueryService.findLeaderByGroupName("上海西域采购中心"))
                 .thenReturn(null);
 
         AssignmentResult result = autoAssignmentService.tryAutoAssignFromCrm(tender);
