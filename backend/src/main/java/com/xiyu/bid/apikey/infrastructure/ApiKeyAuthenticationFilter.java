@@ -94,6 +94,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isApiKeyPath(String uri) {
+        if (uri.startsWith("/api/integration/tenders/attachments/download")) {
+            return false;
+        }
         return uri.startsWith("/api/external/") || uri.startsWith("/api/integration/");
     }
 

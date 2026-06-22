@@ -37,9 +37,9 @@ import org.springframework.web.bind.annotation.RestController;
  * 详见 {@code ApiKeyAuthenticationFilter} 和 {@code SecurityConfig}。
  */
 @RestController
-@Tag(name = "CRM 附件下载（外部API v2.0）", description = "CRM 跨系统附件下载端点，通过 X-API-Key 认证")
+@Tag(name = "CRM 附件下载（外部API v2.0）", description = "CRM 跨系统附件下载端点，公开访问无需认证")
 @RequestMapping("/api/integration/tenders/attachments")
-@PreAuthorize("hasRole('EXTERNAL_API')")
+@PreAuthorize("permitAll")
 @RequiredArgsConstructor
 @Slf4j
 public class TenderAttachmentDownloadController {
