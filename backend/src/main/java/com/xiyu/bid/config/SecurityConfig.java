@@ -100,6 +100,7 @@ public class SecurityConfig {
             "/actuator/health/**",
             "/api/external/**",
             "/api/systems/external/**",
+            "/api/integration/tenders/attachments/download",
             "/error"
     };
 

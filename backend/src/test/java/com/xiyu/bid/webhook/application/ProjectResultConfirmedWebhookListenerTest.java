@@ -62,7 +62,7 @@ class ProjectResultConfirmedWebhookListenerTest {
     private ProjectResultConfirmedWebhookListener listener(String url) {
         ObjectMapper objectMapper = new ObjectMapper();
         ProjectResultPayloadAssembler assembler = new ProjectResultPayloadAssembler(
-                tenderRepository, userRepository, projectDocumentRepository, objectMapper, "xiyu_sk_test");
+                tenderRepository, userRepository, projectDocumentRepository, objectMapper);
         ProjectResultConfirmedWebhookListener l = new ProjectResultConfirmedWebhookListener(
                 taskRepository, tenderRepository, objectMapper, crmOpportunityCodeResolver, assembler);
         ReflectionTestUtils.setField(l, "crmWebhookUrl", url);
