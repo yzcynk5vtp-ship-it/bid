@@ -739,35 +739,72 @@ void getUserJobAndRoleListByJobNumbers_mapsByJobNumber() {
 
 ### 2.5 接口 5：登出接口 `/oauth/logout`
 
-**状态**：⚠️ 路径不一致
+**状态**：⚠️ **部分实现**（路径不一致 + 调用场景缺失）
 
 **YApi**：https://yapi.ehsy.com/project/406/interface/api/23370
 
-**文档要求**：调用 `/oauth/logout`
+---
 
-**当前实现**：
-- 使用 `/auth/logout` 接口
+#### 泊冉文档要求
+
+| 项目 | 值 |
+|------|-----|
+| HTTP 方法 | `POST` |
+| 接口路径 | `/oauth/logout` |
+| Content-Type | `application/x-www-form-urlencoded` |
+| Authorization | `Bearer <token>`（在 Header 中） |
+| 响应 | `{"code":0,"message":"success","trace":null,"data":"退出成功!"}` |
+
+**说明**：登出接口，在操作日志表中记录登出信息（sys_login_info）
+
+---
+
+#### 当前实现
+
+**调用链 1：前端调用本地登出接口**
+
+```
+前端 POST /api/auth/logout
+    └─► AuthController.logout()
+            └─► AuthService.logout(accessToken, refreshToken)
+                    └─► 本地 JWT token 失效处理
+                            └─► ❌ 不调用 OSS 登出接口
+```
+
+**调用链 2：CRM 系统登出**
+
+```
+前端 POST /api/crm/auth/logout
+    └─► CrmController.logout()
+            └─► CrmAuthService.logout()
+                    └─► POST /auth/logout (Bearer token in Header)
+                            └─► 清除 ossTokenCache 和 crmTokenCache
+```
 
 **代码引用**：
 
 ```java
-// CrmProperties.java:184-185
-@Data
-public static class CrmAuthPaths {
-    private String logoutPath = "/auth/logout";  // ❌ 应该是 /oauth/logout
-}
-
 // CrmAuthService.java:61-75
 public void logout() {
     CrmToken token = ossTokenCache.get().orElse(null);
     if (token != null) {
-        String baseUrl = properties.getEffectiveAuthBaseUrl();
-        String path = properties.getAuth().getLogoutPath();  // /auth/logout
-        httpClient.post(baseUrl, path, token.accessToken(), null);
+        try {
+            String baseUrl = properties.getEffectiveAuthBaseUrl();
+            String path = properties.getAuth().getLogoutPath();  // = "/auth/logout"
+            httpClient.post(baseUrl, path, token.accessToken(), null);
+        } catch (RuntimeException e) {
+            log.warn("CRM logout request failed (non-fatal): {}", e.getMessage());
+        }
     }
     ossTokenCache.clear();
     crmTokenCache.clear();
+    log.info("CRM token caches cleared (logout)");
 }
+
+// CrmHttpClient.java:86-90 (executePost)
+HttpHeaders headers = new HttpHeaders();
+headers.setContentType(MediaType.APPLICATION_JSON);  // ⚠️ 应该是 APPLICATION_FORM_URLENCODED
+headers.setBearerAuth(accessToken);                  // ✅ Bearer token 正确
 ```
 
 **配置**：
@@ -777,14 +814,163 @@ public void logout() {
 app.crm.auth.logout-path: ${XIYU_CRM_AUTH_LOGOUT_PATH:/auth/logout}
 ```
 
-**差距分析**：
+---
 
-| 项目 | 文档要求 | 当前实现 | 影响 |
-|------|---------|---------|------|
-| 接口路径 | `/oauth/logout` | `/auth/logout` | 可能无法清除 OSS 缓存 |
-| 清除缓存 | OSS token + 菜单权限 | OSS token + CRM token | 缺少菜单权限清除 |
+#### 差距分析
 
-**关键问题**：当前登出时只清除了 `ossTokenCache` 和 `crmTokenCache`，但没有清除菜单权限缓存。
+| # | 项目 | 泊冉文档要求 | 当前实现 | 影响 | 严重度 |
+|---|------|-------------|---------|------|--------|
+| 1 | HTTP 方法 | `POST` | `POST` | ✅ 一致 | ✅ |
+| 2 | 接口路径 | `/oauth/logout` | `/auth/logout` | 🔴 路径不一致 | 🔴 高 |
+| 3 | Content-Type | `application/x-www-form-urlencoded` | `application/json` | ⚠️ 格式差异 | 🟡 中 |
+| 4 | Authorization | Bearer token | Bearer token | ✅ 一致 | ✅ |
+| 5 | 响应处理 | 解析 code/message | 不解析响应 | ⚠️ 未验证 | 🟢 低 |
+| 6 | 调用场景 | 登出时必须调用 | 仅 CRM 登出调用 | 🔴 本地登出不调用 | 🔴 高 |
+
+---
+
+#### 调用场景分析
+
+| 场景 | 当前实现 | 是否按文档实现 |
+|------|---------|--------------|
+| 本地 JWT 登出 | ❌ 不调用 OSS 登出接口 | 否 |
+| CRM 系统登出 | ✅ 调用 `/auth/logout` | 路径不一致 |
+
+**关键问题**：
+
+1. **本地 JWT 登出不调用 OSS 登出接口**
+   - `AuthController.logout()` 只处理本地 JWT token
+   - 不调用 `CrmAuthService.logout()`
+   - OSS 系统中的 token 不会被清除
+
+2. **接口路径不一致**
+   - 泊冉文档：`/oauth/logout`
+   - 当前配置：`/auth/logout`
+   - 如果 OSS 系统只提供 `/oauth/logout`，当前实现会失败
+
+3. **Content-Type 不一致**
+   - 泊冉文档：`application/x-www-form-urlencoded`
+   - 当前实现：`application/json`
+   - 可能导致 OSS 系统拒绝请求
+
+---
+
+#### 最小修改方案
+
+**方案 A：修改配置路径（如果 OSS 系统支持）**
+
+```yaml
+# application.yml
+app:
+  crm:
+    auth:
+      logout-path: ${XIYU_CRM_AUTH_LOGOUT_PATH:/oauth/logout}
+```
+
+**方案 B：修改 Content-Type（如果 OSS 系统要求）**
+
+```java
+// CrmAuthService.java
+public void logout() {
+    CrmToken token = ossTokenCache.get().orElse(null);
+    if (token != null) {
+        try {
+            String baseUrl = properties.getEffectiveAuthBaseUrl();
+            String path = properties.getAuth().getLogoutPath();
+            // 使用 form-urlencoded 而不是 JSON
+            httpClient.postForm(baseUrl, path, token.accessToken(), null);
+        } catch (RuntimeException e) {
+            log.warn("CRM logout request failed (non-fatal): {}", e.getMessage());
+        }
+    }
+    ossTokenCache.clear();
+    crmTokenCache.clear();
+}
+```
+
+**方案 C：在本地登出时也调用 OSS 登出（推荐）**
+
+```java
+// AuthService.java
+@Transactional
+public void logout(String accessToken, String refreshToken) {
+    // 1. 调用 OSS 登出接口
+    try {
+        crmAuthService.logout();
+    } catch (RuntimeException e) {
+        log.warn("OSS logout failed (non-fatal): {}", e.getMessage());
+    }
+
+    // 2. 本地 JWT token 失效处理
+    revokeAccessToken(accessToken);
+    if (refreshToken != null && !refreshToken.isBlank()) {
+        refreshSessionRepository.findByTokenHash(hashToken(refreshToken))
+                .filter(session -> session.getRevokedAt() == null)
+                .ifPresent(session -> {
+                    session.setRevokedAt(LocalDateTime.now());
+                    refreshSessionRepository.save(session);
+                });
+    }
+}
+```
+
+---
+
+#### 结论
+
+**接口 5 部分实现**：
+- ✅ HTTP 方法正确
+- ✅ Bearer token 正确设置
+- ❌ 接口路径不一致（`/auth/logout` vs `/oauth/logout`）
+- ⚠️ Content-Type 不一致（`application/json` vs `application/x-www-form-urlencoded`）
+- ❌ 本地 JWT 登出不调用 OSS 登出接口
+
+**是否需要修改**：
+- 如果 OSS 系统只提供 `/oauth/logout` → 必须修改配置路径
+- 如果 OSS 系统要求 `application/x-www-form-urlencoded` → 必须修改 Content-Type
+- 如果需要在登出时清除 OSS token → 必须在 `AuthService.logout()` 中调用 `CrmAuthService.logout()`
+
+---
+
+#### 需要确认的问题
+
+| # | 问题 | 重要性 |
+|---|------|--------|
+| Q1 | OSS 系统是否同时提供 `/oauth/logout` 和 `/auth/logout`？ | 🔴 高 |
+| Q2 | OSS 系统是否要求 `application/x-www-form-urlencoded`？ | 🟡 中 |
+| Q3 | 本地 JWT 登出时是否需要调用 OSS 登出接口？ | 🔴 高 |
+
+---
+
+#### 测试用例建议
+
+```java
+@Test
+void shouldCallOssLogoutOnLocalLogout() {
+    // Given
+    String accessToken = "valid-jwt-token";
+    String refreshToken = "valid-refresh-token";
+
+    // When
+    authService.logout(accessToken, refreshToken);
+
+    // Then
+    verify(crmAuthService).logout();  // 验证调用了 OSS 登出
+}
+
+@Test
+void shouldUseCorrectLogoutPath() {
+    // Given: 配置 logout-path = /oauth/logout
+    CrmToken token = new CrmToken("oss-token", 3600, Instant.now());
+    when(ossTokenCache.get()).thenReturn(Optional.of(token));
+
+    // When
+    crmAuthService.logout();
+
+    // Then
+    verify(httpClient).post(any(), eq("/oauth/logout"), eq("oss-token"), isNull());
+}
+```
 
 ---
 
