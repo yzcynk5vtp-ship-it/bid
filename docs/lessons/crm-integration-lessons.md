@@ -722,3 +722,50 @@ CRM 商机关联回填标讯评估表时，`projectPlanGapFiles`（GAP 附件引
 - `src/views/Bidding/detail/components/ProjectPlanGapUpload.vue` — `resolveFileUrl()` XSS 过滤
 - `docs/lessons/root-cause-analysis-co262-crm-eval-gap-files.md` — 完整根因分析
 - `docs/lessons/decisions.md` — GAP 附件加载统一入口决策
+
+---
+
+## 10. §4.1 与 §4.2 两条回调路径 payload 格式不一致导致"假成功"（CO-277 / CO-278）
+
+**来源**: 2026-06-22 排查
+
+### 问题
+
+系统中存在两条独立的 CRM 回调路径：
+
+| 路径 | 触发场景 | 监听器 | payload 格式 | CRM 是否处理 |
+|---|---|---|---|---|
+| §4.1 | 评估审核→弃标/投标 | `WebhookEventListener` | `tender.status_changed`（旧格式） | **否** |
+| §4.2 | 项目结果登记 | `ProjectResultConfirmedWebhookListener` | `bidInfoSync`（bidInfoList） | **是** |
+
+**症状**：
+- 用户通过「项目结果登记」页面操作 → 走 §4.2 → CRM 商机状态正确更新
+- 用户通过「评估审核→弃标」操作 → 走 §4.1 → CRM 返回 `{"code":"0","msg":"success","data":null}`，但商机状态未变化
+
+**根因**：
+1. §4.1 发送的 `tender.status_changed` 格式 CRM 不识别，但 CRM 返回 `code:0`（"收到请求"），而非报错
+2. 我们误以为 `code:0` = 业务成功，实际上 `data:null` 表示 CRM 没有处理任何数据
+
+### 教训
+
+1. **外部系统的"成功"响应不可信**：`code:0` / `200 OK` 只代表"收到请求"，不代表"业务成功"。必须通过端到端验证（查询外部系统状态）确认实际效果。
+
+2. **多路径实现必须逐条验证**：系统中存在 N 条业务路径时，必须验证 N 条，不能只验证 1 条就下结论。
+
+3. **接口契约必须双方确认**：接口文档不能只由一方编写，必须与外部系统团队确认他们实际支持的格式。
+
+4. **对 `data:null` 保持警惕**：如果响应中 `data` 为空，应该记录警告日志，而不是标记成功。
+
+### 修复
+
+- 统一 §4.1 和 §4.2 的 payload 格式，都使用 `bidInfoSync` 格式
+- 删除无用的 `TenderStatusChangedPayload` 和 `RecommendationPayload`
+- 更新接口文档 `docs/integration/标讯集成接口文档-v3.8.md`
+- 新增经验教训文档 `docs/lessons/external-integration-lessons.md`
+
+### 修复参考
+
+- `backend/src/main/java/com/xiyu/bid/webhook/application/WebhookEventListener.java` — §4.1 监听器
+- `backend/src/main/java/com/xiyu/bid/webhook/application/ProjectResultConfirmedWebhookListener.java` — §4.2 监听器
+- `docs/integration/标讯集成接口文档-v3.8.md` — §4.1 格式修正
+- `docs/lessons/external-integration-lessons.md` — 外部系统集成检查清单
