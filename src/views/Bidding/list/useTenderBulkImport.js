@@ -6,21 +6,10 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { crmApi } from '@/api/modules/crm.js'
+import { triggerBlobDownload } from '@/utils/download.js'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 const ACCEPTED_EXT = '.xlsx'
-
-function triggerBlobDownload(blob, filename) {
-  if (!blob || typeof window === 'undefined') return
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(url)
-}
 
 function isXlsxFile(file) {
   const name = String(file?.name || '').toLowerCase()

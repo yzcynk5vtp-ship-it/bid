@@ -1,8 +1,12 @@
 ---
 title: 泊冉系统获取用户权限接口顺序
-space: implementation
-category: api
+space: engineering
+category: integration
+tags: [integration, boran, permission]
 sources: []
+backlinks:
+  - _index
+created: 2026-06-22
 updated: 2026-06-22
 health_checked: 2026-06-22
 ---

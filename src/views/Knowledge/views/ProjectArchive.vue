@@ -238,10 +238,10 @@ const buildExportParams = () => {
   return params
 }
 
+import { triggerBlobDownload } from '@/utils/download.js'
+
 const downloadBlob = (blob, filename, mimeType) => {
-  const link = document.createElement('a')
-  link.href = window.URL.createObjectURL(new Blob([blob], { type: mimeType }))
-  link.download = filename; link.click(); window.URL.revokeObjectURL(link.href)
+  triggerBlobDownload(new Blob([blob], { type: mimeType }), filename)
 }
 
 const handleDownloadArchive = async (row) => {

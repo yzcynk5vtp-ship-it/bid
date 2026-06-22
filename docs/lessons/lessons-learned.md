@@ -736,3 +736,47 @@ diff <(unzip -p local.jar BOOT-INF/classes/.../Foo.class | xxd) \
 
 ---
 
+## 16. Bug 修复前必须先验证实际行为，避免"推测式修复"
+
+### 问题背景
+
+CO-285 附件下载文件名显示为 "download"，一个看似简单的问题花了 3 轮 PR 才真正修复：
+- PR #926：修复 Content-Disposition 头编码（无效）
+- PR #929：修复 CORS 配置暴露响应头（无效）
+- PR #931：修改前端下载方式为 fetch+blob（有效）
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 只看代码推测问题，不验证实际行为 | 修复前必须用浏览器开发者工具验证实际的请求/响应 | Bug 修复前先复现，用 F12 Network 查看实际响应头 |
+| 第一次修复无效后继续在同一方向深入 | 修复无效时立即调整方向，而不是继续修复 | 修复无效时回到"问题是什么"重新分析 |
+| 忽略浏览器行为差异 | `<a>` 标签导航和 fetch 请求的下载行为不同 | 涉及文件下载时明确下载方式并验证其行为 |
+| 重复造轮子 | 项目已有 4 处类似下载函数，又新增 1 处 | 新增工具函数前先 grep 搜索项目中是否已有 |
+
+### 操作规范
+
+1. **Bug 修复前必须先复现**：用浏览器开发者工具（F12 → Network）查看实际的请求和响应，而不是只看代码推测。
+2. **修复无效时立即调整方向**：如果第一次修复无效，不要继续在同一个方向上深入，而是回到问题本身重新分析。
+3. **明确下载方式**：涉及文件下载时，必须明确是 `<a>` 标签导航、`window.open`、还是 `fetch+blob`，并验证其行为。
+4. **新增工具函数前先搜索**：使用 `grep` 搜索项目中是否已有类似实现，避免重复造轮子。
+
+### 验证命令
+
+```bash
+# 检查项目中是否还有其他重复的下载工具函数
+grep -r "function.*download.*blob\|triggerBlobDownload\|downloadBlob" src/
+
+# 检查 CORS 配置是否正确暴露了 Content-Disposition 头
+curl -s -D- -o /dev/null -X OPTIONS "http://172.16.38.78:8080/api/doc-insight/download" \
+  -H "Origin: http://172.16.38.78:8080" \
+  -H "Access-Control-Request-Method: GET" | grep -i "access-control-expose"
+```
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-co-285.md` — 完整根因分析
+- `src/utils/download.js` — 提取的公共下载工具函数
+
+---
+

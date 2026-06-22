@@ -116,6 +116,7 @@
 import { computed } from 'vue'
 import { formatTenderDateTime } from '../../bidding-utils.js'
 import { API_BASE_URL } from '@/api/config.js'
+import { downloadWithFilename as downloadFile } from '@/utils/download.js'
 
 const props = defineProps({
   tender: { type: Object, default: null },
@@ -132,27 +133,10 @@ function normalizeDownloadUrl(url) {
   return url
 }
 
-async function downloadWithFilename(url, fallbackName) {
+function downloadWithFilename(url, fallbackName) {
   const fullUrl = normalizeDownloadUrl(url)
   if (!fullUrl) return
-  try {
-    const resp = await fetch(fullUrl, { credentials: 'include' })
-    if (!resp.ok) { window.open(fullUrl, '_blank'); return }
-    const disposition = resp.headers.get('Content-Disposition') || ''
-    const match = disposition.match(/filename\*=UTF-8''(.+?)(?:;|$)/i)
-      || disposition.match(/filename="?([^";\n]+)"?/i)
-    const filename = match ? decodeURIComponent(match[1].trim()) : fallbackName
-    const blob = await resp.blob()
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(a.href)
-  } catch {
-    window.open(fullUrl, '_blank')
-  }
+  downloadFile(fullUrl, fallbackName)
 }
 
 const sourceDocumentDownloadUrl = computed(() => normalizeDownloadUrl(props.tender?.sourceDocumentFileUrl))

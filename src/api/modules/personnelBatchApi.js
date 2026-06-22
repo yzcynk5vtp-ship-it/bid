@@ -5,19 +5,7 @@
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 
 import httpClient from '../client.js'
-
-/**
- * Trigger browser download for a blob response
- */
-function triggerBlobDownload(blob, filename) {
-  const url = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.setAttribute('download', filename)
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
-}
+import { triggerBlobDownload } from '@/utils/download.js'
 
 export const personnelBatchApi = {
   /**

@@ -13,6 +13,7 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import http from '@/api/client'
+import { triggerBlobDownload } from '@/utils/download.js'
 
 export function useQualificationImportExport({ userStore, fetchQualifications, filtersRef }) {
   const selectedRows = ref([])
@@ -24,14 +25,7 @@ export function useQualificationImportExport({ userStore, fetchQualifications, f
   const onSelectionChange = (rows) => { selectedRows.value = rows }
 
   const downloadBlob = (blob, filename) => {
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    setTimeout(() => URL.revokeObjectURL(url), 0)
+    triggerBlobDownload(blob, filename)
   }
 
   const handleDownloadTemplate = async () => {
