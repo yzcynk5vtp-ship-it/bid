@@ -172,6 +172,11 @@ class TenderEvaluationSubmissionServiceTest {
         assertThat(dto.evaluatorId()).isEqualTo(EVALUATOR_ID);
         assertThat(dto.evaluationStatus()).isEqualTo(EvaluationStatus.DRAFT);
         assertThat(dto.submittedAt()).isNull();
+        // CO-312: 空白草稿的 bidRecommendation 必须为 null（"待决策"），不能默认 NOT_RECOMMEND。
+        // 历史 bug：emptyDraftDTO 曾返回 BidRecommendation.NOT_RECOMMEND，导致刷新页面后前端显示"不投标"。
+        assertThat(dto.bidRecommendation()).isNull();
+        // CO-312: 三段式 recommendation 也必须为 null，让前端走"请选择"占位。
+        assertThat(dto.evaluationRecommendation()).isNull();
         verify(evaluationRepository, never()).save(any());
     }
 
