@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { hasStoredUserHint } from '@/api/session.js'
 import { registerLoginNavigator } from './sessionNavigation.js'
-import { hasAnyPermission } from '@/utils/permission'
+import { hasAllPermissions } from '@/utils/permission'
 import { sidebarMenuConfig } from '@/config/sidebar-menu'
 
 const DEFAULT_AUTHENTICATED_HOME = '/dashboard'
@@ -17,7 +17,7 @@ const hasRouteAccess = (to, userStore) => {
   const requiredPermissions = getRequiredPermissions(to)
 
   if (requiredPermissions.length > 0) {
-    return requiredPermissions.some((key) => userStore.hasPermission(key))
+    return hasAllPermissions(userStore.menuPermissions, requiredPermissions)
   }
 
   return true
@@ -34,7 +34,7 @@ const getFirstAccessiblePath = (userStore) => {
 
   if (userStore.hasPermission('dashboard')) return DEFAULT_AUTHENTICATED_HOME
   for (const menu of sidebarMenuConfig) {
-    if (hasAnyPermission(userStore.menuPermissions, menu.meta?.permissionKeys)) {
+    if (hasAllPermissions(userStore.menuPermissions, menu.meta?.permissionKeys)) {
       return menu.path
     }
   }
