@@ -53,7 +53,7 @@ public class TenderCommandService {
     private final NotificationApplicationService notificationAppService;
     private final TenderAssignmentNotifier assignmentNotifier;
     private final TenderAttachmentRepository attachmentRepository;
-    private final TenderCrmLinkGuard crmLinkGuard;
+    private final TenderCrmOccupancyChecker crmOccupancyChecker;
 
     public TenderDTO createTender(TenderDTO tenderDTO) {
         return createTender(tenderDTO, null);
@@ -217,15 +217,21 @@ public class TenderCommandService {
         commandAccessGuard.assertCanUpdateTender(existingTender, userId);
         // CO-269: 投标中/已中标/未中标/已放弃状态不允许更换CRM商机
         assertCrmLinkAllowed(existingTender.getStatus());
-        crmLinkGuard.assertCrmOpportunityNotOccupied(id, crmOpportunityId); // CO-297: 已被其他标讯关联的 CRM 商机不能再关联
+        crmOccupancyChecker.assertCrmOpportunityNotOccupied(id, crmOpportunityId); // CO-297: CRM 商机唯一性前置检查（应用层 + 数据库 UNIQUE 双层防御）
         existingTender.setCrmOpportunityId(crmOpportunityId);
         existingTender.setCrmOpportunityName(crmOpportunityName);
         existingTender.setEvaluationSource(com.xiyu.bid.entity.Tender.EvaluationSource.BID_SYSTEM_LINK);
-        // CO-268: 关联CRM商机后，将标讯状态切换为已评估
         if (existingTender.getStatus() == com.xiyu.bid.entity.Tender.Status.TRACKING) {
             existingTender.setStatus(com.xiyu.bid.entity.Tender.Status.EVALUATED);
         }
-        Tender updatedTender = tenderRepository.save(existingTender);
+        Tender updatedTender;
+        try {
+            updatedTender = tenderRepository.save(existingTender);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            crmOccupancyChecker.translateUniqueConstraintViolation(ex);
+            throw new com.xiyu.bid.exception.BusinessException(409,
+                    "CRM 商机已被其他标讯关联（并发冲突），请刷新后重试");
+        }
         log.info("Linked CRM opportunity {} to tender id: {}", crmOpportunityId, id);
         return tenderMapper.toDTO(updatedTender);
     }
