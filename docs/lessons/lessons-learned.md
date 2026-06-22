@@ -674,6 +674,81 @@ git log --graph --oneline --decorate --boundary --max-count=25 --all
 
 ---
 
+## 11. 业务异常消息应包含系统上下文（CO-301）
+
+### 问题背景
+
+"标讯已存在" —— 这条错误提示在代码中三处出现（`TenderDuplicateException`、`TenderIntegrationCommandService` 中的两处 `IllegalArgumentException` 和 `PushResult.message`），服务于两个完全不同的入口：手动创建标讯和外部系统推送标讯。
+
+| 入口 | 异常类 / 返回结构 | 原 message | 问题 |
+|------|--------|-----------|------|
+| POST /api/tenders（手动创建） | `TenderDuplicateException` | "标讯已存在" | 用户不知道"被谁拒绝" |
+| POST /api/integration/tenders/push（外部推送） | `IllegalArgumentException` | "标讯已存在" | 集成方无法判断是投标管理系统的去重还是其他系统拒绝 |
+| 同上（返回状态） | `PushResult.DUPLICATE` | "标讯已存在" | 同步回调中缺少系统标识 |
+
+用户和测试人员看到这三个字时，会产生困惑：
+1. **谁**拦截了操作？
+2. **哪个系统**判定了重复？
+3. 是本地数据库去重，还是外部接口返回？
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 错误消息没有"谁"的信息 | 用户需要在无日志的情况下判断问题来源 | 业务异常 message 必须包含系统/子系统前缀 |
+| 多个入口共用同一条文案 | 不同入口的相同业务概念应有可区分的消息风格 | 同一业务概念在不同入口使用一致的前缀 + 差异化细节 |
+| 代码中的 message 被当作"常量字符串"而非"UI 内容"审查 | Code Review 只检查异常类型和 HTTP 状态，不检查 message 可读性 | Review checklist 必须包含"错误消息是否自解释" |
+| 测试断言模糊匹配 `contains("标讯已存在")` | 宽松的断言让错误消息可以被默默退化而不被发现 | 测试断言应精确匹配完整 message，或至少匹配带系统前缀的片段 |
+
+### 正确做法
+
+```java
+// ✅ 包含系统前缀，用户无需查日志就能判断来源
+throw new TenderDuplicateException("投标管理系统该标讯已存在");
+
+// ✅ 多个入口统一风格
+throw new IllegalArgumentException("投标管理系统该标讯已存在");
+
+// ✅ 响应中也要带系统标识
+return PushResult.builder()
+    .status(DUPLICATE)
+    .message("投标管理系统该标讯已存在")
+    .build();
+```
+
+```java
+// ✅ 测试断言精确匹配（不做宽松 contains）
+assertThat(e.getMessage()).isEqualTo("投标管理系统该标讯已存在");
+// 或
+assertThat(e.getMessage()).contains("投标管理系统该标讯已存在");
+```
+
+### 操作规范（建议固化到 CLAUDE.md / RULES.md）
+
+1. **新业务异常必须提供系统上下文**：`super("投标管理系统XXX")`，不要 `super("XXX")`
+2. **异常 message 作为 UI 内容审查**：Code Review 时，对抛出的异常字符串做等同于 UI 文案的审查
+3. **多入口消息一致性**：同一业务概念在不同入口（手动创建/外部推送/回调）的错误消息应使用一致的系统前缀
+4. **测试断言与 message 强绑定**：不要只测异常类型，要测 message 包含预期内容；message 退化时测试应该红掉
+
+### 验证命令
+
+```bash
+# 检查业务异常类中的 message 是否缺少系统上下文
+grep -rn 'super(".*已存在")' backend/src/main/java
+# 检查集成/推送路径中的硬编码错误消息
+grep -rn 'throw new IllegalArgumentException("标讯' backend/src/main/java
+
+# 验证修复后的测试是否精确匹配新消息
+mvn test -Dtest=TenderDeduplicationServiceTest,TenderCommandServiceTest,TenderIntegrationServicePushEvaluationTest,GlobalExceptionHandlerTest
+```
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-co-301.md` — CO-301 完整根因分析
+- `docs/lessons/lessons-learned.md` §1 — 同一问题的扩展：接口契约变更同步前端所有入口
+
+---
+
 ## 12. 服务器部署 jar 验证四原则（CO-301 部署经验）
 
 > 来源：CO-301 部署排查（2026-06-22）

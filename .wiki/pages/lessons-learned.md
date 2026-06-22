@@ -2,7 +2,7 @@
 title: 工程经验总结
 space: engineering
 category: guide
-tags: [经验总结, 数据库迁移, PostgreSQL, MySQL, Flyway, 多Agent并行, 工程化护栏, Git历史, ArchUnit, Controller包规范]
+tags: [经验总结, 数据库迁移, PostgreSQL, MySQL, Flyway, 多Agent并行, 工程化护栏, Git历史, ArchUnit, Controller包规范, 错误消息设计, 用户体验]
 sources:
   - CLAUDE.md
   - RULES.md
@@ -11,8 +11,8 @@ backlinks:
   - _index
   - multi-agent-defense-playbook
 created: 2026-05-10
-updated: 2026-06-18
-health_checked: 2026-06-21
+updated: 2026-06-22
+health_checked: 2026-06-22
 ---
 # 工程经验总结
 
@@ -494,6 +494,47 @@ $ git branch -r --contains 29bd3bc91
 |------|------|----------|
 | 2026-06-19 | `agent/zcode/fix-crm-opportunity-code`（PR !827） | 重新发起被 PR !820 编号复用误导而丢失的核心修复（status 1→6 + code 改用 crm_opportunity_id）；沉淀本节 PR 合并验证 checklist |
 | 2026-06-22 | `agent/cursor/co-301-tender-duplicate-message`（PR !958） | 标讯去重拦截错误消息从"标讯已存在"改为"投标管理系统该标讯已存在"（3 处源码 + 4 个测试类 + E2E 测试）；沉淀"业务异常消息应包含系统上下文"经验；部署时发现 Maven 缓存旧 class、SSH 中文乱码误判，沉淀"服务器部署 jar 验证四原则" |
+
+---
+
+## 七、业务异常消息应包含系统上下文（2026-06-22）
+
+> 来源：CO-301 / PR !958
+
+### 7.1 问题
+
+业务异常消息 `"标讯已存在"` 在代码中三处出现（`TenderDuplicateException`、`TenderIntegrationCommandService` 中的两处 `IllegalArgumentException` 和 `PushResult.message`），服务于手动创建和外部系统推送两个入口。用户/集成方看到后无法判断"哪个系统拦截了操作"，导致额外沟通成本。
+
+### 7.2 根因模式
+
+| 根因 | 说明 |
+|------|------|
+| message 无系统上下文 | `"标讯已存在"` 没有"谁"的信息 |
+| 多入口共用同文案 | 不同入口应使用一致风格的前缀 |
+| Code Review 不审查 message | 只检查异常类型和 HTTP 状态，不检查 message 可读性 |
+| 测试断言宽松匹配 | `contains("标讯已存在")` 让 message 可默默退化而不红 |
+
+### 7.3 规范
+
+| 场景 | 规范 |
+|------|------|
+| 新业务异常 | message 必须包含系统/子系统前缀，如 `"投标管理系统XXX"` |
+| 多入口消息 | 同一业务概念在不同入口使用一致前缀 + 差异化细节 |
+| Code Review | 异常字符串等同于 UI 文案，审查可读性而非只看类型 |
+| 测试断言 | 精确匹配完整 message，或至少匹配带系统前缀的片段 |
+
+### 7.4 防复发策略
+
+```bash
+# 检查业务异常是否缺少系统上下文
+grep -rn 'super(".*已存在")' backend/src/main/java
+grep -rn 'IllegalArgumentException("标讯' backend/src/main/java
+```
+
+### 7.5 关联的变更
+
+- [docs/lessons/root-cause-analysis-co-301.md](../../docs/lessons/root-cause-analysis-co-301.md) — 完整根因分析
+- [docs/lessons/lessons-learned.md](../../docs/lessons/lessons-learned.md) §11 — 通用扩展版本
 
 ---
 
