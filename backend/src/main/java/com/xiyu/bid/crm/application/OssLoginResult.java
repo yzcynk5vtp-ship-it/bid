@@ -1,6 +1,7 @@
 package com.xiyu.bid.crm.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -12,6 +13,7 @@ import java.util.Map;
  * <p>
  * 包含 token、员工信息、权限等完整登录数据。
  */
+@Getter
 public class OssLoginResult {
 
     private final String username;
