@@ -91,6 +91,7 @@ public interface TenderRepository extends JpaRepository<Tender, Long>, JpaSpecif
 
     /**
      * CO-297: 按 CRM 商机 ID 查询已关联的标讯，用于关联去重。
+     * 业务规则：一个 CRM 商机最多关联一个标讯（数据库有 UNIQUE 约束做最终防线）。
      */
-    Optional<Tender> findFirstByCrmOpportunityId(String crmOpportunityId);
+    Optional<Tender> findByCrmOpportunityId(String crmOpportunityId);
 }

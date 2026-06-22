@@ -67,6 +67,8 @@ class TenderCommandServiceTest {
     private TenderAssignmentNotifier assignmentNotifier;
     @Mock
     private TenderAttachmentRepository tenderAttachmentRepository;
+    @Mock
+    private TenderCrmOccupancyChecker crmOccupancyChecker;
 
     private TenderCommandService tenderCommandService;
     private TenderMapper tenderMapper;
@@ -84,7 +86,7 @@ class TenderCommandServiceTest {
                 tenderDeduplicationService, tenderRepository, projectRepository,
                 tenderMapper, accessGuard, taskService, commandAccessGuard,
                 autoAssignmentService, eventPublisher, userRepository, notificationAppService,
-                assignmentNotifier, tenderAttachmentRepository, new TenderCrmLinkGuard(tenderRepository));
+                assignmentNotifier, tenderAttachmentRepository, crmOccupancyChecker);
 
         tender = Tender.builder()
                 .id(1L)

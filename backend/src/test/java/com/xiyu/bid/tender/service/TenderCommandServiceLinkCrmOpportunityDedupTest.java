@@ -22,12 +22,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * CO-297: TenderCommandService.linkCrmOpportunity 与 TenderCrmLinkGuard 的协作测试。
+ * CO-297: TenderCommandService.linkCrmOpportunity 与 TenderCrmOccupancyChecker 的协作测试。
  * <p>
  * 职责边界：
- * - TenderCrmLinkGuard 自身的占位判定（happy / 自身幂等 / 冲突 / null / blank）由
- *   {@link TenderCrmLinkGuardTest} 覆盖。
- * - 本测试只验证 service 端是否正确调用 guard、透传异常、不破坏 happy path。
+ * - TenderCrmOccupancyChecker 自身的占位判定（happy / 自身幂等 / 冲突 / null / blank）由
+ *   {@link TenderCrmOccupancyCheckerTest} 覆盖。
+ * - 本测试只验证 service 端是否正确调用 checker、透传异常、不破坏 happy path。
  */
 @ExtendWith(MockitoExtension.class)
 class TenderCommandServiceLinkCrmOpportunityDedupTest {
@@ -35,7 +35,7 @@ class TenderCommandServiceLinkCrmOpportunityDedupTest {
     @Mock private TenderRepository tenderRepository;
     @Mock private TenderCommandAccessGuard commandAccessGuard;
     @Mock private TenderMapper tenderMapper;
-    @Mock private TenderCrmLinkGuard crmLinkGuard;
+    @Mock private TenderCrmOccupancyChecker crmOccupancyChecker;
 
     private TenderCommandService tenderCommandService;
 
@@ -63,13 +63,13 @@ class TenderCommandServiceLinkCrmOpportunityDedupTest {
                 null,                  // NotificationApplicationService
                 null,                  // TenderAssignmentNotifier
                 null,                  // TenderAttachmentRepository
-                crmLinkGuard           // CO-297
+                crmOccupancyChecker    // CO-297: CRM 商机占用校验器（应用层 + UNIQUE 双层防御）
         );
     }
 
     @Test
-    @DisplayName("CO-297 happy：guard 不抛错时，service 正常完成关联并切换状态")
-    void linkCrmOpportunity_WhenGuardPasses_ShouldSucceed() {
+    @DisplayName("CO-297 happy：checker 不抛错时，service 正常完成关联并切换状态")
+    void linkCrmOpportunity_WhenCheckerPasses_ShouldSucceed() {
         when(tenderRepository.findById(100L)).thenReturn(Optional.of(tenderA));
         when(tenderRepository.save(tenderA)).thenReturn(tenderA);
         when(tenderMapper.toDTO(tenderA)).thenReturn(TenderDTO.builder().id(100L).build());
@@ -79,20 +79,20 @@ class TenderCommandServiceLinkCrmOpportunityDedupTest {
         assertThat(result).isNotNull();
         assertThat(tenderA.getCrmOpportunityId()).isEqualTo(CRM_OPP_X);
         assertThat(tenderA.getStatus()).isEqualTo(Tender.Status.EVALUATED);
-        // 验证 service 确实调用了 guard
-        verify(crmLinkGuard).assertCrmOpportunityNotOccupied(100L, CRM_OPP_X);
+        // 验证 service 确实调用了 checker
+        verify(crmOccupancyChecker).assertCrmOpportunityNotOccupied(100L, CRM_OPP_X);
     }
 
     @Test
-    @DisplayName("CO-297 冲突：guard 抛 409 → service 透传，crmOpportunityId 不被覆盖")
-    void linkCrmOpportunity_WhenGuardThrows409_ShouldPropagateAndNotMutateTender() {
+    @DisplayName("CO-297 冲突：checker 抛 409 → service 透传，crmOpportunityId 不被覆盖")
+    void linkCrmOpportunity_WhenCheckerThrows409_ShouldPropagateAndNotMutateTender() {
         when(tenderRepository.findById(100L)).thenReturn(Optional.of(tenderA));
-        doThrow(new BusinessException(409, "该 CRM 商机已被其他标讯关联（标讯 ID: 200），请先解除原关联"))
-                .when(crmLinkGuard).assertCrmOpportunityNotOccupied(anyLong(), anyString());
+        doThrow(new BusinessException(409, "该 CRM 商机已被标讯 ID=200 关联，请先解除原关联"))
+                .when(crmOccupancyChecker).assertCrmOpportunityNotOccupied(anyLong(), anyString());
 
         assertThatThrownBy(() -> tenderCommandService.linkCrmOpportunity(100L, CRM_OPP_X, "商机 X", 1L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("已被其他标讯关联");
+                .hasMessageContaining("已被标讯");
 
         // 关键：crmOpportunityId 未被覆盖
         assertThat(tenderA.getCrmOpportunityId()).isNull();
