@@ -314,7 +314,7 @@ function transformCrmCustomerInfos(customerInfos) {
   return result
 }
 
-async function onCrmOpportunityLinked({ opportunityId, opportunityName, evaluationData }) {
+async function onCrmOpportunityLinked({ opportunityId, opportunityName }) {
   if (!tender.value?.id) return
   crmLinking.value = true
   try {
