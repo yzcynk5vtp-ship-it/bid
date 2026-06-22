@@ -62,6 +62,27 @@ public class CrmHttpClient {
         }
     }
 
+    /**
+     * Posts form-urlencoded data with a Bearer token (for OAuth logout).
+     */
+    public CrmResponseHandler.CrmApiResponse postForm(String baseUrl, String path, org.springframework.util.MultiValueMap<String, String> formData, String accessToken) {
+        String url = baseUrl + path;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        if (accessToken != null && !accessToken.isBlank()) {
+            headers.setBearerAuth(accessToken);
+        }
+        TraceHeaderInjector.inject(headers);
+        HttpEntity<org.springframework.util.MultiValueMap<String, String>> request = new HttpEntity<>(formData, headers);
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            log.info("CRM POST form with auth {} -> {}", url, response.getStatusCode());
+            return CrmResponseHandler.parse(response.getBody());
+        } catch (RuntimeException e) {
+            log.error("CRM POST form with auth failed: {}", e.getMessage());
+            return CrmResponseHandler.CrmApiResponse.parseError(e.getMessage());
+        }
+    }
 
     /**
      * Posts JSON with a custom Bearer token (for generateToken etc.).
@@ -79,6 +100,25 @@ public class CrmHttpClient {
             return CrmResponseHandler.parse(response.getBody());
         } catch (RuntimeException e) {
             log.error("CRM POST with auth failed: {}", e.getMessage());
+            return CrmResponseHandler.CrmApiResponse.parseError(e.getMessage());
+        }
+    }
+
+    /**
+     * GET with Bearer token (for /oauth/getUserInfo etc.).
+     */
+    public CrmResponseHandler.CrmApiResponse get(String baseUrl, String path, String accessToken) {
+        String url = baseUrl + path;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        TraceHeaderInjector.inject(headers);
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+            log.info("CRM GET {} -> {}", url, response.getStatusCode());
+            return CrmResponseHandler.parse(response.getBody());
+        } catch (RuntimeException e) {
+            log.error("CRM GET failed: {}", e.getMessage());
             return CrmResponseHandler.CrmApiResponse.parseError(e.getMessage());
         }
     }

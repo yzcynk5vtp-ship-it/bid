@@ -182,11 +182,15 @@ public class CrmProperties {
         private String generateTokenPath = "/common/inner/generateToken";
 
         /** logoutPath. */
-        private String logoutPath = "/auth/logout";
+        private String logoutPath = "/oauth/logout";
         /** menuTreePath. */
         private String menuTreePath = "/menu/tree";
         /** employeePath. */
-        private String employeePath = "/employee/info";
+        private String employeePath = "/oauth/getUserInfo";
+        /** userPermissionPath - GET /oauth/getUserPermission. */
+        private String userPermissionPath = "/oauth/getUserPermission";
+        /** userPermissionSystemName - default query param for getUserPermission. */
+        private String userPermissionSystemName = "xiyu-bid-poc";
     }
 
     @Data

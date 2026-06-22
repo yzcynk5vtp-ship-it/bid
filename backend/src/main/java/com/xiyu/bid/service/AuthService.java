@@ -1,6 +1,7 @@
 // 维护声明: 仅维护认证链路；权限规则调整请同步 controller 与 security 配置.
 package com.xiyu.bid.service;
 
+import com.xiyu.bid.crm.application.CrmAuthService;
 import com.xiyu.bid.crm.application.OssDelegationService;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.entity.RoleProfileCatalog;
@@ -55,6 +56,7 @@ public class AuthService {
     private final RoleProfileService roleProfileService;
     private final TokenRevocationService tokenRevocationService;
     private final OssDelegationService ossDelegationService;
+    private final CrmAuthService crmAuthService;
 
     @Value("${jwt.refresh-expiration:604800000}")
     private long refreshExpiration;

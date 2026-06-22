@@ -95,6 +95,7 @@ public class SecurityConfig {
             "/api/webhooks/crm/**",
             "/api/system/runtime-mode",
             "/api/integrations/oa/weaver/callback",
+            "/api/crm/test/**",  // CRM 接口测试端点（无需 JWT 认证）
             "/actuator/health",
             "/actuator/health/**",
             "/api/external/**",
