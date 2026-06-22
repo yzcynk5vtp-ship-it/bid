@@ -7,8 +7,6 @@ import com.xiyu.bid.crm.application.CrmMenuService;
 import com.xiyu.bid.crm.application.CrmMessageService;
 import com.xiyu.bid.crm.application.CrmPermissionService;
 import com.xiyu.bid.crm.application.CrmUserPermission;
-import com.xiyu.bid.crm.application.OssLoginFlowService;
-import com.xiyu.bid.crm.application.OssLoginResult;
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.entity.User;
 import org.springframework.http.ResponseEntity;
@@ -36,20 +34,17 @@ public class CrmController {
     private final CrmEmployeeService employeeService;
     private final CrmMessageService messageService;
     private final CrmPermissionService permissionService;
-    private final OssLoginFlowService loginFlowService;
 
     public CrmController(CrmCustomerService customerService, CrmAuthService authService,
                          CrmMenuService menuService, CrmEmployeeService employeeService,
                          CrmMessageService messageService,
-                         CrmPermissionService permissionService,
-                         OssLoginFlowService loginFlowService) {
+                         CrmPermissionService permissionService) {
         this.customerService = customerService;
         this.authService = authService;
         this.menuService = menuService;
         this.employeeService = employeeService;
         this.messageService = messageService;
         this.permissionService = permissionService;
-        this.loginFlowService = loginFlowService;
     }
 
     @GetMapping("/customers")
@@ -129,22 +124,6 @@ public class CrmController {
                 : authService.getValidOssToken();
         CrmUserPermission permission = permissionService.getUserPermission(token, systemName);
         return ResponseEntity.ok(ApiResponse.success("Permissions retrieved", permission));
-    }
-
-    @PostMapping("/auth/login-flow")
-    public ResponseEntity<ApiResponse<OssLoginResult>> loginFlow(
-            @RequestParam String username,
-            @RequestParam String password) {
-        OssLoginResult result = loginFlowService.authenticate(
-                createTempUser(username), password);
-        if (result.isAuthenticated()) {
-            return ResponseEntity.ok(ApiResponse.success("OSS login flow completed", result));
-        }
-        return ResponseEntity.ok(ApiResponse.error("Authentication failed"));
-    }
-
-    private User createTempUser(String username) {
-        return User.builder().username(username).externalOrgSourceApp("oss").build();
     }
 
     @PostMapping("/auth/logout")
