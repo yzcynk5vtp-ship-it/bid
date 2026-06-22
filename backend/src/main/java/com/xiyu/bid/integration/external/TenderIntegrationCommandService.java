@@ -1,14 +1,10 @@
 package com.xiyu.bid.integration.external;
 
-import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
-import com.xiyu.bid.crm.domain.AssignmentResult;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.tender.dto.TenderDTO;
 import com.xiyu.bid.tender.entity.TenderAttachment;
 import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
-import com.xiyu.bid.tender.service.TenderAutoAssignmentService;
-import com.xiyu.bid.tender.service.TenderAssignmentNotifier;
 import com.xiyu.bid.util.InputSanitizer;
 import com.xiyu.bid.webhook.domain.TenderStatusChangedEvent;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +31,7 @@ public class TenderIntegrationCommandService {
     private final TenderIntegrationMapper mapper;
     private final TenderEvaluationIntegrationService evaluationService;
     private final TenderIntegrationResolver helper;
-    private final TenderAutoAssignmentService autoAssignmentService;
-    private final TenderAssignmentNotifier assignmentNotifier;
+    private final TenderIntegrationCommandSupport support;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -67,13 +62,21 @@ public class TenderIntegrationCommandService {
         Tender tender = helper.resolveTender(sourceSystem, sourceId, request.getTenderId());
         String externalId = tender.getExternalId();
 
+        // CO-305: 记录更新前的状态，用于判断是否需要发布 Event
+        Tender.Status previousStatus = tender.getStatus();
         applyUpdateFields(tender, request);
 
         String crmId = TenderIntegrationMapper.firstNonBlank(request.getCrmOpportunityId(), request.getCrmId());
         crmTenderLinkService.linkIfPresent(tender, crmId);
-        applyCrmFallback(tender, crmId, request.getCrmOpportunityName());
+        support.applyCrmFallback(tender, crmId, request.getCrmOpportunityName());
 
         Tender saved = tenderRepository.save(tender);
+        // CO-305: 更新后状态变为 EVALUATED 时发布 TenderStatusChangedEvent
+        if (saved.getStatus() == Tender.Status.EVALUATED && previousStatus != Tender.Status.EVALUATED) {
+            eventPublisher.publishEvent(TenderStatusChangedEvent.of(
+                    saved.getId(), saved.getExternalId(),
+                    previousStatus, Tender.Status.EVALUATED, saved.getTitle()));
+        }
         log.info("Updated tender id={} externalId={} crmId={} crmOpportunityId={}",
                 saved.getId(), externalId, crmId, saved.getCrmOpportunityId());
 
@@ -112,15 +115,23 @@ public class TenderIntegrationCommandService {
 
     private TenderPushResponse handleExistingTender(Tender existing, TenderPushRequest request, Long userId, String externalId) {
         if (Boolean.TRUE.equals(request.getForceUpdate())) {
+            // CO-305: 记录更新前的状态，用于判断是否需要发布 Event
+            Tender.Status previousStatus = existing.getStatus();
             mapper.applyUpdate(existing, request);
             if (userId != null) {
                 existing.setCreatorId(userId);
             }
             String crmId = TenderIntegrationMapper.firstNonBlank(request.getCrmOpportunityId(), request.getCrmId());
             crmTenderLinkService.linkIfPresent(existing, crmId);
-            applyCrmFallback(existing, crmId, null);
+            support.applyCrmFallback(existing, crmId, null);
 
             Tender saved = tenderRepository.save(existing);
+            // CO-305: 强制更新后状态变为 EVALUATED 时发布 TenderStatusChangedEvent
+            if (saved.getStatus() == Tender.Status.EVALUATED && previousStatus != Tender.Status.EVALUATED) {
+                eventPublisher.publishEvent(TenderStatusChangedEvent.of(
+                        saved.getId(), saved.getExternalId(),
+                        previousStatus, Tender.Status.EVALUATED, saved.getTitle()));
+            }
             if (request.getEvaluation() != null) {
                 var eval = request.getEvaluation();
                 evaluationService.saveEvaluation(saved.getId(), eval.getEvaluationBasic(),
@@ -146,11 +157,19 @@ public class TenderIntegrationCommandService {
         if (userId != null) {
             tender.setCreatorId(userId);
         }
+        // CO-305: 记录创建时的初始状态，用于判断是否需要发布 Event
+        Tender.Status initialStatus = tender.getStatus();
         String crmId = TenderIntegrationMapper.firstNonBlank(request.getCrmOpportunityId(), request.getCrmId());
         crmTenderLinkService.linkIfPresent(tender, crmId);
-        applyCrmFallback(tender, crmId, null);
+        support.applyCrmFallback(tender, crmId, null);
 
         Tender saved = tenderRepository.save(tender);
+        // CO-305: CRM 推送创建的标讯状态变为 EVALUATED 时发布 TenderStatusChangedEvent
+        if (saved.getStatus() == Tender.Status.EVALUATED && initialStatus != Tender.Status.EVALUATED) {
+            eventPublisher.publishEvent(TenderStatusChangedEvent.of(
+                    saved.getId(), saved.getExternalId(),
+                    initialStatus, Tender.Status.EVALUATED, saved.getTitle()));
+        }
         if (request.getEvaluation() != null) {
             var eval = request.getEvaluation();
             evaluationService.saveEvaluation(saved.getId(), eval.getEvaluationBasic(),
@@ -159,52 +178,13 @@ public class TenderIntegrationCommandService {
         log.info("Created tender id={} externalId={}", saved.getId(), externalId);
 
         // CO-302: 第三方平台拉取标讯自动分配
-        tryAutoAssign(saved);
+        support.tryAutoAssign(saved);
 
         return TenderPushResponse.builder()
                 .tenderId(saved.getId())
                 .status("CREATED")
                 .message("标讯创建成功")
                 .build();
-    }
-
-    /**
-     * CO-302: 尝试自动分配标讯负责人.
-     * <p>匹配策略：先查本地 CrmProjectMapping 映射表，失败后调 CRM 商机接口实时查询。
-     * <p>降级策略：匹配失败保持 PENDING_ASSIGNMENT 状态，不影响标讯入库。
-     */
-    private void tryAutoAssign(Tender tender) {
-        try {
-            AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
-            if (result.isMatched()) {
-                applyAssignmentResult(tender, result);
-                TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.TRACKING);
-                tender.setStatus(Tender.Status.TRACKING);
-                eventPublisher.publishEvent(TenderStatusChangedEvent.of(
-                        tender.getId(), tender.getExternalId(),
-                        Tender.Status.PENDING_ASSIGNMENT, Tender.Status.TRACKING,
-                        tender.getTitle()));
-                tenderRepository.save(tender);
-                log.info("Tender {} auto-assigned from external platform, status changed to TRACKING", tender.getId());
-                assignmentNotifier.notifyAutoAssigned(tender);
-            }
-        } catch (RuntimeException e) {
-            log.warn("Auto-assignment failed for external tender {}, keeping PENDING_ASSIGNMENT: {}",
-                    tender.getId(), e.getMessage());
-        }
-    }
-
-    private void applyAssignmentResult(Tender tender, AssignmentResult result) {
-        if (result.projectManagerId() != null) {
-            try {
-                tender.setProjectManagerId(Long.valueOf(result.projectManagerId()));
-            } catch (NumberFormatException e) {
-                log.warn("Cannot convert projectManagerId '{}' to Long for tender {}",
-                        result.projectManagerId(), tender.getId());
-            }
-        }
-        tender.setProjectManagerName(result.projectManagerName());
-        tender.setDepartment(result.departmentName());
     }
 
     private void applyUpdateFields(Tender tender, TenderUpdateRequest request) {
@@ -233,41 +213,6 @@ public class TenderIntegrationCommandService {
         if (request.getEvaluation() != null) {
             tender.setEvaluationSource(Tender.EvaluationSource.CRM_PUSH);
             tender.setStatus(Tender.Status.EVALUATED);
-        }
-    }
-
-    private void applyCrmFallback(Tender tender, String crmId, String crmOpportunityName) {
-        if (crmId == null || crmId.isBlank()) {
-            if (tender.getCrmOpportunityId() == null || tender.getCrmOpportunityId().isBlank()) {
-                boolean linked = crmTenderLinkService.linkByChanceIdIfPresent(
-                        tender, tender.getExternalId() != null ? tender.getExternalId().split(":")[0] : null,
-                        tender.getExternalId() != null && tender.getExternalId().contains(":")
-                                ? tender.getExternalId().split(":")[1] : null);
-                if (linked) {
-                    tender.setSourceType(Tender.SourceType.CRM_OPPORTUNITY);
-                    tender.setSource(Tender.SourceType.CRM_OPPORTUNITY.getLabel());
-                }
-            }
-            return;
-        }
-
-        tender.setEvaluationSource(Tender.EvaluationSource.CRM_PUSH);
-        tender.setStatus(Tender.Status.EVALUATED);
-        if (tender.getCrmOpportunityId() == null || tender.getCrmOpportunityId().isBlank()) {
-            // CO-277 接收侧修复被 applyCrmFallback 绕过的根因修复：
-            // applyCrmLinkAndAssignment 在 crmId 是纯数字 id 且反查失败/异常时保持 null（CO-277 修复），
-            // 但本方法紧接着检查 null 并直接存入原始 crmId，导致数字 id 被落库，后续 webhook 回传
-            // 用 id 当 code，CRM 按编号匹配失败（tender 319 案例：crmId=20942 被直接存入，
-            // 回传 bidInfoSync code="20942" → CRM 返回 code:1）。
-            // 修复：纯数字 crmId 不在此处存入，保持 null 让外层 linkByChanceIdIfPresent 兜底
-            //（用 sourceId 反查 code）；非纯数字（code 格式）保持原逻辑直接存入。
-            if (crmId == null || crmId.isBlank() || !crmId.trim().matches("\\d+")) {
-                tender.setCrmOpportunityId(crmId);
-            }
-        }
-        if (crmOpportunityName != null && !crmOpportunityName.isBlank()
-                && (tender.getCrmOpportunityName() == null || tender.getCrmOpportunityName().isBlank())) {
-            tender.setCrmOpportunityName(crmOpportunityName);
         }
     }
 
