@@ -197,6 +197,74 @@ describe('useCrmOpportunitySelector', () => {
     }))
   })
 
+  // CO-312: CRM 没传 backupPlan 时 shouldBid 必须为 null（"待决策"），不能默认 true/false。
+  // 原实现 `!chance.backupPlan` 在 backupPlan=undefined 时会得到 true（建议投标），是 bug。
+  it('CO-312 CRM 选择模式：chance.backupPlan 为 undefined 时 recommendation.shouldBid 为 null', async () => {
+    getContactPersons.mockResolvedValue({ data: [] })
+    const chance = {
+      id: 100,
+      name: 'CRM商机',
+      code: 'C001',
+      // backupPlan 故意不传，模拟 CRM 没值
+    }
+    searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })
+
+    const props = { tenderer: '', registrationDeadline: '', bidOpeningTime: '', alreadyLinkedName: '' }
+    const emitFn = vi.fn()
+    const wrapper = mount(defineComponent({
+      template: '<div />',
+      setup() { return useCrmOpportunitySelector(props, emitFn) },
+    }))
+    await wrapper.vm.openSearch()
+    await flushPromises()
+
+    wrapper.vm.onSelect(chance)
+    await wrapper.vm.confirmLink()
+    await flushPromises()
+
+    expect(emitFn).toHaveBeenCalledWith('linked', expect.objectContaining({
+      evaluationData: expect.objectContaining({
+        recommendation: expect.objectContaining({
+          shouldBid: null,
+          reason: '',
+        }),
+      }),
+    }))
+  })
+
+  it('CO-312 CRM 选择模式：chance.backupPlan=false 时 recommendation.shouldBid 为 true（无备选方案→建议投标）', async () => {
+    getContactPersons.mockResolvedValue({ data: [] })
+    const chance = {
+      id: 100,
+      name: 'CRM商机',
+      code: 'C001',
+      backupPlan: false,
+    }
+    searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })
+
+    const props = { tenderer: '', registrationDeadline: '', bidOpeningTime: '', alreadyLinkedName: '' }
+    const emitFn = vi.fn()
+    const wrapper = mount(defineComponent({
+      template: '<div />',
+      setup() { return useCrmOpportunitySelector(props, emitFn) },
+    }))
+    await wrapper.vm.openSearch()
+    await flushPromises()
+
+    wrapper.vm.onSelect(chance)
+    await wrapper.vm.confirmLink()
+    await flushPromises()
+
+    expect(emitFn).toHaveBeenCalledWith('linked', expect.objectContaining({
+      evaluationData: expect.objectContaining({
+        recommendation: expect.objectContaining({
+          shouldBid: true,
+          reason: '',
+        }),
+      }),
+    }))
+  })
+
   it('CRM 选择模式会把对接人映射为客户信息', async () => {
     const chance = { id: 285001, name: '最新标讯商机', code: 'CC20260619001' }
     searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })

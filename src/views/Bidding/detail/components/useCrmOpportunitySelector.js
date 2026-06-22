@@ -200,7 +200,12 @@ export function useCrmOpportunitySelector(props, emit) {
           customerRevenue: chance.customerRevenue || null,
         },
         customerInfos,
-        recommendation: { shouldBid: !chance.backupPlan, reason: '' },
+        // CO-312: CRM 没传 backupPlan 时 shouldBid 必须为 null（"待决策"），不能默认 true。
+        // 原实现 `!chance.backupPlan` 在 backupPlan=undefined 时得到 true（建议投标），是 bug。
+        recommendation: {
+          shouldBid: chance.backupPlan == null ? null : !chance.backupPlan,
+          reason: '',
+        },
       },
     })
     showDialog.value = false

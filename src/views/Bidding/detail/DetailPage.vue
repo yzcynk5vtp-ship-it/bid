@@ -91,7 +91,9 @@
       </div>
       <div v-show="activeTab === 'evaluation'" class="tab-content">
         <!-- CRM商机关联状态 -->
-        <div v-if="tender?.crmOpportunityName" class="crm-status-bar">
+        <!-- CO-311: 使用 evaluationTabLinked 而非直接读 tender.crmOpportunityName,
+             确保关联失败时与基本信息 tab 同步回滚到"未关联"状态 -->
+        <div v-if="evaluationTabLinked" class="crm-status-bar">
           <el-alert type="warning" :closable="false" show-icon>
             <template #title>核对评估表内容，如需修改，请返回CRM修改对应商机信息</template>
           </el-alert>
@@ -278,6 +280,13 @@ const showCrmSelector = computed(() =>
 const crmLinking = ref(false)
 // CO-308: 关联失败时递增此信号,通知 CrmOpportunitySelector 重置乐观写入的 UI 状态
 const crmLinkFailedSignal = ref(0)
+// CO-311: 评估表 tab 的"已关联"判断 — 关联失败时强制 false,与基本信息 tab 保持一致
+// 基本信息tab 看子组件 linkedOpportunity ref(乐观),评估tab 看 tender 真实数据,
+// 失败时 tender.crmOpportunityName 仍是旧值,需通过 crmLinkFailedSignal 同步回滚
+const evaluationTabLinked = computed(() => {
+  if (crmLinkFailedSignal.value) return false
+  return Boolean(tender.value?.evaluationSource || tender.value?.crmOpportunityName)
+})
 const evaluationFormRef = ref(null)
 
 function transformCrmBasic(basic) {
@@ -342,6 +351,8 @@ async function onCrmOpportunityLinked({ opportunityId, opportunityName, evaluati
 
     // 4. 刷新 tender 和评估表
     await loadTenderDetail()
+    // CO-311: 关联成功后重置失败信号,让评估表 tab 恢复"已关联"显示
+    crmLinkFailedSignal.value = 0
     try {
       const evalResult = await tendersApi.loadEvaluation(tender.value.id)
       if (evalResult?.success !== false) tenderEvaluation.value = evalResult?.data || null

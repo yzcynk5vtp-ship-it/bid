@@ -30,3 +30,34 @@ describe('CO-309 — 评估表第一/二部分彻底锁死只读', () => {
     expect(body).toContain('return false')
   })
 })
+
+// ===========================================================================
+// CO-311: 双 tab 数据源一致性 — 评估表 tab 关联状态需响应 crmLinkFailedSignal
+// ===========================================================================
+describe('CO-311 — 评估表 tab 关联状态与基本信息 tab 同步回滚', () => {
+  it('存在 evaluationTabLinked computed,且检查 crmLinkFailedSignal', () => {
+    const match = detailPageSource.match(/const evaluationTabLinked = computed\([\s\S]*?\n\}\)/)
+    expect(match).not.toBeNull()
+    const body = match[0]
+    // 关联失败信号非零时强制返回 false
+    expect(body).toContain('crmLinkFailedSignal')
+    expect(body).toMatch(/if\s*\(\s*crmLinkFailedSignal\.value\s*\)\s*return\s*false/)
+    // 否则按后端真实数据判断
+    expect(body).toMatch(/evaluationSource|crmOpportunityName/)
+  })
+
+  it('评估表 tab 的"已关联"判断使用 evaluationTabLinked,而非直接读 tender.crmOpportunityName', () => {
+    // L94 模板: <div v-if="evaluationTabLinked" class="crm-status-bar">
+    expect(detailPageSource).toContain('v-if="evaluationTabLinked"')
+    // 不应残留旧的直接判断
+    expect(detailPageSource).not.toContain('v-if="tender?.crmOpportunityName" class="crm-status-bar"')
+  })
+
+  it('关联成功后重置 crmLinkFailedSignal,避免失败信号长期滞留', () => {
+    // 在 onCrmOpportunityLinked 的 try 块中,loadTenderDetail() 之后应重置信号
+    const match = detailPageSource.match(/await loadTenderDetail\(\)([\s\S]*?)}\s*catch/)
+    expect(match).not.toBeNull()
+    const body = match[1]
+    expect(body).toContain('crmLinkFailedSignal.value = 0')
+  })
+})
