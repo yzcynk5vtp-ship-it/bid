@@ -5,6 +5,7 @@ import com.xiyu.bid.crm.domain.CrmToken;
 import com.xiyu.bid.crm.domain.CrmTokenCache;
 import com.xiyu.bid.crm.infrastructure.CrmHttpClient;
 import com.xiyu.bid.crm.infrastructure.CrmResponseHandler;
+import com.xiyu.bid.crm.application.OssPermissionCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class CrmAuthService {
 
     private final CrmHttpClient httpClient;
     private final CrmProperties properties;
+    private final OssPermissionCache permissionCache;
 
     /** OSS token 缓存（用于 OSS 组织架构接口） */
     private final CrmTokenCache ossTokenCache = new CrmTokenCache();
@@ -36,9 +38,11 @@ public class CrmAuthService {
     private volatile int consecutiveFailures = 0;
     private volatile Instant coolDownUntil = null;
 
-    public CrmAuthService(CrmHttpClient httpClient, CrmProperties properties) {
+    public CrmAuthService(CrmHttpClient httpClient, CrmProperties properties,
+                          OssPermissionCache permissionCache) {
         this.httpClient = httpClient;
         this.properties = properties;
+        this.permissionCache = permissionCache;
     }
 
     /**
@@ -73,6 +77,7 @@ public class CrmAuthService {
         }
         ossTokenCache.clear();
         crmTokenCache.clear();
+        permissionCache.clear();
         log.info("CRM token caches cleared (logout)");
     }
 
@@ -91,6 +96,7 @@ public class CrmAuthService {
         }
         ossTokenCache.clear();
         crmTokenCache.clear();
+        permissionCache.clear();
     }
 
     public void handleUnauthorized() {

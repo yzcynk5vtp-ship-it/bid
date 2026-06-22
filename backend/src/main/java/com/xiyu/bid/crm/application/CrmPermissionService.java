@@ -37,13 +37,23 @@ public class CrmPermissionService {
 
     private final CrmHttpClient httpClient;
     private final CrmProperties properties;
+    private final OssPermissionCache permissionCache;
 
-    public CrmPermissionService(CrmHttpClient httpClient, CrmProperties properties) {
+    public CrmPermissionService(CrmHttpClient httpClient, CrmProperties properties,
+                                OssPermissionCache permissionCache) {
         this.httpClient = httpClient;
         this.properties = properties;
+        this.permissionCache = permissionCache;
     }
 
     public CrmUserPermission getUserPermission(String userAccessToken, String systemName) {
+        String cacheKey = (userAccessToken != null ? userAccessToken.substring(0, Math.min(20, userAccessToken.length())) : "unknown")
+                + "::" + (systemName != null ? systemName : "default");
+        java.util.Optional<CrmUserPermission> cached = permissionCache.get(cacheKey);
+        if (cached.isPresent()) {
+            log.debug("OSS permission cache hit for key={}", cacheKey);
+            return cached.get();
+        }
         String baseUrl = properties.getEffectiveAuthBaseUrl();
         String path = properties.getAuth().getUserPermissionPath();
         if (systemName != null && !systemName.isBlank()) {
@@ -54,7 +64,11 @@ public class CrmPermissionService {
             log.warn("OSS user permission response empty");
             return new CrmUserPermission(Collections.emptyMap());
         }
-        return parsePermission(response.data());
+        CrmUserPermission permission = parsePermission(response.data());
+        permissionCache.put(cacheKey, permission);
+        log.info("OSS user permission cached for key={}, size={}", cacheKey,
+                permission.systemPermissions().size());
+        return permission;
     }
 
     public CrmUserPermission getUserPermission(String userAccessToken) {
