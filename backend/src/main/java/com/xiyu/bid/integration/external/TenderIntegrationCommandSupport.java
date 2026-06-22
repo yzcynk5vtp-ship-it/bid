@@ -1,0 +1,101 @@
+package com.xiyu.bid.integration.external;
+
+import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.repository.TenderRepository;
+import com.xiyu.bid.tender.service.TenderAssignmentNotifier;
+import com.xiyu.bid.tender.service.TenderAutoAssignmentService;
+import com.xiyu.bid.crm.domain.AssignmentResult;
+import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
+import com.xiyu.bid.webhook.domain.TenderStatusChangedEvent;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Component;
+
+/**
+ * CO-305: 提取 TenderIntegrationCommandService 的辅助方法，
+ * 保持主服务在 300 行以内。
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+class TenderIntegrationCommandSupport {
+
+    private final CrmTenderLinkService crmTenderLinkService;
+    private final TenderAutoAssignmentService autoAssignmentService;
+    private final TenderAssignmentNotifier assignmentNotifier;
+    private final ApplicationEventPublisher eventPublisher;
+    private final TenderRepository tenderRepository;
+
+    /**
+     * CO-302: 尝试自动分配标讯负责人.
+     * <p>匹配策略：先查本地 CrmProjectMapping 映射表，失败后调 CRM 商机接口实时查询。
+     * <p>降级策略：匹配失败保持 PENDING_ASSIGNMENT 状态，不影响标讯入库。
+     */
+    void tryAutoAssign(Tender tender) {
+        try {
+            AssignmentResult result = autoAssignmentService.autoAssignIfPossible(tender);
+            if (result.isMatched()) {
+                applyAssignmentResult(tender, result);
+                TenderStatusTransitionPolicy.assertTransition(tender.getStatus(), Tender.Status.TRACKING);
+                tender.setStatus(Tender.Status.TRACKING);
+                eventPublisher.publishEvent(TenderStatusChangedEvent.of(
+                        tender.getId(), tender.getExternalId(),
+                        Tender.Status.PENDING_ASSIGNMENT, Tender.Status.TRACKING,
+                        tender.getTitle()));
+                tenderRepository.save(tender);
+                log.info("Tender {} auto-assigned from external platform, status changed to TRACKING", tender.getId());
+                assignmentNotifier.notifyAutoAssigned(tender);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Auto-assignment failed for external tender {}, keeping PENDING_ASSIGNMENT: {}",
+                    tender.getId(), e.getMessage());
+        }
+    }
+
+    void applyAssignmentResult(Tender tender, AssignmentResult result) {
+        if (result.projectManagerId() != null) {
+            try {
+                tender.setProjectManagerId(Long.valueOf(result.projectManagerId()));
+            } catch (NumberFormatException e) {
+                log.warn("Cannot convert projectManagerId '{}' to Long for tender {}",
+                        result.projectManagerId(), tender.getId());
+            }
+        }
+        tender.setProjectManagerName(result.projectManagerName());
+        tender.setDepartment(result.departmentName());
+    }
+
+    /**
+     * CRM 推送时如果商机 ID 为空，做兜底关联（按 externalId 反查 chanceId）。
+     */
+    void applyCrmFallback(Tender tender, String crmId, String crmOpportunityName) {
+        if (crmId == null || crmId.isBlank()) {
+            if (tender.getCrmOpportunityId() == null || tender.getCrmOpportunityId().isBlank()) {
+                boolean linked = crmTenderLinkService.linkByChanceIdIfPresent(
+                        tender,
+                        tender.getExternalId() != null ? tender.getExternalId().split(":")[0] : null,
+                        tender.getExternalId() != null && tender.getExternalId().contains(":")
+                                ? tender.getExternalId().split(":")[1] : null);
+                if (linked) {
+                    tender.setSourceType(Tender.SourceType.CRM_OPPORTUNITY);
+                    tender.setSource(Tender.SourceType.CRM_OPPORTUNITY.getLabel());
+                }
+            }
+            return;
+        }
+
+        tender.setEvaluationSource(Tender.EvaluationSource.CRM_PUSH);
+        tender.setStatus(Tender.Status.EVALUATED);
+        if (tender.getCrmOpportunityId() == null || tender.getCrmOpportunityId().isBlank()) {
+            // CO-277: 纯数字 crmId 不存入，保持 null 让外层 linkByChanceIdIfPresent 兜底
+            if (crmId == null || crmId.isBlank() || !crmId.trim().matches("\\d+")) {
+                tender.setCrmOpportunityId(crmId);
+            }
+        }
+        if (crmOpportunityName != null && !crmOpportunityName.isBlank()
+                && (tender.getCrmOpportunityName() == null || tender.getCrmOpportunityName().isBlank())) {
+            tender.setCrmOpportunityName(crmOpportunityName);
+        }
+    }
+}

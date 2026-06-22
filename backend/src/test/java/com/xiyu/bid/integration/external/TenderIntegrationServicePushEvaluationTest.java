@@ -59,6 +59,12 @@ class TenderIntegrationServicePushEvaluationTest {
                 evaluationMapper,
                 projectDocumentRepository);
         TenderIntegrationResolver helper = new TenderIntegrationResolver(tenderRepository);
+        TenderIntegrationCommandSupport support = new TenderIntegrationCommandSupport(
+                mock(CrmTenderLinkService.class),
+                mock(TenderAutoAssignmentService.class),
+                mock(TenderAssignmentNotifier.class),
+                mock(ApplicationEventPublisher.class),
+                tenderRepository);
         commandService = new TenderIntegrationCommandService(
                 tenderRepository,
                 mock(TenderAttachmentRepository.class),
@@ -66,8 +72,7 @@ class TenderIntegrationServicePushEvaluationTest {
                 mapper,
                 evaluationService,
                 helper,
-                mock(TenderAutoAssignmentService.class),
-                mock(TenderAssignmentNotifier.class),
+                support,
                 mock(ApplicationEventPublisher.class));
     }
 
