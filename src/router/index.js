@@ -148,12 +148,15 @@ const routes = [
         component: () => import('@/views/Knowledge/KbLayout.vue'),
         meta: { requiresAuth: true },
         children: [
-          { path: '', redirect: 'archive' },
+          // 默认重定向到 qualification（行政人员等小权限用户的唯一可访问子项）。
+          // 路由守卫会在 archive/personnel/case 等子项上拦截无权限用户，
+          // 但默认重定向必须指向"必然有权限"的目标，否则新登录用户会被踢到 403。
+          { path: '', redirect: 'qualification' },
           {
             path: 'archive',
             name: 'ProjectArchive',
             component: () => import('@/views/Knowledge/views/ProjectArchive.vue'),
-            meta: { title: '项目档案' }
+            meta: { title: '项目档案', permissionKeys: ['knowledge', 'knowledge-archive'] }
           },
           {
             path: 'qualification',
@@ -166,39 +169,39 @@ const routes = [
             path: 'personnel',
             name: 'Personnel',
             component: () => import('@/views/Knowledge/Personnel.vue'),
-            meta: { title: '人员证书' }
+            meta: { title: '人员证书', permissionKeys: ['knowledge', 'knowledge-personnel'] }
           },
           {
             path: 'performance',
             name: 'Performance',
             component: () => import('@/views/Knowledge/Performance.vue'),
-            meta: { title: '业绩管理' }
+            meta: { title: '业绩管理', permissionKeys: ['knowledge', 'knowledge-performance'] }
           },
           {
             path: 'brand-auth',
             name: 'BrandAuth',
             component: () => import('@/views/Knowledge/BrandAuth.vue'),
-            meta: { title: '品牌授权' }
+            meta: { title: '品牌授权', permissionKeys: ['knowledge', 'knowledge-brand-auth'] }
           },
           {
             path: 'warehouse',
             name: 'Warehouse',
             component: () => import('@/views/Knowledge/Warehouse.vue'),
-            meta: { title: '仓库信息' }
+            meta: { title: '仓库信息', permissionKeys: ['knowledge', 'knowledge-warehouse'] }
           },
           {
             path: 'case',
             name: 'Case',
             alias: '/knowledge/cases',
             component: () => import('@/views/Knowledge/views/CaseWrapper.vue'),
-            meta: { title: '案例库' }
+            meta: { title: '案例库', permissionKeys: ['knowledge', 'knowledge-case'] }
           },
           {
             path: 'template',
             name: 'Template',
             alias: '/knowledge/templates',
             component: () => import('@/views/Knowledge/Template.vue'),
-            meta: { title: '模板库' }
+            meta: { title: '模板库', permissionKeys: ['knowledge', 'knowledge-template'] }
           },
         ]
       },
