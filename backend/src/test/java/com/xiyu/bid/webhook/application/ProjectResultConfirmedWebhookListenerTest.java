@@ -3,7 +3,6 @@ package com.xiyu.bid.webhook.application;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xiyu.bid.entity.Tender;
-import com.xiyu.bid.crm.application.CrmProjectLeaderService;
 import com.xiyu.bid.project.core.BidResultType;
 import com.xiyu.bid.project.domain.ProjectResultConfirmedEvent;
 import com.xiyu.bid.project.service.ProjectResultPayloadAssembler;
@@ -11,6 +10,7 @@ import com.xiyu.bid.projectworkflow.entity.ProjectDocument;
 import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
+import com.xiyu.bid.webhook.infrastructure.CrmOpportunityCodeResolver;
 import com.xiyu.bid.webhook.infrastructure.WebhookDeliveryTask;
 import com.xiyu.bid.webhook.infrastructure.WebhookDeliveryTaskRepository;
 import com.xiyu.bid.webhook.infrastructure.WebhookDeliveryTaskStatus;
@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +41,7 @@ import static org.mockito.Mockito.when;
  * tender 不存在跳过。
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("ProjectResultConfirmedWebhookListener — §4.2 bidInfoList 入队逻辑")
 class ProjectResultConfirmedWebhookListenerTest {
 
@@ -51,7 +55,7 @@ class ProjectResultConfirmedWebhookListenerTest {
 
     @Mock private WebhookDeliveryTaskRepository taskRepository;
     @Mock private TenderRepository tenderRepository;
-    @Mock private CrmProjectLeaderService crmProjectLeaderService;
+    @Mock private CrmOpportunityCodeResolver crmOpportunityCodeResolver;
     @Mock private ProjectDocumentRepository projectDocumentRepository;
     @Mock private UserRepository userRepository;
 
@@ -60,9 +64,19 @@ class ProjectResultConfirmedWebhookListenerTest {
         ProjectResultPayloadAssembler assembler = new ProjectResultPayloadAssembler(
                 tenderRepository, userRepository, projectDocumentRepository, objectMapper);
         ProjectResultConfirmedWebhookListener l = new ProjectResultConfirmedWebhookListener(
-                taskRepository, tenderRepository, objectMapper, crmProjectLeaderService, assembler);
+                taskRepository, tenderRepository, objectMapper, crmOpportunityCodeResolver, assembler);
         ReflectionTestUtils.setField(l, "crmWebhookUrl", url);
         return l;
+    }
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        // Default: return input as-is（CC 前缀 code 直接返回），null/blank 返回空字符串
+        lenient().when(crmOpportunityCodeResolver.resolve(any()))
+                .thenAnswer(inv -> {
+                    String input = inv.getArgument(0);
+                    return (input == null || input.isBlank()) ? "" : input;
+                });
     }
 
     private Tender tender() {
@@ -202,9 +216,7 @@ class ProjectResultConfirmedWebhookListenerTest {
         Tender t = tender();
         t.setCrmOpportunityId("20942"); // 数字 id（CO-277 场景）
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(t));
-        when(crmProjectLeaderService.findProjectLeaderByChanceId(20942L))
-                .thenReturn(new CrmProjectLeaderService.ProjectLeaderResult(
-                        null, null, CRM_OPPORTUNITY_NAME, CRM_OPPORTUNITY_CODE));
+        when(crmOpportunityCodeResolver.resolve("20942")).thenReturn(CRM_OPPORTUNITY_CODE);
         when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of());
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.LOST));
@@ -223,7 +235,7 @@ class ProjectResultConfirmedWebhookListenerTest {
         Tender t = tender();
         t.setCrmOpportunityId("20942");
         when(tenderRepository.findById(TENDER_ID)).thenReturn(Optional.of(t));
-        when(crmProjectLeaderService.findProjectLeaderByChanceId(20942L)).thenReturn(null);
+        when(crmOpportunityCodeResolver.resolve("20942")).thenReturn("20942");
         when(projectDocumentRepository.findAllById(List.of(1032L))).thenReturn(List.of());
 
         listener(CRM_URL).onProjectResultConfirmed(event(BidResultType.LOST));
