@@ -323,33 +323,18 @@ function transformCrmCustomerInfos(customerInfos) {
   return result
 }
 
-async function onCrmOpportunityLinked({ opportunityId, opportunityName, evaluationData }) {
+async function onCrmOpportunityLinked({ opportunityId, opportunityName }) {
   if (!tender.value?.id) return
   crmLinking.value = true
   try {
-    // 1. 组装评估表 payload（三段式结构对齐后端 TenderEvaluationSubmitRequest）
-    const evalPayload = {
-      bidRecommendation: evaluationData.recommendation?.shouldBid ? 'RECOMMEND' : 'NOT_RECOMMEND',
-      evaluationBasic: transformCrmBasic(evaluationData.basic),
-      evaluationCustomerInfos: transformCrmCustomerInfos(evaluationData.customerInfos),
-      evaluationRecommendation: {
-        shouldBid: evaluationData.recommendation?.shouldBid ?? true,
-        reason: evaluationData.recommendation?.reason || '',
-      },
-    }
-    await tendersApi.saveEvaluationDraft(tender.value.id, evalPayload)
-
-    // 2. 关联CRM商机到标讯（使用专用端点，避免触发完整TenderRequest校验）
+    // CO-310: 关联 CRM 商机只做 PATCH,不再触发 saveEvaluationDraft/submitEvaluationFinal(原链路错配导致 sales 403)
     await tendersApi.linkCrmOpportunity(tender.value.id, {
       crmOpportunityId: opportunityId,
       crmOpportunityName: opportunityName,
     })
+    ElMessage.success('CRM商机已关联')
 
-    // 3. 提交评估表 → EVALUATED
-    await tendersApi.submitEvaluationFinal(tender.value.id, evalPayload)
-    ElMessage.success('CRM商机已关联，评估表已自动提交')
-
-    // 4. 刷新 tender 和评估表
+    // 刷新 tender 和评估表
     await loadTenderDetail()
     // CO-311: 关联成功后重置失败信号,让评估表 tab 恢复"已关联"显示
     crmLinkFailedSignal.value = 0

@@ -113,7 +113,7 @@ public class TenderController {
     }
 
     @PatchMapping("/{id}/crm-opportunity")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN', 'SALES', 'BID_SPECIALIST')")
     @Operation(summary = "标讯关联CRM商机")
     public ResponseEntity<ApiResponse<TenderDTO>> linkCrmOpportunity(@PathVariable Long id, @Valid @RequestBody TenderCrmLinkRequest req, @AuthenticationPrincipal UserDetails user) {
         rejectDemoMutation(id);

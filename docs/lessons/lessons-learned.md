@@ -674,3 +674,65 @@ git log --graph --oneline --decorate --boundary --max-count=25 --all
 
 ---
 
+## 12. 服务器部署 jar 验证四原则（CO-301 部署经验）
+
+> 来源：CO-301 部署排查（2026-06-22）
+
+### 问题背景
+
+代码已合入 main 并打包 jar 部署到服务器，但运行时仍返回旧文案。排查发现：
+1. 打包时 Maven 缓存了旧 class 文件，jar 中实际内容未更新
+2. 仅检查 jar 大小无法发现内容差异
+3. SSH 终端中文编码导致 javap 输出乱码，误判为旧版本
+4. 最终通过 `jar uf` 局部更新 class 文件解决
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 打包后只检查 jar 大小 | jar 大小相近时无法区分新旧版本 | **打包后必须验证 jar 内容**：用 `javap -v` 或 `unzip -p ... \| strings` 检查关键 class 文件的常量池 |
+| Maven 缓存旧 class | `mvn package` 不一定触发重新编译 | **`mvn clean` 后重新打包**：确保使用最新编译结果，不要依赖增量编译 |
+| SSH 终端中文乱码 | `javap` 通过 SSH 显示中文常量为 `???` | **用 `xxd` 或字节比较验证**：不依赖终端中文显示，用 `xxd \| grep` 或 `diff <(xxd) <(xxd)` 比较字节 |
+| 重新打包整个 jar 耗时长 | 全量打包 + 上传 + 重启耗时大 | **用 `jar uf` 局部更新**：只更新修改的 class 文件，无需重新打包整个 jar |
+
+### 正确做法
+
+```bash
+# 1. 打包前先 clean
+cd backend && mvn clean compile spring-boot:repackage -DskipTests
+
+# 2. 验证 jar 中关键 class 的常量池
+unzip -p target/bid-poc-1.0.3.jar BOOT-INF/classes/com/xiyu/bid/exception/TenderDuplicateException.class \
+  | javap -v - 2>/dev/null | grep -A5 "Constant pool"
+# 应显示: #1 = String #2 // 投标管理系统该标讯已存在
+
+# 3. 服务器上验证（用 xxd 避免中文乱码）
+ssh jetty@server 'unzip -p /opt/xiyu-bid/shared/backend/app.jar \
+  BOOT-INF/classes/com/xiyu/bid/exception/TenderDuplicateException.class \
+  | xxd | grep -A2 "e68a 95"'  # "投" 的 UTF-8 字节
+
+# 4. 局部更新 jar（无需重新打包）
+jar uf app.jar \
+  BOOT-INF/classes/com/xiyu/bid/exception/TenderDuplicateException.class \
+  BOOT-INF/classes/com/xiyu/bid/integration/external/TenderIntegrationCommandService.class
+
+# 5. 字节级比较本地与服务器 jar 中的 class
+diff <(unzip -p local.jar BOOT-INF/classes/.../Foo.class | xxd) \
+     <(ssh server 'unzip -p remote.jar BOOT-INF/classes/.../Foo.class | xxd')
+```
+
+### 防复发检查清单
+
+- [ ] `mvn clean` 后重新打包，不依赖增量编译
+- [ ] 打包后用 `javap -v` 验证关键 class 常量池内容
+- [ ] 服务器验证用 `xxd` 字节比较，不依赖 SSH 中文显示
+- [ ] 如需快速更新，用 `jar uf` 局部替换 class 文件
+- [ ] 部署后通过 API 实测验证功能（而非仅检查 actuator 状态）
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-co-301.md` — CO-301 完整根因分析
+- `CLAUDE.md §环境坑点` — 后端启动与环境变量
+
+---
+
