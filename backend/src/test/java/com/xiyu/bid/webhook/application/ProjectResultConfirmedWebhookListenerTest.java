@@ -145,7 +145,7 @@ class ProjectResultConfirmedWebhookListenerTest {
         assertThat(feedback.path("competitors").get(0).path("discount").asText()).isEqualTo("95折");
         assertThat(feedback.path("competitors").get(0).path("paymentTerm").asText()).isEqualTo("月结60天");
         assertThat(feedback.path("competitors").get(0).path("notes").asText()).isEqualTo("含仓储");
-        assertThat(feedback.path("systemName").asText()).isEqualTo("西域数智化投标管理平台");
+        assertThat(feedback.path("systemName").asText()).isEqualTo("投标管理系统");
     }
 
     @Test

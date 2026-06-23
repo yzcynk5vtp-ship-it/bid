@@ -5,9 +5,11 @@
 package com.xiyu.bid.project.service;
 
 import com.xiyu.bid.entity.Project;
+import com.xiyu.bid.entity.User;
 import com.xiyu.bid.project.core.BidResultType;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy;
+import com.xiyu.bid.project.domain.ProjectResultConfirmedEvent;
 import com.xiyu.bid.project.dto.ResultRegistrationRequest;
 import com.xiyu.bid.project.entity.ProjectResult;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
@@ -18,6 +20,7 @@ import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -208,6 +211,30 @@ class ProjectResultRegistrationServiceTest {
                 () -> service.register(1L, req, 7L));
         assertEquals(409, ex.getStatusCode().value());
         verify(repo, never()).save(any());
+    }
+
+    @Test
+    void register_publishesEventWithFormattedOperatorName() {
+        when(repo.findByProjectId(1L)).thenReturn(Optional.empty());
+        when(repo.save(any())).thenAnswer(inv -> {
+            ProjectResult e = inv.getArgument(0);
+            e.setId(99L);
+            return e;
+        });
+        User user = new User();
+        user.setFullName("郑蓉蓉");
+        user.setEmployeeNumber("06234");
+        when(userRepo.findById(7L)).thenReturn(Optional.of(user));
+        var req = ResultRegistrationRequest.builder()
+                .resultType(BidResultType.WON)
+                .awardAmount(new BigDecimal("88888"))
+                .evidenceFileIds(List.of(11L))
+                .summary("中标通知书已上传")
+                .build();
+        service.register(1L, req, 7L);
+        ArgumentCaptor<ProjectResultConfirmedEvent> captor = ArgumentCaptor.forClass(ProjectResultConfirmedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        assertEquals("郑蓉蓉（06234）", captor.getValue().operatorName());
     }
 
     @Test

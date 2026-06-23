@@ -112,7 +112,7 @@ public class ProjectResultRegistrationService {
         // §4.2 CRM 回调：发布领域事件，由 ProjectResultConfirmedWebhookListener 监听后入队
         // WebhookDeliveryTask，复用 §4.1 的 1min/5min/15min 重试机制（AFTER_COMMIT 保证主事务成功）。
         User currentUser = userRepository.findById(currentUserId).orElse(null);
-        String operatorName = currentUser != null ? currentUser.getUsername() : "unknown";
+        String operatorName = formatOperatorName(currentUser);
         eventPublisher.publishEvent(ProjectResultConfirmedEvent.of(
                 projectId, project.getTenderId(), req.getResultType(),
                 req.getEvidenceFileIds(),
@@ -211,6 +211,21 @@ public class ProjectResultRegistrationService {
 
     private static boolean isStrBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    private static String formatOperatorName(User user) {
+        if (user == null) {
+            return "unknown";
+        }
+        String fullName = user.getFullName();
+        String employeeId = user.getEmployeeNumber();
+        if (isStrBlank(fullName)) {
+            return employeeId != null && !employeeId.isBlank() ? employeeId : "unknown";
+        }
+        if (employeeId != null && !employeeId.isBlank()) {
+            return "%s（%s）".formatted(fullName, employeeId);
+        }
+        return fullName;
     }
 
     private List<ResultDTO.CompetitorRow> loadCompetitors(Long resultId) {

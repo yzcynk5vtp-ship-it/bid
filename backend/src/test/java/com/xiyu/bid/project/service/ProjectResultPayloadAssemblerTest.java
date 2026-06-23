@@ -74,7 +74,7 @@ class ProjectResultPayloadAssemblerTest {
         assertThat(payload.projectId()).isEqualTo(PROJECT_ID);
         assertThat(payload.sourceId()).isEqualTo("CRM-OPP-2026-0510-003");
         assertThat(payload.bidResult()).isEqualTo("WON");
-        assertThat(payload.systemName()).isEqualTo("西域数智化投标管理平台");
+        assertThat(payload.systemName()).isEqualTo("投标管理系统");
         assertThat(payload.operatorName()).isEqualTo("张三");
         assertThat(payload.operatorEmployeeId()).isEqualTo("EMP001");
         assertThat(payload.operatedAt()).matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+08:00");
