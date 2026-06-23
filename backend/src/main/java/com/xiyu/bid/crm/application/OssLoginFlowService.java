@@ -3,29 +3,20 @@ package com.xiyu.bid.crm.application;
 import com.xiyu.bid.crm.config.CrmProperties;
 import com.xiyu.bid.crm.infrastructure.CrmHttpClient;
 import com.xiyu.bid.crm.infrastructure.CrmResponseHandler;
-import com.xiyu.bid.entity.RoleProfile;
 import com.xiyu.bid.entity.User;
-import com.xiyu.bid.integration.organization.application.OrganizationDirectoryGateway;
 import com.xiyu.bid.integration.organization.application.OrganizationIntegrationProperties;
-import com.xiyu.bid.integration.organization.domain.OrganizationDirectoryLookupContext;
+import com.xiyu.bid.integration.organization.domain.policy.JobRoleLookupResolver;
 import com.xiyu.bid.integration.organization.domain.policy.OssMenuPermissionMapper;
-import com.xiyu.bid.integration.organization.dto.OssMenuTreeNode;
-import com.xiyu.bid.repository.RoleProfileRepository;
+import com.xiyu.bid.integration.organization.infrastructure.mapper.PositionToRoleMapper;
 import com.xiyu.bid.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -37,7 +28,11 @@ import java.util.Set;
  *   <li>GET /oauth/getUserInfo - 获取员工信息</li>
  *   <li>GET /oauth/getUserPermission - 获取系统权限</li>
  *   <li>POST /oss/.../getUserJobListByJobNumberList - 获取用户角色</li>
+ *   <li>解析角色+权限写入内存缓存（不写本地 DB）</li>
  * </ol>
+ * <p>
+ * 缓存策略：登录时写入 {@link OssPermissionCache}，登出时由 AuthService 调用 invalidate 删除。
+ * 不再读取本地 DB 的 RoleProfile.menu_permissions，所有鉴权读取均来自内存缓存。
  */
 @Slf4j
 @Service
@@ -49,9 +44,9 @@ public class OssLoginFlowService {
     private final CrmPermissionService permissionService;
     private final CrmRoleService roleService;
     private final UserRepository userRepository;
-    private final RoleProfileRepository roleProfileRepository;
-    private final ObjectProvider<OrganizationDirectoryGateway> gatewayProvider;
     private final OrganizationIntegrationProperties organizationProperties;
+    private final OssPermissionCache ossPermissionCache;
+    private final PositionToRoleMapper positionToRoleMapper;
 
     /**
      * 直接使用用户名和密码进行 OSS 认证（不依赖 User entity）。
@@ -135,77 +130,125 @@ public class OssLoginFlowService {
             }
         }
 
-        // Step 5: 同步 OSS 权限到本地 RoleProfile（前端菜单显示需要）
-        CrmUserPermission permission = result.build().getPermission();
-        if (permission != null && !permission.isEmpty() && jobNumber != null && accessToken != null) {
-            syncOssPermissionsToRole(username, jobNumber, permission, accessToken);
-        }
+        // Step 5: 解析角色+权限，写入内存缓存（不写本地 DB）
+        OssLoginResult built = result.build();
+        cacheOssPermissions(built, username, jobNumber, permissionSystemName);
 
-        return result.build();
+        return built;
     }
 
     /**
-     * 将 OSS 权限同步到用户的本地 RoleProfile。
+     * 解析 OSS 返回的角色+权限，写入内存缓存。
      * <p>
-     * OSS 返回的菜单 code（如 1001, 100402）需要映射为内部权限码（如 dashboard, knowledge-qualification），
-     * 然后合并到用户的 RoleProfile.menu_permissions，供前端菜单显示使用。
+     * 替代原 syncOssPermissionsToRole 方法：不再写本地 DB RoleProfile.menu_permissions，
+     * 改为写入 OssPermissionCache，供 UserDetailsServiceImpl 和 DataScopeConfigService 读取。
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void syncOssPermissionsToRole(String username, String jobNumber, CrmUserPermission permission, String accessToken) {
+    private void cacheOssPermissions(OssLoginResult loginResult, String username,
+                                      String jobNumber, String permissionSystemName) {
         try {
-            // 1. 根据用户名查找本地用户
-            Optional<User> userOpt = userRepository.findByUsername(username);
-            if (userOpt.isEmpty()) {
-                log.debug("OSS login: user not found in local DB, skip permission sync: username={}", username);
-                return;
-            }
-            User user = userOpt.get();
-
-            // 2. 获取用户的 RoleProfile
-            String roleCode = user.getRoleCode();
-            if (roleCode == null || roleCode.isBlank()) {
-                log.debug("OSS login: user has no role code, skip permission sync: username={}", username);
-                return;
-            }
-            Optional<RoleProfile> roleOpt = roleProfileRepository.findByCodeIgnoreCase(roleCode);
-            if (roleOpt.isEmpty()) {
-                log.warn("OSS login: role profile not found, skip permission sync: username={}, roleCode={}", username, roleCode);
-                return;
-            }
-            RoleProfile role = roleOpt.get();
-
-            // 3. 获取 Directory 配置（含菜单 code 到内部权限码的映射表）
-            OrganizationIntegrationProperties.Directory directory = organizationProperties.getDirectory();
-            if (directory == null) {
-                log.warn("OSS login: Directory config not available, skip permission sync");
+            CrmUserPermission permission = loginResult.getPermission();
+            if (permission == null || permission.isEmpty()) {
+                log.info("OSS login: no permission to cache for user={}", username);
                 return;
             }
 
-            // 4. 直接用 OSS 返回的权限码列表做映射（不再依赖 gateway.fetchUserMenuTree）
-            String systemName = crmProperties.getAuth().getUserPermissionSystemName();
-            List<String> ossMenuCodes = permission.getMenusForSystem(systemName);
-            if (ossMenuCodes.isEmpty()) {
-                log.info("OSS login: no menu codes for system={}, skip permission sync: username={}", systemName, username);
-                return;
-            }
+            String resolvedRoleCode = resolveRoleCodeFromJobList(loginResult.getJobList(), jobNumber, username);
+            List<String> menuPermissions = mapOssPermissionsToInternal(permission, permissionSystemName);
 
-            OssMenuPermissionMapper mapper = new OssMenuPermissionMapper(
-                    directory.getMenuCodeToPermissionKeyMappings(),
-                    directory.getUnmappedMenuCodeBehavior()
-            );
-            Set<String> internalPermissions = mapper.mapCodes(ossMenuCodes);
-
-            // 5. 合并到 RoleProfile.menu_permissions
-            Set<String> merged = new HashSet<>(role.getMenuPermissions());
-            merged.addAll(internalPermissions);
-            role.setMenuPermissions(new ArrayList<>(merged));
-            roleProfileRepository.save(role);
-
-            log.info("OSS login: permission sync completed: username={}, roleCode={}, ossCodes={}, newPermissions={}",
-                    username, roleCode, ossMenuCodes, internalPermissions);
+            ossPermissionCache.put(username, resolvedRoleCode, menuPermissions, permission);
+            log.info("OSS login: permission cached (not written to DB): username={}, roleCode={}, menuPermissions={}",
+                    username, resolvedRoleCode, menuPermissions);
         } catch (RuntimeException e) {
-            log.error("OSS login: permission sync failed: username={}, error={}", username, e.getMessage());
-            // 非致命错误，不影响登录流程
+            log.warn("OSS login: permission caching failed (non-fatal) for user={}: {}", username, e.getMessage());
         }
+    }
+
+    /**
+     * 从 OSS jobList 解析内部角色码。
+     * <p>
+     * 优先级：
+     * 1. sysRoleList 中 status=1 的角色（先用 PositionToRoleMapper 正则匹配，再用 OSS 角色码硬编码映射）
+     * 2. jobName（先用 PositionToRoleMapper 正则匹配，再用 OSS 角色码硬编码映射）
+     * 3. fallback 到本地 User.roleCode
+     */
+    private String resolveRoleCodeFromJobList(CrmJobListResponse jobList, String jobNumber, String fallbackUsername) {
+        if (jobList == null || jobList.getData() == null || jobNumber == null) {
+            return resolveLocalRoleCode(fallbackUsername);
+        }
+        CrmJobListResponse.JobInfo jobInfo = jobList.getData().get(jobNumber);
+        if (jobInfo == null) {
+            return resolveLocalRoleCode(fallbackUsername);
+        }
+
+        // 1. 优先从 sysRoleList 解析
+        if (jobInfo.getSysRoleList() != null) {
+            for (CrmJobListResponse.SysRole sysRole : jobInfo.getSysRoleList()) {
+                if ("1".equals(sysRole.getStatus()) && !Boolean.TRUE.equals(sysRole.getDel())) {
+                    String roleName = sysRole.getRoleName();
+                    if (roleName != null && !roleName.isBlank()) {
+                        String roleCode = positionToRoleMapper.map(roleName);
+                        if (roleCode == null || roleCode.isBlank()) {
+                            roleCode = JobRoleLookupResolver.mapOssRoleCodeToInternal(roleName);
+                        }
+                        if (roleCode != null && !roleCode.isBlank()) {
+                            log.info("OSS login: role resolved from sysRoleList: {} -> {}", roleName, roleCode);
+                            return roleCode;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. 从 jobName 解析
+        String jobName = jobInfo.getJobName();
+        if (jobName != null && !jobName.isBlank()) {
+            String roleCode = positionToRoleMapper.map(jobName);
+            if (roleCode == null || roleCode.isBlank()) {
+                roleCode = JobRoleLookupResolver.mapOssRoleCodeToInternal(jobName);
+            }
+            if (roleCode != null && !roleCode.isBlank()) {
+                log.info("OSS login: role resolved from jobName: {} -> {}", jobName, roleCode);
+                return roleCode;
+            }
+        }
+
+        // 3. fallback 到本地 User.roleCode
+        return resolveLocalRoleCode(fallbackUsername);
+    }
+
+    /**
+     * 从本地 DB 读取 User.roleCode 作为兜底。
+     */
+    private String resolveLocalRoleCode(String username) {
+        try {
+            return userRepository.findByUsername(username)
+                    .map(User::getRoleCode)
+                    .orElse(null);
+        } catch (RuntimeException e) {
+            log.warn("OSS login: failed to resolve local role code for user={}: {}", username, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 将 OSS 权限码列表映射为内部菜单权限码列表。
+     */
+    private List<String> mapOssPermissionsToInternal(CrmUserPermission permission, String systemName) {
+        OrganizationIntegrationProperties.Directory directory = organizationProperties.getDirectory();
+        if (directory == null) {
+            log.warn("OSS login: Directory config not available, skip permission mapping");
+            return List.of();
+        }
+        List<String> ossMenuCodes = permission.getMenusForSystem(systemName);
+        if (ossMenuCodes.isEmpty()) {
+            log.info("OSS login: no menu codes for system={}", systemName);
+            return List.of();
+        }
+        OssMenuPermissionMapper mapper = new OssMenuPermissionMapper(
+                directory.getMenuCodeToPermissionKeyMappings(),
+                directory.getUnmappedMenuCodeBehavior()
+        );
+        Set<String> internalPermissions = mapper.mapCodes(ossMenuCodes);
+        return new ArrayList<>(internalPermissions);
     }
 }

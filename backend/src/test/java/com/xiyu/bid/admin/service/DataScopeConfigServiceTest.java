@@ -1,6 +1,7 @@
 package com.xiyu.bid.admin.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.dto.DataScopeConfigResponse;
 import com.xiyu.bid.entity.RoleProfile;
 import com.xiyu.bid.entity.RoleProfileCatalog;
@@ -47,7 +48,8 @@ class DataScopeConfigServiceTest {
 
     @BeforeEach
     void setUp() {
-        dataScopeConfigService = new DataScopeConfigService(systemSettingRepository, userRepository, roleProfileRepository, roleProfileBootstrap, new ObjectMapper());
+        OssPermissionCache ossPermissionCache = new OssPermissionCache();
+        dataScopeConfigService = new DataScopeConfigService(systemSettingRepository, userRepository, roleProfileRepository, roleProfileBootstrap, new ObjectMapper(), ossPermissionCache);
         org.mockito.Mockito.lenient().when(roleProfileRepository.findByCodeIgnoreCase(org.mockito.ArgumentMatchers.anyString())).thenReturn(Optional.empty());
         org.mockito.Mockito.lenient().when(roleProfileRepository.findAll()).thenReturn(List.of());
     }

@@ -1,5 +1,6 @@
 package com.xiyu.bid.auth;
 
+import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.entity.RoleProfile;
 import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.entity.User;
@@ -22,6 +23,9 @@ class UserDetailsServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private OssPermissionCache ossPermissionCache;
 
     @InjectMocks
     private UserDetailsServiceImpl userDetailsService;

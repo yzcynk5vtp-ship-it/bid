@@ -139,6 +139,20 @@ public class JobRoleLookupResolver {
         return systemRoleListMapper.map(lookup.sysRoleList());
     }
 
+    /**
+     * 将 OSS 角色码映射为内部角色码（大小写不敏感）。
+     * <p>
+     * 例如：bid-projectLeader → sales，/bidAdmin → bid_admin。
+     * 未命中的 OSS 角色码返回 null。
+     */
+    public static String mapOssRoleCodeToInternal(String ossRoleCode) {
+        if (ossRoleCode == null || ossRoleCode.isBlank()) {
+            return null;
+        }
+        String trimmed = ossRoleCode.trim().toLowerCase(Locale.ROOT);
+        return OSS_TO_INTERNAL_ROLE_IGNORE_CASE.get(trimmed);
+    }
+
     private String normalizeRoleCode(String roleCode) {
         if (roleCode == null || roleCode.isBlank()) {
             return null;

@@ -4,6 +4,7 @@
 // 维护声明: 仅维护用户加载逻辑；权限字段映射变更请同步认证链路.
 package com.xiyu.bid.auth;
 
+import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.UserRepository;
@@ -18,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -26,6 +27,7 @@ import java.util.Set;
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final OssPermissionCache ossPermissionCache;
 
 
 
@@ -45,18 +47,32 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     private List<SimpleGrantedAuthority> authoritiesFor(User user) {
         Set<String> authorities = new LinkedHashSet<>();
-        
-        // 0. roleCode 提前，判定是否跳过 Legacy User.Role 兼容（bid_other_dept 等新式受限角色
-        //    及任何未注册角色不发 ROLE_STAFF/ADMIN/MANAGER，避免误入 hasAnyRole(... 'STAFF' ...) 白名单）。
-        String roleCode = user.getRoleCode();
-        boolean skipLegacyCompat = RoleProfileCatalog.shouldSkipLegacyRoleCompat(roleCode);
+
+        // 0. 优先从 OSS 权限缓存读取实时抓取的角色+权限（不读本地 DB RoleProfile.menu_permissions）
+        Optional<OssPermissionCache.CacheEntry> ossEntry = ossPermissionCache.getEntry(user.getUsername());
+
+        String roleCode;
+        List<String> menuPermissions;
+        boolean skipLegacyCompat;
+
+        if (ossEntry.isPresent() && ossEntry.get().roleCode() != null) {
+            // OSS 用户：用缓存中的实时角色+权限（来自 5 接口实时抓取）
+            roleCode = ossEntry.get().roleCode();
+            menuPermissions = ossEntry.get().menuPermissions();
+            skipLegacyCompat = RoleProfileCatalog.shouldSkipLegacyRoleCompat(roleCode);
+        } else {
+            // 非 OSS 用户或缓存未命中：用本地 DB 兜底
+            roleCode = user.getRoleCode();
+            menuPermissions = user.getRoleProfile() != null ? user.getRoleProfile().getMenuPermissions() : null;
+            skipLegacyCompat = RoleProfileCatalog.shouldSkipLegacyRoleCompat(roleCode);
+        }
 
         // 1. Legacy role (e.g., ROLE_STAFF, ROLE_ADMIN, ROLE_MANAGER)
         User.Role legacyRole = user.getRole() == null ? User.Role.STAFF : user.getRole();
         if (!skipLegacyCompat) {
             authorities.add("ROLE_" + legacyRole.name());
         }
-        
+
         // 2. Role code as authority (e.g., bid_admin, staff) + 新旧兼容映射
         if (roleCode != null && !roleCode.isBlank()) {
             authorities.add(roleCode);
@@ -67,34 +83,26 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 authorities.add("ROLE_" + compatLegacy.name());
             }
         }
-        
-        // 3. Auditor Role check (kept for compatibility)
-        
-        // 4. Menu permissions — merge DB-stored permissions with catalog (catalog is authoritative)
-        if (user.getRoleProfile() != null) {
-            List<String> permissions = user.getRoleProfile().getMenuPermissions();
-            if (permissions != null) {
-                authorities.addAll(permissions);
 
-                // Admin role or having "all" permission gets all known permissions dynamically
-                if (permissions.contains("all") || "admin".equalsIgnoreCase(roleCode) || User.Role.ADMIN == legacyRole) {
-                    for (RoleProfileCatalog.SeedDefinition def : RoleProfileCatalog.seedDefinitions()) {
-                        if (def.menuPermissions() != null) {
-                            authorities.addAll(def.menuPermissions());
-                        }
+        // 3. Menu permissions — 优先用 OSS 缓存的实时权限，缓存未命中时用 DB 兜底
+        if (menuPermissions != null) {
+            authorities.addAll(menuPermissions);
+
+            // Admin role or having "all" permission gets all known permissions dynamically
+            if (menuPermissions.contains("all") || "admin".equalsIgnoreCase(roleCode) || User.Role.ADMIN == legacyRole) {
+                for (RoleProfileCatalog.SeedDefinition def : RoleProfileCatalog.seedDefinitions()) {
+                    if (def.menuPermissions() != null) {
+                        authorities.addAll(def.menuPermissions());
                     }
-                    authorities.add(RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION);
                 }
+                authorities.add(RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION);
             }
         }
 
-        // 4b. Always merge catalog-defined permissions for the user's roleCode,
-        //     ensuring newly added permissions (e.g. retrospective.submit) are
-        //     granted even when the DB-stored permission list is stale.
-        //     仅对已注册角色生效——未注册 roleCode 的 definitionForCode 会 fallback 到 staff，
-        //     错误授予标讯/项目/知识库权限，故用 isRegisteredCode 拦截。
+        // 4. catalog 兜底（仅对已注册角色且 menuPermissions 为空时）
+        //    确保 catalog 定义的新增权限（如 retrospective.submit）在权限为空时仍被授予。
         if (roleCode != null && !roleCode.isBlank() && RoleProfileCatalog.isRegisteredCode(roleCode)
-                && (user.getRoleProfile() == null || user.getRoleProfile().getMenuPermissions().isEmpty())) {
+                && (menuPermissions == null || menuPermissions.isEmpty())) {
             RoleProfileCatalog.SeedDefinition catalogDef = RoleProfileCatalog.definitionForCode(roleCode);
             if (catalogDef != null && catalogDef.menuPermissions() != null) {
                 authorities.addAll(catalogDef.menuPermissions());
@@ -105,7 +113,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (User.Role.ADMIN == legacyRole || "admin".equalsIgnoreCase(roleCode)) {
             authorities.add(RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION);
         }
-        
+
         return authorities.stream().map(SimpleGrantedAuthority::new).toList();
     }
 }
