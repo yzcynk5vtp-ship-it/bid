@@ -191,6 +191,8 @@ public class CrmProperties {
         private String userPermissionPath = "/oauth/getUserPermission";
         /** userPermissionSystemName - default query param for getUserPermission. */
         private String userPermissionSystemName = "xiyu-bid-poc";
+        /** userLoginSystem - OSS system 参数，用于用户登录认证（区别于内部 CRM API 调用的 oauthSystem）。 */
+        private String userLoginSystem = "bid-platform";
         /** getUserJobListPath - POST /oss/admin-web/v1/output/data/getUserJobListByJobNumberList. */
         private String getUserJobListPath = "/oss/admin-web/v1/output/data/getUserJobListByJobNumberList";
     }

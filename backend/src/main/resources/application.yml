@@ -99,6 +99,7 @@ app:
       employee-path: ${XIYU_CRM_AUTH_EMPLOYEE_PATH:/oauth/getUserInfo}
       user-permission-path: ${XIYU_CRM_AUTH_USER_PERMISSION_PATH:/oauth/getUserPermission}
       user-permission-system-name: ${XIYU_CRM_AUTH_USER_PERMISSION_SYSTEM_NAME:bid-platform}
+      user-login-system: ${XIYU_CRM_USER_LOGIN_SYSTEM:bid-platform}
     customer:
       search-path: ${XIYU_CRM_CUSTOMER_SEARCH_PATH:/customer/search}
       contacts-path: ${XIYU_CRM_CUSTOMER_CONTACTS_PATH:/customer/contacts/batch}

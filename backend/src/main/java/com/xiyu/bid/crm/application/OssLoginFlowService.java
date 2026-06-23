@@ -56,7 +56,7 @@ public class OssLoginFlowService {
      */
     public OssLoginResult authenticateDirect(String username, String password) {
         String baseUrl = crmProperties.getEffectiveAuthBaseUrl();
-        String oauthSystem = crmProperties.getOauthSystem();
+        String oauthSystem = crmProperties.getAuth().getUserLoginSystem();
         String permissionSystemName = crmProperties.getAuth().getUserPermissionSystemName();
 
         OssLoginResult.Builder result = OssLoginResult.builder();

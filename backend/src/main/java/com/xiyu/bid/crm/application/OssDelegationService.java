@@ -34,10 +34,10 @@ public class OssDelegationService {
         LinkedMultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add("username", user.getUsername());
         formData.add("password", rawPassword);
-        formData.add("system", crmProperties.getOauthSystem());
+        formData.add("system", crmProperties.getAuth().getUserLoginSystem());
 
         log.info("OSS login delegation: baseUrl={}, path={}, username={}, system={}",
-                baseUrl, path, user.getUsername(), crmProperties.getOauthSystem());
+                baseUrl, path, user.getUsername(), crmProperties.getAuth().getUserLoginSystem());
 
         CrmResponseHandler.CrmApiResponse response = crmHttpClient.postForm(baseUrl, path, formData);
 
