@@ -195,6 +195,10 @@ Spring Security 上下文注入用户信息 -> 业务接口正常响应
 
 详细说明参见 [[data-permission-hardening]]。
 
+## 5.1 西域给泊冉权限接口
+
+平台与西域 OSS 系统对接的用户认证/授权接口清单参见 [[integration-boran-permission-api]]（暗号：角色和权限）。
+
 ## 6. 与业务流程的关联
 
 不同角色在投标全流程（参见 [[business-process]]）各阶段承担不同职责：

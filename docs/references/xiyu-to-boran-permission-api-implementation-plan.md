@@ -1,4 +1,4 @@
-# 泊冉系统权限接口实施计划
+# 西域给泊冉权限接口实施计划
 
 > 版本：v1.0
 > 日期：2026-06-22
@@ -8,9 +8,9 @@
 
 ## 一、现状分析
 
-### 1.1 泊冉系统接口要求
+### 1.1 西域（OSS）接口要求
 
-泊冉系统定义了 5 个权限接口的标准调用顺序：
+西域（OSS）给泊冉提供了 5 个权限接口的标准调用顺序：
 
 | 顺序 | 接口名称 | 接口路径 | 说明 |
 |------|---------|---------|------|
@@ -111,7 +111,7 @@
 
 ### 阶段 1：接口路径配置化（最小改动）
 
-**目标**：将接口路径改为可配置，支持切换到泊冉文档要求的路径
+**目标**：将接口路径改为可配置，支持切换到西域接口文档要求的路径
 
 **修改文件**：
 
@@ -195,7 +195,7 @@ void shouldUseConfiguredMenuTreePath() {
 ```java
 /**
  * OSS 登录服务。
- * 按泊冉文档要求的顺序调用 OSS 接口。
+ * 按西域接口文档要求的顺序调用 OSS 接口。
  */
 @Service
 public class OssLoginService {
@@ -251,7 +251,7 @@ public class OssLoginService {
 
 ### 阶段 3：缓存策略实现
 
-**目标**：实现泊冉文档要求的缓存策略
+**目标**：实现西域接口文档要求的缓存策略
 
 **修改文件**：
 
@@ -547,6 +547,6 @@ XIYU_ORG_USER_MENU_TREE_PATH=/oauth/getUserPermission
 
 ### C. 相关文档链接
 
-- [泊冉系统获取用户权限接口顺序](boran-permission-api-sequence.md)
+- [西域给泊冉用户权限接口顺序](xiyu-to-boran-permission-api-sequence.md)
 - [CRM 对接规范](crm-integration-lessons.md)
 - [组织架构集成方案](integration-organization-event-sdk.md)
