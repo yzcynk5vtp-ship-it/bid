@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ProjectResultPayloadAssembler {
 
-    private static final String SYSTEM_NAME = "西域数智化投标管理平台";
+    private static final String SYSTEM_NAME = "投标管理系统";
     private static final ZoneId ZONE_SHANGHAI = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter OPERATED_AT_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
