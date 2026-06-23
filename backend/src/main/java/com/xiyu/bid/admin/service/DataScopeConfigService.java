@@ -133,23 +133,35 @@ public class DataScopeConfigService {
     }
 
     public List<String> getRoleMenuPermissions(User user) {
-        if (user == null) {
-            return List.of();
-        }
-        // 只从 OSS 权限缓存读取，不 fallback 到本地 DB
-        // 原因：本地 DB 的 RoleProfile.menu_permissions 可能配置了过多权限，会导致越权
+        if (user == null) return List.of();
         Optional<List<String>> cachedPermissions = ossPermissionCache.getMenuPermissions(user.getUsername());
-        if (cachedPermissions.isPresent()) {
-            return normalizeMenuPermissions(cachedPermissions.get());
+        if (cachedPermissions.isPresent()) return normalizeMenuPermissions(cachedPermissions.get());
+        // admin 系统内置账户不走 OSS，fallback 到本地 DB RoleProfile
+        if (isLocalSystemAccount(user)) {
+            List<String> localPermissions = resolveRoleProfile(user).getMenuPermissions();
+            if (localPermissions != null && !localPermissions.isEmpty()) {
+                log.info("Local system account user={} using DB RoleProfile menu_permissions", user.getUsername());
+                return normalizeMenuPermissions(localPermissions);
+            }
         }
         log.warn("OSS permission cache miss for user={}, returning empty (need re-login)", user.getUsername());
         return List.of();
+    }
+
+    /** admin 系统内置账户（不走 OSS 认证）：externalOrgSourceApp 为空且角色码为 admin。 */
+    private boolean isLocalSystemAccount(User user) {
+        return (user.getExternalOrgSourceApp() == null || user.getExternalOrgSourceApp().isBlank())
+                && RoleProfileCatalog.ADMIN_CODE.equals(user.getRoleCode());
     }
 
     public String getRoleCode(User user) {
         if (user == null) return "staff";
         Optional<String> cachedRoleCode = ossPermissionCache.getRoleCode(user.getUsername());
         if (cachedRoleCode.isPresent()) return cachedRoleCode.get();
+        if (isLocalSystemAccount(user)) {
+            String dbRoleCode = user.getRoleCode();
+            if (dbRoleCode != null && !dbRoleCode.isBlank()) return dbRoleCode;
+        }
         log.warn("OSS role cache miss for user={}, returning 'staff' (need re-login)", user.getUsername());
         return "staff";
     }
@@ -162,6 +174,10 @@ public class DataScopeConfigService {
             RoleProfileCatalog.SeedDefinition def = RoleProfileCatalog.definitionForCode(roleCode);
             if (def != null && def.name() != null && !def.name().isBlank()) return def.name();
             return roleCode;
+        }
+        if (isLocalSystemAccount(user)) {
+            RoleProfile roleProfile = resolveRoleProfile(user);
+            if (roleProfile.getName() != null && !roleProfile.getName().isBlank()) return roleProfile.getName();
         }
         log.warn("OSS role cache miss for user={}, returning '员工' (need re-login)", user.getUsername());
         return "员工";
