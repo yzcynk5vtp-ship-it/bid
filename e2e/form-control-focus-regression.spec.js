@@ -4,7 +4,7 @@ import { ensureApiSession, injectSession } from './auth-helpers.js'
 async function loginAsStyleRegressionUser(page) {
   const session = await ensureApiSession({
     username: `form_style_${Date.now()}`,
-    role: 'bid_admin',
+    role: 'bidAdmin',
     fullName: 'Form Style Admin',
   })
   await injectSession(page, session)

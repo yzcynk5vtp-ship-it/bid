@@ -6,7 +6,7 @@ test.describe('knowledge qualification flow', () => {
     const suffix = Date.now()
     const session = await ensureApiSession({
       username: `e2e_know_${suffix}`,
-      role: 'bid_admin',
+      role: 'bidAdmin',
       fullName: 'E2E Knowledge Admin'
     })
 

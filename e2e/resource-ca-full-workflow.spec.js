@@ -250,7 +250,7 @@ test.describe('资源管理 - CA证书全流程', () => {
     const s = suffix()
     const specialistSession = await ensureApiSession({
       username: `e2e_ca_spec_${s}`,
-      role: 'BID_SPECIALIST',
+      role: 'BID_TEAM',
       fullName: 'E2E 投标专员'
     })
 
