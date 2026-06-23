@@ -30,9 +30,12 @@ describe('CO-310 修复 — onCrmOpportunityLinked 评估表回填链路恢复',
 
   it('通过 evaluationPayload 字段传递评估表数据（一步完成关联+回填）', () => {
     expect(functionBody).toContain('payload.evaluationPayload')
-    expect(functionBody).toContain('bidRecommendation')
     expect(functionBody).toContain('evaluationBasic')
     expect(functionBody).toContain('evaluationCustomerInfos')
+    // CO-312: 是否投标/弃标原因由项目负责人手动填写，bidRecommendation/evaluationRecommendation
+    // 仅在 evaluationData.recommendation 存在时才组装（防御性条件分支，当前 selector 不传）
+    expect(functionBody).toContain('if (evaluationData.recommendation)')
+    expect(functionBody).toContain('bidRecommendation')
     expect(functionBody).toContain('evaluationRecommendation')
   })
 
