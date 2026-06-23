@@ -11,37 +11,9 @@
         <el-tag v-if="item.priority" :type="priorityType" size="small">
           {{ priorityText }}
         </el-tag>
-        <el-tag v-if="item.deliverables?.length" type="success" size="small">交付物 {{ item.deliverables.length }}</el-tag>
+        <el-tag v-if="item.type === 'TASK' && hasDeliverable(item)" type="success" size="small">已上传交付物</el-tag>
+        <el-tag v-else-if="item.type === 'TASK' && !hasDeliverable(item)" type="warning" size="small">交付物必填</el-tag>
       </div>
-      <el-dropdown v-if="canUpdate" trigger="click" @click.stop>
-        <el-icon class="more-icon"><MoreFilled /></el-icon>
-        <template #dropdown>
-          <template v-if="item.type === 'BID_REVIEW'">
-            <el-dropdown-item @click="$emit('approve-bid', item)">
-              <el-icon><Select /></el-icon>
-              通过审核
-            </el-dropdown-item>
-            <el-dropdown-item divided @click="$emit('reject-bid', item)">
-              <el-icon><CloseBold /></el-icon>
-              驳回审核
-            </el-dropdown-item>
-          </template>
-          <template v-else>
-            <el-dropdown-item
-              v-for="s in availableStatuses"
-              :key="s.code"
-              :disabled="item.status === s.code"
-              @click="$emit('status-change', item, s.code)"
-            >
-              设为{{ s.name }}
-            </el-dropdown-item>
-            <el-dropdown-item divided @click="openUploadDialog">
-              <el-icon><Upload /></el-icon>
-              上传交付物
-            </el-dropdown-item>
-          </template>
-        </template>
-      </el-dropdown>
     </div>
     <div class="task-name">{{ item.title }}</div>
     <div class="task-desc" v-if="item.description">{{ item.description }}</div>
@@ -59,53 +31,50 @@
       <el-icon><OfficeBuilding /></el-icon>
       <span>{{ item.projectName }}</span>
     </div>
-    <div v-if="item.deliverables?.length" class="deliverables">
-      <div class="deliverable-title">交付物:</div>
-      <div class="deliverable-list">
-        <el-tag
-          v-for="del in item.deliverables"
-          :key="del.id"
-          size="small"
-          closable
-          @close="handleRemoveDeliverable(del)"
-        >
-          <el-link :href="del.url" target="_blank" type="primary" @click.stop>
-            <el-icon><Document /></el-icon>
-            {{ del.name }}
-          </el-link>
-        </el-tag>
-      </div>
+
+    <!-- BID_REVIEW：标书文件列表（只读下载） -->
+    <ProjectDocumentTable v-if="item.type === 'BID_REVIEW' && item.projectId" :project-id="item.projectId" readonly />
+
+    <!-- TASK：交付物操作（复用 TaskKanban 逻辑） -->
+    <div v-if="item.type === 'TASK'" class="card-actions">
+      <el-button size="small" :disabled="!isTaskAssignee(item)" @click="openDeliverableUpload(item)">交付物上传</el-button>
+      <el-button size="small" type="primary" :disabled="!isTaskAssignee(item) || !hasDeliverable(item)" @click="openSubmitDialog(item)">提交</el-button>
     </div>
 
-    <el-dialog v-model="uploadDialogVisible" title="上传交付物" width="420px" append-to-body>
-      <el-form :model="uploadForm" label-width="80px">
-        <el-form-item label="名称">
-          <el-input v-model="uploadForm.name" placeholder="请输入交付物名称" />
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="uploadForm.type" placeholder="请选择类型">
-            <el-option label="文档" value="document" />
-            <el-option label="资质" value="qualification" />
-            <el-option label="技术" value="technical" />
-            <el-option label="报价" value="quotation" />
-            <el-option label="其他" value="other" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="文件">
-          <el-upload
-            :auto-upload="false"
-            :limit="1"
-            :on-change="handleFileChange"
-            :on-remove="handleFileRemove"
-            :file-list="uploadFileList"
-          >
+    <!-- BID_REVIEW：审核操作 -->
+    <div v-if="item.type === 'BID_REVIEW'" class="card-actions">
+      <el-button size="small" type="danger" plain @click="openRejectDialog(item)">驳回</el-button>
+      <el-button size="small" type="success" @click="handleApproveBid(item)">通过审核</el-button>
+    </div>
+
+    <!-- 交付物上传 + 提交对话框（TASK） -->
+    <el-dialog v-model="showSubmitDialog" :title="'提交任务 - ' + (submittingTask?.title || '')" width="480px" :close-on-click-modal="false" append-to-body>
+      <el-form label-width="100px">
+        <el-form-item label="交付物" required>
+          <el-upload ref="deliverableUploadRef" :auto-upload="false" :file-list="deliverableFileList" :limit="1" accept=".pdf,.doc,.docx,.xlsx,.jpg,.png">
             <el-button size="small">选择文件</el-button>
+            <template #tip><span style="font-size:11px;color:#909399">上传交付物（PDF/Word/Excel/图片）</span></template>
           </el-upload>
+        </el-form-item>
+        <el-form-item label="完成情况说明">
+          <el-input v-model="submitNotes" type="textarea" :rows="3" placeholder="填写完成情况说明（可选）" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="uploadDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="handleSaveDeliverable">保存</el-button>
+        <el-button @click="showSubmitDialog = false">取消</el-button>
+        <el-button type="primary" :loading="submittingTaskLoading" @click="confirmSubmit">提交</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 驳回原因对话框（BID_REVIEW） -->
+    <el-dialog v-model="showRejectDialog" title="驳回标书审核" width="420px" :close-on-click-modal="false" append-to-body>
+      <el-form label-width="0">
+        <el-form-item :label="'驳回：' + (rejectingItem?.title || '')" />
+        <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" />
+      </el-form>
+      <template #footer>
+        <el-button @click="showRejectDialog = false">取消</el-button>
+        <el-button type="danger" :loading="rejectingLoading" @click="confirmReject">确认驳回</el-button>
       </template>
     </el-dialog>
   </div>
@@ -113,23 +82,24 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { MoreFilled, User, Calendar, OfficeBuilding, Upload, Document, Select, CloseBold } from '@element-plus/icons-vue'
-import { projectsApi } from '@/api/modules/projects'
+import { ElMessage } from 'element-plus'
+import { User, Calendar, OfficeBuilding } from '@element-plus/icons-vue'
+import { projectsApi } from '@/api/modules/projects.js'
+import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
+import { useUserStore } from '@/stores/user.js'
+import ProjectDocumentTable from '@/views/Project/stages/components/ProjectDocumentTable.vue'
 
 const props = defineProps({
   item: { type: Object, required: true },
   availableStatuses: { type: Array, required: true }
 })
-
-const emit = defineEmits(['status-change', 'deliverable-changed', 'approve-bid', 'reject-bid'])
+const emit = defineEmits(['status-change', 'deliverable-changed'])
+const userStore = useUserStore()
 
 const PRIORITY_TYPE_MAP = { HIGH: 'danger', MEDIUM: 'warning', LOW: 'info' }
 const PRIORITY_TEXT_MAP = { HIGH: '高', MEDIUM: '中', LOW: '低' }
-
 const priorityType = computed(() => PRIORITY_TYPE_MAP[props.item.priority] || 'info')
 const priorityText = computed(() => PRIORITY_TEXT_MAP[props.item.priority] || props.item.priority)
-const canUpdate = computed(() => !!props.item.id && (props.item.type === 'TASK' || props.item.type === 'BID_REVIEW'))
 
 const isUrgent = computed(() => {
   if (!props.item.dueDate) return false
@@ -142,89 +112,102 @@ const formattedDate = computed(() => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 })
 
-// 交付物上传
-const uploadDialogVisible = ref(false)
-const uploading = ref(false)
-const uploadForm = ref({ name: '', type: 'document' })
-const uploadFileList = ref([])
-
-const openUploadDialog = () => {
-  uploadForm.value = { name: '', type: 'document' }
-  uploadFileList.value = []
-  uploadDialogVisible.value = true
+// 复用 TaskKanban 的交付物逻辑
+function isTaskAssignee(task) {
+  const uid = userStore?.currentUser?.id
+  return uid != null && task?.assigneeId != null && String(uid) === String(task.assigneeId)
+}
+function hasDeliverable(task) {
+  return !!(task.deliverableUrl || task.deliverableName || task.fileUrl)
 }
 
-const handleFileChange = (file) => {
-  uploadForm.value.file = file.raw
-  if (!uploadForm.value.name) {
-    uploadForm.value.name = file.name
-  }
+// 交付物上传 + 提交对话框（复用 TaskKanban）
+const showSubmitDialog = ref(false)
+const submittingTask = ref(null)
+const submittingTaskLoading = ref(false)
+const deliverableFileList = ref([])
+const deliverableUploadRef = ref(null)
+const submitNotes = ref('')
+
+function openDeliverableUpload(task) {
+  submittingTask.value = task
+  showSubmitDialog.value = true
+  deliverableFileList.value = task.deliverableUrl ? [{ name: task.deliverableName || '已上传文件', url: task.deliverableUrl }] : []
+  submitNotes.value = task.completionNotes || ''
 }
 
-const handleFileRemove = () => {
-  uploadForm.value.file = null
-}
-
-const TYPE_MAP = {
-  document: 'DOCUMENT',
-  qualification: 'QUALIFICATION',
-  technical: 'TECHNICAL',
-  quotation: 'QUOTATION',
-  other: 'OTHER'
-}
-
-const handleSaveDeliverable = async () => {
-  if (!uploadForm.value.name) {
-    ElMessage.warning('请填写交付物名称')
+function openSubmitDialog(task) {
+  if (!hasDeliverable(task)) {
+    ElMessage.warning('请先上传交付物')
     return
   }
-  if (!uploadForm.value.file) {
-    ElMessage.warning('请选择文件')
-    return
-  }
-  uploading.value = true
+  submittingTask.value = task
+  showSubmitDialog.value = true
+  deliverableFileList.value = task.deliverableUrl ? [{ name: task.deliverableName || '已上传文件', url: task.deliverableUrl }] : []
+  submitNotes.value = task.completionNotes || ''
+}
+
+async function confirmSubmit() {
+  if (!submittingTask.value) return
+  submittingTaskLoading.value = true
   try {
-    const task = props.item
-    const file = uploadForm.value.file
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('taskId', task.id)
-    formData.append('category', 'TASK_DELIVERABLE')
-    const uploadResult = await projectsApi.uploadDocument(task.projectId, formData)
-    if (!uploadResult?.success || !uploadResult?.data) {
-      throw new Error(uploadResult?.message || '文件上传失败')
+    if (deliverableUploadRef.value?.uploadFiles?.length > 0) {
+      const formData = new FormData()
+      formData.append('file', deliverableUploadRef.value.uploadFiles[0].raw)
+      formData.append('taskId', submittingTask.value.id)
+      await projectsApi.createTaskDeliverable(submittingTask.value.projectId, submittingTask.value.id, formData)
     }
-    const uploadedDoc = uploadResult.data
-    const payload = {
-      name: uploadForm.value.name,
-      deliverableType: TYPE_MAP[uploadForm.value.type] || 'DOCUMENT',
-      size: uploadedDoc?.size || `${(file.size / 1024).toFixed(1)}KB`,
-      fileType: uploadedDoc?.fileType || file.type || null,
-      url: uploadedDoc?.fileUrl || null
+    if (submitNotes.value) {
+      await projectsApi.updateTask(submittingTask.value.id, { completionNotes: submitNotes.value })
     }
-    await projectsApi.createTaskDeliverable(task.projectId, task.id, payload)
-    uploadDialogVisible.value = false
-    ElMessage.success('交付物已保存')
-    emit('deliverable-changed', task)
+    await projectsApi.updateTaskStatus(submittingTask.value.projectId, submittingTask.value.id, 'REVIEW')
+    ElMessage.success('已提交审核')
+    showSubmitDialog.value = false
+    emit('deliverable-changed', submittingTask.value)
   } catch (e) {
-    ElMessage.error(e?.message || '交付物上传失败')
+    ElMessage.error(e?.response?.data?.msg || '提交失败')
   } finally {
-    uploading.value = false
+    submittingTaskLoading.value = false
+    submittingTask.value = null
   }
 }
 
-const handleRemoveDeliverable = async (deliverable) => {
+// BID_REVIEW 审核操作
+async function handleApproveBid(item) {
   try {
-    await ElMessageBox.confirm(`确定删除交付物「${deliverable.name}」？`, '提示', { type: 'warning' })
-  } catch {
-    return
-  }
-  try {
-    await projectsApi.deleteTaskDeliverable(props.item.projectId, props.item.id, deliverable.id)
-    ElMessage.success('交付物已删除')
-    emit('deliverable-changed', props.item)
+    await projectLifecycleApi.approveBid(item.projectId, { comment: '' })
+    ElMessage.success('审核已通过')
+    emit('deliverable-changed', item)
   } catch (e) {
-    ElMessage.error(e?.message || '删除交付物失败')
+    ElMessage.error(e?.response?.data?.msg || '审核通过失败')
+  }
+}
+
+const showRejectDialog = ref(false)
+const rejectingItem = ref(null)
+const rejectReason = ref('')
+const rejectingLoading = ref(false)
+
+function openRejectDialog(item) {
+  rejectingItem.value = item
+  rejectReason.value = ''
+  showRejectDialog.value = true
+}
+
+async function confirmReject() {
+  if (!rejectReason.value.trim()) return ElMessage.warning('请填写驳回原因')
+  if (!rejectingItem.value) return
+  rejectingLoading.value = true
+  try {
+    await projectLifecycleApi.rejectBid(rejectingItem.value.projectId, { reason: rejectReason.value.trim() })
+    ElMessage.success('已驳回')
+    showRejectDialog.value = false
+    emit('deliverable-changed', rejectingItem.value)
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || '驳回失败')
+  } finally {
+    rejectingLoading.value = false
+    rejectingItem.value = null
   }
 }
 </script>
@@ -246,23 +229,12 @@ const handleRemoveDeliverable = async (deliverable) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
-  .header-tags { display: flex; align-items: center; gap: 6px; }
+  .header-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .type-tag { flex-shrink: 0; }
-  .more-icon { cursor: pointer; color: #909399; &:hover { color: #409eff; } }
 }
 
 .task-name { font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #303133; }
-
-.task-desc {
-  font-size: 12px;
-  color: #909399;
-  margin-bottom: 8px;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+.task-desc { font-size: 12px; color: #909399; margin-bottom: 8px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-meta {
   display: flex;
   justify-content: space-between;
@@ -272,17 +244,7 @@ const handleRemoveDeliverable = async (deliverable) => {
   .deadline-urgent { color: #f56c6c; }
 }
 
-.task-project {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: #909399;
-  .el-icon { flex-shrink: 0; }
-}
-
-.deliverables { margin-top: 8px; padding-top: 8px; border-top: 1px dashed #dcdfe6; }
-.deliverable-title { font-size: 12px; color: #909399; margin-bottom: 6px; }
-.deliverable-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.task-project { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 12px; color: #909399; .el-icon { flex-shrink: 0; } }
+.card-actions { margin-top: 8px; display: flex; gap: 6px; justify-content: flex-end; }
+:deep(.project-documents) { margin-top: 8px; .el-card__header { padding: 8px 12px; } .el-card__body { padding: 8px; } }
 </style>
