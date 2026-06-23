@@ -40,7 +40,7 @@ public class ProjectDraftingController {
 
     /** 分配投标团队（管理员/组长）。 */
     @PatchMapping("/leads")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN')")
     public ResponseEntity<ApiResponse<ProjectDraftingViewDto>> assignLeads(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectLeadAssignmentRequest req,

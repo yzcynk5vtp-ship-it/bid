@@ -68,8 +68,11 @@ test.describe('CO-280: CRM 附件 URL 参数式认证', () => {
   })
 
   // ── Case C: 无认证应返回 401（负向回归）──────────────────────
+  // 注意：使用 apiBaseUrl（后端直接地址）而非 request fixture 的 baseURL（前端代理）
+  // 前端 Vite dev server 对 /api/integration/** 路径可能不代理，导致测试结果不准确
   test('GET /api/integration/tenders without api_key should return 401', async ({ request }) => {
-    const response = await request.get('/api/integration/tenders', {
+    // 使用完整 URL 直接请求后端，绕过前端代理
+    const response = await request.get(`${apiBaseUrl}/api/integration/tenders`, {
       headers: { 'Content-Type': 'application/json' }
     })
 
