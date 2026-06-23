@@ -3,6 +3,8 @@
  *
  * 提供通用的文件下载能力，支持从 Content-Disposition 头解析文件名。
  */
+import { ElMessage } from 'element-plus'
+import httpClient from '@/api/client.js'
 
 /**
  * 从 Content-Disposition 头中解析文件名
@@ -41,6 +43,24 @@ export function parseFilenameFromDisposition(disposition, fallbackName) {
  */
 export async function downloadWithFilename(url, fallbackName) {
   if (!url) return
+  const apiUrl = normalizeApiDownloadUrl(url)
+
+  if (apiUrl) {
+    try {
+      const response = await httpClient.get(apiUrl, {
+        responseType: 'blob',
+        timeout: 120000,
+        skipGlobalErrorMessage: true
+      })
+      const disposition = response.headers?.['content-disposition'] || response.headers?.get?.('Content-Disposition') || ''
+      const filename = parseFilenameFromDisposition(disposition, fallbackName)
+      triggerBlobDownload(response.data, filename)
+    } catch (error) {
+      showApiDownloadError(error)
+    }
+    return
+  }
+
   try {
     const resp = await fetch(url, { credentials: 'include' })
     if (!resp.ok) {
@@ -54,6 +74,28 @@ export async function downloadWithFilename(url, fallbackName) {
   } catch {
     window.open(url, '_blank')
   }
+}
+
+export function normalizeApiDownloadUrl(url) {
+  try {
+    const parsed = new URL(url, window.location.origin)
+    if (!parsed.pathname.startsWith('/api/')) {
+      return ''
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    const rawUrl = String(url || '')
+    return rawUrl.startsWith('/api/') ? rawUrl : ''
+  }
+}
+
+function showApiDownloadError(error) {
+  const status = error?.response?.status
+  if (status === 401 || status === 403) {
+    ElMessage.error('登录已过期或访问入口不一致，请刷新页面并重新登录后下载')
+    return
+  }
+  ElMessage.error('文件下载失败，请稍后重试')
 }
 
 /**

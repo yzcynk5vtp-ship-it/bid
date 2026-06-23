@@ -61,6 +61,11 @@ describe('BasicInfoReadOnly — 附件下载链接应拼接 API_BASE_URL', () =>
     vi.resetModules()
     vi.doMock('@/api/config.js', () => ({
       API_BASE_URL: baseUrl,
+      API_CONFIG: {
+        baseURL: baseUrl,
+        timeout: 30000,
+        headers: { 'Content-Type': 'application/json' }
+      }
     }))
     const { default: BasicInfoReadOnlyDynamic } = await import('./BasicInfoReadOnly.vue')
     return mountWithElementPlus(BasicInfoReadOnlyDynamic, { props: { tender } })
@@ -89,6 +94,39 @@ describe('BasicInfoReadOnly — 附件下载链接应拼接 API_BASE_URL', () =>
     const links = wrapper.findAll('.el-link')
     expect(links.length).toBeGreaterThan(0)
     expect(links[0].text()).toContain('原始标讯.pdf')
+  })
+
+  it('后端返回绝对内部 API URL 时点击下载应改为同源相对路径', async () => {
+    vi.resetModules()
+    const downloadWithFilename = vi.fn()
+    vi.doMock('@/utils/download.js', () => ({
+      downloadWithFilename,
+      normalizeApiDownloadUrl: (url) => {
+        const parsed = new URL(url, 'http://172.16.38.78:8080')
+        return parsed.pathname.startsWith('/api/') ? `${parsed.pathname}${parsed.search}${parsed.hash}` : ''
+      }
+    }))
+    const { default: BasicInfoReadOnlyDynamic } = await import('./BasicInfoReadOnly.vue')
+    const wrapper = mountWithElementPlus(BasicInfoReadOnlyDynamic, {
+      props: {
+        tender: {
+          attachments: [
+            {
+              fileName: '招标文件.pdf',
+              fileUrl: 'https://winbid-test.ehsy.com/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2FTENDER%2Fhash-file.pdf'
+            }
+          ]
+        }
+      }
+    })
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('.el-link').trigger('click')
+
+    expect(downloadWithFilename).toHaveBeenCalledWith(
+      '/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2FTENDER%2Fhash-file.pdf',
+      '招标文件.pdf'
+    )
   })
 
   it('空 URL 应不显示链接', async () => {
