@@ -192,6 +192,7 @@ public class ProjectDraftingService {
 
     @Transactional(readOnly = true)
     public ProjectDraftingViewDto get(Long projectId) {
+        projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
         mustGetProject(projectId);
         ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
         return toView(projectId, lead);
