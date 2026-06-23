@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -123,6 +124,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(409, message));
+    }
+
+    /**
+     * 处理 OSS 权限不足异常（用户无 bid-platform 系统访问权限）。
+     * 与 BadCredentialsException（密码错误）区分，返回 403 而非 401。
+     */
+    @ExceptionHandler(InsufficientAuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInsufficientAuthenticationException(
+            InsufficientAuthenticationException ex,
+            HttpServletRequest request) {
+        log.warn("OSS权限不足 - URI: {}, IP: {}, msg: {}",
+                request.getRequestURI(), getClientIp(request), ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(403, "您没有该系统的访问权限，请联系管理员"));
     }
 
     /**

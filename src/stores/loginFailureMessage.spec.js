@@ -20,6 +20,15 @@ describe('resolveLoginFailureMessage', () => {
     expect(resolveLoginFailureMessage({ message: 'Bad credentials' })).toBe('密码错误，请重新输入')
   })
 
+  it('passes through 403 OSS permission denial messages', () => {
+    expect(resolveLoginFailureMessage({
+      response: {
+        status: 403,
+        data: { msg: '您没有该系统的访问权限，请联系管理员' },
+      },
+    })).toBe('您没有该系统的访问权限，请联系管理员')
+  })
+
   it('preserves non-authentication business messages', () => {
     expect(resolveLoginFailureMessage({ message: '账号已停用' })).toBe('账号已停用')
   })
