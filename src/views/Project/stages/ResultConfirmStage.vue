@@ -32,7 +32,7 @@
       </div>
 
       <!-- 未中标/流标/弃标 → 原因（CO-322） -->
-      <div v-if="form.resultType === 'LOST' || form.resultType === 'FAILED' || form.resultType === 'ABANDONED'" class="summary-section">
+      <div v-if="NON_WON_TYPES.includes(form.resultType)" class="summary-section">
         <label class="field-label">{{ summaryLabel }}<span class="required-mark">*</span></label>
         <el-input v-model="form.summary" type="textarea" :rows="3" :placeholder="summaryPlaceholder" :disabled="!canOperate" />
       </div>
@@ -158,14 +158,15 @@ const evidenceTip = computed(() => {
   return `${tips[form.resultType] || ''}，支持 PDF/图片/Word，单文件≤10MB，最多5个`
 })
 
-const summaryLabel = computed(() => {
-  const map = { LOST: '丢标原因', FAILED: '流标原因', ABANDONED: '弃标原因' }
-  return map[form.resultType] || '原因'
-})
-const summaryPlaceholder = computed(() => {
-  const map = { LOST: '请填写丢标原因...', FAILED: '请填写流标原因...', ABANDONED: '请填写弃标原因...' }
-  return map[form.resultType] || ''
-})
+const SUMMARY_META = {
+  LOST: { label: '丢标原因', placeholder: '请填写丢标原因...' },
+  FAILED: { label: '流标原因', placeholder: '请填写流标原因...' },
+  ABANDONED: { label: '弃标原因', placeholder: '请填写弃标原因...' },
+}
+// CO-322: 非 WON 结果类型单一来源（template v-if + submit 校验共用），避免新增类型时分歧
+const NON_WON_TYPES = Object.keys(SUMMARY_META)
+const summaryLabel = computed(() => (SUMMARY_META[form.resultType] || {}).label || '原因')
+const summaryPlaceholder = computed(() => (SUMMARY_META[form.resultType] || {}).placeholder || '')
 
 const uploadHeaders = computed(() => {
   const token = userStore?.token
@@ -224,7 +225,7 @@ async function load() {
 
 async function submit() {
   if (!form.resultType) return ElMessage.warning('请选择结果类型')
-  if (form.resultType !== 'WON' && !form.summary?.trim()) return ElMessage.warning('请填写原因')
+  if (NON_WON_TYPES.includes(form.resultType) && !form.summary?.trim()) return ElMessage.warning('请填写原因')
   if (!form.evidenceFileIds.length) return ElMessage.warning('请上传凭证文件')
   submitting.value = true
   try {

@@ -52,13 +52,8 @@ public final class ResultRegistrationFieldPolicy {
                     missing.add("contractEndDate");
                 }
             }
-            case LOST -> {
-                // CO-322: 丢标原因(summary)必填
-                if (isBlank(input.summary())) {
-                    missing.add("summary");
-                }
-            }
-            case FAILED, ABANDONED -> {
+            case LOST, FAILED, ABANDONED -> {
+                // CO-322: 丢标原因/流标原因/弃标原因(summary)必填
                 if (isBlank(input.summary())) {
                     missing.add("summary");
                 }
