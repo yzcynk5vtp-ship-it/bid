@@ -136,7 +136,7 @@ public class DataScopeConfigService {
         if (user == null) return List.of();
         Optional<List<String>> cachedPermissions = ossPermissionCache.getMenuPermissions(user.getUsername());
         if (cachedPermissions.isPresent()) {
-            return RoleMenuPermissionEnricher.enrich(cachedPermissions.get(), getRoleCode(user));
+            return normalizeMenuPermissions(cachedPermissions.get());
         }
         // admin 系统内置账户不走 OSS，fallback 到本地 DB RoleProfile
         if (isLocalSystemAccount(user)) {

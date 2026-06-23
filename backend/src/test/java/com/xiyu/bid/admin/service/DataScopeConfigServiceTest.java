@@ -296,23 +296,25 @@ class DataScopeConfigServiceTest {
     }
 
     @Test
-    void getRoleMenuPermissions_ShouldEnrichOssAdminPermissionsWithCatalogDefaults() {
+    void getRoleMenuPermissions_ShouldReturnOssPermissionsDirectlyWithoutEnrichment() {
+        // OSS 缓存命中时，直接返回 OSS 权限，不追加本地 seed 权限
+        // 菜单权限必须完全根据 OSS 的 /oauth/getUserPermission 接口返回
         User user = User.builder()
                 .id(9L).username("06234").fullName("郑蓉蓉")
                 .role(User.Role.STAFF)
                 .enabled(true)
                 .build();
         OssPermissionCache ossPermissionCache = new OssPermissionCache();
-        ossPermissionCache.put(user.getUsername(), RoleProfileCatalog.ADMIN_CODE,
+        ossPermissionCache.put(user.getUsername(), RoleProfileCatalog.BID_ADMIN_CODE,
                 List.of("project", "project-detail"), null);
         dataScopeConfigService = new DataScopeConfigService(systemSettingRepository, userRepository, roleProfileRepository,
                 roleProfileBootstrap, new ObjectMapper(), ossPermissionCache);
 
         List<String> perms = dataScopeConfigService.getRoleMenuPermissions(user);
 
+        // OSS 权限直达，不被本地 seed 污染
         assertThat(perms)
-                .contains("project", "project-detail", "all", "evaluation.update", "task.review")
-                .doesNotHaveDuplicates();
+                .containsExactlyInAnyOrder("project", "project-detail");
     }
 
     @Test

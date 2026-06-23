@@ -20,7 +20,7 @@ public class JobRoleLookupResolver {
     private static final Map<String, String> OSS_TO_INTERNAL_ROLE = Map.of(
             "/bidAdmin", "bid_admin",
             "bid-TeamLeader", "bid_lead",
-            "bid-SystemAdmin", "admin",
+            "bid-SystemAdmin", "bid_admin",
             "bid-Team", "bid_specialist",
             "bid-projectLeader", "sales",
             "bid-administration", "admin_staff",
@@ -40,7 +40,7 @@ public class JobRoleLookupResolver {
     private static final Map<String, String> OSS_ROLE_NAME_TO_INTERNAL = Map.of(
             "投标管理员", "bid_admin",
             "投标组长", "bid_lead",
-            "投标系统管理员", "admin",
+            "投标系统管理员", "bid_admin",
             "投标专员", "bid_specialist",
             "投标项目负责人", "sales",
             "行政人员", "admin_staff",
