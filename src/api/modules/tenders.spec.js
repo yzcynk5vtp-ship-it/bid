@@ -10,6 +10,7 @@ vi.mock('@/api/client', () => ({
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
+    patch: vi.fn(),
     delete: vi.fn()
   }
 }))
@@ -173,5 +174,33 @@ describe('tendersApi', () => {
 
     expect(httpClient.get).not.toHaveBeenCalled()
     expect(result.success).toBe(false)
+  })
+
+  // ===========================================================================
+  // CO-308: linkCrmOpportunity 必须传 skipGlobalErrorMessage: true
+  // 避免与 DetailPage.vue catch 块双重弹窗
+  // ===========================================================================
+  describe('CO-308 — linkCrmOpportunity 跳过全局错误弹窗', () => {
+    it('linkCrmOpportunity(): 传入 skipGlobalErrorMessage: true,避免与调用方 catch 块双重弹窗', async () => {
+      httpClient.patch.mockResolvedValue({ success: true, data: { id: 1 } })
+
+      await tendersApi.linkCrmOpportunity(123, {
+        crmOpportunityId: 'CC001',
+        crmOpportunityName: '测试商机',
+      })
+
+      expect(httpClient.patch).toHaveBeenCalledWith(
+        '/api/tenders/123/crm-opportunity',
+        { crmOpportunityId: 'CC001', crmOpportunityName: '测试商机' },
+        { skipGlobalErrorMessage: true }
+      )
+    })
+
+    it('linkCrmOpportunity(): 非数字 ID 仍走本地拒绝,不触发 HTTP 调用', async () => {
+      const result = await tendersApi.linkCrmOpportunity('abc', {})
+
+      expect(httpClient.patch).not.toHaveBeenCalled()
+      expect(result.success).toBe(false)
+    })
   })
 })

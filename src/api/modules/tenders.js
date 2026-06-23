@@ -365,7 +365,9 @@ export const tendersApi = {
         message: '当前后端仅支持数字型标讯 ID'
       }
     }
-    return httpClient.patch(`/api/tenders/${id}/crm-opportunity`, payload)
+    // CO-308: 跳过 client.js 拦截器的全局错误弹窗,由 DetailPage.vue catch 块统一处理
+    // (404 → 标讯已删除提示;其他 → 透传后端 msg + 递增 crmLinkFailedSignal)
+    return httpClient.patch(`/api/tenders/${id}/crm-opportunity`, payload, { skipGlobalErrorMessage: true })
   },
 
   async transferTender(id, payload) {
