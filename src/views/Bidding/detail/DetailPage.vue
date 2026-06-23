@@ -337,13 +337,18 @@ async function onCrmOpportunityLinked({ opportunityId, opportunityName, evaluati
     }
     if (evaluationData) {
       payload.evaluationPayload = {
-        bidRecommendation: evaluationData.recommendation?.shouldBid ? 'RECOMMEND' : 'NOT_RECOMMEND',
         evaluationBasic: transformCrmBasic(evaluationData.basic),
         evaluationCustomerInfos: transformCrmCustomerInfos(evaluationData.customerInfos),
-        evaluationRecommendation: {
-          shouldBid: evaluationData.recommendation?.shouldBid ?? true,
-          reason: evaluationData.recommendation?.reason || '',
-        },
+      }
+      // CO-312: 是否投标/弃标原因由项目负责人手动填写，关联 CRM 商机时不再带入。
+      // 仅当调用方仍显式传入 recommendation 时才组装（防御性，当前 selector 不传）。
+      if (evaluationData.recommendation) {
+        payload.evaluationPayload.bidRecommendation =
+          evaluationData.recommendation.shouldBid ? 'RECOMMEND' : 'NOT_RECOMMEND'
+        payload.evaluationPayload.evaluationRecommendation = {
+          shouldBid: evaluationData.recommendation.shouldBid,
+          reason: evaluationData.recommendation.reason || '',
+        }
       }
     }
     await tendersApi.linkCrmOpportunity(tender.value.id, payload)

@@ -138,7 +138,8 @@ export function useCrmOpportunitySelector(props, emit) {
             projectPlanGapFiles: [],
             customerRevenue: null,
           },
-          customerInfos: [], recommendation: { shouldBid: true, reason: '' },
+          // CO-312: 是否投标/弃标原因由项目负责人手动填写，关联商机时不带入 recommendation 段
+          customerInfos: [],
         },
       })
       showDialog.value = false
@@ -200,12 +201,10 @@ export function useCrmOpportunitySelector(props, emit) {
           customerRevenue: chance.customerRevenue || null,
         },
         customerInfos,
-        // CO-312: CRM 没传 backupPlan 时 shouldBid 必须为 null（"待决策"），不能默认 true。
-        // 原实现 `!chance.backupPlan` 在 backupPlan=undefined 时得到 true（建议投标），是 bug。
-        recommendation: {
-          shouldBid: chance.backupPlan == null ? null : !chance.backupPlan,
-          reason: '',
-        },
+        // CO-312: 是否投标/弃标原因由项目负责人手动填写，不再从 CRM 商机详情带入。
+        // 因此 evaluationData 不含 recommendation 段；后端 validator 在该段为 null 时
+        // 跳过 shouldBid 校验，mapper 将 recommendation 置空（待决策），评估表 UI 显示
+        // "请选择"占位，由项目负责人手动补填后走正常提交流程。
       },
     })
     showDialog.value = false
