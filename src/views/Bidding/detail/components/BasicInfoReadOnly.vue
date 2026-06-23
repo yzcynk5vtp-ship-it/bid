@@ -115,8 +115,7 @@
 <script setup>
 import { computed } from 'vue'
 import { formatTenderDateTime } from '../../bidding-utils.js'
-import { API_BASE_URL } from '@/api/config.js'
-import { downloadWithFilename as downloadFile } from '@/utils/download.js'
+import { downloadWithFilename as downloadFile, normalizeApiDownloadUrl } from '@/utils/download.js'
 
 const props = defineProps({
   tender: { type: Object, default: null },
@@ -125,12 +124,9 @@ const props = defineProps({
 function normalizeDownloadUrl(url) {
   if (!url) return ''
   if (url.startsWith('doc-insight://')) {
-    return `${API_BASE_URL}/api/doc-insight/download?fileUrl=${encodeURIComponent(url)}`
+    return `/api/doc-insight/download?fileUrl=${encodeURIComponent(url)}`
   }
-  if (url.startsWith('/api/') && API_BASE_URL) {
-    return `${API_BASE_URL}${url}`
-  }
-  return url
+  return normalizeApiDownloadUrl(url) || url
 }
 
 function downloadWithFilename(url, fallbackName) {

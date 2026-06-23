@@ -1,5 +1,19 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
-import { parseFilenameFromDisposition, triggerBlobDownload, downloadWithFilename } from './download.js'
+import { ElMessage } from 'element-plus'
+import httpClient from '../api/client.js'
+import { parseFilenameFromDisposition, triggerBlobDownload, downloadWithFilename, normalizeApiDownloadUrl } from './download.js'
+
+vi.mock('element-plus', () => ({
+  ElMessage: {
+    error: vi.fn()
+  }
+}))
+
+vi.mock('../api/client.js', () => ({
+  default: {
+    get: vi.fn()
+  }
+}))
 
 // Mock URL API for jsdom
 beforeAll(() => {
@@ -46,6 +60,7 @@ describe('parseFilenameFromDisposition', () => {
 describe('triggerBlobDownload', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.mocked(httpClient.get).mockReset()
   })
 
   it('应创建 <a> 标签并触发点击', () => {
@@ -83,9 +98,23 @@ describe('triggerBlobDownload', () => {
   })
 })
 
+describe('normalizeApiDownloadUrl', () => {
+  it('应将绝对内部 API URL 归一为相对路径，避免跨 Host 丢失 Cookie', () => {
+    expect(normalizeApiDownloadUrl('https://winbid-test.ehsy.com/api/doc-insight/download?fileUrl=x')).toBe('/api/doc-insight/download?fileUrl=x')
+    expect(normalizeApiDownloadUrl('http://172.16.38.78:8080/api/doc-insight/download?fileUrl=x')).toBe('/api/doc-insight/download?fileUrl=x')
+    expect(normalizeApiDownloadUrl('/api/doc-insight/download?fileUrl=x')).toBe('/api/doc-insight/download?fileUrl=x')
+  })
+
+  it('非 API URL 不应归一化', () => {
+    expect(normalizeApiDownloadUrl('https://example.com/file.pdf')).toBe('')
+  })
+})
+
 describe('downloadWithFilename', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    vi.mocked(httpClient.get).mockReset()
+    vi.mocked(ElMessage.error).mockReset()
   })
 
   it('当 url 为空时不应发起请求', async () => {
@@ -129,5 +158,69 @@ describe('downloadWithFilename', () => {
 
     await downloadWithFilename('http://example.com/file', 'fallback.txt')
     expect(clickSpy).toHaveBeenCalled()
+  })
+
+  it('API 下载应走 httpClient 以携带登录态', async () => {
+    const blob = new Blob(['test'], { type: 'text/plain' })
+    vi.mocked(httpClient.get).mockResolvedValue({
+      data: blob,
+      headers: {
+        'content-disposition': "attachment; filename*=UTF-8''%E6%A0%87%E8%AE%AF.pdf"
+      }
+    })
+    const fetchSpy = vi.spyOn(global, 'fetch')
+
+    const clickSpy = vi.fn()
+    vi.spyOn(document, 'createElement').mockReturnValue({
+      href: '', download: '', click: clickSpy
+    })
+    vi.spyOn(document.body, 'appendChild').mockImplementation(() => {})
+    vi.spyOn(document.body, 'removeChild').mockImplementation(() => {})
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+    await downloadWithFilename('http://172.16.38.78:8080/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2Fx', 'fallback.pdf')
+
+    expect(httpClient.get).toHaveBeenCalledWith(
+      '/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2Fx',
+      expect.objectContaining({ responseType: 'blob', timeout: 120000 })
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+  })
+
+  it('绝对域名 API 下载应归一为当前同源相对路径', async () => {
+    const blob = new Blob(['test'], { type: 'text/plain' })
+    vi.mocked(httpClient.get).mockResolvedValue({
+      data: blob,
+      headers: {}
+    })
+    const fetchSpy = vi.spyOn(global, 'fetch')
+
+    vi.spyOn(document, 'createElement').mockReturnValue({
+      href: '', download: '', click: vi.fn()
+    })
+    vi.spyOn(document.body, 'appendChild').mockImplementation(() => {})
+    vi.spyOn(document.body, 'removeChild').mockImplementation(() => {})
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+    await downloadWithFilename('https://winbid-test.ehsy.com/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2Fx', 'fallback.pdf')
+
+    expect(httpClient.get).toHaveBeenCalledWith(
+      '/api/doc-insight/download?fileUrl=doc-insight%3A%2F%2Fx',
+      expect.objectContaining({ responseType: 'blob', timeout: 120000 })
+    )
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('API 下载认证失败不应打开 Whitelabel 页面', async () => {
+    vi.mocked(httpClient.get).mockRejectedValue({ response: { status: 403 } })
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => {})
+
+    await downloadWithFilename('https://winbid-test.ehsy.com/api/doc-insight/download?fileUrl=x', 'fallback.pdf')
+
+    expect(openSpy).not.toHaveBeenCalled()
+    expect(ElMessage.error).toHaveBeenCalledWith('登录已过期或访问入口不一致，请刷新页面并重新登录后下载')
   })
 })

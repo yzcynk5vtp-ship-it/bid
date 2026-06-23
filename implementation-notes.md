@@ -325,3 +325,48 @@
 - RED：新增前端/后端回归测试后，确认旧实现会失败：前端未调用 `storeTenderDocument`、保存按钮未受 `parsingDocument` 控制、payload 仍生成空 `fileUrl`；后端创建/更新未按 400 拒绝。
 - GREEN 前端：`pnpm vitest run src/views/Bidding/list/composables/useTenderAiParse.spec.js src/views/Bidding/list/helpers.spec.js src/views/Bidding/TenderCreatePage.spec.js` 通过，45 tests。
 - GREEN 后端：`mvn -f backend/pom.xml test -Dtest=TenderCommandServiceTest` 通过，12 tests（2 skipped，保留既有 disabled 用例）。
+
+# 标讯附件下载 403 修复实施记录
+
+## 问题口径
+
+- CRM 附件下载已恢复，但西域数智化投标管理平台自己的标讯详情页点击附件下载时显示 Whitelabel 403。
+- 本次聚焦标讯详情页“标讯文件”下载链路，不改变 CRM 集成下载端点。
+
+## 根因
+
+- 标讯详情页将 `doc-insight://...` 转换为 `/api/doc-insight/download?fileUrl=...` 后调用通用 `downloadWithFilename()`。
+- `downloadWithFilename()` 使用原生 `fetch(url, { credentials: 'include' })`，不会复用项目 axios/httpClient 的认证与刷新链路。
+- 当前系统登录态由项目 `httpClient` 统一处理；下载请求绕开它后访问受保护的 `/api/doc-insight/download`，后端返回 403，随后 fallback `window.open(url)` 打开同一个受保护 URL，于是浏览器显示 Whitelabel 403。
+- CRM 能下载是因为走 `/api/integration/tenders/attachments/download` 集成端点，与内部标讯详情页下载不是同一前端链路。
+
+## 决策与权衡
+
+- 最小修复在前端下载工具：凡是 `/api/**` 下载 URL 改走 `httpClient.get(..., { responseType: 'blob' })`，复用现有登录态/刷新/错误处理链路。
+- 外部 http(s) 文件仍保持原生 `fetch` 逻辑，避免把第三方下载地址错误送进业务 axios 拦截器。
+- 不放开 `/api/doc-insight/download` 后端匿名访问，避免把内部附件下载接口扩大成公开下载面。
+- 保留 `Content-Disposition` 文件名解析和 blob 下载行为。
+
+## 验证
+
+- 新增回归测试：`src/utils/download.spec.js` 覆盖 API 下载必须调用 `httpClient.get` 而不是 `fetch`。
+- 补齐 `BasicInfoReadOnly.spec.js` 对 `@/api/config.js` 的 mock，使详情页附件 URL 测试继续覆盖。
+- 已运行：`pnpm vitest run src/utils/download.spec.js src/views/Bidding/detail/components/BasicInfoReadOnly.spec.js`，19 tests 通过。
+
+# 标讯附件下载跨 Host 403 修复实施记录
+
+## 问题口径
+
+- 用户从 `http://172.16.38.78:8080/bidding/401` 访问系统页面，但点击标讯附件后打开 `https://winbid-test.ehsy.com/api/doc-insight/download?...`，浏览器不会把 IP Host 下的 HttpOnly 登录 Cookie 发送给域名 Host。
+- 后端 `/api/doc-insight/download` 要求 `isAuthenticated()`，因此跨 Host 下载请求被判定为未登录并返回 403，用户看到 Whitelabel Forbidden 页面。
+
+## 决策与权衡
+
+- 内部 `/api/...` 下载统一改为同源相对路径请求：不管后端返回 IP、域名还是相对 URL，前端下载工具最终都用 `/api/...` 调用 `httpClient`，让浏览器按当前页面 origin 携带 Cookie。
+- 标讯详情页对 `doc-insight://` 和绝对内部 API URL 做同源归一化，避免组件层继续传递跨 Host 内部下载地址。
+- API 下载失败时不再 fallback 到 `window.open(originalUrl)`，避免把用户带到 Whitelabel；401/403 改为明确提示“登录已过期或访问入口不一致”。
+- 非 API 外部文件下载仍保留原有 `window.open` fallback，避免扩大影响范围。
+
+## 验证计划
+
+- 前端：`pnpm exec vitest run src/utils/download.spec.js src/views/Bidding/detail/components/BasicInfoReadOnly.spec.js`。
