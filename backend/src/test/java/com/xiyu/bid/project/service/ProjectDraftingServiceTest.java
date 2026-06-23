@@ -150,6 +150,16 @@ class ProjectDraftingServiceTest {
         assertThat(view.getPrimaryLeadUserId()).isEqualTo(10L);
         assertThat(view.getGateReady()).isFalse();
         assertThat(view.getIncompleteTaskCount()).isEqualTo(1);
+        verify(projectAccessScopeService).assertCurrentUserCanAccessProject(1L);
+    }
+
+    @Test
+    void get_deniesWhenProjectAccessScopeThrows() {
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "无项目访问权限"))
+                .when(projectAccessScopeService).assertCurrentUserCanAccessProject(1L);
+        assertThatThrownBy(() -> service.get(1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode").isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     // ── submitBid 角色校验 ────────────────────────────────────────────────

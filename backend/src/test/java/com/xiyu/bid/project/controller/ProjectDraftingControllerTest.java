@@ -100,4 +100,55 @@ class ProjectDraftingControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.incompleteTaskCount").value(2));
     }
+
+    /** CO-315: 标书审核人可能是 bid_other_dept 等不兼容 legacy STAFF 的角色，控制器不应再拦。 */
+    @Test
+    void get_accessible_for_bid_other_dept_reviewer() throws Exception {
+        UserDetails reviewer = User.withUsername("09118").password("x")
+                .authorities("bid_other_dept", "ROLE_BID_OTHER_DEPT")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(reviewer, "x", reviewer.getAuthorities()));
+        when(authService.resolveUserIdByUsername("09118")).thenReturn(5472L);
+        when(service.get(1L)).thenReturn(ProjectDraftingViewDto.builder()
+                .projectId(1L).reviewerId(5472L).reviewStatus("reviewing").build());
+        mockMvc.perform(get("/api/projects/1/drafting"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewerId").value(5472));
+    }
+
+    /** CO-315: 审核人执行 approve/reject 不应被 legacy role 白名单拦截。 */
+    @Test
+    void post_approve_accessible_for_bid_other_dept_reviewer() throws Exception {
+        UserDetails reviewer = User.withUsername("09118").password("x")
+                .authorities("bid_other_dept", "ROLE_BID_OTHER_DEPT")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(reviewer, "x", reviewer.getAuthorities()));
+        when(authService.resolveUserIdByUsername("09118")).thenReturn(5472L);
+        when(service.approveBid(1L, 5472L, "")).thenReturn(ProjectDraftingViewDto.builder()
+                .projectId(1L).reviewStatus("approved").build());
+        mockMvc.perform(post("/api/projects/1/drafting/approve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewStatus").value("approved"));
+    }
+
+    @Test
+    void post_reject_accessible_for_bid_other_dept_reviewer() throws Exception {
+        UserDetails reviewer = User.withUsername("09118").password("x")
+                .authorities("bid_other_dept", "ROLE_BID_OTHER_DEPT")
+                .build();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(reviewer, "x", reviewer.getAuthorities()));
+        when(authService.resolveUserIdByUsername("09118")).thenReturn(5472L);
+        when(service.rejectBid(1L, 5472L, "reason")).thenReturn(ProjectDraftingViewDto.builder()
+                .projectId(1L).reviewStatus("rejected").build());
+        mockMvc.perform(post("/api/projects/1/drafting/reject")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"reason\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewStatus").value("rejected"));
+    }
 }
