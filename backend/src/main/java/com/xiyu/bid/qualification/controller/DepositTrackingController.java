@@ -44,7 +44,7 @@ public class DepositTrackingController {
     }
 
     @PostMapping("/return/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_ADMIN', 'BID_LEAD', 'BID_ADMIN', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<DepositTracking>> markAsReturned(@PathVariable Long id) {
         Optional<DepositTracking> opt = depositTrackingRepository.findById(id);
         if (opt.isPresent()) {

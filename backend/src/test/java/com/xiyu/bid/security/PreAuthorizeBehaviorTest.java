@@ -76,21 +76,21 @@ class PreAuthorizeBehaviorTest {
             UserDetails bidLead = User.withUsername("bidlead")
                 .password("{noop}pass").roles("BID_LEAD").build();
             UserDetails bidSenior = User.withUsername("bidsenior")
-                .password("{noop}pass").roles("BID_SENIOR").build();
+                .password("{noop}pass").roles("BID_ADMIN").build();
             return new InMemoryUserDetailsManager(admin, manager, staff, bidLead, bidSenior);
         }
     }
 
     // ==================== Controller A：类级+方法级 不同角色 ====================
     // 类级: ADMIN/MANAGER/STAFF
-    // 方法级: ADMIN/BID_LEAD/BID_SENIOR
+    // 方法级: ADMIN/BID_LEAD/BID_ADMIN
 
     @RestController
     @RequestMapping("/test/a")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF')")
     static class ControllerA {
         @GetMapping
-        @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+        @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN')")
         public String endpoint() {
             return "A-ok";
         }
@@ -110,13 +110,13 @@ class PreAuthorizeBehaviorTest {
     }
 
     // ==================== Controller C：仅方法级 ====================
-    // 方法级: ADMIN/BID_LEAD/BID_SENIOR
+    // 方法级: ADMIN/BID_LEAD/BID_ADMIN
 
     @RestController
     @RequestMapping("/test/c")
     static class ControllerC {
         @GetMapping
-        @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+        @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN')")
         public String endpoint() {
             return "C-ok";
         }
@@ -223,7 +223,7 @@ class PreAuthorizeBehaviorTest {
     // ==================== 场景 C：仅方法级 ====================
 
     @Test
-    @DisplayName("C: ADMIN/BID_LEAD/BID_SENIOR 可访问")
+    @DisplayName("C: ADMIN/BID_LEAD/BID_ADMIN 可访问")
     void C_admin() throws Exception {
         mockMvc.perform(get("/test/c").with(user("admin").roles("ADMIN")))
             .andExpect(status().isOk());

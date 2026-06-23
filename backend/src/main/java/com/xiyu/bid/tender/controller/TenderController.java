@@ -49,7 +49,7 @@ import java.util.*;
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST', 'ADMIN_STAFF')")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'STAFF', 'BID_LEAD', 'BID_ADMIN', 'SALES', 'BID_SPECIALIST', 'ADMIN_STAFF')")
 public class TenderController {
 
     private final TenderQueryService tenderQueryService;
@@ -93,7 +93,7 @@ public class TenderController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN', 'SALES', 'BID_SPECIALIST')")
     @Idempotent
     @Operation(summary = "创建标讯")
     public ResponseEntity<ApiResponse<TenderDTO>> createTender(@Valid @RequestBody TenderRequest req, @AuthenticationPrincipal UserDetails user) {
@@ -137,7 +137,7 @@ public class TenderController {
     }
 
     @PostMapping("/{id}/participate")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN')")
     @Operation(summary = "投标决策")
     public ResponseEntity<ApiResponse<TenderBidResponse>> participateBid(@PathVariable Long id, @AuthenticationPrincipal UserDetails user) {
         rejectDemoMutation(id);
@@ -146,7 +146,7 @@ public class TenderController {
     }
 
     @PostMapping("/{id}/abandon")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN')")
     @Operation(summary = "弃标决策")
     public ResponseEntity<ApiResponse<TenderBidResponse>> abandonBid(@PathVariable Long id, @Valid @RequestBody TenderAbandonRequest req, @AuthenticationPrincipal UserDetails user) {
         rejectDemoMutation(id);

@@ -66,7 +66,7 @@ public class ProjectClosureController {
 
     /** 审核通过：系统管理员/投标管理员/投标主管/投标组长/投标辅助（项目负责人不可审核）。 */
     @PostMapping("/approve")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_ADMIN', 'BID_LEAD', 'BID_ADMIN', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<ClosureDTO>> approve(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -77,7 +77,7 @@ public class ProjectClosureController {
 
     /** 审核驳回：管理员/组长/投标负责人/投标辅助。 */
     @PostMapping("/reject")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<ClosureDTO>> reject(
             @PathVariable Long projectId,
             @Valid @RequestBody ClosureReviewRequest req,
@@ -93,7 +93,7 @@ public class ProjectClosureController {
 
     /** 二次招标：管理员/组长/项目负责人/投标负责人/投标辅助。 */
     @PostMapping("/rebid")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN', 'SALES', 'BID_SPECIALIST')")
     public ResponseEntity<ApiResponse<Object>> rebid(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {

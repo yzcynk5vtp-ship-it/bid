@@ -16,7 +16,7 @@ class TenderControllerPermissionTest {
                 .getMethod("createTender", TenderRequest.class, UserDetails.class)
                 .getAnnotation(PreAuthorize.class);
 
-        assertThat(annotation.value()).isEqualTo("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR', 'SALES', 'BID_SPECIALIST')");
+        assertThat(annotation.value()).isEqualTo("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN', 'SALES', 'BID_SPECIALIST')");
     }
 
     @Test
@@ -38,11 +38,11 @@ class TenderControllerPermissionTest {
     }
 
     @Test
-    void transferTender_allowsAdminBidLeadAndBidSeniorOnly() throws NoSuchMethodException {
+    void transferTender_allowsAdminBidLeadAndBidAdminOnly() throws NoSuchMethodException {
         PreAuthorize annotation = TenderTransferController.class
                 .getMethod("transferTender", Long.class, TenderTransferRequest.class, UserDetails.class)
                 .getAnnotation(PreAuthorize.class);
 
-        assertThat(annotation.value()).isEqualTo("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_SENIOR')");
+        assertThat(annotation.value()).isEqualTo("hasAnyRole('ADMIN', 'BID_LEAD', 'BID_ADMIN')");
     }
 }
