@@ -15,23 +15,7 @@
         </div>
       </div>
 
-      <!-- 中标 → 合同信息 -->
-      <div v-if="form.resultType === 'WON'" class="contract-row">
-        <div class="contract-field">
-          <label class="field-label">中标金额（万元）</label>
-          <el-input-number v-model="form.awardAmount" :min="0" :precision="2" :disabled="!canOperate" />
-        </div>
-        <div class="contract-field">
-          <label class="field-label">合同开始日期</label>
-          <el-date-picker v-model="form.contractStartDate" type="date" value-format="YYYY-MM-DD" :disabled="!canOperate" />
-        </div>
-        <div class="contract-field">
-          <label class="field-label">合同结束日期</label>
-          <el-date-picker v-model="form.contractEndDate" type="date" value-format="YYYY-MM-DD" :disabled="!canOperate" />
-        </div>
-      </div>
-
-      <!-- 未中标/流标/弃标 → 原因（CO-322） -->
+      <!-- 未中标/流标/弃标 → 原因（CO-322）；CO-320: 中标金额/合同日期字段已移除 -->
       <div v-if="NON_WON_TYPES.includes(form.resultType)" class="summary-section">
         <label class="field-label">{{ summaryLabel }}<span class="required-mark">*</span></label>
         <el-input v-model="form.summary" type="textarea" :rows="3" :placeholder="summaryPlaceholder" :disabled="!canOperate" />
@@ -135,8 +119,8 @@ const DEFAULT_COMPETITOR = () => ({ name: '', discount: '', paymentTerm: '', not
 const DEFAULT_COMPETITORS = () => [DEFAULT_COMPETITOR(), DEFAULT_COMPETITOR(), DEFAULT_COMPETITOR()]
 
 const form = reactive({
-  resultType: 'WON', awardAmount: 0, contractStartDate: '', contractEndDate: '',
-  summary: '', evidenceFileIds: [], competitors: DEFAULT_COMPETITORS(),
+  resultType: 'WON',
+  notes: '', summary: '', evidenceFileIds: [], competitors: DEFAULT_COMPETITORS(),
 })
 
 function selectResult(value) {
@@ -211,9 +195,7 @@ async function load() {
     if (data) {
       // 恢复所有表单字段
       if (data.resultType) form.resultType = data.resultType
-      if (data.awardAmount != null) form.awardAmount = data.awardAmount
-      if (data.contractStartDate) form.contractStartDate = data.contractStartDate
-      if (data.contractEndDate) form.contractEndDate = data.contractEndDate
+      if (data.notes != null) form.notes = data.notes
       if (data.summary != null) form.summary = data.summary
       if (data.evidenceFileIds?.length) form.evidenceFileIds = [...data.evidenceFileIds]
       if (data.competitors?.length) form.competitors = data.competitors.map(c => ({ ...c }))
@@ -231,10 +213,7 @@ async function submit() {
   try {
     const payload = {
       resultType: form.resultType,
-      awardAmount: form.resultType === 'WON' ? form.awardAmount : null,
-      contractStartDate: form.resultType === 'WON' ? form.contractStartDate || null : null,
-      contractEndDate: form.resultType === 'WON' ? form.contractEndDate || null : null,
-      summary: form.summary,
+      notes: form.notes, summary: form.summary,
       evidenceFileIds: form.evidenceFileIds, competitors: form.competitors,
     }
     await projectLifecycleApi.registerResult(props.projectId, payload)
