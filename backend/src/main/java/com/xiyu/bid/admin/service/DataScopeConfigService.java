@@ -11,6 +11,7 @@ import com.xiyu.bid.admin.settings.core.OrganizationValidationResult;
 import com.xiyu.bid.admin.settings.core.RoleAccessRule;
 import com.xiyu.bid.admin.settings.core.UserAccessSubject;
 import com.xiyu.bid.admin.settings.core.UserScopeRule;
+import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.dto.DataScopeConfigPayload;
 import com.xiyu.bid.dto.DataScopeConfigResponse;
 import com.xiyu.bid.entity.RoleProfile;
@@ -41,6 +42,7 @@ public class DataScopeConfigService {
     private final UserRepository userRepository;
     private final RoleProfileRepository roleProfileRepository;
     private final RoleProfileBootstrap roleProfileBootstrap;
+    private final OssPermissionCache ossPermissionCache;
 
     // Manual constructor: encapsulates Store/Assembler as implementation details
     // so Spring only sees the thin application-service surface.
@@ -50,13 +52,15 @@ public class DataScopeConfigService {
             UserRepository pUserRepository,
             RoleProfileRepository pRoleProfileRepository,
             RoleProfileBootstrap pRoleProfileBootstrap,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            OssPermissionCache pOssPermissionCache
     ) {
         this(new DataScopeConfigStore(pSystemSettingRepository, objectMapper),
                 new DataScopeConfigAssembler(),
                 pUserRepository,
                 pRoleProfileRepository,
-                pRoleProfileBootstrap);
+                pRoleProfileBootstrap,
+                pOssPermissionCache);
     }
 
     DataScopeConfigService(
@@ -64,13 +68,15 @@ public class DataScopeConfigService {
             DataScopeConfigAssembler pAssembler,
             UserRepository pUserRepository,
             RoleProfileRepository pRoleProfileRepository,
-            RoleProfileBootstrap pRoleProfileBootstrap
+            RoleProfileBootstrap pRoleProfileBootstrap,
+            OssPermissionCache pOssPermissionCache
     ) {
         this.configStore = pConfigStore;
         this.assembler = pAssembler;
         this.userRepository = pUserRepository;
         this.roleProfileRepository = pRoleProfileRepository;
         this.roleProfileBootstrap = pRoleProfileBootstrap;
+        this.ossPermissionCache = pOssPermissionCache;
     }
 
     @Transactional
@@ -123,6 +129,15 @@ public class DataScopeConfigService {
     }
 
     public List<String> getRoleMenuPermissions(User user) {
+        if (user == null) {
+            return List.of();
+        }
+        // 优先从 OSS 权限缓存读取实时抓取的权限（不读本地 DB RoleProfile.menu_permissions）
+        Optional<List<String>> cachedPermissions = ossPermissionCache.getMenuPermissions(user.getUsername());
+        if (cachedPermissions.isPresent()) {
+            return normalizeMenuPermissions(cachedPermissions.get());
+        }
+        // 缓存未命中：用本地 DB 兜底
         return normalizeMenuPermissions(resolveRoleProfile(user).getMenuPermissions());
     }
 

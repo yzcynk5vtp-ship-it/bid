@@ -6,6 +6,7 @@ import com.xiyu.bid.auth.TokenRevocationService;
 import com.xiyu.bid.crm.application.CrmAuthService;
 import com.xiyu.bid.crm.application.OssDelegationService;
 import com.xiyu.bid.crm.application.OssLoginFlowService;
+import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.dto.AuthSessionResult;
 import com.xiyu.bid.dto.LoginRequest;
 import com.xiyu.bid.entity.RefreshSession;
@@ -73,6 +74,9 @@ class AuthServiceSessionTest {
     @Mock
     private OssLoginFlowService ossLoginFlowService;
 
+    @Mock
+    private OssPermissionCache ossPermissionCache;
+
     private AuthService authService;
     private User user;
 
@@ -90,7 +94,8 @@ class AuthServiceSessionTest {
                 tokenRevocationService,
                 mock(OssDelegationService.class),
                 crmAuthService,
-                ossLoginFlowService
+                ossLoginFlowService,
+                ossPermissionCache
         );
         ReflectionTestUtils.setField(authService, "refreshExpiration", 7_200_000L);
 

@@ -1,9 +1,9 @@
 // 维护声明: 仅维护认证链路；权限规则调整请同步 controller 与 security 配置.
 package com.xiyu.bid.service;
-
 import com.xiyu.bid.crm.application.CrmAuthService;
 import com.xiyu.bid.crm.application.OssDelegationService;
 import com.xiyu.bid.crm.application.OssLoginFlowService;
+import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.integration.organization.application.OrganizationUserSyncWriter;
@@ -38,7 +38,6 @@ import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.UUID;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -56,7 +55,7 @@ public class AuthService {
     private final OssDelegationService ossDelegationService;
     private final CrmAuthService crmAuthService;
     private final OssLoginFlowService ossLoginFlowService;
-
+    private final OssPermissionCache ossPermissionCache;
     @Value("${jwt.refresh-expiration:604800000}")
     private long refreshExpiration;
     @Transactional
@@ -85,7 +84,6 @@ public class AuthService {
                 .roleProfile(roleProfile)
                 .enabled(true)
                 .build();
-
         user = userRepository.save(user);
         log.info("New user registered: {}", user.getUsername());
         return AuthResponse.from(
@@ -96,7 +94,6 @@ public class AuthService {
                 dataScopeConfigService.getRoleMenuPermissions(user)
         );
     }
-
     @Transactional
     public AuthSessionResult login(LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
@@ -130,7 +127,6 @@ public class AuthService {
                 .accessToken(token)
                 .build();
     }
-
     /** OSS 同步用户 OSS 认证失败时的本地密码回退验证。 */
     private boolean isLocalPasswordValid(User user, String rawPassword) {
         String password = user.getPassword();
@@ -145,7 +141,6 @@ public class AuthService {
             return false;
         }
     }
-
     @Transactional
     public AuthSessionResult loginWithoutPassword(User user) {
         if (!Boolean.TRUE.equals(user.getEnabled())) {
@@ -163,7 +158,6 @@ public class AuthService {
                 .accessToken(token)
                 .build();
     }
-
     public AuthResponse getCurrentUser(String username) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException(USER_NOT_FOUND));
@@ -201,11 +195,9 @@ public class AuthService {
 
     @Transactional
     public void logout(String accessToken, String refreshToken) {
+        invalidateOssCache(accessToken);
         revokeAccessToken(accessToken);
-        if (refreshToken == null || refreshToken.isBlank()) {
-            return;
-        }
-
+        if (refreshToken == null || refreshToken.isBlank()) return;
         refreshSessionRepository.findByTokenHash(hashToken(refreshToken))
                 .filter(session -> session.getRevokedAt() == null)
                 .ifPresent(session -> {
@@ -213,6 +205,14 @@ public class AuthService {
                     refreshSessionRepository.save(session);
                     log.info("Refresh session revoked for user: {}", session.getUser().getUsername());
                 });
+    }
+
+    private void invalidateOssCache(String accessToken) {
+        if (accessToken == null || accessToken.isBlank()) return;
+        try {
+            String u = jwtUtil.extractUsername(accessToken);
+            if (u != null && !u.isBlank()) ossPermissionCache.invalidate(u);
+        } catch (RuntimeException ignored) { }
     }
 
     @Transactional
