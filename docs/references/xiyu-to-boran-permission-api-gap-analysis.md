@@ -1,7 +1,7 @@
-# 泊冉系统权限接口差距分析
+# 西域给泊冉权限接口差距分析
 
 > 分析时间：2026-06-22
-> 分析范围：泊冉系统获取用户权限接口顺序文档 vs 西域投标平台当前实现
+> 分析范围：西域给泊冉用户权限接口顺序 vs 泊冉系统当前实现
 > 详细程度：字段级验证
 
 ---
@@ -10,7 +10,7 @@
 
 ### 1.1 文档要求
 
-泊冉系统定义了 5 个接口的调用顺序：
+西域（OSS）给泊冉提供了 5 个接口的调用顺序：
 
 | 顺序 | 接口名称 | 接口路径 | YApi 地址 | 说明 |
 |------|---------|---------|----------|------|
@@ -24,10 +24,10 @@
 
 ### 1.2 假设
 
-1. 泊冉系统是西域 OSS 系统的权限模块
+1. 西域（OSS）是泊冉的权限提供方
 2. 这些接口是 OSS 系统对外提供的标准权限接口
-3. 西域投标平台需要对接这些接口以获取用户权限信息
-4. 泊冉文档描述的是标准调用顺序，实际可能支持多种调用方式
+3. 泊冉需要对接这些接口以获取用户权限信息
+4. 西域接口文档描述的是标准调用顺序，实际可能支持多种调用方式
 
 ---
 
@@ -88,7 +88,7 @@ app.crm.auth.oauth-login-path: ${XIYU_CRM_AUTH_OAUTH_LOGIN_PATH:/oauth/login}
 
 ---
 
-#### 泊冉文档要求
+#### 西域接口文档要求
 
 | 项目 | 值 |
 |------|-----|
@@ -147,7 +147,7 @@ app.crm.auth.employee-path: ${XIYU_CRM_AUTH_EMPLOYEE_PATH:/employee/info}
 
 #### 差距分析（关键）
 
-| # | 项目 | 泊冉文档要求 | 当前实现 | 影响 | 严重度 |
+| # | 项目 | 西域接口文档要求 | 当前实现 | 影响 | 严重度 |
 |---|------|-------------|---------|------|--------|
 | 1 | HTTP 方法 | `GET` | `POST` | ⚠️ 方法不一致 | 🔴 高 |
 | 2 | 接口路径 | `/oauth/getUserInfo` | `/employee/info` | 🔴 完全不同 | 🔴 高 |
@@ -158,7 +158,7 @@ app.crm.auth.employee-path: ${XIYU_CRM_AUTH_EMPLOYEE_PATH:/employee/info}
 
 **字段对应关系**：
 
-| 泊冉字段 | OrganizationUserSnapshot 字段 | 说明 |
+| 西域接口字段 | OrganizationUserSnapshot 字段 | 说明 |
 |---------|------------------------------|------|
 | id | — | ❌ 无对应 |
 | userId | externalUserId | ⚠️ 名称不同 |
@@ -238,7 +238,7 @@ public CrmResponseHandler.CrmApiResponse getEmployeeByToken(String employeeToken
 
 #### 结论
 
-**接口 2 未按泊冉文档实现**：
+**接口 2 未按西域接口文档实现**：
 - 接口路径不同
 - HTTP 方法不同（GET vs POST）
 - 请求格式不同（Header vs JSON body）
@@ -246,7 +246,7 @@ public CrmResponseHandler.CrmApiResponse getEmployeeByToken(String employeeToken
 
 **是否需要修改**：
 - 如果 OSS 系统同时提供 `/employee/info` 和 `/oauth/getUserInfo`，且功能相同 → 仅修改配置路径
-- 如果需要严格按泊冉文档实现 → 方案 B
+- 如果需要严格按西域接口文档实现 → 方案 B
 
 ---
 
@@ -288,7 +288,7 @@ void shouldCallGetEndpointWithBearerToken() {
 
 ---
 
-#### 泊冉文档要求
+#### 西域接口文档要求
 
 | 项目 | 值 |
 |------|-----|
@@ -376,7 +376,7 @@ private String menuTreePath = "/menu/tree";
 
 #### 差距分析（关键）
 
-| # | 项目 | 泊冉文档要求 | 当前实现 | 影响 | 严重度 |
+| # | 项目 | 西域接口文档要求 | 当前实现 | 影响 | 严重度 |
 |---|------|-------------|---------|------|--------|
 | 1 | HTTP 方法 | `GET` | `GET` (fetchUserMenuTree) / `POST` (getMenuTree) | ⚠️ 不一致 | 🟡 中 |
 | 2 | 接口路径 | `/oauth/getUserPermission` | `/sysMenuUrl/getUserMenuTree` 或 `/menu/tree` | 🔴 完全不同 | 🔴 高 |
@@ -386,13 +386,13 @@ private String menuTreePath = "/menu/tree";
 
 **响应格式差异详解**：
 
-| 维度 | 泊冉文档 | 当前实现 |
+| 维度 | 西域接口文档 | 当前实现 |
 |------|---------|---------|
 | 结构 | 扁平对象 | 树形节点列表 |
 | 数据 | `{系统名: [菜单路径字符串]}` | `[OssMenuTreeNode{id, menuCode, menuName, children, ...}]` |
 | 用途 | 快速获取用户在各系统的菜单权限 | 获取完整的菜单树结构 |
 
-**泊冉响应**：
+**西域接口响应**：
 
 ```json
 {
@@ -446,7 +446,7 @@ private String menuTreePath = "/menu/tree";
 
 ⚠️ **不可行**：响应格式完全不同，无法直接替换
 
-**方案 B：新增接口适配（如果需要按泊冉文档实现）**
+**方案 B：新增接口适配（如果需要按西域接口文档实现）**
 
 需要新增：
 1. `OssPermissionService` — 调用 `/oauth/getUserPermission`
@@ -486,7 +486,7 @@ public class OssPermissionService {
 
 #### 结论
 
-**接口 3 未按泊冉文档实现**：
+**接口 3 未按西域接口文档实现**：
 - 接口路径不同
 - 请求参数不同（jobNumber vs Bearer token）
 - **响应格式完全不同**（扁平对象 vs 树形结构）
@@ -494,7 +494,7 @@ public class OssPermissionService {
 
 **是否需要修改**：
 - 如果 OSS 系统同时提供两个接口，且用途不同 → 保持现状
-- 如果需要按泊冉文档在登录时获取菜单权限 → 方案 B
+- 如果需要按西域接口文档在登录时获取菜单权限 → 方案 B
 
 ---
 
@@ -531,13 +531,13 @@ void shouldCallGetUserPermissionWithBearerToken() {
 
 ### 2.4 接口 4：获取用户角色 `/oss/admin-web/v1/output/data/getUserJobListByJobNumberList`
 
-**状态**：✅ **已完整实现**（完全符合泊冉文档要求）
+**状态**：✅ **已完整实现**（完全符合西域接口文档要求）
 
 **YApi**：https://yapi.ehsy.com/project/406/interface/api/26325
 
 ---
 
-#### 泊冉文档要求
+#### 西域接口文档要求
 
 | 项目 | 值 |
 |------|-----|
@@ -655,7 +655,7 @@ public record OssUserJobAndRoleDto(
 
 #### 差距分析
 
-| # | 项目 | 泊冉文档要求 | 当前实现 | 状态 |
+| # | 项目 | 西域接口文档要求 | 当前实现 | 状态 |
 |---|------|-------------|---------|------|
 | 1 | HTTP 方法 | `POST` | `POST` | ✅ |
 | 2 | 接口路径 | `/oss/.../getUserJobListByJobNumberList` | 同左 | ✅ |
@@ -674,7 +674,7 @@ public record OssUserJobAndRoleDto(
 
 #### 字段对应关系
 
-| 泊冉字段 | OssUserJobAndRoleDto 字段 | 说明 |
+| 西域接口字段 | OssUserJobAndRoleDto 字段 | 说明 |
 |---------|--------------------------|------|
 | jobNumber | jobNumber | ✅ 完全对应 |
 | username | username | ✅ 完全对应 |
@@ -694,13 +694,13 @@ public record OssUserJobAndRoleDto(
 | 组织架构同步 | ✅ 调用 `getUserJobAndRoleListByJobNumbers` | ✅ |
 | 登录后获取角色 | ❌ 不在登录流程中 | ⚠️ 流程差异 |
 
-**注意**：泊冉文档要求"登录后获取用户角色"，但当前实现是在**组织架构同步时**批量获取。如果需要在登录时获取角色，需要新增调用点。
+**注意**：西域接口文档要求"登录后获取用户角色"，但当前实现是在**组织架构同步时**批量获取。如果需要在登录时获取角色，需要新增调用点。
 
 ---
 
 #### 结论
 
-**接口 4 已完整实现，完全符合泊冉文档要求**：
+**接口 4 已完整实现，完全符合西域接口文档要求**：
 - ✅ HTTP 方法、接口路径、Content-Type 完全一致
 - ✅ 请求格式 `{"data": ["工号列表"]}` 完全一致
 - ✅ 响应字段全部解析并存储
@@ -745,7 +745,7 @@ void getUserJobAndRoleListByJobNumbers_mapsByJobNumber() {
 
 ---
 
-#### 泊冉文档要求
+#### 西域接口文档要求
 
 | 项目 | 值 |
 |------|-----|
@@ -818,7 +818,7 @@ app.crm.auth.logout-path: ${XIYU_CRM_AUTH_LOGOUT_PATH:/auth/logout}
 
 #### 差距分析
 
-| # | 项目 | 泊冉文档要求 | 当前实现 | 影响 | 严重度 |
+| # | 项目 | 西域接口文档要求 | 当前实现 | 影响 | 严重度 |
 |---|------|-------------|---------|------|--------|
 | 1 | HTTP 方法 | `POST` | `POST` | ✅ 一致 | ✅ |
 | 2 | 接口路径 | `/oauth/logout` | `/auth/logout` | 🔴 路径不一致 | 🔴 高 |
@@ -844,12 +844,12 @@ app.crm.auth.logout-path: ${XIYU_CRM_AUTH_LOGOUT_PATH:/auth/logout}
    - OSS 系统中的 token 不会被清除
 
 2. **接口路径不一致**
-   - 泊冉文档：`/oauth/logout`
+   - 西域接口文档：`/oauth/logout`
    - 当前配置：`/auth/logout`
    - 如果 OSS 系统只提供 `/oauth/logout`，当前实现会失败
 
 3. **Content-Type 不一致**
-   - 泊冉文档：`application/x-www-form-urlencoded`
+   - 西域接口文档：`application/x-www-form-urlencoded`
    - 当前实现：`application/json`
    - 可能导致 OSS 系统拒绝请求
 
@@ -1062,7 +1062,7 @@ private final CrmTokenCache crmTokenCache = new CrmTokenCache();
 
 ### 阶段 1：配置路径调整（最小改动）
 
-**目标**：将接口路径改为可配置，支持切换到泊冉文档要求的路径
+**目标**：将接口路径改为可配置，支持切换到西域接口文档要求的路径
 
 **修改文件清单**：
 
@@ -1081,7 +1081,7 @@ private final CrmTokenCache crmTokenCache = new CrmTokenCache();
 app:
   crm:
     auth:
-      # 改为泊冉文档要求
+      # 改为西域接口文档要求
       employee-path: ${XIYU_CRM_AUTH_EMPLOYEE_PATH:/oauth/getUserInfo}
       logout-path: ${XIYU_CRM_AUTH_LOGOUT_PATH:/oauth/logout}
 
@@ -1089,7 +1089,7 @@ xiyu:
   integrations:
     organization:
       directory:
-        # 改为泊冉文档要求
+        # 改为西域接口文档要求
         user-menu-tree-path: ${XIYU_ORG_USER_MENU_TREE_PATH:/oauth/getUserPermission}
 ```
 
@@ -1204,8 +1204,8 @@ void shouldCallConfiguredLogoutPath() {
 
 ### A. 相关文档
 
-- [泊冉系统获取用户权限接口顺序（原始文档）](boran-permission-api-sequence.md)
-- [泊冉系统权限接口实施计划](boran-permission-api-implementation-plan.md)
+- [西域给泊冉用户权限接口顺序（原始文档）](xiyu-to-boran-permission-api-sequence.md)
+- [西域给泊冉权限接口实施计划](xiyu-to-boran-permission-api-implementation-plan.md)
 
 ### B. 相关代码位置
 
