@@ -54,7 +54,7 @@ public class WeComPushService {
         String employeeNumber = userOpt.get().getEmployeeNumber();
         FormattedMessage message = WeComMessageFormatter.format(
             command.title(), command.type(), command.sourceEntityType(), command.sourceEntityId(), platformBaseUrl);
-        String body = message.title() + "\n" + message.description() + "\n" + message.url();
+        String body = message.title() + "\n" + message.description() + "\n<a href=\"" + message.url() + "\">" + message.btnText() + "</a>";
 
         try {
             WecomSendResult result = wecomMessageSender.send(employeeNumber, body);

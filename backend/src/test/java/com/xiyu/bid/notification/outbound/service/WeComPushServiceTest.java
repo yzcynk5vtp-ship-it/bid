@@ -103,7 +103,7 @@ class WeComPushServiceTest {
     }
 
     @Test
-    @DisplayName("content 含格式化描述与深链 URL")
+    @DisplayName("content 含格式化描述与深链 URL，链接用 <a> 标签包裹")
     void send_passesFormattedContent() {
         when(userRepository.findById(7L)).thenReturn(Optional.of(userWithEmployee("E007")));
         when(wecomMessageSender.send(anyString(), anyString()))
@@ -113,7 +113,10 @@ class WeComPushServiceTest {
 
         ArgumentCaptor<String> content = ArgumentCaptor.forClass(String.class);
         verify(wecomMessageSender).send(eq("E007"), content.capture());
-        assertThat(content.getValue()).contains("https://xiyu.example.com");
+        String body = content.getValue();
+        assertThat(body).contains("https://xiyu.example.com");
+        assertThat(body).contains("<a href=\"https://xiyu.example.com");
+        assertThat(body).contains("查看详情</a>");
     }
 
     @Test
