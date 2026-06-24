@@ -368,4 +368,138 @@ class UserDetailsServiceImplTest {
                 .extracting("authority")
                 .contains("/bidAdmin", "ROLE_BIDADMIN", "ROLE_ADMIN");
     }
+
+    // ——— 补充测试：OSS 缓存边缘场景 ———
+
+    @Test
+    @DisplayName("OSS 用户缓存中角色未在 catalog 注册时应被白名单拒绝")
+    void ossUserWithUnregisteredRoleShouldBeRejectedByWhitelist() {
+        // OSS 缓存返回未注册角色码 → LoginRoleWhitelist 拒绝，不应进入 catalog 合并逻辑
+        RoleProfile roleProfile = RoleProfile.builder()
+                .code("custom-oss-role")
+                .name("自定义角色")
+                .build();
+        User user = User.builder()
+                .username("oss_unregistered")
+                .password("{noop}password")
+                .email("oss_unregistered@example.com")
+                .fullName("oss_unregistered")
+                .role(User.Role.MANAGER)
+                .roleProfile(roleProfile)
+                .externalOrgSourceApp("OSS")
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("oss_unregistered")).thenReturn(Optional.of(user));
+        OssPermissionCache.CacheEntry entry = new OssPermissionCache.CacheEntry(
+                "custom-oss-role", List.of("dashboard"), null, Instant.now().plusSeconds(60));
+        when(ossPermissionCache.getEntry("oss_unregistered")).thenReturn(Optional.of(entry));
+
+        assertThatThrownBy(() -> userDetailsService.loadUserByUsername("oss_unregistered"))
+                .isInstanceOf(org.springframework.security.core.AuthenticationException.class)
+                .hasMessageContaining("角色未授权");
+    }
+
+    @Test
+    @DisplayName("OSS 缓存 admin 角色含 all 权限时应展开全部 seed 权限")
+    void ossCachedAdminRoleShouldExpandAllSeedPermissions() {
+        // OSS 缓存角色=admin + menuPermissions=["all"] → 触发全 seed 权限展开
+        RoleProfile roleProfile = RoleProfile.builder()
+                .code(RoleProfileCatalog.BID_SPECIALIST_CODE)
+                .name("投标专员")
+                .build();
+        User user = User.builder()
+                .username("oss_admin_all")
+                .password("{noop}password")
+                .email("oss_admin_all@example.com")
+                .fullName("oss_admin_all")
+                .role(User.Role.MANAGER)
+                .roleProfile(roleProfile)
+                .externalOrgSourceApp("OSS")
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("oss_admin_all")).thenReturn(Optional.of(user));
+        OssPermissionCache.CacheEntry entry = new OssPermissionCache.CacheEntry(
+                RoleProfileCatalog.ADMIN_CODE, List.of("all"), null, Instant.now().plusSeconds(60));
+        when(ossPermissionCache.getEntry("oss_admin_all")).thenReturn(Optional.of(entry));
+
+        UserDetails details = userDetailsService.loadUserByUsername("oss_admin_all");
+
+        // admin + all → 展开所有 seed 权限（含各角色的细粒度权限）
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains("admin", "ROLE_ADMIN")
+                .contains("bidding.manage", "task.review", "retrospective.submit",
+                        "warehouse.manage", "brand-auth.edit")
+                .contains("certificate.manage", "qualification.view");
+    }
+
+    @Test
+    @DisplayName("OSS 缓存 menuPermissions 为空时仍应合并 catalog 权限")
+    void ossCachedEmptyMenuPermissionsShouldStillMergeCatalog() {
+        // OSS 缓存命中但 menuPermissions 为空列表 → usingOssCachedPermissions=true → 合并 catalog
+        RoleProfile roleProfile = RoleProfile.builder()
+                .code(RoleProfileCatalog.BID_SPECIALIST_CODE)
+                .name("投标专员")
+                .build();
+        User user = User.builder()
+                .username("oss_empty_menu")
+                .password("{noop}password")
+                .email("oss_empty_menu@example.com")
+                .fullName("oss_empty_menu")
+                .role(User.Role.MANAGER)
+                .roleProfile(roleProfile)
+                .externalOrgSourceApp("OSS")
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("oss_empty_menu")).thenReturn(Optional.of(user));
+        OssPermissionCache.CacheEntry entry = new OssPermissionCache.CacheEntry(
+                RoleProfileCatalog.BID_LEAD_CODE, List.of(), null, Instant.now().plusSeconds(60));
+        when(ossPermissionCache.getEntry("oss_empty_menu")).thenReturn(Optional.of(entry));
+
+        UserDetails details = userDetailsService.loadUserByUsername("oss_empty_menu");
+
+        // menuPermissions 为空，但 usingOssCachedPermissions=true → 合并 catalog
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains("bid-TeamLeader", "ROLE_BID_TEAMLEADER", "ROLE_MANAGER")
+                .contains("bidding.manage", "task.assign", "retrospective.submit",
+                        "closure.request", "warehouse.manage");
+    }
+
+    @Test
+    @DisplayName("本地账号 OSS 缓存命中时应优先使用缓存权限并合并 catalog")
+    void localUserWithOssCacheHitShouldUseCacheAndMergeCatalog() {
+        // 本地账号（externalOrgSourceApp 为空）但 OSS 缓存中有记录
+        // → 走 OSS 缓存分支，usingOssCachedPermissions=true → 合并 catalog 细粒度权限
+        RoleProfile roleProfile = RoleProfile.builder()
+                .code(RoleProfileCatalog.BID_SPECIALIST_CODE)
+                .name("投标专员")
+                .build();
+        roleProfile.setMenuPermissions(List.of("task.view.own"));
+        User user = User.builder()
+                .username("local_with_cache")
+                .password("{noop}password")
+                .email("local_with_cache@example.com")
+                .fullName("local_with_cache")
+                .role(User.Role.MANAGER)
+                .roleProfile(roleProfile)
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("local_with_cache")).thenReturn(Optional.of(user));
+        OssPermissionCache.CacheEntry entry = new OssPermissionCache.CacheEntry(
+                RoleProfileCatalog.BID_ADMIN_CODE, List.of("dashboard", "bidding"),
+                null, Instant.now().plusSeconds(60));
+        when(ossPermissionCache.getEntry("local_with_cache")).thenReturn(Optional.of(entry));
+
+        UserDetails details = userDetailsService.loadUserByUsername("local_with_cache");
+
+        // 缓存命中 → 用缓存角色 /bidAdmin + 缓存菜单权限
+        // usingOssCachedPermissions=true → 合并 catalog 细粒度权限
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains("/bidAdmin", "ROLE_BIDADMIN", "ROLE_ADMIN")
+                .contains("dashboard", "bidding")
+                .contains("bidding.manage", "task.review", "retrospective.submit", "warehouse.manage")
+                .doesNotContain("task.view.own");
+    }
 }
