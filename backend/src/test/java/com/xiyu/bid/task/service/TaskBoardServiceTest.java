@@ -98,7 +98,7 @@ class TaskBoardServiceTest {
                 .findFirst()
                 .orElseThrow();
         assertThat(taskItem.getTitle()).isEqualTo("普通任务");
-        assertThat(taskItem.getStatus()).isEqualTo("IN_PROGRESS");
+        assertThat(taskItem.getStatus()).isEqualTo("TODO");
         assertThat(taskItem.getProjectName()).isEqualTo("项目42");
 
         TaskBoardItemDTO reviewItem = items.stream()

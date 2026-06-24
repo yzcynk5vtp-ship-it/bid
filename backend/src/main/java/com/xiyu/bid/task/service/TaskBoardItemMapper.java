@@ -19,7 +19,6 @@ final class TaskBoardItemMapper {
     static final String TYPE_BID_REVIEW = "BID_REVIEW";
 
     private static final String STATUS_TODO = "TODO";
-    private static final String STATUS_IN_PROGRESS = "IN_PROGRESS";
     private static final String STATUS_REVIEW = "REVIEW";
     private static final String STATUS_COMPLETED = "COMPLETED";
 
@@ -46,6 +45,7 @@ final class TaskBoardItemMapper {
                 .projectName(projectNames.getOrDefault(task.getProjectId(), ""))
                 .targetUrl(null)
                 .assigneeName(assigneeName)
+                .assigneeId(task.getAssigneeId())
                 .build();
     }
 
@@ -69,6 +69,7 @@ final class TaskBoardItemMapper {
                 .projectName(projectName)
                 .targetUrl(null)
                 .submitterName(submitterName)
+                .reviewerId(review.getReviewerId())
                 .build();
     }
 
@@ -78,7 +79,7 @@ final class TaskBoardItemMapper {
         }
         return switch (status) {
             case TODO -> STATUS_TODO;
-            case IN_PROGRESS -> STATUS_IN_PROGRESS;
+            case IN_PROGRESS -> STATUS_TODO;
             case REVIEW -> STATUS_REVIEW;
             case COMPLETED -> STATUS_COMPLETED;
             case CANCELLED -> STATUS_COMPLETED;

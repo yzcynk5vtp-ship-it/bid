@@ -17,14 +17,15 @@ public final class TaskTransitionPolicy {
     static {
         EnumMap<TaskStatus, Set<TaskStatus>> map =
                 new EnumMap<>(TaskStatus.class);
+        // 业务规则：TODO→REVIEW→COMPLETED，驳回回 TODO
+        // IN_PROGRESS 不再是必经中间态，上传交付物不改变任务状态
         map.put(TaskStatus.TODO,
-                Set.of(TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED));
+                Set.of(TaskStatus.REVIEW, TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED));
         map.put(TaskStatus.IN_PROGRESS,
-                Set.of(TaskStatus.REVIEW, TaskStatus.CANCELLED));
-        // PRD §3.2.2: REVIEW 可以前进到 COMPLETED，回退到 IN_PROGRESS（继续工作），
-        // 或退回到 TODO（驳回；要求 reviewComment）。
+                Set.of(TaskStatus.REVIEW, TaskStatus.TODO, TaskStatus.CANCELLED));
+        // PRD §3.2.2: REVIEW 可以前进到 COMPLETED，回退到 TODO（驳回；要求 reviewComment）。
         map.put(TaskStatus.REVIEW,
-                Set.of(TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS, TaskStatus.TODO));
+                Set.of(TaskStatus.COMPLETED, TaskStatus.TODO));
         map.put(TaskStatus.COMPLETED, Set.of());
         map.put(TaskStatus.CANCELLED,
                 Set.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS));
@@ -86,19 +87,16 @@ public final class TaskTransitionPolicy {
 
     /**
      * Compute suggested auto-status when a deliverable is uploaded.
+     * 业务规则：上传交付物不改变任务状态，保持 TODO 直到提交审核。
      *
      * @param current       current task status
      * @param existingCount number of existing deliverables
-     * @return suggested status (caller decides whether to apply)
+     * @return suggested status (always returns current status)
      */
     public static TaskStatus computeAutoStatusOnDeliverable(
             final TaskStatus current, final int existingCount) {
         if (current == null) {
             return TaskStatus.TODO;
-        }
-        // First deliverable on TODO task -> suggest IN_PROGRESS
-        if (current == TaskStatus.TODO && existingCount == 0) {
-            return TaskStatus.IN_PROGRESS;
         }
         return current;
     }

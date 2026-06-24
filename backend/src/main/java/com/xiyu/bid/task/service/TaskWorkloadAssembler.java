@@ -17,8 +17,7 @@ final class TaskWorkloadAssembler {
     }
 
     static TeamTaskWorkloadDTO.TeamMemberWorkloadDTO buildTeamMemberWorkload(User user, List<Task> tasks) {
-        long todoCount = tasks.stream().filter(task -> task.getStatus() == Task.Status.TODO).count();
-        long inProgressCount = tasks.stream().filter(task -> task.getStatus() == Task.Status.IN_PROGRESS).count();
+        long todoCount = tasks.stream().filter(task -> task.getStatus() == Task.Status.TODO || task.getStatus() == Task.Status.IN_PROGRESS).count();
         long overdueCount = tasks.stream().filter(TaskWorkloadAssembler::isOverdue).count();
         LocalDateTime weekStart = LocalDateTime.now().minusDays(7);
         long completedThisWeekCount = tasks.stream()
@@ -55,7 +54,7 @@ final class TaskWorkloadAssembler {
                 .deptCode(defaultText(user.getDepartmentCode(), "UNASSIGNED"))
                 .deptName(defaultText(user.getDepartmentName(), "未配置部门"))
                 .todoCount(todoCount)
-                .inProgressCount(inProgressCount)
+                .inProgressCount(0L)
                 .overdueCount(overdueCount)
                 .completedThisWeekCount(completedThisWeekCount)
                 .workloadScore(workloadScore)

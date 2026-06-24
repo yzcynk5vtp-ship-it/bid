@@ -7,6 +7,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TaskTransitionPolicyTest {
 
     @Test
+    void validateTransition_ShouldAllowTodoToReview() {
+        var result = TaskTransitionPolicy.validateTransition(
+                TaskTransitionPolicy.TaskStatus.TODO,
+                TaskTransitionPolicy.TaskStatus.REVIEW);
+        assertThat(result.allowed()).isTrue();
+    }
+
+    @Test
     void validateTransition_ShouldAllowTodoToInProgress() {
         var result = TaskTransitionPolicy.validateTransition(
                 TaskTransitionPolicy.TaskStatus.TODO,
@@ -31,6 +39,14 @@ class TaskTransitionPolicyTest {
     }
 
     @Test
+    void validateTransition_ShouldAllowInProgressBackToTodo() {
+        var result = TaskTransitionPolicy.validateTransition(
+                TaskTransitionPolicy.TaskStatus.IN_PROGRESS,
+                TaskTransitionPolicy.TaskStatus.TODO);
+        assertThat(result.allowed()).isTrue();
+    }
+
+    @Test
     void validateTransition_ShouldAllowReviewToCompleted() {
         var result = TaskTransitionPolicy.validateTransition(
                 TaskTransitionPolicy.TaskStatus.REVIEW,
@@ -39,11 +55,19 @@ class TaskTransitionPolicyTest {
     }
 
     @Test
-    void validateTransition_ShouldAllowReviewBackToInProgress() {
+    void validateTransition_ShouldAllowReviewBackToTodo() {
+        var result = TaskTransitionPolicy.validateTransition(
+                TaskTransitionPolicy.TaskStatus.REVIEW,
+                TaskTransitionPolicy.TaskStatus.TODO);
+        assertThat(result.allowed()).isTrue();
+    }
+
+    @Test
+    void validateTransition_ShouldRejectReviewToInProgress() {
         var result = TaskTransitionPolicy.validateTransition(
                 TaskTransitionPolicy.TaskStatus.REVIEW,
                 TaskTransitionPolicy.TaskStatus.IN_PROGRESS);
-        assertThat(result.allowed()).isTrue();
+        assertThat(result.allowed()).isFalse();
     }
 
     @Test
@@ -82,38 +106,31 @@ class TaskTransitionPolicyTest {
     @Test
     void validateTransition_SameStatus_ShouldBeOk() {
         var result = TaskTransitionPolicy.validateTransition(
-                TaskTransitionPolicy.TaskStatus.IN_PROGRESS,
-                TaskTransitionPolicy.TaskStatus.IN_PROGRESS);
+                TaskTransitionPolicy.TaskStatus.TODO,
+                TaskTransitionPolicy.TaskStatus.TODO);
         assertThat(result.allowed()).isTrue();
     }
 
     @Test
     void validateTransition_NullStatuses_ShouldDeny() {
-        var r1 = TaskTransitionPolicy.validateTransition(null, TaskTransitionPolicy.TaskStatus.IN_PROGRESS);
+        var r1 = TaskTransitionPolicy.validateTransition(null, TaskTransitionPolicy.TaskStatus.REVIEW);
         var r2 = TaskTransitionPolicy.validateTransition(TaskTransitionPolicy.TaskStatus.TODO, null);
         assertThat(r1.allowed()).isFalse();
         assertThat(r2.allowed()).isFalse();
     }
 
     @Test
-    void computeAutoStatusOnDeliverable_ShouldSuggestProgress_WhenTodoAndFirstUpload() {
+    void computeAutoStatusOnDeliverable_ShouldKeepTodo_WhenTodoAndFirstUpload() {
         var suggested = TaskTransitionPolicy.computeAutoStatusOnDeliverable(
                 TaskTransitionPolicy.TaskStatus.TODO, 0);
-        assertThat(suggested).isEqualTo(TaskTransitionPolicy.TaskStatus.IN_PROGRESS);
+        assertThat(suggested).isEqualTo(TaskTransitionPolicy.TaskStatus.TODO);
     }
 
     @Test
-    void computeAutoStatusOnDeliverable_ShouldNotSuggest_WhenAlreadyInProgress() {
+    void computeAutoStatusOnDeliverable_ShouldKeepCurrentStatus() {
         var suggested = TaskTransitionPolicy.computeAutoStatusOnDeliverable(
                 TaskTransitionPolicy.TaskStatus.IN_PROGRESS, 0);
         assertThat(suggested).isEqualTo(TaskTransitionPolicy.TaskStatus.IN_PROGRESS);
-    }
-
-    @Test
-    void computeAutoStatusOnDeliverable_ShouldReturnCurrent_WhenHasExisting() {
-        var suggested = TaskTransitionPolicy.computeAutoStatusOnDeliverable(
-                TaskTransitionPolicy.TaskStatus.TODO, 3);
-        assertThat(suggested).isEqualTo(TaskTransitionPolicy.TaskStatus.TODO);
     }
 
     @Test
@@ -149,15 +166,6 @@ class TaskTransitionPolicyTest {
                 TaskTransitionPolicy.TaskStatus.REVIEW,
                 TaskTransitionPolicy.TaskStatus.TODO,
                 "需要补充财务数据");
-        assertThat(r.allowed()).isTrue();
-    }
-
-    @Test
-    void reviewToTodo_NewPathAllowedInBaseValidator() {
-        // legacy 2-arg signature now allows REVIEW -> TODO (reviewer enforces reason)
-        var r = TaskTransitionPolicy.validateTransition(
-                TaskTransitionPolicy.TaskStatus.REVIEW,
-                TaskTransitionPolicy.TaskStatus.TODO);
         assertThat(r.allowed()).isTrue();
     }
 
