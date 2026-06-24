@@ -45,6 +45,43 @@ describe('usersApi', () => {
     expect(result).toEqual([{ userId: 9, name: '张经理', deptName: '投标管理部', roleName: '部门经理' }])
   })
 
+  it('normalizes assignable candidates to UserPicker option fields', async () => {
+    httpClient.get.mockResolvedValue({
+      success: true,
+      data: [{
+        userId: 9,
+        name: '张经理',
+        deptName: '投标管理部',
+        employeeNumber: 'E009',
+        roleName: '部门经理',
+      }],
+    })
+
+    const result = await usersApi.getAssignableCandidates({ context: 'tender' })
+
+    expect(httpClient.get).toHaveBeenCalledWith('/api/users/assignable-candidates', {
+      params: { context: 'tender', deptCode: undefined, roleCode: undefined },
+    })
+    expect(result).toEqual([{
+      userId: 9,
+      id: 9,
+      name: '张经理',
+      deptName: '投标管理部',
+      departmentName: '投标管理部',
+      employeeNumber: 'E009',
+      employeeId: 'E009',
+      roleName: '部门经理',
+    }])
+  })
+
+  it('returns empty assignable candidates when response data is not an array', async () => {
+    httpClient.get.mockResolvedValue({ success: true, data: { userId: 9, name: '张经理' } })
+
+    const result = await usersApi.getAssignableCandidates({ context: 'tender' })
+
+    expect(result).toEqual([])
+  })
+
   it('propagates HTTP errors', async () => {
     httpClient.get.mockRejectedValue(new Error('Network'))
     await expect(usersApi.search('x')).rejects.toThrow('Network')

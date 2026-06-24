@@ -1,7 +1,6 @@
 package com.xiyu.bid.repository;
 
 import com.xiyu.bid.entity.User;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -40,12 +39,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByRoleProfile_Id(Long roleProfileId);
 
-    /**
-     * P2.1: 查询所有启用用户，结果缓存 5 分钟（Redis TTL）。
-     * 缓存 key 固定为 'all'，事件库同步用户数据时通过 @CacheEvict 清除。
-     * 测试环境使用 simple 缓存（内存），不受 Redis 可用性影响。
-     */
-    @Cacheable(value = "users:enabled", key = "'all'")
+    /** 查询所有启用用户。 */
     List<User> findByEnabledTrue();
 
     List<User> findByIdIn(Collection<Long> ids);
