@@ -1,5 +1,5 @@
 import { onMounted } from 'vue'
-import { buildProjectBaselineActivities } from './useProjectDetailActivities.js'
+import { buildProjectCreatedActivity } from './useProjectDetailActivities.js'
 import { taskBackendToCard } from '@/views/Project/project-utils.js'
 
 export function useProjectDetailInit(context) {
@@ -35,7 +35,7 @@ export function useProjectDetailInit(context) {
     const projectId = route.params.id
     await projectStore.getProjectById(projectId)
     await projectStore.loadTaskStatuses()
-    context.activities.value = buildProjectBaselineActivities(projectStore.currentProject, context.userStore?.userName)
+    context.activities.value = buildProjectCreatedActivity(projectStore.currentProject)
     const templateResult = await knowledgeApi.templates.getList()
     context.templates.value = templateResult?.success && Array.isArray(templateResult.data) ? templateResult.data : []
     if (!projectStore.currentProject) projectStore.currentProject = null

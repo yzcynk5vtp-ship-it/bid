@@ -33,7 +33,6 @@ import { useProjectDetailBoot } from './useProjectDetailBoot.js'
 function createContext(overrides = {}) {
   const result = {
     route: { params: { id: '12' } },
-    userStore: { userName: '测试用户' },
     projectStore: {
       currentProject: null,
       getProjectById: vi.fn().mockImplementation(async () => {
@@ -98,7 +97,7 @@ describe('useProjectDetailBoot', () => {
     expect(context.state.activities.value).toEqual([
       {
         id: 'project-created-12',
-        user: '测试用户',
+        user: '系统',
         action: '创建了项目',
         time: '',
       },
