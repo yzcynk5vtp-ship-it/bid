@@ -13,9 +13,6 @@ import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.service.RoleProfileService;
 import com.xiyu.bid.task.dto.TaskAssignmentRequest;
 import com.xiyu.bid.task.dto.TeamTaskWorkloadDTO;
-import com.xiyu.bid.user.core.AssignmentContext;
-import com.xiyu.bid.user.dto.AssignmentCandidateDTO;
-import com.xiyu.bid.user.service.AssignmentCandidateAppService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -35,7 +32,6 @@ public class TaskAssignmentSupport {
     private final TaskRepository taskRepository;
     private final ProjectAccessScopeService projectAccessScopeService;
     private final RoleProfileService roleProfileService;
-    private final AssignmentCandidateAppService assignmentCandidateAppService;
 
     public AssignmentSnapshot resolveAssignmentSnapshot(TaskAssignmentRequest request, User currentUser) {
         if (request == null || !request.hasAssignmentTarget()) {
@@ -71,13 +67,6 @@ public class TaskAssignmentSupport {
         task.setAssigneeDeptName(assignment.assigneeDeptName());
         task.setAssigneeRoleCode(assignment.assigneeRoleCode());
         task.setAssigneeRoleName(assignment.assigneeRoleName());
-    }
-
-    @Deprecated
-    public List<AssignmentCandidateDTO> getAssignmentCandidates(String deptCode, String roleCode, String username) {
-        User currentUser = resolveEnabledUserByUsername(username);
-        return assignmentCandidateAppService.findCandidates(
-                AssignmentContext.of("task", deptCode, roleCode), currentUser);
     }
 
     public TeamTaskWorkloadDTO getTeamTaskWorkload(String username) {

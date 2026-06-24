@@ -27,7 +27,7 @@
                   mode="search"
                   placeholder="选择负责人"
                   :disabled="row.locked"
-                  @select="() => handleOwnerChange(row)"
+                  @select="(user) => handleOwnerChange(row, user)"
                 />
               </template>
             </el-table-column>
@@ -280,7 +280,10 @@ const getPendingCount = () => {
   return chapters.value.filter(c => c.status === 'pending').length
 }
 
-const handleOwnerChange = async (row) => {
+const handleOwnerChange = async (row, user) => {
+  if (user?.name) {
+    row.owner = user.name
+  }
   const assignedBy = resolveUserIdByName(userStore.userName)
 
   if (isApiMode.value && !assignedBy) {
