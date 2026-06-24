@@ -67,8 +67,13 @@ public class CrmContactPersonService {
 
     private List<ContactPersonInfoVO> parseListResponse(JsonNode data) {
         try {
-            if (data.isArray() && data.size() > 0) {
-                String jsonArray = MAPPER.writeValueAsString(data);
+            // CRM 对接人 page-list 响应与商机 page-list 一致：扁平结构 {code, totalCount, dataList:[...]}
+            // （无外层 data 字段，CrmResponseHandler.data() 回退到根节点）。对接人数组在 dataList 字段里，
+            // 并非直接数组——此前仅判 data.isArray() 会把 CRM 已返回的对接人解析成空列表。
+            // 此处优先取 dataList，同时兼容直接数组形态（防御）。
+            JsonNode arrNode = data.isArray() ? data : data.path("dataList");
+            if (arrNode.isArray() && arrNode.size() > 0) {
+                String jsonArray = MAPPER.writeValueAsString(arrNode);
                 CollectionType collectionType = MAPPER.getTypeFactory()
                         .constructCollectionType(List.class, ContactPersonInfoVO.class);
                 return MAPPER.readValue(jsonArray, collectionType);
