@@ -6,15 +6,15 @@ package com.xiyu.bid.user.controller;
 
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.security.CurrentUserLookupService;
 import com.xiyu.bid.user.core.AssignmentContext;
 import com.xiyu.bid.user.dto.AssignmentCandidateDTO;
 import com.xiyu.bid.user.service.AssignmentCandidateAppService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,7 +26,7 @@ import java.util.List;
  * 分配候选人统一端点。
  *
  * <p>为 task / tender 两种业务场景提供统一的候选人查询接口。
- * 认证由类级 @PreAuthorize 保证（生产环境）；SecurityContextHolder 兜底（测试环境 addFilters=false）。
+ * 认证由类级 @PreAuthorize 保证；当前业务用户由 CurrentUserLookupService 按 UserDetails 解析。
  * context 参数校验由本控制器负责（输入校验）。
  */
 @RestController
@@ -35,9 +35,13 @@ import java.util.List;
 public class AssignmentCandidateController {
 
     private final AssignmentCandidateAppService appService;
+    private final CurrentUserLookupService currentUserLookupService;
 
-    public AssignmentCandidateController(AssignmentCandidateAppService appService) {
+    public AssignmentCandidateController(
+            AssignmentCandidateAppService appService,
+            CurrentUserLookupService currentUserLookupService) {
         this.appService = appService;
+        this.currentUserLookupService = currentUserLookupService;
     }
 
     /**
@@ -46,7 +50,6 @@ public class AssignmentCandidateController {
      * @param context     业务场景（task / tender，必需）
      * @param deptCode    可选部门过滤参数（大小写不敏感）
      * @param roleCode    可选角色过滤参数（大小写不敏感）
-     * @param currentUser 当前登录用户
      * @return ApiResponse 包含候选人列表
      */
     @GetMapping("/assignable-candidates")
@@ -54,9 +57,8 @@ public class AssignmentCandidateController {
             @RequestParam String context,
             @RequestParam(required = false) String deptCode,
             @RequestParam(required = false) String roleCode,
-            @AuthenticationPrincipal User currentUser) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) {
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         AssignmentContext ctx = AssignmentContext.of(context, deptCode, roleCode);
@@ -64,6 +66,7 @@ public class AssignmentCandidateController {
             return ResponseEntity.badRequest().body(
                     ApiResponse.error("Invalid assignment context: " + context));
         }
+        User currentUser = currentUserLookupService.requireUser(userDetails);
         List<AssignmentCandidateDTO> data = appService.findCandidates(ctx, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Assignment candidates retrieved", data));
     }

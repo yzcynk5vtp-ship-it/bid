@@ -39,6 +39,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByRoleProfile_Id(Long roleProfileId);
 
+    /** 查询所有启用用户。 */
     List<User> findByEnabledTrue();
 
     List<User> findByIdIn(Collection<Long> ids);

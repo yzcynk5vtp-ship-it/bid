@@ -4,6 +4,8 @@ import com.xiyu.bid.apikey.infrastructure.ApiKeyAuthenticationFilter;
 import com.xiyu.bid.auth.JwtAuthenticationFilter;
 import com.xiyu.bid.config.RateLimitFilter;
 import com.xiyu.bid.config.SecurityConfig;
+import com.xiyu.bid.entity.User;
+import com.xiyu.bid.security.CurrentUserLookupService;
 import com.xiyu.bid.user.dto.AssignmentCandidateDTO;
 import com.xiyu.bid.user.service.AssignmentCandidateAppService;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +16,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -21,6 +25,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.same;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,6 +51,9 @@ class AssignmentCandidateControllerTest {
     @MockBean
     private AssignmentCandidateAppService appService;
 
+    @MockBean
+    private CurrentUserLookupService currentUserLookupService;
+
     @Test
     @WithMockUser(roles = "MANAGER")
     @DisplayName("GET /api/users/assignable-candidates?context=task 返回 200")
@@ -62,14 +70,28 @@ class AssignmentCandidateControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "MANAGER")
-    @DisplayName("GET /api/users/assignable-candidates?context=tender 返回 200")
-    void findCandidates_TenderContext_Returns200() throws Exception {
-        when(appService.findCandidates(any(), any())).thenReturn(List.of());
+    @WithMockUser(username = "manager", roles = "MANAGER")
+    @DisplayName("GET /api/users/assignable-candidates 使用认证用户解析服务解析当前用户")
+    void findCandidates_UsesCurrentUserLookupServiceToResolveCurrentUser() throws Exception {
+        User currentUser = User.builder().id(1L).username("manager").fullName("当前用户").build();
+        when(currentUserLookupService.requireUser(any(UserDetails.class))).thenReturn(currentUser);
+        when(appService.findCandidates(any(), same(currentUser))).thenReturn(List.of());
 
         mockMvc.perform(get("/api/users/assignable-candidates").param("context", "tender"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "ghost", roles = "MANAGER")
+    @DisplayName("认证用户无法解析为业务用户时返回 401")
+    void findCandidates_AuthenticatedUserMissing_Returns401() throws Exception {
+        when(currentUserLookupService.requireUser(any(UserDetails.class)))
+                .thenThrow(new AuthenticationServiceException("Authenticated user not found: ghost"));
+
+        mockMvc.perform(get("/api/users/assignable-candidates").param("context", "tender"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
     }
 
     @Test

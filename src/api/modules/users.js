@@ -3,6 +3,7 @@
 // Pos: src/api/modules/ - Frontend API module layer
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 import httpClient from '../client.js'
+import { normalizeUserOption } from './userNormalizers.js'
 
 export const usersApi = {
   async search(query, limit = 10, requestOptions = {}) {
@@ -37,6 +38,7 @@ export const usersApi = {
       params: { context, deptCode, roleCode },
       ...requestOptions,
     })
-    return response?.data || []
+    const candidates = Array.isArray(response?.data) ? response.data : []
+    return candidates.map(normalizeUserOption)
   }
 }

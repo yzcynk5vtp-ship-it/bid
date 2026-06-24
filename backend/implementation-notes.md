@@ -1,4 +1,20 @@
 
+## 2026-06-24 V1095 employee_number 生产迁移修复
+
+- 背景：部署 `be74af437-api8080` 到 `172.16.38.78` 时，后端启动被 Flyway 阻断：`V1095__add_users_employee_number.sql` 报 `Duplicate column name 'employee_number'`，生产库留下 `flyway_schema_history version=1095 success=0`。
+- 取证：应用已回滚到 `da558279d-api8080` 并恢复健康；生产库 `users.employee_number` 列已存在，但未查到 `idx_users_employee_number` 索引。
+- 决策：保留 `users.employee_number`（用户工号，登录返回、用户管理、@人搜索、企微/统一消息中心推送按工号投递都会用到）；补建索引；走方案 A（代码脚本幂等 + 修复 Flyway 失败状态 + 重新发布）。
+- 代码变更：将 V1095 改为 MySQL 8.0 兼容的幂等脚本：通过 `information_schema.COLUMNS` 判断列是否存在，通过 `information_schema.STATISTICS` 判断索引是否存在，避免 Flyway repair 后重跑再次因重复列失败。
+- 测试：新增 `V1095MigrationStaticContractTest` 覆盖脚本必须包含列/索引存在性检查；先观察到旧脚本 RED（缺 `information_schema.COLUMNS`），改造后 GREEN。另新增 Testcontainers 契约 `V1095EmployeeNumberMigrationContractTest`，用于 Docker 可用环境验证“列已存在、索引缺失”半迁移状态可重放修复；当前本机 Docker 不可用，测试被 Testcontainers 跳过。
+- 生产修复策略：发布前再次备份 DB；清理 `flyway_schema_history` 中 `V1095 success=0` 失败记录（等效 Flyway repair 针对 failed row）；重发包含幂等 V1095 的新包，由迁移自动补 `idx_users_employee_number`。
+- 首轮热修复部署结果：已从提交 `bd6e86538` 构建并部署 `bd6e86538-v1095fix-api8080`；发布包 SHA256 `c3b4a9cc5755df0c7f64f88995ed78649c630c716122cf13d391913252f1cd6c`，后端 jar SHA256 `8c729a6e81f0131123de2510541d54556a746d656787c0b2a6649a1d6ca942ee`。
+- 生产备份证据：部署前备份 `winbid` 到 `/opt/xiyu-bid/backups/winbid-pre-v1095fix-20260624-221158.sql.gz`，SHA256 `c9378da22f94c2f7f6c01d6492217659d79c12e338dce529840a481c8790852f`，大小 `2518767` bytes。
+- 首轮验证证据：`flyway_schema_history version=1095 success=1`；`users.employee_number` 列计数 `1`；`idx_users_employee_number` 索引计数 `1`；`127.0.0.1:18080/actuator/health`、`127.0.0.1:8080/actuator/health`、`172.16.38.78:8080/actuator/health` 均为 `UP`；前端首页 `172.16.38.78:8080/` 返回 `200`。
+- 后续固化：首轮热修复后发现 `origin/main` 仍缺 V1095 幂等保护，且主干已有 `d67602034` 等更新；因此将修复 rebase 到最新 `origin/main`，重新构建包含主干最新提交 + V1095 幂等修复的发布包并再次部署，避免后续按主干发布时回退该修复。
+- 最终固化部署结果：修复已 rebase 到 `origin/main d67602034` 之后的新提交 `c066cd997`，并部署 `c066cd997-main-v1095fix-api8080` 到 `172.16.38.78`；发布包 SHA256 `942727baa98f94dca958917cbdca0550df4f09b8dfc3d9f94073eb9e0596538c`，后端 jar SHA256 `ad768e1f5f7a0edab61ba83debc7eb904bb36d46411580f8ca402dfbc9aa1bbe`。
+- 最终部署备份：重新发布前备份 `winbid` 到 `/opt/xiyu-bid/backups/winbid-pre-c066cd997-main-v1095fix-20260624-222333.sql.gz`，SHA256 `431da498ceeb2dc430dec895056d1f23500ae3b3d76fe66a9c5e0b9b2aa2382a`，大小 `2519341` bytes。
+- 最终验证证据：服务器 `deployed-release.json` 为 `c066cd997-main-v1095fix-api8080`；服务器 jar SHA256 与本地发布包一致；前端 `index.html` SHA256 `3af67a5f853ee323e27717fa54dcf65a9e0b608f8d46f262e87626586138906d` 与本地发布包一致；`flyway_schema_history version=1095 success=1`；`users.employee_number` 列计数 `1`；`idx_users_employee_number` 索引计数 `1`；内部/代理/外部 health 均为 `UP`，外部首页返回 `200`。
+
 ## 2026-06-06 blueprint-driven 4.1.1.2 案例库
 
 - 严格只此小节（一图一）：读蓝图（lark-cli section C0GRdcAX4okzEFxL5Thc6sWRnSS）得「案例库」完整规格（卡片网格+筛选+排序、详情抽屉560px蓝图顺序、复用创建引用记录、客户类型5枚举、下架仅详情页、空状态3种）。
