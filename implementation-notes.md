@@ -487,3 +487,36 @@
 ## 验证计划
 
 - 后端：`mvn -f backend/pom.xml test -Dtest=UserDetailsServiceImplTest`。
+
+# 分配/指派候选人不可选修复实施记录
+
+## 问题口径
+
+- 分配标讯/指派标讯弹窗进入后，`UserPicker` 候选人加载失败，浏览器控制台显示 `GET /api/users/assignable-candidates?context=tender&deptCode=&roleCode=` 返回 HTTP 500。
+- 即使接口成功返回，后端候选人 DTO 字段是 `userId` / `deptName`，而前端 `UserPicker` 合并候选项时按 `id` 过滤，存在候选人被丢弃的隐患。
+
+## 根因判断
+
+- `UserRepository.findByEnabledTrue()` 将 JPA `User` 实体列表直接放入 Redis cache，线上 `spring.cache.type=redis` 时容易因实体序列化/反序列化、懒加载对象或代理对象导致候选人接口 500。
+- `AssignmentCandidateController` 通过 `@AuthenticationPrincipal User` 获取当前用户，但实际 `JwtAuthenticationFilter` 放入的是 Spring Security `UserDetails`，导致当前用户在控制器内可能为 `null`，进而影响部门范围过滤。
+- 前端 API 层没有把 `AssignmentCandidateDTO.userId` 归一成通用选人组件需要的 `id`。
+
+## 决策与权衡
+
+- 移除 `users:enabled` 实体列表缓存，保持候选人接口直接查询真实启用用户；本次不引入新的 Redis DTO 缓存，避免在紧急修复中扩大缓存一致性设计。
+- 控制器改为从 `Authentication#getName()` 获取认证用户名，再通过 `UserRepository.findByUsername()` 解析业务 `User`，与 JWT 过滤器当前 principal 类型对齐。
+- 若认证用户暂时查不到业务 `User`，仍按既有服务空用户路径执行，不在本次把行为改成 404/401，避免改变现有权限服务的兜底语义。
+- 前端在 `usersApi.getAssignableCandidates()` 边界补齐 `id`、`departmentName` 和 `employeeId`，让 `UserPicker` 继续消费统一字段，不要求后端为了单个组件改变 DTO 契约。
+- Review 后收口设计弯路：新增通用 `CurrentUserLookupService` 承担 `UserDetails -> User` 解析，`AssignmentCandidateController` 改为接收 `@AuthenticationPrincipal UserDetails`，不再直接依赖 `UserRepository` / `SecurityContextHolder`。
+- 认证用户无法解析为业务用户时改为 fail-fast，由全局认证异常处理返回 401，避免静默返回空候选人掩盖账号同步问题。
+- 前端新增 `normalizeUserOption()` 作为统一用户选项归一化 helper，并对非数组响应返回空列表，避免 API 响应异常时组件层崩溃。
+
+## 验证
+
+- RED 前端：`pnpm exec vitest run src/api/modules/users.spec.js`，新增候选人归一化用例按预期失败，缺少 `id` / `departmentName`。
+- RED 后端：`mvn -f backend/pom.xml test -Dtest=AssignmentCandidateControllerTest`，新增当前用户解析用例按预期失败，`UserRepository.findByUsername("manager")` 未被调用。
+- RED 前端补强：`pnpm exec vitest run src/api/modules/users.spec.js`，新增 `employeeId` 归一化和非数组响应用例按预期失败。
+- RED 后端补强：`mvn -f backend/pom.xml test -Dtest=AssignmentCandidateControllerTest`，新增通用当前用户解析服务用例先因 `CurrentUserLookupService` 不存在编译失败。
+- GREEN 前端：`pnpm exec vitest run src/api/modules/users.spec.js src/components/common/UserPicker.spec.js src/composables/useUserPicker.spec.js`，3 files / 20 tests passed（保留既有 Vue lifecycle warning）。
+- GREEN 后端：`mvn -f backend/pom.xml test -Dtest=AssignmentCandidateControllerTest,AssignmentCandidateAppServiceTest,AssignmentCandidatePolicyTest`，22 tests passed。
+- `git diff --check`：通过，无空白错误。
