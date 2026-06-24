@@ -272,6 +272,9 @@ xiyu:
           role-code: bid-projectLeader
         - position-pattern: ".*BD经理.*"
           role-code: bid-projectLeader
+      # 事件库 SDK：通过 Kafka 消费 BaseOssUser/BaseOssDept/BaseOssJob 三个 topic，实时同步本地 users 表
+      # 生产环境通过 XIYU_ORG_EVENT_SDK_ENABLED=true 启用；本地默认 false 以避免无 Kafka 时启动失败
+      # 启用后由 OrganizationEventSdkConsumerAdapter 自动消费并触发 OrganizationDirectorySyncAppService 同步
       event-sdk:
         enabled: ${XIYU_ORG_EVENT_SDK_ENABLED:false}
         consumer-group: ${XIYU_ORG_EVENT_CONSUMER_GROUP:bms}
