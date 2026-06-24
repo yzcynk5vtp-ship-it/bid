@@ -213,6 +213,8 @@ xiyu:
     abandon-roles: ${XIYU_TENDER_ABANDON_ROLES:ADMIN,MANAGER}
   integrations:
     organization:
+      # 默认值与 OrganizationIntegrationProperties.java 保持一致
+      # Java 默认 enabled=false（安全默认：避免意外同步），开发环境通过环境变量开启
       enabled: ${XIYU_ORG_SYNC_ENABLED:false}
       # webhook-secret removed — HTTP webhook path deleted per FR-012
       ip-whitelist: ${XIYU_ORG_IP_WHITELIST:}
@@ -224,53 +226,53 @@ xiyu:
       # 管理员角色码（小写）；命中后允许提升为 ADMIN
       admin-role-codes:
         - admin
-      # 经理角色码（小写）
+      # 经理角色码（注意：/bidAdmin 带前导斜杠，OSS 规范）
       manager-role-codes:
-        - bid_admin
-        - bid_lead
+        - /bidAdmin
+        - bid-TeamLeader
       # 按人员映射：通过工号精确匹配（OSS 同步数据中的 username/jobNumber 字段）
       # 数据源：OSS /subscription/msg/getUserByTimeWindow + 本地 users 表核对
       person-to-role-mappings:
         # 投标管理员 + 投标系统管理员（按人员）：张頔、郑蓉蓉、袁思琪
         - person-identifier: "03595"  # 张頔
-          role-code: bid_admin
+          role-code: /bidAdmin
         - person-identifier: "06234"  # 郑蓉蓉
-          role-code: bid_admin
+          role-code: /bidAdmin
         - person-identifier: "11484"  # 袁思琪
-          role-code: bid_admin
+          role-code: /bidAdmin
         # 投标组长（按人员）：袁思琪（兼任）
         - person-identifier: "11484"  # 袁思琪
-          role-code: bid_lead
+          role-code: bid-TeamLeader
         # 跨部门协同人员（按人员）：陈超、屈晓润、孙磊、忻鼎盛、刘成
         - person-identifier: "04727"  # 陈超（kelvin_chen）
-          role-code: bid_other_dept
+          role-code: bid-otherDept
         - person-identifier: "07440"  # 屈晓润
-          role-code: bid_other_dept
+          role-code: bid-otherDept
         - person-identifier: "06708"  # 孙磊
-          role-code: bid_other_dept
+          role-code: bid-otherDept
         - person-identifier: "03483"  # 忻鼎盛
-          role-code: bid_other_dept
+          role-code: bid-otherDept
         - person-identifier: "03895"  # 刘成（simon_liu）
-          role-code: bid_other_dept
+          role-code: bid-otherDept
       # 按部门映射：通过部门名称正则匹配
       department-to-role-mappings:
         # 投标专员（按部门）：投标管理部
         - department-pattern: ".*投标管理部.*"
-          role-code: bid_specialist
+          role-code: bid-Team
         # 行政人员（按部门）：行政部
         - department-pattern: ".*行政部.*"
-          role-code: admin_staff
+          role-code: bid-administration
       # 按岗位映射：通过岗位名称正则匹配
       position-to-role-mappings:
         # 投标项目负责人（按岗位）：项目经理、项目总监、主管、BD经理
         - position-pattern: ".*项目经理.*"
-          role-code: sales
+          role-code: bid-projectLeader
         - position-pattern: ".*项目总监.*"
-          role-code: sales
+          role-code: bid-projectLeader
         - position-pattern: ".*主管.*"
-          role-code: sales
+          role-code: bid-projectLeader
         - position-pattern: ".*BD经理.*"
-          role-code: sales
+          role-code: bid-projectLeader
       event-sdk:
         enabled: ${XIYU_ORG_EVENT_SDK_ENABLED:false}
         consumer-group: ${XIYU_ORG_EVENT_CONSUMER_GROUP:bms}
@@ -293,9 +295,9 @@ xiyu:
         auth-token: ${XIYU_ORG_DIRECTORY_AUTH_TOKEN:}
         connect-timeout-ms: ${XIYU_ORG_DIRECTORY_CONNECT_TIMEOUT_MS:3000}
         read-timeout-ms: ${XIYU_ORG_DIRECTORY_READ_TIMEOUT_MS:5000}
-        user-menu-tree-path: ${XIYU_ORG_USER_MENU_TREE_PATH:/oauth/getUserPermission}
-        # OSS 菜单树查询 systemName，必须与登录接口的 system 标识一致（bid-platform）
-        user-menu-tree-system-name: ${XIYU_ORG_USER_MENU_TREE_SYSTEM_NAME:bid-platform}
+        user-menu-tree-path: ${XIYU_ORG_USER_MENU_TREE_PATH:/sysMenuUrl/getUserMenuTree}
+        # OSS 菜单树查询 systemName，必须与登录接口的 system 标识一致
+        user-menu-tree-system-name: ${XIYU_ORG_USER_MENU_TREE_SYSTEM_NAME:xiyu-bid-poc}
         user-menu-tree-retrieval-type: ${XIYU_ORG_USER_MENU_TREE_RETRIEVAL_TYPE:2}
         user-menu-tree-job-number-param-name: ${XIYU_ORG_USER_MENU_TREE_JOB_NUMBER_PARAM_NAME:jobNumber}
         user-menu-tree-connect-timeout-ms: ${XIYU_ORG_USER_MENU_TREE_CONNECT_TIMEOUT_MS:3000}

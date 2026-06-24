@@ -137,7 +137,7 @@ test.describe('资源管理 - 招标平台账号管理全流程', () => {
     const s = suffix()
     const specialistSession = await ensureApiSession({
       username: `e2e_acct_spec_${s}`,
-      role: 'BID_SPECIALIST',
+      role: 'BID_TEAM',
       fullName: 'E2E 投标专员'
     })
 

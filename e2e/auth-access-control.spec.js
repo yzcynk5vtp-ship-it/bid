@@ -60,7 +60,7 @@ test.describe('auth access control', () => {
     // 使用真实登录获取 session
     const session = await ensureApiSession({
       username: `access_scope_restore_${Date.now()}`,
-      role: 'BID_ADMIN',
+      role: 'BIDADMIN',
       fullName: '李总'
     })
 

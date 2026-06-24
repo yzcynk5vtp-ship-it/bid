@@ -21,13 +21,13 @@ describe('organization-normalizers', () => {
   it('normalizes role rows and role payloads', () => {
     const roles = normalizeRoles([{ code: 'MANAGER', name: '', menuPermissions: ['dashboard', 'dashboard'] }])
 
-    expect(roles[0].code).toBe('manager')
+    expect(roles[0].code).toBe('MANAGER')
     expect(roles[0].menuPermissions).toEqual(['dashboard'])
-    expect(buildRolePayload({ code: 'Bid_Manager', name: '投标经理', enabled: true }).code).toBe('bid_manager')
+    expect(buildRolePayload({ code: 'Bid_Manager', name: '投标经理', enabled: true }).code).toBe('Bid_Manager')
   })
 
   it('builds user organization payload from selected department and role', () => {
-    const users = normalizeUsers([{ id: 1, fullName: '张三', departmentCode: 'TECH', roleCode: 'bid_specialist', enabled: true }])
+    const users = normalizeUsers([{ id: 1, fullName: '张三', departmentCode: 'TECH', roleCode: 'bid-Team', enabled: true }])
 
     expect(users[0].departmentName).toBe('未配置部门')
     expect(buildUserOrganizationPayload({ departmentCode: ' TECH ', roleId: 3, enabled: true }))

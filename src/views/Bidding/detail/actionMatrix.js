@@ -43,13 +43,14 @@ const ACTION_DEFS = {
 
 // ---------------------------------------------------------------------------
 // Role grouping
-// 'admin' (super admin), bid_admin and bid_lead always share the same column in the matrix.
+// 'admin' (super admin), bidAdmin and bid-TeamLeader always share the same column in the matrix.
+// 内部 group 标识符统一使用下划线风格（与角色码的连字符风格区分）。
 // ---------------------------------------------------------------------------
 function resolveRoleGroup(role) {
-  if (role === 'admin' || role === 'bid_admin' || role === 'bid_lead' || role === 'bid_senior') return 'admin_lead'
-  if (role === 'sales' || role === 'bid_other_dept' || role === 'admin_staff') return 'sales'
+  if (role === 'admin' || role === '/bidAdmin' || role === 'bid-TeamLeader') return 'admin_lead'
+  if (role === 'bid-projectLeader' || role === 'bid-otherDept' || role === 'bid-administration') return 'sales'
   if (role === 'manager') return 'admin_lead'
-  if (role === 'bid_specialist') return 'bid_specialist'
+  if (role === 'bid-Team') return 'bid_team'
   return null
 }
 
@@ -63,7 +64,7 @@ const HEADER_MATRIX = {
       currentUserId != null && currentUserId === creatorId
         ? ['edit', 'delete']
         : [],
-    bid_specialist: ({ currentUserId, creatorId }) =>
+    bid_team: ({ currentUserId, creatorId }) =>
       currentUserId != null && currentUserId === creatorId
         ? ['edit', 'delete']
         : [],
@@ -71,32 +72,32 @@ const HEADER_MATRIX = {
   TRACKING: {
     admin_lead: ['transfer', 'delete'],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
   EVALUATED: {
     admin_lead: ['transfer'],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
   BIDDING: {
     admin_lead: ['viewProject'],
     sales: ['viewProject'],
-    bid_specialist: ['viewProject'],
+    bid_team: ['viewProject'],
   },
   WON: {
     admin_lead: ['viewProject'],
     sales: ['viewProject'],
-    bid_specialist: ['viewProject'],
+    bid_team: ['viewProject'],
   },
   LOST: {
     admin_lead: ['viewProject'],
     sales: ['viewProject'],
-    bid_specialist: ['viewProject'],
+    bid_team: ['viewProject'],
   },
   ABANDONED: {
     admin_lead: [],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
 }
 
@@ -108,39 +109,38 @@ const BOTTOM_MATRIX = {
   PENDING_ASSIGNMENT: {
     admin_lead: ['edit'],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
   TRACKING: {
     admin_lead: [],
-    bid_lead: ['editBasic', 'editEvaluation', 'save', 'cancel'],
-    bid_senior: ['editBasic', 'editEvaluation', 'save', 'cancel'],
+    'bid-TeamLeader': ['editBasic', 'editEvaluation', 'save', 'cancel'],
     sales: ['nextStep', 'prevStep', 'submit'],
-    bid_specialist: [],
+    bid_team: [],
   },
   EVALUATED: {
     admin_lead: ['bid', 'abandon'],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
   BIDDING: {
     admin_lead: [],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
   WON: {
     admin_lead: [],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
   LOST: {
     admin_lead: [],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
   ABANDONED: {
     admin_lead: [],
     sales: [],
-    bid_specialist: [],
+    bid_team: [],
   },
 }
 
@@ -164,8 +164,8 @@ export function getHeaderActions(status, role, hasOriginalUrl, currentUserId, cr
 
   let result = keys.map((k) => ({ ...ACTION_DEFS[k] }))
 
-  // bid_lead 不能有 delete 操作
-  if (role === 'bid_lead') {
+  // bid-TeamLeader 不能有 delete 操作
+  if (role === 'bid-TeamLeader') {
     result = result.filter((a) => a.key !== 'delete')
   }
 
@@ -188,7 +188,7 @@ export function getBottomActions(status, role, _requiresReview, evaluationTabAct
   const statusActions = BOTTOM_MATRIX[status]
   if (!statusActions) return []
 
-  // 优先查 role 级别（如 bid_lead），再回退到 group 级别（如 admin_lead）
+  // 优先查 role 级别（如 bid-TeamLeader），再回退到 group 级别（如 admin_lead）
   let keys = statusActions[role]
   if (keys === undefined) {
     keys = statusActions[group]
@@ -202,8 +202,8 @@ export function getBottomActions(status, role, _requiresReview, evaluationTabAct
 
   let result = keys.map((k) => ({ ...ACTION_DEFS[k] }))
 
-  // sales 角色的 TRACKING 状态：按钮受 tab 状态影响
-  if (role === 'sales' && status === 'TRACKING') {
+  // bid-projectLeader 角色的 TRACKING 状态：按钮受 tab 状态影响
+  if (role === 'bid-projectLeader' && status === 'TRACKING') {
     if (evaluationTabActive) {
       // 评估表 tab: 显示「上一步」「提交」（提交成功后隐藏提交按钮）
       result = result.filter(a => a.key === 'prevStep' || (a.key === 'submit' && !evaluationSubmitted))

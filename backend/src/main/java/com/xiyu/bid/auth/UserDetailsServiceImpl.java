@@ -20,7 +20,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
@@ -59,13 +58,19 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         List<String> menuPermissions;
         boolean skipLegacyCompat;
 
-        if (ossEntry.isPresent() && ossEntry.get().roleCode() != null) {
-            // OSS 用户：用缓存中的实时角色+权限（来自 5 接口实时抓取）
-            roleCode = ossEntry.get().roleCode();
-            menuPermissions = ossEntry.get().menuPermissions();
-            skipLegacyCompat = RoleProfileCatalog.shouldSkipLegacyRoleCompat(roleCode);
+        if (isOssUser) {
+            if (ossEntry.isPresent() && ossEntry.get().roleCode() != null) {
+                // OSS 用户：用缓存中的实时角色+权限（来自 5 接口实时抓取）
+                roleCode = ossEntry.get().roleCode();
+                menuPermissions = ossEntry.get().menuPermissions();
+                skipLegacyCompat = true; // OSS 用户严格断绝 legacy role 兼容注入，防止角色越权
+            } else {
+                // OSS 用户缓存未命中/失效：严格执行“缓存/OSS调用失败即无权限”的合规底线，禁止本地 DB 兜底
+                log.warn("UserDetails denied for OSS user={}: Cache/OSS call failed or expired", user.getUsername());
+                throw new org.springframework.security.core.AuthenticationException("权限验证失败：无法实时获取OSS权限信息，请重新登录") {};
+            }
         } else {
-            // 非 OSS 用户或缓存未命中：用本地 DB 兜底
+            // 非 OSS 用户（本地内置测试账号）：用本地 DB 兜底
             roleCode = user.getRoleCode();
             menuPermissions = user.getRoleProfile() != null ? user.getRoleProfile().getMenuPermissions() : null;
             skipLegacyCompat = RoleProfileCatalog.shouldSkipLegacyRoleCompat(roleCode);
@@ -83,10 +88,16 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             authorities.add("ROLE_" + legacyRole.name());
         }
 
-        // 2. Role code as authority (e.g., bid_admin) + 新旧兼容映射
+        // 2. Role code as authority (e.g., bidAdmin) + 新旧兼容映射
         if (roleCode != null && !roleCode.isBlank()) {
             authorities.add(roleCode);
-            authorities.add("ROLE_" + roleCode.toUpperCase(Locale.ROOT));
+            // Spring Security authority 生成规则：连字符转下划线再大写
+            // bid-TeamLeader → ROLE_BID_TEAMLEADER，bidAdmin → ROLE_BIDADMIN
+            // 使用 RoleProfileCatalog.toAuthorityName 统一转换，避免各处手动 replace
+            String authorityName = RoleProfileCatalog.toAuthorityName(roleCode);
+            if (authorityName != null) {
+                authorities.add("ROLE_" + authorityName);
+            }
             // 新角色 (roleCode) → 旧角色 (User.Role) 兼容层代理：
             User.Role compatLegacy = RoleProfileCatalog.legacyRoleForCode(roleCode);
             if (compatLegacy != null && !skipLegacyCompat) {

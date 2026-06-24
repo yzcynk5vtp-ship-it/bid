@@ -13,7 +13,13 @@ import java.util.Map;
 @Component
 @ConfigurationProperties(prefix = "xiyu.integrations.organization")
 public class OrganizationIntegrationProperties {
-    private boolean enabled = true;
+    /**
+     * 是否启用 OSS 组织架构同步。
+     * <p>默认 false（安全默认）：避免开发/测试环境意外触发 OSS 同步。
+     * 需要时通过环境变量 {@code XIYU_ORG_SYNC_ENABLED=true} 或 application.yml 显式开启。
+     * <p>与 application.yml 的 {@code ${XIYU_ORG_SYNC_ENABLED:false}} 保持一致。
+     */
+    private boolean enabled = false;
     private String webhookSecret = "";
     private String ipWhitelist = "";
     private int eventLogRetentionDays = 90;
@@ -78,10 +84,10 @@ public class OrganizationIntegrationProperties {
         private int batchConnectTimeoutMs = 3000;
         /** 批量岗位/角色回查读取超时（毫秒），批量返回数据量较大，默认高于单条接口 */
         private int batchReadTimeoutMs = 10000;
-        /** OSS 菜单树接口路径：GET /oauth/getUserPermission */
-        private String userMenuTreePath = "/oauth/getUserPermission";
+        /** OSS 菜单树接口路径：GET /sysMenuUrl/getUserMenuTree */
+        private String userMenuTreePath = "/sysMenuUrl/getUserMenuTree";
         /** OSS 菜单树查询 systemName，必须与登录接口的 system 标识一致 */
-        private String userMenuTreeSystemName = "bid-platform";
+        private String userMenuTreeSystemName = "xiyu-bid-poc";
         /** OSS 菜单树查询类型：1=url，2=本地配置 */
         private int userMenuTreeRetrievalType = 2;
         /** OSS 菜单树用户工号 query 参数名 */

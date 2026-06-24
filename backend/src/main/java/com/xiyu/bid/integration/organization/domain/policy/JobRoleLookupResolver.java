@@ -1,5 +1,6 @@
 package com.xiyu.bid.integration.organization.domain.policy;
 
+import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.integration.organization.application.OrganizationIntegrationProperties;
 import com.xiyu.bid.integration.organization.domain.OrganizationUserSnapshot;
 import com.xiyu.bid.integration.organization.dto.OssUserJobAndRoleDto;
@@ -12,39 +13,29 @@ import java.util.Map;
  * 按 Constitution V 优先级解析用户内部角色码。
  * <p>
  * 优先级：人员级规则 > 部门级规则 > 岗位级规则 > 系统角色列表（sysRoleList）。
- * 所有文本比较大小写不敏感，返回的角色码已转换为小写并经过 OSS 角色码标准化映射。
+ * 所有文本比较大小写不敏感，返回的角色码已经过 OSS 角色码标准化映射。
+ * <p>
+ * OSS code 与内部 code 已对齐（如 bid-TeamLeader、bid-Team、bid-projectLeader 等），
+ * 不再需要 OSS_TO_INTERNAL_ROLE 映射表。唯一例外：bid-SystemAdmin → admin
+ * （投标系统管理员对应系统默认 admin）。
  */
 public class JobRoleLookupResolver {
-
-    /** OSS 侧历史角色码到内部角色码的映射（配置中大小写可能不一致，查找时忽略大小写） */
-    private static final Map<String, String> OSS_TO_INTERNAL_ROLE = Map.of(
-            "/bidAdmin", "bid_admin",
-            "bid-TeamLeader", "bid_lead",
-            "bid-SystemAdmin", "bid_admin",
-            "bid-Team", "bid_specialist",
-            "bid-projectLeader", "sales",
-            "bid-administration", "admin_staff",
-            "bid-otherDept", "bid_other_dept"
-    );
-    private static final Map<String, String> OSS_TO_INTERNAL_ROLE_IGNORE_CASE = OSS_TO_INTERNAL_ROLE.entrySet().stream()
-            .collect(java.util.stream.Collectors.toUnmodifiableMap(
-                    e -> e.getKey().toLowerCase(Locale.ROOT),
-                    Map.Entry::getValue));
 
     /**
      * OSS sysRoleList 中 roleName（中文角色名称）到内部角色码的映射。
      * <p>
      * OSS 接口返回的 sysRoleList 只包含 roleName（如"投标项目负责人"），不包含 roleCode（如 bid-projectLeader）。
      * 此映射用于将中文角色名称直接映射为内部角色码。
+     * 角色码引用 {@link RoleProfileCatalog} 常量，避免硬编码。
      */
     private static final Map<String, String> OSS_ROLE_NAME_TO_INTERNAL = Map.of(
-            "投标管理员", "bid_admin",
-            "投标组长", "bid_lead",
-            "投标系统管理员", "bid_admin",
-            "投标专员", "bid_specialist",
-            "投标项目负责人", "sales",
-            "行政人员", "admin_staff",
-            "跨部门协同人员", "bid_other_dept"
+            "投标管理员", RoleProfileCatalog.BID_ADMIN_CODE,
+            "投标组长", RoleProfileCatalog.BID_LEAD_CODE,
+            "投标系统管理员", RoleProfileCatalog.ADMIN_CODE,
+            "投标专员", RoleProfileCatalog.BID_SPECIALIST_CODE,
+            "投标项目负责人", RoleProfileCatalog.SALES_CODE,
+            "行政人员", RoleProfileCatalog.ADMIN_STAFF_CODE,
+            "跨部门协同人员", RoleProfileCatalog.BID_OTHER_DEPT_CODE
     );
     private static final Map<String, String> OSS_ROLE_NAME_TO_INTERNAL_IGNORE_CASE = OSS_ROLE_NAME_TO_INTERNAL.entrySet().stream()
             .collect(java.util.stream.Collectors.toUnmodifiableMap(
@@ -169,17 +160,33 @@ public class JobRoleLookupResolver {
     }
 
     /**
-     * 将 OSS 角色码映射为内部角色码（大小写不敏感）。
+     * 将 OSS 角色码映射为内部规范角色码（来自 {@link RoleProfileCatalog#DEFINITIONS}）。
      * <p>
-     * 例如：bid-projectLeader → sales，/bidAdmin → bid_admin。
-     * 未命中的 OSS 角色码返回 null。
+     * 处理 OSS 输入变体：
+     * <ul>
+     *   <li>大小写不一致（如 {@code /BidAdmin}、{@code /BIDADMIN}）— 归一化为规范码 {@code /bidAdmin}</li>
+     *   <li>特殊映射：{@code bid-SystemAdmin} → {@code admin}（投标系统管理员对应系统默认 admin）</li>
+     * </ul>
+     * 返回的总是 {@link RoleProfileCatalog} 中注册的规范码（如 {@code /bidAdmin}），
+     * 而非原始输入，避免大小写不一致导致后续权限匹配失败。
+     * <p>
+     * 注意：OSS 投标管理员角色码本身带前导斜杠（{@code /bidAdmin}），这是 OSS 规范，
+     * 不要去除斜杠。其他角色码（如 {@code bid-TeamLeader}）不带斜杠。
+     * <p>
+     * 未命中（null/空白/未注册）返回 null，以便调用方继续尝试 positionToRoleMapper 等后续映射。
      */
     public static String mapOssRoleCodeToInternal(String ossRoleCode) {
         if (ossRoleCode == null || ossRoleCode.isBlank()) {
             return null;
         }
-        String trimmed = ossRoleCode.trim().toLowerCase(Locale.ROOT);
-        return OSS_TO_INTERNAL_ROLE_IGNORE_CASE.get(trimmed);
+        String trimmed = ossRoleCode.trim();
+        // 特殊映射：bid-SystemAdmin → admin（投标系统管理员对应系统默认 admin）
+        if (trimmed.equalsIgnoreCase("bid-SystemAdmin")) {
+            return RoleProfileCatalog.ADMIN_CODE;
+        }
+        // 通过 case-insensitive 查找返回规范码（而非原始输入）
+        // 例如输入 "/BidAdmin" 或 "/BIDADMIN" → 返回规范码 "/bidAdmin"
+        return RoleProfileCatalog.canonicalCode(trimmed);
     }
 
     /**
@@ -217,8 +224,7 @@ public class JobRoleLookupResolver {
         if (roleCode == null || roleCode.isBlank()) {
             return null;
         }
-        String trimmed = roleCode.trim().toLowerCase(Locale.ROOT);
-        return OSS_TO_INTERNAL_ROLE_IGNORE_CASE.getOrDefault(trimmed, trimmed);
+        return roleCode.trim();
     }
 
     public record ResolvedRole(String roleCode, RoleMappingSource source, String matchedText) {
