@@ -217,7 +217,10 @@ public class RoleProfileService {
     }
 
     private String sanitizeCode(String value) {
-        return sanitize(value, 64).replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase(java.util.Locale.ROOT);
+        // 保留 OSS 角色码的原始大小写和斜杠（如 /bidAdmin、bid-TeamLeader）
+        // RoleProfileCatalog 和 RoleProfileRepository 均使用 case-insensitive 查找，
+        // 因此保留原值不会影响查找，但移除斜杠或小写化会导致 /bidAdmin 查找失败
+        return sanitize(value, 64).replaceAll("[^a-zA-Z0-9_/-]", "");
     }
 
     private String normalizeScope(String value) {

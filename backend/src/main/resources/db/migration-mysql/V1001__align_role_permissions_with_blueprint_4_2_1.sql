@@ -20,7 +20,7 @@ SET data_scope = 'all',
         ))
     ),
     updated_at = NOW()
-WHERE code = 'bidAdmin';
+WHERE code = 'bid_admin';
 
 -- 投标负责人：全量数据范围 + 标讯管理/创建/删除权限
 UPDATE roles
@@ -34,7 +34,7 @@ SET data_scope = 'all',
         ))
     ),
     updated_at = NOW()
-WHERE code = 'bid-TeamLeader';
+WHERE code = 'bid_lead';
 
 -- 项目负责人：新增 bidding.create
 UPDATE roles
@@ -45,7 +45,7 @@ SET menu_permissions = CONCAT(
     ))
 ),
     updated_at = NOW()
-WHERE code = 'bid-projectLeader';
+WHERE code = 'sales';
 
 -- 投标专员：新增 bidding.create
 UPDATE roles
@@ -56,4 +56,4 @@ SET menu_permissions = CONCAT(
     ))
 ),
     updated_at = NOW()
-WHERE code = 'bid-Team';
+WHERE code = 'bid_specialist';
