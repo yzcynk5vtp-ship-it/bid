@@ -192,6 +192,33 @@ describe('useCrmOpportunitySelector', () => {
     expect(emitted.evaluationData.recommendation).toBeUndefined()
   })
 
+  it('GAP 附件：CRM gapFile 为 JSON 数组字符串时正确解析为多文件', async () => {
+    getContactPersons.mockResolvedValue({ data: [] })
+    const chance = {
+      id: 101,
+      name: 'CRM商机2',
+      code: 'C002',
+      gapFile: '[{"url":"https://crm.example.com/a.xlsx","name":"附件A.xlsx"},{"url":"https://crm.example.com/b.pdf","name":"附件B.pdf"}]',
+    }
+    searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })
+    const props = { tenderer: '', registrationDeadline: '', bidOpeningTime: '', alreadyLinkedName: '' }
+    const emitFn = vi.fn()
+    const wrapper = mount(defineComponent({
+      template: '<div />',
+      setup() { return useCrmOpportunitySelector(props, emitFn) },
+    }))
+    await wrapper.vm.openSearch()
+    await flushPromises()
+    wrapper.vm.onSelect(chance)
+    await wrapper.vm.confirmLink()
+    await flushPromises()
+    const emitted = emitFn.mock.calls[emitFn.mock.calls.length - 1][1]
+    expect(emitted.evaluationData.basic.projectPlanGapFiles).toEqual([
+      { fileName: '附件A.xlsx', fileUrl: 'https://crm.example.com/a.xlsx' },
+      { fileName: '附件B.pdf', fileUrl: 'https://crm.example.com/b.pdf' },
+    ])
+  })
+
   // CO-312: 是否投标/弃标原因由项目负责人手动填写，关联 CRM 商机时 evaluationData
   // 不应包含 recommendation 段（无论 CRM 商机的 backupPlan 取何值）。
   it('CO-312 CRM 选择模式：evaluationData 不含 recommendation 段（是否投标/弃标原因手动填）', async () => {

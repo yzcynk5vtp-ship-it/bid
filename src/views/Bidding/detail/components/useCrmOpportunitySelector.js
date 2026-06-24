@@ -8,6 +8,39 @@ import { ElMessage } from 'element-plus'
 import { crmApi } from '@/api/modules/crm.js'
 import { CUSTOMER_INFO_ROWS } from './customerInfoMatrixConfig.js'
 
+/**
+ * 解析 CRM 商机 gapFile 字段为评估表 projectPlanGapFiles。
+ * CRM 返回的 gapFile 是 JSON 数组字符串（可多文件），元素形如 {url, name}：
+ *   '[{"url":"https://...","name":"xxx.xlsx"}]'
+ * 此前直接把整个字符串当单个 URL，导致 fileUrl 存了一坨 JSON 文本、附件打不开。
+ */
+function parseGapFiles(raw) {
+  if (!raw) return []
+  // CRM gapFile 通常是 JSON 数组字符串 '[{"url":"...","name":"..."}]'（可多文件），
+  // 也可能退化成 JSON 对象字符串（单文件）或单个 URL 字符串（旧数据）。
+  // 统一解析，避免把 JSON 文本当 URL 落库导致附件打不开。
+  const fromObj = o => ({ fileName: o.name || o.fileName || 'GAP附件', fileUrl: o.url || o.fileUrl || '' })
+  const pick = list => list.map(fromObj).filter(f => f.fileUrl)
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim()
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) return pick(parsed)
+      if (parsed && typeof parsed === 'object') {
+        const f = fromObj(parsed)
+        return f.fileUrl ? [f] : []
+      }
+    } catch { /* 非合法 JSON，按单个 URL 兜底 */ }
+    return [{ fileName: 'GAP附件', fileUrl: trimmed }]
+  }
+  if (Array.isArray(raw)) return pick(raw)
+  if (raw && typeof raw === 'object') {
+    const f = fromObj(raw)
+    return f.fileUrl ? [f] : []
+  }
+  return []
+}
+
 export function useCrmOpportunitySelector(props, emit) {
   const showDialog = ref(false)
   const searching = ref(false)
@@ -197,7 +230,7 @@ export function useCrmOpportunitySelector(props, emit) {
           processKnowledge: chance.managerUnderstandProcess || '',
           supportNotes: chance.remark || '',
           projectPlanGap: chance.projectGap || '',
-          projectPlanGapFiles: chance.gapFile ? [{ fileName: 'GAP附件', fileUrl: chance.gapFile }] : [],
+          projectPlanGapFiles: parseGapFiles(chance.gapFile),
           customerRevenue: chance.customerRevenue || null,
         },
         customerInfos,
