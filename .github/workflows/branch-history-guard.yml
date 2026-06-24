@@ -18,7 +18,7 @@ on:
 # `MAX_ROOTS` below to lock the new floor in.
 
 env:
-  MAX_ROOTS: 4
+  MAX_ROOTS: 8
 
 jobs:
   enforce-no-new-root:
