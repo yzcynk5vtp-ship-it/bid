@@ -28,8 +28,10 @@ public class AuditLogQueryService {
      * CO-324: 项目动态操作日志（按 projectId 查询，最新在前）。
      */
     public java.util.List<com.xiyu.bid.audit.dto.AuditLogItemDTO> findByProject(Long projectId) {
-        return auditLogRepository.findByProjectIdOrderByTimestampDesc(projectId).stream()
-                .map(log -> itemMapper.toItemDto(log, null))
+        List<AuditLog> logs = auditLogRepository.findByProjectIdOrderByTimestampDesc(projectId);
+        Map<String, User> userCache = resolveUsers(logs);
+        return logs.stream()
+                .map(log -> itemMapper.toItemDto(log, userCache.get(userKey(log))))
                 .toList();
     }
 
