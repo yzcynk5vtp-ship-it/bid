@@ -322,7 +322,7 @@ void shouldCallGetEndpointWithBearerToken() {
 OrganizationUserSyncWriter.syncUser()
     └─► OssRoleMenuPermissionAutoSync.mergeUserMenuPermissionsIntoRole(jobNumber, role)
             └─► OrganizationDirectoryHttpGateway.fetchUserMenuTree(jobNumber, context)
-                    └─► GET /sysMenuUrl/getUserMenuTree?jobNumber=xxx&systemName=xiyu-bid-poc&menuRetrievalType=2
+                    └─► GET /sysMenuUrl/getUserMenuTree?jobNumber=xxx&systemName=bid-platform&menuRetrievalType=2
 ```
 
 **调用链 2：前端直接调用**
@@ -345,7 +345,7 @@ public Optional<List<OssMenuTreeNode>> fetchUserMenuTree(
     String url = buildUrl(directory.getUserMenuTreePath());  // /sysMenuUrl/getUserMenuTree
     Map<String, String> params = new LinkedHashMap<>();
     params.put(jobNumberParamName, jobNumber);               // jobNumber 参数
-    params.put("systemName", directory.getUserMenuTreeSystemName());  // xiyu-bid-poc
+    params.put("systemName", directory.getUserMenuTreeSystemName());  // bid-platform
     params.put("menuRetrievalType", String.valueOf(directory.getUserMenuTreeRetrievalType()));  // 2
     return restClient.get(url, params, context).map(mapper::menuTree);
 }
@@ -365,7 +365,7 @@ public CrmResponseHandler.CrmApiResponse getMenuTree(String systemType) {
 ```yaml
 # application.yml:241
 xiyu.integrations.organization.directory.user-menu-tree-path: ${XIYU_ORG_USER_MENU_TREE_PATH:/sysMenuUrl/getUserMenuTree}
-xiyu.integrations.organization.directory.user-menu-tree-system-name: xiyu-bid-poc
+xiyu.integrations.organization.directory.user-menu-tree-system-name: bid-platform
 xiyu.integrations.organization.directory.user-menu-tree-retrieval-type: 2
 
 # CrmProperties.java:186-187
@@ -516,14 +516,14 @@ public class OssPermissionService {
 void shouldCallGetUserPermissionWithBearerToken() {
     // Given
     String token = "user-access-token";
-    String systemName = "xiyu-bid-poc";
+    String systemName = "bid-platform";
 
     // When
     OssUserPermission permission = ossPermissionService.getUserPermission(token, systemName);
 
     // Then
     verify(httpClient).get(baseUrl, "/oauth/getUserPermission?systemName=" + systemName, token);
-    assertThat(permission.systemPermissions()).containsKey("xiyu-bid-poc");
+    assertThat(permission.systemPermissions()).containsKey("bid-platform");
 }
 ```
 

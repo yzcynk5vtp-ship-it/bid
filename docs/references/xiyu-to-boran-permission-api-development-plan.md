@@ -262,14 +262,14 @@ public class OssPermissionService {
 void shouldCallGetUserPermissionWithBearerToken() {
     // Given
     String token = "user-access-token";
-    String systemName = "xiyu-bid-poc";
+    String systemName = "bid-platform";
 
     // When
     OssUserPermission permission = ossPermissionService.getUserPermission(token, systemName);
 
     // Then
     verify(httpClient).get(baseUrl, "/oauth/getUserPermission?systemName=" + systemName, token);
-    assertThat(permission.systemPermissions()).containsKey("xiyu-bid-poc");
+    assertThat(permission.systemPermissions()).containsKey("bid-platform");
 }
 ```
 
@@ -402,7 +402,7 @@ public class OssLoginFlowService {
         CrmResponseHandler.CrmApiResponse userInfo = employeeService.getEmployeeByToken(token);
 
         // 3. 获取菜单权限
-        OssUserPermission menuPermissions = permissionService.getUserPermission(token, "xiyu-bid-poc");
+        OssUserPermission menuPermissions = permissionService.getUserPermission(token, "bid-platform");
 
         // 4. 获取用户角色（已在组织架构同步中实现）
 
@@ -427,7 +427,7 @@ void shouldCallOssInterfacesInOrder() {
     InOrder inOrder = inOrder(crmAuthService, employeeService, permissionService);
     inOrder.verify(crmAuthService).getValidOssToken();
     inOrder.verify(employeeService).getEmployeeByToken(any());
-    inOrder.verify(permissionService).getUserPermission(any(), eq("xiyu-bid-poc"));
+    inOrder.verify(permissionService).getUserPermission(any(), eq("bid-platform"));
 }
 ```
 

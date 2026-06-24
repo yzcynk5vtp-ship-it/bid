@@ -10,7 +10,7 @@ xiyu:
     organization:
       directory:
         user-menu-tree-path: /sysMenuUrl/getUserMenuTree
-        user-menu-tree-system-name: xiyu-bid-poc
+        user-menu-tree-system-name: bid-platform
         user-menu-tree-retrieval-type: 2
         user-menu-tree-connect-timeout-ms: 3000
         user-menu-tree-read-timeout-ms: 5000

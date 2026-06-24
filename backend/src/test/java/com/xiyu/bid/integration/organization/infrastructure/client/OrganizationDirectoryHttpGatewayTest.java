@@ -404,7 +404,7 @@ class OrganizationDirectoryHttpGatewayTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
         server.expect(requestTo(org.hamcrest.Matchers.startsWith("https://oss.example.test/sysMenuUrl/getUserMenuTree")))
                 .andExpect(queryParam("jobNumber", "08402"))
-                .andExpect(queryParam("systemName", "xiyu-bid-poc"))
+                .andExpect(queryParam("systemName", "bid-platform"))
                 .andExpect(queryParam("menuRetrievalType", "2"))
                 .andRespond(withSuccess("""
                         {
@@ -452,7 +452,7 @@ class OrganizationDirectoryHttpGatewayTest {
         server.expect(requestTo(org.hamcrest.Matchers.startsWith("https://oss.example.test/sysMenuUrl/getUserMenuTree")))
                 .andExpect(header("Authorization", "Bearer test-token"))
                 .andExpect(queryParam("jobNumber", "08402"))
-                .andExpect(queryParam("systemName", "xiyu-bid-poc"))
+                .andExpect(queryParam("systemName", "bid-platform"))
                 .andExpect(queryParam("menuRetrievalType", "2"))
                 .andRespond(withSuccess("{\"code\":0,\"data\":[{\"menuCode\":\"1002\"}]}", MediaType.APPLICATION_JSON));
 
