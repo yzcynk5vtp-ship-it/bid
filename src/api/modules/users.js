@@ -10,8 +10,28 @@ export const usersApi = {
     return data
   },
 
+  /**
+   * @deprecated 使用 getAssignableCandidates({ context: 'task' }) 替代
+   * 该方法将在后续版本移除
+   */
   async getTaskAssignmentCandidates(params = undefined) {
     const response = await httpClient.get('/api/tasks/assignment-candidates', { params })
+    return response?.data || []
+  },
+
+  /**
+   * 获取可指派候选人列表（统一端点）
+   * @param {Object} params - 查询参数
+   * @param {string} params.context - 业务场景：'task' 或 'tender'
+   * @param {string} [params.deptCode] - 可选：按部门码过滤
+   * @param {string} [params.roleCode] - 可选：按角色码过滤
+   * @returns {Promise<Array>} 候选人列表
+   */
+  async getAssignableCandidates(params = {}) {
+    const { context, deptCode, roleCode } = params
+    const response = await httpClient.get('/api/users/assignable-candidates', {
+      params: { context, deptCode, roleCode }
+    })
     return response?.data || []
   }
 }
