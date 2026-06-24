@@ -22,7 +22,12 @@ final class UserEnabledDetector {
     }
 
     static boolean isEnabled(JsonNode node) {
-        // 1. employeeStatus 是最权威的在职标志
+        // 1. del=1 明确=已删（最高优先级，已删除的用户不应被视为在职）
+        JsonNode del = node.path("del");
+        if (del.isInt() && del.asInt() == 1) {
+            return false;
+        }
+        // 2. employeeStatus 是最权威的在职标志
         JsonNode employeeStatus = node.path("employeeStatus");
         if (employeeStatus.isInt()) {
             int es = employeeStatus.asInt();
@@ -33,11 +38,6 @@ final class UserEnabledDetector {
                 return false;  // 离职 / 待入职
             }
             // 其他状态码：尝试 fallback
-        }
-        // 2. del=1 明确=已删
-        JsonNode del = node.path("del");
-        if (del.isInt() && del.asInt() == 1) {
-            return false;
         }
         // 3. activationState=1 = 已激活
         JsonNode activationState = node.path("activationState");
