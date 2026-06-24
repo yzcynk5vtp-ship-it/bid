@@ -1,10 +1,10 @@
 import { onMounted } from 'vue'
 import { approvalApi, knowledgeApi } from '@/api'
-import { buildProjectBaselineActivities } from './useProjectDetailActivities.js'
+import { buildProjectCreatedActivity } from './useProjectDetailActivities.js'
 import { auditApi } from '@/api/modules/audit.js'
 
 export function useProjectDetailBoot(context) {
-  const { route, userStore, projectStore, barStore, state, workflow, expenseAggregation, loadProjectWorkflowData } = context
+  const { route, projectStore, barStore, state, workflow, expenseAggregation, loadProjectWorkflowData } = context
 
   const ensureProjectCollections = () => {
     const currentProject = projectStore.currentProject
@@ -58,7 +58,7 @@ export function useProjectDetailBoot(context) {
   // CO-324: 项目动态改读后端 audit_logs（按 projectId）；接口失败回退伪造基线
   const initializeProjectActivities = async () => {
     const currentProject = ensureProjectCollections()
-    const baseline = buildProjectBaselineActivities(currentProject, userStore?.userName)
+    const baseline = buildProjectCreatedActivity(currentProject)
     try {
       const resp = await auditApi.getProjectActivityLogs(currentProject.id)
       const logs = resp?.data || resp || []

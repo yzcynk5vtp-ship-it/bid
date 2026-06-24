@@ -71,7 +71,6 @@ const mountInit = async (getTasksResponse) => {
     projectsApi,
     isApiProject,
     project,
-    userStore: { userName: 'admin' },
     activities: computed(() => []),
     templates: computed(() => []),
     loading: computed(() => false),
