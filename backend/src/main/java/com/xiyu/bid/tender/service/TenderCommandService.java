@@ -64,6 +64,7 @@ public class TenderCommandService {
         return createTender(tenderDTO, null);
     }
 
+    @Auditable(action = "CREATE", entityType = "TENDER", description = "录入标讯")
     public TenderDTO createTender(TenderDTO tenderDTO, Long userId) {
         log.debug("Creating new tender: {}", tenderDTO.getTitle());
 
@@ -188,6 +189,7 @@ public class TenderCommandService {
         return updateTender(id, tenderDTO, null);
     }
 
+    @Auditable(action = "UPDATE", entityType = "TENDER", description = "编辑标讯")
     public TenderDTO updateTender(Long id, TenderDTO tenderDTO, Long userId) {
         log.debug("Updating tender with id: {}", id);
         Tender existingTender = tenderRepository.findById(id)
@@ -228,6 +230,7 @@ public class TenderCommandService {
      * 一步完成评估表回填，绕过 canFill 守卫（sales 角色关联商机是其核心职责）。
      * <p>不提供时保持原行为（仅关联商机），向后兼容。
      */
+    @Auditable(action = "LINK_CRM", entityType = "TENDER", description = "关联商机")
     public TenderDTO linkCrmOpportunity(Long id, String crmOpportunityId, String crmOpportunityName,
                                           com.xiyu.bid.tender.dto.TenderEvaluationSubmitRequest evaluationPayload,
                                           Long userId) {
@@ -296,6 +299,7 @@ public class TenderCommandService {
                 tenderId, assignee.getFullName(), assigneeId);
     }
 
+    @Auditable(action = "DELETE", entityType = "TENDER", description = "删除标讯")
     public void deleteTender(Long id, Long userId) {
         log.debug("Deleting tender with id: {}", id);
         Tender tender = tenderRepository.findById(id)
