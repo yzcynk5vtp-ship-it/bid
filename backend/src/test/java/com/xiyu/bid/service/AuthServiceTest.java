@@ -328,4 +328,62 @@ class AuthServiceTest {
                 .password("encoded")
                 .build();
     }
+
+    @Test
+    void loginWithoutPassword_ShouldFailWhenOssRoleCacheEmpty() {
+        User user = buildOssUser();
+
+        when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.loginWithoutPassword(user))
+                .isInstanceOf(com.xiyu.bid.exception.RoleNotAuthorizedException.class)
+                .hasMessageContaining("无有效 OSS 角色");
+    }
+
+    @Test
+    void loginWithoutPassword_ShouldFailWhenOssRoleBlank() {
+        User user = buildOssUser();
+
+        when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.of(""));
+
+        assertThatThrownBy(() -> authService.loginWithoutPassword(user))
+                .isInstanceOf(com.xiyu.bid.exception.RoleNotAuthorizedException.class)
+                .hasMessageContaining("无有效 OSS 角色");
+    }
+
+    @Test
+    void loginWithoutPassword_ShouldSucceedWhenOssRolePresent() {
+        User user = buildOssUser();
+
+        when(jwtUtil.generateAccessToken("00444")).thenReturn("sso-access-token");
+        when(projectAccessScopeService.getAllowedProjectIds(user)).thenReturn(List.of());
+        when(projectAccessScopeService.getAllowedDepartmentCodes(user)).thenReturn(List.of());
+        when(dataScopeConfigService.getRoleMenuPermissions(user)).thenReturn(List.of());
+        when(dataScopeConfigService.getRoleCode(user)).thenReturn("bid-Team");
+        when(dataScopeConfigService.getRoleName(user)).thenReturn("投标专员");
+        when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.of("bid-Team"));
+
+        AuthSessionResult result = authService.loginWithoutPassword(user);
+
+        assertThat(result.getAccessToken()).isEqualTo("sso-access-token");
+        verify(refreshSessionRepository).save(any(RefreshSession.class));
+    }
+
+    @Test
+    void refreshToken_ShouldFailWhenOssRoleCacheEmpty() {
+        User user = buildOssUser();
+        RefreshSession session = RefreshSession.builder()
+                .id(1L)
+                .user(user)
+                .tokenHash("existing-hash")
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+
+        when(refreshSessionRepository.findByTokenHash(any())).thenReturn(Optional.of(session));
+        when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.refreshToken("raw-refresh-token"))
+                .isInstanceOf(com.xiyu.bid.exception.RoleNotAuthorizedException.class)
+                .hasMessageContaining("无有效 OSS 角色");
+    }
 }

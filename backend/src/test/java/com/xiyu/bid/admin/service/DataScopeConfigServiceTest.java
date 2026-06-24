@@ -459,4 +459,72 @@ class DataScopeConfigServiceTest {
         // 本地系统账号 cache miss 时 fallback 到 DB roleCode（admin）
         assertThat(roleCode).isEqualTo(RoleProfileCatalog.ADMIN_CODE);
     }
+
+    @Test
+    @DisplayName("getRoleMenuPermissions 对 null 用户返回空列表")
+    void getRoleMenuPermissions_ShouldReturnEmptyForNullUser() {
+        List<String> perms = dataScopeConfigService.getRoleMenuPermissions(null);
+        assertThat(perms).isEmpty();
+    }
+
+    @Test
+    @DisplayName("getRoleCode 对 null 用户返回 null")
+    void getRoleCode_ShouldReturnNullForNullUser() {
+        String roleCode = dataScopeConfigService.getRoleCode(null);
+        assertThat(roleCode).isNull();
+    }
+
+    @Test
+    @DisplayName("getRoleName 对 null 用户返回 默认'员工'")
+    void getRoleName_ShouldReturnEmployeeForNullUser() {
+        String roleName = dataScopeConfigService.getRoleName(null);
+        assertThat(roleName).isEqualTo("员工");
+    }
+
+    @Test
+    @DisplayName("本地系统账号 cache miss 时 getRoleName fallback 到 DB 角色名")
+    void getRoleName_ShouldFallbackToDbForLocalSystemAccountCacheMiss() {
+        RoleProfile adminProfile = RoleProfile.builder()
+                .code(RoleProfileCatalog.ADMIN_CODE).name("系统管理员").build();
+        User adminUser = User.builder()
+                .id(14L)
+                .username("sysadmin")
+                .fullName("系统管理员")
+                .role(User.Role.ADMIN)
+                .roleProfile(adminProfile)
+                .externalOrgSourceApp(null)
+                .enabled(true)
+                .build();
+        when(roleProfileRepository.findByCodeIgnoreCase(RoleProfileCatalog.ADMIN_CODE))
+                .thenReturn(Optional.of(adminProfile));
+
+        String roleName = dataScopeConfigService.getRoleName(adminUser);
+
+        assertThat(roleName).isEqualTo("系统管理员");
+    }
+
+    @Test
+    @DisplayName("本地系统账号 cache miss 时 getRoleMenuPermissions fallback 到 DB 权限")
+    void getRoleMenuPermissions_ShouldFallbackToDbForLocalSystemAccountCacheMiss() {
+        RoleProfile adminProfile = RoleProfile.builder()
+                .code(RoleProfileCatalog.ADMIN_CODE)
+                .name("管理员")
+                .build();
+        adminProfile.setMenuPermissions(List.of("dashboard", "settings", "audit"));
+        User adminUser = User.builder()
+                .id(15L)
+                .username("local-admin")
+                .fullName("本地管理员")
+                .role(User.Role.ADMIN)
+                .roleProfile(adminProfile)
+                .externalOrgSourceApp(null)
+                .enabled(true)
+                .build();
+        when(roleProfileRepository.findByCodeIgnoreCase(RoleProfileCatalog.ADMIN_CODE))
+                .thenReturn(Optional.of(adminProfile));
+
+        List<String> perms = dataScopeConfigService.getRoleMenuPermissions(adminUser);
+
+        assertThat(perms).containsExactlyInAnyOrder("dashboard", "settings", "audit");
+    }
 }
