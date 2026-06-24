@@ -29,7 +29,7 @@ public class TenderAiAnalysisService {
     private final TenderProjectAccessGuard accessGuard;
     private final AiService aiService;
 
-    @Auditable(action = "AI_ANALYZE", entityType = "Tender", description = "AI分析标讯")
+    @Auditable(action = "AI_ANALYZE", entityType = "TENDER", description = "AI分析标讯")
     public TenderDTO analyzeTender(Long id) {
         log.debug("Analyzing tender with id: {}", id);
         Tender tender = tenderRepository.findById(id)

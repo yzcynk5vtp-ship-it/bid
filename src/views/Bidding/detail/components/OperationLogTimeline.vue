@@ -10,21 +10,16 @@
       <el-timeline-item
         v-for="log in logs"
         :key="log.id"
-        :timestamp="formatTimestamp(log.timestamp)"
-        :type="getTimelineType(log.action)"
+        :timestamp="log.time"
+        :type="getTimelineType(log.actionType)"
         placement="top"
       >
         <div class="timeline-item-content">
           <div class="timeline-action">
-            <el-tag :type="getActionTagType(log.action)" size="small">{{ getActionText(log.action) }}</el-tag>
-            <span class="timeline-operator">— {{ log.username }}</span>
+            <el-tag :type="getActionTagType(log.actionType)" size="small">{{ getActionText(log.actionType) }}</el-tag>
+            <span class="timeline-operator">— {{ log.operator }}</span>
           </div>
-          <div class="timeline-desc">{{ log.description }}</div>
-          <div v-if="log.oldValue || log.newValue" class="timeline-change">
-            <span v-if="log.oldValue" class="old-value">旧: {{ log.oldValue }}</span>
-            <el-icon v-if="log.oldValue && log.newValue"><ArrowRight /></el-icon>
-            <span v-if="log.newValue" class="new-value">新: {{ log.newValue }}</span>
-          </div>
+          <div class="timeline-desc">{{ log.detail }}</div>
         </div>
       </el-timeline-item>
     </el-timeline>
@@ -33,8 +28,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { ArrowRight } from '@element-plus/icons-vue'
-import api from '@/api'
+import { auditApi } from '@/api/modules/audit.js'
 
 const props = defineProps({
   tenderId: { type: [Number, String], required: true },
@@ -44,56 +38,59 @@ const logs = ref([])
 const loading = ref(true)
 
 const ACTION_LABELS = {
-  CREATE: '创建',
-  UPDATE: '编辑',
-  ASSIGN: '分配',
-  REASSIGN: '转派',
-  EVALUATION_SUBMIT: '评估提交',
-  PARTICIPATE: '立即投标',
-  ABANDON: '放弃投标',
-  STATUS_CHANGE: '状态变更',
-  DELETE: '删除',
+  create: '创建',
+  update: '编辑',
+  assign: '分配',
+  reassign: '转派',
+  transfer: '转派',
+  evaluation_submit: '评估提交',
+  participate: '立即投标',
+  abandon: '放弃投标',
+  status_change: '状态变更',
+  delete: '删除',
+  link_crm: '关联商机',
+  ai_analyze: 'AI分析',
 }
 
 const ACTION_TAG_TYPES = {
-  CREATE: 'success',
-  UPDATE: 'warning',
-  ASSIGN: 'primary',
-  REASSIGN: 'warning',
-  EVALUATION_SUBMIT: 'success',
-  PARTICIPATE: 'success',
-  ABANDON: 'danger',
-  STATUS_CHANGE: 'info',
-  DELETE: 'danger',
+  create: 'success',
+  update: 'warning',
+  assign: 'primary',
+  reassign: 'warning',
+  transfer: 'warning',
+  evaluation_submit: 'success',
+  participate: 'success',
+  abandon: 'danger',
+  status_change: 'info',
+  delete: 'danger',
+  link_crm: 'primary',
+  ai_analyze: 'info',
 }
 
 const ACTION_TIMELINE_TYPES = {
-  CREATE: 'success',
-  UPDATE: 'warning',
-  ASSIGN: 'primary',
-  REASSIGN: 'warning',
-  EVALUATION_SUBMIT: 'success',
-  PARTICIPATE: 'success',
-  ABANDON: 'danger',
-  STATUS_CHANGE: 'info',
-  DELETE: 'danger',
+  create: 'success',
+  update: 'warning',
+  assign: 'primary',
+  reassign: 'warning',
+  transfer: 'warning',
+  evaluation_submit: 'success',
+  participate: 'success',
+  abandon: 'danger',
+  status_change: 'info',
+  delete: 'danger',
+  link_crm: 'primary',
+  ai_analyze: 'info',
 }
 
 const getActionText = (action) => ACTION_LABELS[action] || action
 const getActionTagType = (action) => ACTION_TAG_TYPES[action] || 'info'
 const getTimelineType = (action) => ACTION_TIMELINE_TYPES[action] || 'info'
 
-const formatTimestamp = (val) => {
-  if (!val) return ''
-  const d = new Date(val)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
-}
-
 onMounted(async () => {
   try {
     loading.value = true
-    const res = await api.get(`/tenders/${props.tenderId}/audit-logs`)
-    logs.value = res?.data?.data || []
+    const res = await auditApi.getTenderAuditLogs(props.tenderId)
+    logs.value = res?.data?.data || res?.data || []
   } catch {
     logs.value = []
   } finally {
@@ -110,7 +107,4 @@ onMounted(async () => {
 .timeline-action { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .timeline-operator { color: var(--text-muted); font-size: 13px; }
 .timeline-desc { color: var(--gray-750); font-size: 14px; margin-bottom: 4px; }
-.timeline-change { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
-.old-value { background: #fef0f0; padding: 2px 6px; border-radius: 3px; }
-.new-value { background: #f0f9eb; padding: 2px 6px; border-radius: 3px; }
 </style>

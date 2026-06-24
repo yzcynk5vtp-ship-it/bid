@@ -21,6 +21,10 @@ export const auditApi = {
   // CO-324: 项目动态操作日志
   async getProjectActivityLogs(projectId) {
     return httpClient.get(`/api/audit/project/${projectId}`)
+  },
+  // CO-332: 标讯操作日志
+  async getTenderAuditLogs(tenderId) {
+    return httpClient.get(`/api/tenders/${tenderId}/audit-logs`)
   }
 }
 

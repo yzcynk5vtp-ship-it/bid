@@ -41,7 +41,7 @@ public class TenderSubmissionService {
     private final NotificationApplicationService notificationAppService;
 
     @Transactional
-    @Auditable(action = "BID", entityType = "Tender", description = "投标标讯")
+    @Auditable(action = "PARTICIPATE", entityType = "TENDER", description = "投标标讯")
     public TenderBidResponse participateBid(Long tenderId, Long userId) {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tender", tenderId.toString()));
@@ -102,7 +102,7 @@ public class TenderSubmissionService {
     }
 
     @Transactional
-    @Auditable(action = "ABANDON", entityType = "Tender", description = "弃标标讯")
+    @Auditable(action = "ABANDON", entityType = "TENDER", description = "弃标标讯")
     public TenderBidResponse abandonBid(Long tenderId, TenderAbandonRequest req, Long userId) {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tender", tenderId.toString()));

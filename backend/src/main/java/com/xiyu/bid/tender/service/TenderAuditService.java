@@ -1,14 +1,21 @@
 package com.xiyu.bid.tender.service;
 
+import com.xiyu.bid.audit.dto.AuditLogItemDTO;
+import com.xiyu.bid.audit.service.AuditLogItemMapper;
 import com.xiyu.bid.entity.AuditLog;
+import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.AuditLogRepository;
+import com.xiyu.bid.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * 标讯操作审计服务。
@@ -19,7 +26,11 @@ import java.util.List;
 @Slf4j
 public class TenderAuditService {
 
+    private static final String ENTITY_TYPE = "TENDER";
+
     private final AuditLogRepository auditLogRepository;
+    private final AuditLogItemMapper itemMapper;
+    private final UserRepository userRepository;
 
     @Transactional
     public void logCreate(Long tenderId, String username, String userId, String ipAddress) {
@@ -96,8 +107,66 @@ public class TenderAuditService {
         auditLogRepository.save(log);
     }
 
-    public List<AuditLog> getAuditLogs(Long tenderId) {
-        return auditLogRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc("TENDER", String.valueOf(tenderId));
+    public List<AuditLogItemDTO> getAuditLogs(Long tenderId) {
+        List<AuditLog> logs = auditLogRepository
+                .findByEntityTypeAndEntityIdOrderByTimestampDesc(ENTITY_TYPE, String.valueOf(tenderId));
+        List<AuditLog> userLogs = logs.stream()
+                .filter(log -> !isSystemTriggered(log))
+                .toList();
+        Map<String, User> userCache = resolveUsers(userLogs);
+        return userLogs.stream()
+                .map(log -> itemMapper.toItemDto(log, userCache.get(userKey(log))))
+                .toList();
+    }
+
+    private boolean isSystemTriggered(AuditLog log) {
+        if (log == null) return false;
+        String userId = log.getUserId();
+        if (userId != null) {
+            String uid = userId.trim().toLowerCase();
+            if (uid.equals("system") || uid.equals("scheduler") || uid.equals("auto")) {
+                return true;
+            }
+        }
+        String action = log.getAction();
+        if (action != null && action.trim().toUpperCase().startsWith("AUTO_")) {
+            return true;
+        }
+        return false;
+    }
+
+    private Map<String, User> resolveUsers(List<AuditLog> logs) {
+        Map<String, User> users = new LinkedHashMap<>();
+        List<Long> ids = logs.stream()
+                .map(AuditLog::getUserId)
+                .filter(Objects::nonNull)
+                .filter(this::isNumeric)
+                .map(Long::parseLong)
+                .distinct()
+                .toList();
+        if (!ids.isEmpty()) {
+            userRepository.findAllById(ids).forEach(user -> users.put(String.valueOf(user.getId()), user));
+        }
+        logs.stream()
+                .filter(log -> !users.containsKey(userKey(log)))
+                .map(AuditLog::getUsername)
+                .filter(Objects::nonNull)
+                .filter(username -> !username.isBlank())
+                .distinct()
+                .forEach(username -> userRepository.findByUsername(username)
+                        .ifPresent(user -> users.put(username, user)));
+        return users;
+    }
+
+    private String userKey(AuditLog log) {
+        if (log.getUserId() != null && !log.getUserId().isBlank()) {
+            return log.getUserId();
+        }
+        return log.getUsername();
+    }
+
+    private boolean isNumeric(String value) {
+        return value != null && !value.isBlank() && value.chars().allMatch(Character::isDigit);
     }
 
     private AuditLog buildAuditLog(String action, String entityType, String entityId,
