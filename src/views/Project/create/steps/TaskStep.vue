@@ -38,14 +38,11 @@
               </el-col>
               <el-col :span="12">
                 <el-form-item label="负责人">
-                  <el-select v-model="task.owner" placeholder="请选择负责人">
-                    <el-option
-                      v-for="user in userList"
-                      :key="user.id"
-                      :label="formatUserLabel(user)"
-                      :value="user.name"
-                    />
-                  </el-select>
+                  <UserPicker
+                    v-model="task.owner"
+                    mode="search"
+                    placeholder="请选择负责人"
+                  />
                 </el-form-item>
               </el-col>
             </el-row>
@@ -83,11 +80,10 @@
 <script setup>
 import { ref } from 'vue'
 import { Connection, Plus, Delete } from '@element-plus/icons-vue'
-import { formatUserLabel } from '@/utils/formatUserLabel.js'
+import UserPicker from '@/components/common/UserPicker.vue'
 
 defineProps({
   taskForm: { type: Object, required: true },
-  userList: { type: Array, default: () => [] },
   decomposing: { type: Boolean, default: false }
 })
 

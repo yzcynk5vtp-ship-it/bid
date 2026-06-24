@@ -6,6 +6,7 @@ import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.service.RoleProfileService;
+import com.xiyu.bid.user.service.AssignmentCandidateAppService;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
@@ -56,6 +57,9 @@ class TaskContentPersistenceTest {
     private RoleProfileService roleProfileService;
 
     @Mock
+    private AssignmentCandidateAppService assignmentCandidateAppService;
+
+    @Mock
     private TaskHistoryRecorder taskHistoryRecorder;
 
     @Mock
@@ -73,7 +77,8 @@ class TaskContentPersistenceTest {
                 userRepository,
                 taskRepository,
                 projectAccessScopeService,
-                roleProfileService
+                roleProfileService,
+                assignmentCandidateAppService
         );
         taskService = new TaskService(
                 taskRepository,

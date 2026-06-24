@@ -7,6 +7,7 @@ import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.service.RoleProfileService;
+import com.xiyu.bid.user.service.AssignmentCandidateAppService;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.task.dto.TaskDTO;
@@ -56,6 +57,9 @@ class TaskExtendedFieldsPersistenceTest {
     private RoleProfileService roleProfileService;
 
     @Mock
+    private AssignmentCandidateAppService assignmentCandidateAppService;
+
+    @Mock
     private TaskHistoryRecorder taskHistoryRecorder;
 
     @Mock
@@ -75,7 +79,8 @@ class TaskExtendedFieldsPersistenceTest {
                 userRepository,
                 taskRepository,
                 projectAccessScopeService,
-                roleProfileService
+                roleProfileService,
+                assignmentCandidateAppService
         );
         taskService = new TaskService(
                 taskRepository,

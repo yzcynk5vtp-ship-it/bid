@@ -6,14 +6,17 @@ package com.xiyu.bid.task.controller;
 
 import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.dto.ApiResponse;
+import com.xiyu.bid.entity.User;
 import com.xiyu.bid.task.dto.TaskActivityDTO;
-import com.xiyu.bid.task.dto.TaskAssignmentCandidateDTO;
 import com.xiyu.bid.task.dto.TaskAssignmentRequest;
 import com.xiyu.bid.task.dto.TaskCommentCreateRequest;
 import com.xiyu.bid.task.dto.TaskDTO;
 import com.xiyu.bid.task.dto.TeamTaskWorkloadDTO;
 import com.xiyu.bid.task.service.TaskActivityService;
 import com.xiyu.bid.task.service.TaskService;
+import com.xiyu.bid.user.core.AssignmentContext;
+import com.xiyu.bid.user.dto.AssignmentCandidateDTO;
+import com.xiyu.bid.user.service.AssignmentCandidateAppService;
 import com.xiyu.bid.util.InputSanitizer;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +49,7 @@ public class TaskController {
 
     private final TaskService taskService;
     private final TaskActivityService taskActivityService;
+    private final AssignmentCandidateAppService assignmentCandidateAppService;
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
@@ -155,14 +159,16 @@ public class TaskController {
         return ResponseEntity.ok(ApiResponse.success("Task assigned successfully", updatedTask));
     }
 
+    @Deprecated
     @GetMapping("/assignment-candidates")
     @PreAuthorize("isAuthenticated()")
     @Auditable(action = "READ", entityType = "Task", description = "获取任务分配候选人")
-    public ResponseEntity<ApiResponse<List<TaskAssignmentCandidateDTO>>> getAssignmentCandidates(
+    public ResponseEntity<ApiResponse<List<AssignmentCandidateDTO>>> getAssignmentCandidates(
             @RequestParam(required = false) String deptCode,
             @RequestParam(required = false) String roleCode,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        List<TaskAssignmentCandidateDTO> candidates = taskService.getAssignmentCandidates(deptCode, roleCode, userDetails.getUsername());
+            @AuthenticationPrincipal User currentUser) {
+        List<AssignmentCandidateDTO> candidates = assignmentCandidateAppService.findCandidates(
+                AssignmentContext.of("task", deptCode, roleCode), currentUser);
         return ResponseEntity.ok(ApiResponse.success("Task assignment candidates retrieved successfully", candidates));
     }
 

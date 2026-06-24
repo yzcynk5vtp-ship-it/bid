@@ -22,20 +22,13 @@
             <el-table-column prop="chapter" label="章节" width="180" />
             <el-table-column label="负责人" width="160">
               <template #default="{ row }">
-                <el-select
+                <UserPicker
                   v-model="row.owner"
-                  size="small"
+                  mode="search"
                   placeholder="选择负责人"
                   :disabled="row.locked"
-                  @change="handleOwnerChange(row)"
-                >
-                  <el-option
-                    v-for="user in users"
-                    :key="user.value"
-                    :label="user.label"
-                    :value="user.value"
-                  />
-                </el-select>
+                  @select="() => handleOwnerChange(row)"
+                />
               </template>
             </el-table-column>
             <el-table-column label="状态" width="120">
@@ -147,7 +140,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Bell } from '@element-plus/icons-vue'
 import { collaborationApi } from '@/api'
 import { useUserStore } from '@/stores/user'
-import { formatUserLabel } from '@/utils/formatUserLabel.js'
+import UserPicker from '@/components/common/UserPicker.vue'
 
 const props = defineProps({
   modelValue: {
@@ -171,13 +164,6 @@ const dialogVisible = computed({
 const activeTab = ref('chapters')
 const loading = ref(false)
 const isApiMode = computed(() => true)
-
-const users = computed(() =>
-  (userStore.users || []).map((user) => ({
-    value: user.name,
-    label: formatUserLabel(user)
-  }))
-)
 
 const chapters = ref([])
 const changeHistory = ref([])

@@ -6,6 +6,7 @@
     :remote-method="handleRemoteSearch"
     :loading="loading"
     :placeholder="placeholder"
+    :disabled="disabled"
     @change="handleChange"
   >
     <el-option
@@ -25,12 +26,13 @@ import { ref, watch, onMounted } from 'vue'
 import { useUserPicker } from '@/composables/useUserPicker.js'
 
 const props = defineProps({
-  modelValue: { type: Number, default: null },
+  modelValue: { type: [Number, String], default: null },
   mode: { type: String, default: 'search' },
   context: { type: String, default: '' },
   deptCode: { type: String, default: '' },
   roleCode: { type: String, default: '' },
   placeholder: { type: String, default: '请选择用户' },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])

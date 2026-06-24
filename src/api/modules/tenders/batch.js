@@ -74,6 +74,10 @@ export const batchTendersApi = {
     }
   },
 
+  /**
+   * @deprecated 使用 usersApi.getAssignableCandidates({ context: 'tender' }) 替代
+   * 该方法将在后续版本移除
+   */
   async getAssignmentCandidates() {
     const response = await httpClient.get('/api/tenders/assignment-candidates')
     return {

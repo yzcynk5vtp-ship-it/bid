@@ -12,7 +12,6 @@ import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.task.core.TaskProjectVisibilityPolicy;
-import com.xiyu.bid.task.dto.TaskAssignmentCandidateDTO;
 import com.xiyu.bid.task.dto.TaskAssignmentRequest;
 import com.xiyu.bid.task.dto.TaskDTO;
 import com.xiyu.bid.task.dto.TeamTaskWorkloadDTO;
@@ -213,11 +212,6 @@ public class TaskService {
         }
 
         return taskDtoMapper.toDTO(saved, resolveAssigneeName(saved.getAssigneeId()));
-    }
-
-    @Transactional(readOnly = true)
-    public List<TaskAssignmentCandidateDTO> getAssignmentCandidates(String deptCode, String roleCode, String username) {
-        return assignmentSupport.getAssignmentCandidates(deptCode, roleCode, username);
     }
 
     @Transactional(readOnly = true)
