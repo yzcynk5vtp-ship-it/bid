@@ -97,14 +97,11 @@
         </el-form-item>
 
         <el-form-item label="项目负责人" prop="manager">
-          <el-select v-model="basicForm.manager" placeholder="请选择负责人">
-            <el-option
-              v-for="user in userList"
-              :key="user.id"
-              :label="formatUserLabel(user)"
-              :value="user.name"
-            />
-          </el-select>
+          <UserPicker
+            v-model="basicForm.manager"
+            mode="search"
+            placeholder="请选择项目负责人"
+          />
         </el-form-item>
 
         <el-divider content-position="left">竞争对手信息</el-divider>
@@ -183,13 +180,12 @@ import { ref, shallowRef, nextTick } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AdaptiveFormPage from '@/components/common/AdaptiveFormPage.vue'
-import { formatUserLabel } from '@/utils/formatUserLabel.js'
+import UserPicker from '@/components/common/UserPicker.vue'
 
 const basicForm = defineModel('basicForm', { type: Object, required: true })
 defineProps({
   competitorAnalysis: { type: Array, required: true },
   platformOptions: { type: Array, default: () => [] },
-  userList: { type: Array, default: () => [] },
   competitorOptions: { type: Array, default: () => [] }
 })
 

@@ -21,7 +21,6 @@
             v-model:basic-form="basicForm"
             :competitor-analysis="competitorAnalysis"
             :platform-options="platformOptions"
-            :user-list="userList"
             :competitor-options="competitorOptions"
             @platform-change="handlePlatformChange"
             @competitors-change="handleCompetitorsChange"
@@ -37,7 +36,6 @@
           <TaskStep
             ref="taskStepRef"
             :task-form="taskForm"
-            :user-list="userList"
             :decomposing="decomposing"
             @add-task="addTask"
             @remove-task="removeTask"
@@ -197,7 +195,6 @@ const {
 } = model
 
 const pageTitle = computed(() => (isEditMode.value ? '编辑项目' : '创建项目'))
-const userList = computed(() => userStore.users)
 const platformOptions = computed(() => barStore.sites || [])
 const { handleSubmit, handleCreateAndDecompose } = useProjectCreateSubmit({
   projectStore,
@@ -300,8 +297,8 @@ function goToAssetManagement() {
 }
 
 onMounted(async () => {
-  if (!basicForm.manager && userStore.currentUser?.name) {
-    basicForm.manager = userStore.currentUser.name
+  if (!basicForm.manager && userStore.currentUser?.id) {
+    basicForm.manager = userStore.currentUser.id
   }
 
   await loadAvailableTenders()

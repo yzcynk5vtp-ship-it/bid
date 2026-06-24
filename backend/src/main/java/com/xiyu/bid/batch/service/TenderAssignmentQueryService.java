@@ -1,9 +1,7 @@
 package com.xiyu.bid.batch.service;
 
-import com.xiyu.bid.batch.dto.TenderAssignmentCandidateResponse;
 import com.xiyu.bid.batch.dto.TenderAssignmentResponse;
 import com.xiyu.bid.batch.repository.TenderAssignmentRecordRepository;
-import com.xiyu.bid.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +13,6 @@ import java.util.List;
 public class TenderAssignmentQueryService {
 
     private final TenderAssignmentRecordRepository tenderAssignmentRecordRepository;
-    private final UserRepository userRepository;
     private final TenderAssignmentViewAssembler assembler;
 
     @Transactional(readOnly = true)
@@ -32,10 +29,4 @@ public class TenderAssignmentQueryService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public List<TenderAssignmentCandidateResponse> getCandidates() {
-        return userRepository.findByEnabledTrue().stream()
-                .map(assembler::toCandidate)
-                .toList();
-    }
 }

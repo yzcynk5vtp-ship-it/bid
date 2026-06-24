@@ -1,11 +1,12 @@
 package com.xiyu.bid.controller;
 
 import com.xiyu.bid.entity.Task;
-import com.xiyu.bid.task.dto.TaskAssignmentCandidateDTO;
 import com.xiyu.bid.task.dto.TaskDTO;
 import com.xiyu.bid.task.dto.TeamTaskWorkloadDTO;
 import com.xiyu.bid.task.service.TaskActivityService;
 import com.xiyu.bid.task.service.TaskService;
+import com.xiyu.bid.user.dto.AssignmentCandidateDTO;
+import com.xiyu.bid.user.service.AssignmentCandidateAppService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +42,9 @@ class DashboardTodoContractTest {
 
     @MockBean
     private TaskActivityService taskActivityService;
+
+    @MockBean
+    private AssignmentCandidateAppService assignmentCandidateAppService;
 
     @Test
     @WithMockUser(username = "alice", roles = {"MANAGER"})
@@ -118,17 +123,10 @@ class DashboardTodoContractTest {
     @Test
     @WithMockUser(username = "manager", roles = {"MANAGER"})
     void getAssignmentCandidates_ShouldNotBeHandledAsTaskId() throws Exception {
-        TaskAssignmentCandidateDTO candidate = TaskAssignmentCandidateDTO.builder()
-                .userId(8L)
-                .name("张经理")
-                .deptCode("BID")
-                .deptName("投标管理部")
-                .roleCode("bid_manager")
-                .roleName("投标经理")
-                .enabled(true)
-                .build();
+        AssignmentCandidateDTO candidate = new AssignmentCandidateDTO(
+                8L, "张经理", null, "bid_manager", "投标经理", "BID", "投标管理部", true);
 
-        when(taskService.getAssignmentCandidates("BID", "bid_manager", "manager"))
+        when(assignmentCandidateAppService.findCandidates(any(), any()))
                 .thenReturn(List.of(candidate));
 
         mockMvc.perform(get("/api/tasks/assignment-candidates")

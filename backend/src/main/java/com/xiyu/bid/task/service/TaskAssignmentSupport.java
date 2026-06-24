@@ -11,7 +11,6 @@ import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.service.RoleProfileService;
-import com.xiyu.bid.task.dto.TaskAssignmentCandidateDTO;
 import com.xiyu.bid.task.dto.TaskAssignmentRequest;
 import com.xiyu.bid.task.dto.TeamTaskWorkloadDTO;
 import lombok.RequiredArgsConstructor;
@@ -68,32 +67,6 @@ public class TaskAssignmentSupport {
         task.setAssigneeDeptName(assignment.assigneeDeptName());
         task.setAssigneeRoleCode(assignment.assigneeRoleCode());
         task.setAssigneeRoleName(assignment.assigneeRoleName());
-    }
-
-    public List<TaskAssignmentCandidateDTO> getAssignmentCandidates(String deptCode, String roleCode, String username) {
-        User currentUser = resolveEnabledUserByUsername(username);
-        List<String> allowedDeptCodes = normalizeAllowedDeptCodes(currentUser);
-        String normalizedDeptCode = trimToNull(deptCode);
-        String normalizedRoleCode = trimToNull(roleCode);
-
-        return userRepository.findByEnabledTrue().stream()
-                .filter(user -> canSeeCandidate(currentUser, user, allowedDeptCodes))
-                .filter(user -> normalizedDeptCode == null || normalizedDeptCode.equalsIgnoreCase(user.getDepartmentCode()))
-                .filter(user -> normalizedRoleCode == null || normalizedRoleCode.equalsIgnoreCase(user.getRoleCode()))
-                .sorted(Comparator.comparing(User::getDepartmentCode, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                        .thenComparing(User::getRoleName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
-                        .thenComparing(User::getFullName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
-                .map(user -> TaskAssignmentCandidateDTO.builder()
-                        .userId(user.getId())
-                        .name(user.getFullName())
-                        .employeeNumber(user.getEmployeeNumber())
-                        .roleCode(user.getRoleCode())
-                        .roleName(user.getRoleName())
-                        .deptCode(defaultText(user.getDepartmentCode(), "UNASSIGNED"))
-                        .deptName(defaultText(user.getDepartmentName(), "未配置部门"))
-                        .enabled(Boolean.TRUE.equals(user.getEnabled()))
-                        .build())
-                .toList();
     }
 
     public TeamTaskWorkloadDTO getTeamTaskWorkload(String username) {
