@@ -93,7 +93,7 @@ backend/
 
 3. **配置项**（`OrganizationIntegrationProperties.Directory`）:
    - `userMenuTreePath`：默认 `/sysMenuUrl/getUserMenuTree`
-   - `userMenuTreeSystemName`：默认 `xiyu-bid-poc`（可配置）
+   - `userMenuTreeSystemName`：默认 `bid-platform`（可配置）
    - `userMenuTreeRetrievalType`：默认 `2`
    - `userMenuTreeConnectTimeoutMs` / `userMenuTreeReadTimeoutMs`：独立超时
    - `autoSyncMenuPermissions`：默认 `false`
