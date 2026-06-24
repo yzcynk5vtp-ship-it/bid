@@ -95,7 +95,6 @@ public class AdminUserService {
         RoleProfile nextRoleProfile = roleProfileService.requireRoleProfile(request.getRoleId());
 
         validateExistingUser(userId, username, email, phone);
-        rejectEnabledChangeForOssUser(user, enabled);
         ensureActiveAdminRetained(user, nextRoleProfile, enabled, operatorUsername);
 
         user.setUsername(username);
@@ -118,7 +117,6 @@ public class AdminUserService {
         User user = findUser(userId);
         boolean enabled = Boolean.TRUE.equals(request.getEnabled());
 
-        rejectEnabledChangeForOssUser(user, enabled);
         ensureActiveAdminRetained(user, user.getRoleProfile(), enabled, operatorUsername);
 
         user.setEnabled(enabled);
@@ -147,7 +145,6 @@ public class AdminUserService {
             throw new IllegalArgumentException(validation.message());
         }
 
-        rejectEnabledChangeForOssUser(user, enabled);
         ensureActiveAdminRetained(user, nextRoleProfile, enabled, operatorUsername);
         user.setDepartmentCode(departmentCode);
         user.setDepartmentName(deptNameByCode.get(departmentCode));
@@ -227,20 +224,6 @@ public class AdminUserService {
         if (user.getUsername().equalsIgnoreCase(operatorUsername) && !roleStaysAdmin) {
             throw new IllegalStateException("You cannot change the current admin account to a non-admin role");
         }
-    }
-
-    private void rejectEnabledChangeForOssUser(User user, boolean requestedEnabled) {
-        if (!isOssManaged(user)) {
-            return;
-        }
-        boolean currentEnabled = Boolean.TRUE.equals(user.getEnabled());
-        if (currentEnabled != requestedEnabled) {
-            throw new IllegalStateException("OSS 同步用户的启用状态由组织架构决定，不允许在本地修改");
-        }
-    }
-
-    private boolean isOssManaged(User user) {
-        return user.getExternalOrgSourceApp() != null && !user.getExternalOrgSourceApp().isBlank();
     }
 
     private void applyRole(User user, RoleProfile roleProfile) {

@@ -220,8 +220,9 @@ async function loadUsers() {
     const res = await organizationApi.listUsersPage(params)
     userList.value = res.list || []
     totalCount.value = res.totalCount || 0
-  } catch (e) {
-    ElMessage.error('加载用户列表失败：' + (e.message || ''))
+  } catch {
+    userList.value = []
+    totalCount.value = 0
   } finally {
     loading.value = false
   }
@@ -241,9 +242,8 @@ async function onStatusChange(row, val) {
   try {
     await organizationApi.updateUserStatus(row.id, val)
     ElMessage.success(val ? '已启用' : '已停用')
-  } catch (e) {
+  } catch {
     row.enabled = !val
-    ElMessage.error('操作失败：' + (e.message || ''))
   } finally {
     statusLoading.value = null
   }
@@ -266,8 +266,7 @@ function onDeptSelectChange(value) {
       editingDeptId.value = null
       ElMessage.success('部门已更新')
     })
-    .catch(e => {
-      ElMessage.error('更新部门失败：' + (e.message || ''))
+    .catch(() => {
     })
 }
 

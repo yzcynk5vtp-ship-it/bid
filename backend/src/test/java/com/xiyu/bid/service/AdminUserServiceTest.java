@@ -104,7 +104,7 @@ class AdminUserServiceTest {
     }
 
     @Test
-    void updateStatus_ShouldRejectChangingOssUserEnabledStatus() {
+    void updateStatus_ShouldAllowChangingOssUserEnabledStatus() {
         User user = User.builder()
                 .id(7L)
                 .username("alice")
@@ -117,10 +117,10 @@ class AdminUserServiceTest {
         request.setEnabled(false);
 
         when(userRepository.findById(7L)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
 
-        assertThatThrownBy(() -> service.updateStatus(7L, request, "admin"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("OSS 同步用户的启用状态");
+        AdminUserDTO dto = service.updateStatus(7L, request, "admin");
+        assertThat(dto.getEnabled()).isFalse();
     }
 
     @Test
