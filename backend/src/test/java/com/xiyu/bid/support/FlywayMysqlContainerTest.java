@@ -20,6 +20,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -111,6 +112,100 @@ class FlywayMysqlContainerTest {
         assertEquals(1, tenderAssignmentTableCount);
         assertEquals(3, roleSeedCount);
         assertEquals(0, legacyIncrementalRuns);
+    }
+
+    @Test
+    void v1092RoleMigrationPreservesBidAdmin() {
+        // V1092 迁移后验证：bid_admin 应该被迁移为 /bidAdmin，且用户 role_id 不应为 NULL
+        Integer bidAdminRoleCount = jdbcTemplate.queryForObject(
+                """
+                select count(*)
+                from roles
+                where code = '/bidAdmin'
+                """,
+                Integer.class
+        );
+
+        Integer legacyBidAdminCount = jdbcTemplate.queryForObject(
+                """
+                select count(*)
+                from roles
+                where code = 'bid_admin'
+                """,
+                Integer.class
+        );
+
+        Integer usersWithNullRoleId = jdbcTemplate.queryForObject(
+                "select count(*) from users where role_id is null",
+                Integer.class
+        );
+
+        assertEquals(1, bidAdminRoleCount, "/bidAdmin role should exist after V1092");
+        assertEquals(0, legacyBidAdminCount, "bid_admin role should not exist after V1092");
+        assertEquals(0, usersWithNullRoleId, "No users should have NULL role_id after migration");
+    }
+
+    @Test
+    void v1092MergesUsersWhenTargetRoleAlreadyExists() {
+        // 核心分支验证：当 /bidAdmin 已存在且 bid_admin 也存在时，
+        // V1092 必须将 bid_admin 下的用户合并到 /bidAdmin，然后删除 bid_admin。
+        // 利用 V1092 脚本的幂等性，在当前已迁移的数据上人工构造该场景并重新执行迁移。
+
+        // 1. 找到当前 /bidAdmin 的角色 ID
+        Long targetRoleId = jdbcTemplate.queryForObject(
+                "select id from roles where code = '/bidAdmin'",
+                Long.class
+        );
+
+        // 2. 人工重建 bid_admin 角色（模拟迁移前状态）
+        jdbcTemplate.update(
+                """
+                insert into roles (code, name, description, is_system, enabled, data_scope, menu_permissions, created_at, updated_at)
+                values ('bid_admin', 'Legacy Bid Admin', 'legacy', true, true, 'all', 'all', current_timestamp(6), current_timestamp(6))
+                """
+        );
+        Long legacyRoleId = jdbcTemplate.queryForObject(
+                "select id from roles where code = 'bid_admin'",
+                Long.class
+        );
+
+        // 3. 创建一个绑定到 legacy bid_admin 的用户
+        jdbcTemplate.update(
+                """
+                insert into users (username, full_name, email, password, enabled, email_verified, role, role_id, created_at, updated_at)
+                values ('v1092-merge-test', 'V1092 Merge Test', 'v1092-merge@xiyu.local', 'noop', true, true, 'MANAGER', ?, current_timestamp(6), current_timestamp(6))
+                """,
+                legacyRoleId
+        );
+
+        // 4. 重新执行 V1092 迁移脚本（幂等）
+        String v1092Script = loadMigrationScript("db/migration-mysql/V1092__migrate_legacy_role_codes_to_oss_aligned.sql");
+        jdbcTemplate.execute(v1092Script);
+
+        // 5. 验证：legacy 角色被删除，用户已合并到 /bidAdmin
+        Integer legacyRoleCount = jdbcTemplate.queryForObject(
+                "select count(*) from roles where code = 'bid_admin'",
+                Integer.class
+        );
+
+        Long mergedUserRoleId = jdbcTemplate.queryForObject(
+                "select role_id from users where username = 'v1092-merge-test'",
+                Long.class
+        );
+
+        assertEquals(0, legacyRoleCount, "Legacy bid_admin role should be removed after merge");
+        assertEquals(targetRoleId, mergedUserRoleId, "User should be merged into existing /bidAdmin role");
+    }
+
+    private String loadMigrationScript(String location) {
+        try (var input = getClass().getClassLoader().getResourceAsStream(location)) {
+            if (input == null) {
+                throw new IllegalStateException("Migration script not found: " + location);
+            }
+            return new String(input.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Failed to read migration script: " + location, e);
+        }
     }
 
     @Test
