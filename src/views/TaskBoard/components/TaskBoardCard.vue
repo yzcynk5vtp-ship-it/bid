@@ -41,10 +41,10 @@
       <el-button size="small" type="primary" :disabled="!isTaskAssignee(item) || !hasDeliverable(item)" @click="openSubmitDialog(item)">提交</el-button>
     </div>
 
-    <!-- BID_REVIEW：审核操作 -->
+    <!-- BID_REVIEW：审核操作（仅审核人可操作） -->
     <div v-if="item.type === 'BID_REVIEW'" class="card-actions">
-      <el-button size="small" type="danger" plain @click="openRejectDialog(item)">驳回</el-button>
-      <el-button size="small" type="success" @click="handleApproveBid(item)">通过审核</el-button>
+      <el-button size="small" type="danger" plain :disabled="!isBidReviewer(item)" @click="openRejectDialog(item)">驳回</el-button>
+      <el-button size="small" type="success" :disabled="!isBidReviewer(item)" @click="handleApproveBid(item)">通过审核</el-button>
     </div>
 
     <!-- 交付物上传 + 提交对话框（TASK） -->
@@ -113,12 +113,18 @@ const formattedDate = computed(() => {
 })
 
 // 复用 TaskKanban 的交付物逻辑
-function isTaskAssignee(task) {
+function matchesCurrentUser(id) {
   const uid = userStore?.currentUser?.id
-  return uid != null && task?.assigneeId != null && String(uid) === String(task.assigneeId)
+  return uid != null && id != null && String(uid) === String(id)
+}
+function isTaskAssignee(task) {
+  return matchesCurrentUser(task?.assigneeId)
+}
+function isBidReviewer(item) {
+  return matchesCurrentUser(item?.reviewerId)
 }
 function hasDeliverable(task) {
-  return !!(task.deliverableUrl || task.deliverableName || task.fileUrl)
+  return task.deliverables && task.deliverables.length > 0
 }
 
 // 交付物上传 + 提交对话框（复用 TaskKanban）

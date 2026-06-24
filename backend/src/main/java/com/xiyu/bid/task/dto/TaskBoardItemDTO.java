@@ -31,7 +31,7 @@ public class TaskBoardItemDTO {
     /** 卡片描述。 */
     private String description;
 
-    /** 看板列状态：TODO / IN_PROGRESS / REVIEW / COMPLETED。 */
+    /** 看板列状态：TODO / REVIEW / COMPLETED。 */
     private String status;
 
     /** 优先级（TASK 时来自任务；BID_REVIEW 时统一为 HIGH）。 */
@@ -52,6 +52,12 @@ public class TaskBoardItemDTO {
     /** 任务负责人姓名（TASK 时有值）。 */
     private String assigneeName;
 
+    /** 任务负责人用户 ID（TASK 时有值，前端用于判断是否是当前用户）。 */
+    private Long assigneeId;
+
     /** 标书审核提交人姓名（BID_REVIEW 时有值）。 */
     private String submitterName;
+
+    /** 标书审核人用户 ID（BID_REVIEW 时有值，前端用于判断审核权限）。 */
+    private Long reviewerId;
 }

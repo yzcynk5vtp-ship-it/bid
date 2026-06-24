@@ -5,17 +5,11 @@ import { projectsApi } from '@/api/modules/projects'
 
 const COLUMNS = [
   { key: 'TODO', title: '待开始', color: '#909399' },
-  { key: 'IN_PROGRESS', title: '进行中', color: '#409eff' },
   { key: 'REVIEW', title: '待审核', color: '#e6a23c' },
   { key: 'COMPLETED', title: '已完成', color: '#67c23a' }
 ]
 
-const AVAILABLE_STATUSES = [
-  { code: 'TODO', name: '待开始' },
-  { code: 'IN_PROGRESS', name: '进行中' },
-  { code: 'REVIEW', name: '待审核' },
-  { code: 'COMPLETED', name: '已完成' }
-]
+const AVAILABLE_STATUSES = COLUMNS.map(({ key, title }) => ({ code: key, name: title }))
 
 export function useTaskBoard() {
   const items = ref([])

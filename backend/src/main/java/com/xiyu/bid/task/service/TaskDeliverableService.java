@@ -90,16 +90,8 @@ public class TaskDeliverableService {
 
         log.info("Created deliverable '{}' for task {} by {}", sanitizedName, taskId, username);
 
-        // 5. Auto-status suggestion on first deliverable upload
-        var suggestedStatus = TaskTransitionPolicy.computeAutoStatusOnDeliverable(
-                TaskTransitionPolicy.TaskStatus.valueOf(task.getStatus().name()),
-                existingCount);
-        if (suggestedStatus == TaskTransitionPolicy.TaskStatus.IN_PROGRESS
-                && task.getStatus() == Task.Status.TODO) {
-            task.setStatus(Task.Status.IN_PROGRESS);
-            taskRepository.save(task);
-            log.info("Auto-transitioned task {} to IN_PROGRESS after deliverable upload", taskId);
-        }
+        // 业务规则：上传交付物不改变任务状态，保持 TODO 直到提交审核
+        // 不再自动转为 IN_PROGRESS
 
         return TaskDeliverableAssembler.toDTO(entity);
     }
