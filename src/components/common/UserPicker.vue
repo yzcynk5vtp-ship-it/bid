@@ -4,6 +4,7 @@
     :filterable="true"
     :remote="mode === 'search'"
     :remote-method="handleRemoteSearch"
+    :filter-method="mode === 'search' ? () => {} : undefined"
     :loading="loading"
     :placeholder="placeholder"
     :disabled="disabled"
@@ -80,7 +81,6 @@ watch(() => props.modelValue, (val) => {
 })
 
 function handleRemoteSearch(query) {
-  console.log('[UserPicker] handleRemoteSearch called, query:', query, 'mode:', props.mode)
   if (props.mode === 'search') {
     search(query)
   }

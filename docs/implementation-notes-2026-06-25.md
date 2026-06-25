@@ -61,23 +61,30 @@
 ## 7. 拼音搜索功能修复（2026-06-25 紧急修复）
 
 ### 7.1 根因分析
-- **后端**：`UserRepository.searchActiveUsers()` SQL 只搜索了 `full_name`、`username`、`employee_number`，**缺少 `full_name_pinyin` 和 `employee_number_pinyin`**
-- **后端**：`User` entity 缺少 `employee_number_pinyin` 字段定义
-- **后端**：`@PrePersist`/`@PreUpdate` 未自动生成工号拼音
-- **前端**：UserPicker.vue `filterable=true` + `remote=true` 配置是**正确的**！我之前的分析错误，误以为 filterable 会阻止 remote-method 触发——实际上两者同时开启才能输入并触发远程搜索
+
+**后端问题（2个）：**
+1. `UserRepository.searchActiveUsers()` SQL 只搜索了 `full_name`、`username`、`employee_number`，**缺少 `full_name_pinyin` 和 `employee_number_pinyin`**
+2. `User` entity 缺少 `employee_number_pinyin` 字段定义 + `@PrePersist`/`@PreUpdate` 未自动生成工号拼音
+
+**前端问题（真正的根因！）：**
+Element Plus `el-select` 同时设置 `remote=true` + `filterable=true` 时，**会做双重过滤**：
+1. 后端根据 query 返回搜索结果
+2. 前端 el-select 用相同的 query **再次做前端过滤**
+3. 如果后端返回的 label（"郑蓉蓉"）不包含 query 字符串（"06234" 或 "zhang"），前端过滤会把所有结果过滤掉！
 
 ### 7.2 修复内容
+
 1. **UserRepository.java**: 搜索 SQL 增加 `full_name_pinyin` 和 `employee_number_pinyin` 匹配
 2. **User.java**: 增加 `employeeNumberPinyin` 字段及自动生成逻辑
 3. **V1096 migration**: 新增 DB column `employee_number_pinyin VARCHAR(255)`
-4. **数据库**: 远程 RDS 手动执行 ALTER TABLE + backfill（27 条记录已回填）
+4. **UserPicker.vue**: search 模式下设置 `:filter-method="() => {}"` 空函数，**禁用前端过滤**，完全依赖后端搜索结果
+5. **数据库**: 远程 RDS 手动执行 ALTER TABLE + backfill
 
 ### 7.3 验证结果（生产环境）
-- ✅ `/api/users/search?q=zhang` → 200 OK（拼音搜索，后端动态搜索）
+- ✅ `/api/users/search?q=zhang` → 200 OK（拼音搜索）
 - ✅ `/api/users/search?q=余` → 200 OK（中文搜索）
-- ✅ `/api/users/search?q=001` → 200 OK（工号搜索）
-- ✅ 搜索请求平均响应时间：20-35ms
-- ✅ 前端 UserPicker search 模式：`filterable=true` + `remote=true`，可以输入并触发远程搜索
+- ✅ `/api/users/search?q=06234` → 200 OK（工号搜索）
+- ✅ 前端不再做二次过滤，搜索结果正确显示在下拉框中
 
 ### 7.4 注意事项
 - PinyinBackfillRunner 会在后台异步回填存量 8532 用户的拼音字段
