@@ -116,6 +116,7 @@ import { User, Calendar, OfficeBuilding, UploadFilled } from '@element-plus/icon
 import { projectsApi } from '@/api/modules/projects.js'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 import { isTaskAssignee, isBidReviewer } from '@/utils/permission.js'
+import { getPriorityType, getPriorityLabel } from '@/views/Dashboard/workbench-formatters.js'
 import ProjectDocumentTable from '@/views/Project/stages/components/ProjectDocumentTable.vue'
 
 const props = defineProps({
@@ -124,10 +125,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['status-change', 'deliverable-changed'])
 
-const PRIORITY_TYPE_MAP = { HIGH: 'danger', MEDIUM: 'warning', LOW: 'info' }
-const PRIORITY_TEXT_MAP = { HIGH: '高', MEDIUM: '中', LOW: '低' }
-const priorityType = computed(() => PRIORITY_TYPE_MAP[props.item.priority] || 'info')
-const priorityText = computed(() => PRIORITY_TEXT_MAP[props.item.priority] || props.item.priority)
+const priorityType = computed(() => getPriorityType(props.item.priority))
+const priorityText = computed(() => getPriorityLabel(props.item.priority))
 
 const isUrgent = computed(() => {
   if (!props.item.dueDate) return false
