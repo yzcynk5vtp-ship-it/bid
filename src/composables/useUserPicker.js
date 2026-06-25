@@ -45,6 +45,7 @@ export function useUserPicker(options = {}) {
 
   async function searchUsers(query) {
     const trimmed = query == null ? '' : String(query).trim()
+    console.log('[useUserPicker] searchUsers called, query:', trimmed)
     if (trimmed.length === 0) {
       userOptions.value = []
       return
@@ -56,12 +57,15 @@ export function useUserPicker(options = {}) {
 
     loading.value = true
     try {
+      console.log('[useUserPicker] calling usersApi.search...')
       const results = await usersApi.search(trimmed, 10, { signal: abortController.signal })
+      console.log('[useUserPicker] search results:', results)
       // P1.3: 只在请求未被取消时更新结果
       if (!abortController.signal.aborted) {
         userOptions.value = Array.isArray(results) ? results : []
       }
     } catch (err) {
+      console.log('[useUserPicker] search error:', err)
       // P1.3: abort 不算错误
       if (err?.name === 'AbortError' || abortController.signal.aborted) {
         return

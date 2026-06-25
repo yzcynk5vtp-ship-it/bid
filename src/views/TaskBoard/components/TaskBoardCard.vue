@@ -79,12 +79,6 @@
     <!-- 提交任务弹窗（含完成情况说明 + 提交审核） -->
     <el-dialog v-model="showSubmitDialog" :title="'提交任务 - ' + (submittingTask?.title || '')" width="480px" :close-on-click-modal="false" append-to-body>
       <el-form label-width="100px">
-        <el-form-item label="交付物">
-          <el-upload ref="deliverableUploadRef" :auto-upload="false" :file-list="deliverableFileList" :limit="1" accept=".pdf,.doc,.docx,.xlsx,.jpg,.png">
-            <el-button size="small">选择文件</el-button>
-            <template #tip><span style="font-size:11px;color:#909399">上传交付物（PDF/Word/Excel/图片）</span></template>
-          </el-upload>
-        </el-form-item>
         <el-form-item label="完成情况说明">
           <el-input v-model="submitNotes" type="textarea" :rows="3" placeholder="填写完成情况说明（可选）" />
         </el-form-item>
@@ -182,12 +176,10 @@ async function handleSaveDeliverable() {
   }
 }
 
-// === 提交任务弹窗（含完成情况说明 + 提交审核） ===
+// === 提交任务弹窗（仅完成情况说明 + 提交审核，交付物已在独立弹窗上传） ===
 const showSubmitDialog = ref(false)
 const submittingTask = ref(null)
 const submittingTaskLoading = ref(false)
-const deliverableFileList = ref([])
-const deliverableUploadRef = ref(null)
 const submitNotes = ref('')
 
 function openSubmitDialog(task) {
@@ -197,7 +189,6 @@ function openSubmitDialog(task) {
   }
   submittingTask.value = task
   showSubmitDialog.value = true
-  deliverableFileList.value = task.deliverableUrl ? [{ name: task.deliverableName || '已上传文件', url: task.deliverableUrl }] : []
   submitNotes.value = task.completionNotes || ''
 }
 
@@ -205,12 +196,6 @@ async function confirmSubmit() {
   if (!submittingTask.value) return
   submittingTaskLoading.value = true
   try {
-    if (deliverableUploadRef.value?.uploadFiles?.length > 0) {
-      const formData = new FormData()
-      formData.append('file', deliverableUploadRef.value.uploadFiles[0].raw)
-      formData.append('taskId', submittingTask.value.id)
-      await projectsApi.createTaskDeliverable(submittingTask.value.projectId, submittingTask.value.id, formData)
-    }
     if (submitNotes.value) {
       await projectsApi.updateTask(submittingTask.value.id, { completionNotes: submitNotes.value })
     }
