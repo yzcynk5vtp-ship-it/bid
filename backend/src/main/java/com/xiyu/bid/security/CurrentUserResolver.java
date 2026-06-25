@@ -3,8 +3,10 @@ package com.xiyu.bid.security;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.RequestScope;
 
@@ -15,6 +17,11 @@ import org.springframework.web.context.annotation.RequestScope;
  * <p>
  * <b>注意</b>：新代码优先在 Controller 层通过 @AuthenticationPrincipal 获取用户身份再传入 Service，
  * 而非在 Service 层直接调用此 Resolver。此 Resolver 主要用于遗留代码过渡和 AOP/切面等无法从参数获取用户的场景。
+ * </p>
+ * <p>
+ * <b>限制</b>：因使用 @RequestScope，仅在 HTTP 请求线程中可用。
+ * 在 @Async / @Scheduled / 消息队列消费者等非 HTTP 线程中调用会抛出 IllegalStateException。
+ * 后台线程场景应通过参数显式传入 User 对象，不依赖此 Resolver。
  * </p>
  */
 @Component
@@ -68,14 +75,21 @@ public class CurrentUserResolver {
 
     /**
      * 要求当前用户必须已认证且存在，否则抛异常。
+     * <p>未认证时抛 {@link AuthenticationCredentialsNotFoundException}，
+     * 认证通过但用户在 DB 中不存在时抛 {@link AccessDeniedException}。</p>
      *
      * @return 当前用户
-     * @throws org.springframework.security.access.AccessDeniedException 未认证或用户不存在时
+     * @throws AuthenticationCredentialsNotFoundException 未认证时
+     * @throws AccessDeniedException 用户不存在时
      */
     public User requireCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new AuthenticationCredentialsNotFoundException("当前用户未认证");
+        }
         User user = getCurrentUser();
         if (user == null) {
-            throw new org.springframework.security.access.AccessDeniedException("无法识别当前用户");
+            throw new AccessDeniedException("无法识别当前用户");
         }
         return user;
     }

@@ -54,7 +54,7 @@ class ProjectDocumentWorkflowService {
         Long uploaderId = request.getUploaderId();
         String uploaderName = request.getUploaderName();
         if (uploaderId == null && (uploaderName == null || uploaderName.isBlank())) {
-            var currentUser = getCurrentUser();
+            var currentUser = currentUserResolver.getCurrentUser();
             if (currentUser != null) {
                 uploaderId = currentUser.getId();
                 uploaderName = currentUser.getFullName();

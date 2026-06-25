@@ -13,10 +13,6 @@ public record AuthorizationDecision(boolean allowed, String reason) {
         return new AuthorizationDecision(true, null);
     }
 
-    public static AuthorizationDecision permit(String reason) {
-        return new AuthorizationDecision(true, reason);
-    }
-
     public static AuthorizationDecision deny(String reason) {
         return new AuthorizationDecision(false, reason);
     }
