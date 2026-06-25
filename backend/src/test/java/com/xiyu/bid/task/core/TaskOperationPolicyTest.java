@@ -9,10 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TaskOperationPolicyTest {
 
-    private static final String CURRENT_USER_ID = "user-123";
-    private static final String OTHER_USER_ID = "user-456";
-    private static final String PRIMARY_LEAD_ID = "lead-primary";
-    private static final String SECONDARY_LEAD_ID = "lead-secondary";
+    private static final Long CURRENT_USER_ID = 123L;
+    private static final Long OTHER_USER_ID = 456L;
+    private static final Long PRIMARY_LEAD_ID = 1L;
+    private static final Long SECONDARY_LEAD_ID = 2L;
+    private static final Long ASSIGNEE_ID = 789L;
 
     @Nested
     @DisplayName("canManageTask - 任务管理权限")
@@ -162,88 +163,56 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("执行人本人可以提交 - admin 角色")
         void assigneeIsCurrentUser_AdminRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以提交 - bidAdmin 角色")
         void assigneeIsCurrentUser_BidAdminRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_ADMIN_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以提交 - bid-TeamLeader 角色")
         void assigneeIsCurrentUser_BidTeamLeaderRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_LEAD_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以提交 - bid-projectLeader 角色")
         void assigneeIsCurrentUser_BidProjectLeaderRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.SALES_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以提交 - bid-Team 角色")
         void assigneeIsCurrentUser_BidTeamRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_SPECIALIST_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以提交 - bid-otherDept 角色")
         void assigneeIsCurrentUser_BidOtherDeptRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_OTHER_DEPT_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以提交 - bid-administration 角色")
         void assigneeIsCurrentUser_BidAdministrationRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.ADMIN_STAFF_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("非执行人不能提交 - 即使是 admin 角色")
         void assigneeIsNotCurrentUser_AdminRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -251,11 +220,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能提交 - bidAdmin 角色")
         void assigneeIsNotCurrentUser_BidAdminRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_ADMIN_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -263,11 +228,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能提交 - bid-TeamLeader 角色")
         void assigneeIsNotCurrentUser_BidTeamLeaderRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_LEAD_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -275,11 +236,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能提交 - bid-projectLeader 角色")
         void assigneeIsNotCurrentUser_BidProjectLeaderRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.SALES_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -287,11 +244,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能提交 - bid-Team 角色")
         void assigneeIsNotCurrentUser_BidTeamRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_SPECIALIST_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -299,11 +252,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能提交 - bid-otherDept 角色")
         void assigneeIsNotCurrentUser_BidOtherDeptRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.BID_OTHER_DEPT_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -311,11 +260,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能提交 - bid-administration 角色")
         void assigneeIsNotCurrentUser_BidAdministrationRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.ADMIN_STAFF_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -323,22 +268,14 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("null assigneeId 拒绝")
         void nullAssigneeId_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    null,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(null, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
         }
 
         @Test
         @DisplayName("null currentUserId 拒绝")
         void nullCurrentUserId_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canSubmitTask(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    CURRENT_USER_ID,
-                    null
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, null);
             assertThat(result.allowed()).isFalse();
         }
     }
@@ -350,88 +287,56 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("执行人本人可以上传 - admin 角色")
         void assigneeIsCurrentUser_AdminRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以上传 - bidAdmin 角色")
         void assigneeIsCurrentUser_BidAdminRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_ADMIN_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以上传 - bid-TeamLeader 角色")
         void assigneeIsCurrentUser_BidTeamLeaderRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_LEAD_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以上传 - bid-projectLeader 角色")
         void assigneeIsCurrentUser_BidProjectLeaderRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.SALES_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以上传 - bid-Team 角色")
         void assigneeIsCurrentUser_BidTeamRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_SPECIALIST_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以上传 - bid-otherDept 角色")
         void assigneeIsCurrentUser_BidOtherDeptRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_OTHER_DEPT_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("执行人本人可以上传 - bid-administration 角色")
         void assigneeIsCurrentUser_BidAdministrationRole_ShouldBeAllowed() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.ADMIN_STAFF_CODE,
-                    CURRENT_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isTrue();
         }
 
         @Test
         @DisplayName("非执行人不能上传 - 即使是 admin 角色")
         void assigneeIsNotCurrentUser_AdminRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -439,11 +344,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能上传 - bidAdmin 角色")
         void assigneeIsNotCurrentUser_BidAdminRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_ADMIN_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -451,11 +352,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能上传 - bid-TeamLeader 角色")
         void assigneeIsNotCurrentUser_BidTeamLeaderRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_LEAD_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -463,11 +360,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能上传 - bid-projectLeader 角色")
         void assigneeIsNotCurrentUser_BidProjectLeaderRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.SALES_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -475,11 +368,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能上传 - bid-Team 角色")
         void assigneeIsNotCurrentUser_BidTeamRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_SPECIALIST_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -487,11 +376,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能上传 - bid-otherDept 角色")
         void assigneeIsNotCurrentUser_BidOtherDeptRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.BID_OTHER_DEPT_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -499,11 +384,7 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("非执行人不能上传 - bid-administration 角色")
         void assigneeIsNotCurrentUser_BidAdministrationRole_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.ADMIN_STAFF_CODE,
-                    OTHER_USER_ID,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(OTHER_USER_ID, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
         }
@@ -511,22 +392,14 @@ class TaskOperationPolicyTest {
         @Test
         @DisplayName("null assigneeId 拒绝")
         void nullAssigneeId_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    null,
-                    CURRENT_USER_ID
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(null, CURRENT_USER_ID);
             assertThat(result.allowed()).isFalse();
         }
 
         @Test
         @DisplayName("null currentUserId 拒绝")
         void nullCurrentUserId_ShouldBeDenied() {
-            var result = TaskOperationPolicy.canUploadDeliverable(
-                    RoleProfileCatalog.ADMIN_CODE,
-                    CURRENT_USER_ID,
-                    null
-            );
+            var result = TaskOperationPolicy.canActAsAssignee(CURRENT_USER_ID, null);
             assertThat(result.allowed()).isFalse();
         }
     }
@@ -542,7 +415,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.ADMIN_CODE,
                     CURRENT_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isTrue();
         }
@@ -554,7 +428,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.BID_ADMIN_CODE,
                     CURRENT_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isTrue();
         }
@@ -566,7 +441,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.BID_LEAD_CODE,
                     CURRENT_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isTrue();
         }
@@ -578,7 +454,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.SALES_CODE,
                     PRIMARY_LEAD_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isTrue();
         }
@@ -590,7 +467,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.SALES_CODE,
                     OTHER_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
@@ -603,7 +481,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.BID_SPECIALIST_CODE,
                     PRIMARY_LEAD_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isTrue();
         }
@@ -615,7 +494,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.BID_SPECIALIST_CODE,
                     SECONDARY_LEAD_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isTrue();
         }
@@ -627,7 +507,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.BID_SPECIALIST_CODE,
                     OTHER_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
@@ -640,7 +521,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.BID_OTHER_DEPT_CODE,
                     CURRENT_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
@@ -653,7 +535,8 @@ class TaskOperationPolicyTest {
                     RoleProfileCatalog.ADMIN_STAFF_CODE,
                     CURRENT_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isFalse();
             assertThat(result.reason()).isNotBlank();
@@ -666,7 +549,8 @@ class TaskOperationPolicyTest {
                     null,
                     CURRENT_USER_ID,
                     PRIMARY_LEAD_ID,
-                    SECONDARY_LEAD_ID
+                    SECONDARY_LEAD_ID,
+                    ASSIGNEE_ID
             );
             assertThat(result.allowed()).isFalse();
         }
