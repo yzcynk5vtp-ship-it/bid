@@ -26,6 +26,7 @@
         v-model:file-list="bidFiles"
         :action="uploadUrl"
         :headers="uploadHeaders"
+        :data="{ documentCategory: 'BID_DOCUMENT' }"
         :before-upload="beforeBidUpload"
         :disabled="bidDone || !perm.canManageBidFiles"
         drag
