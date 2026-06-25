@@ -188,6 +188,75 @@ class TenderEvaluationServiceTest {
     }
 
     @Test
+    @DisplayName("CO-333: 标讯有项目负责人时，project.managerId 优先用标讯项目负责人（项目可见性锚点）")
+    void proceedToBid_WithTenderProjectManager_UsesTenderProjectManagerAsManager() {
+        Tender tender = Tender.builder()
+                .id(1L)
+                .title("测试标讯")
+                .status(Tender.Status.BIDDING)
+                .industry("制造业")
+                .region("上海")
+                .purchaserName("测试采购方")
+                .description("需要创建立项")
+                .deadline(LocalDateTime.of(2026, 5, 20, 10, 0))
+                .projectManagerId(25L)
+                .build();
+        TenderEvaluation evaluation = TenderEvaluation.builder()
+                .tenderId(1L)
+                .evaluatorId(18L)
+                .build();
+
+        when(tenderEvaluationRepository.findByTenderId(1L)).thenReturn(Optional.of(evaluation));
+        when(tenderRepository.findById(1L)).thenReturn(Optional.of(tender));
+        when(projectService.createProject(any(ProjectDTO.class))).thenReturn(ProjectDTO.builder()
+                .id(101L)
+                .name("测试标讯")
+                .status(Project.Status.PENDING_INITIATION)
+                .build());
+        service.proceedToBid(1L, 99L);
+
+        verify(projectService).createProject(argThat(project ->
+                project.getTenderId().equals(1L)
+                        && project.getManagerId().equals(25L)
+                        && project.getStatus() == Project.Status.PENDING_INITIATION
+        ));
+    }
+
+    @Test
+    @DisplayName("CO-333: 标讯无项目负责人时，project.managerId 回退到评估人")
+    void proceedToBid_WithoutTenderProjectManager_FallsBackToEvaluator() {
+        Tender tender = Tender.builder()
+                .id(1L)
+                .title("测试标讯")
+                .status(Tender.Status.BIDDING)
+                .industry("制造业")
+                .region("上海")
+                .purchaserName("测试采购方")
+                .description("需要创建立项")
+                .deadline(LocalDateTime.of(2026, 5, 20, 10, 0))
+                .build();
+        TenderEvaluation evaluation = TenderEvaluation.builder()
+                .tenderId(1L)
+                .evaluatorId(18L)
+                .build();
+
+        when(tenderEvaluationRepository.findByTenderId(1L)).thenReturn(Optional.of(evaluation));
+        when(tenderRepository.findById(1L)).thenReturn(Optional.of(tender));
+        when(projectService.createProject(any(ProjectDTO.class))).thenReturn(ProjectDTO.builder()
+                .id(101L)
+                .name("测试标讯")
+                .status(Project.Status.PENDING_INITIATION)
+                .build());
+        service.proceedToBid(1L, 99L);
+
+        verify(projectService).createProject(argThat(project ->
+                project.getTenderId().equals(1L)
+                        && project.getManagerId().equals(18L)
+                        && project.getStatus() == Project.Status.PENDING_INITIATION
+        ));
+    }
+
+    @Test
     @DisplayName("非投标中状态禁止发起立项")
     void proceedToBid_ShouldRejectNonBiddingTender() {
         Tender tender = Tender.builder()
