@@ -15,25 +15,25 @@ const mockStatuses = [
   { code: 'ARCHIVED', name: '已归档', category: 'CLOSED', color: '#c0c4cc', sortOrder: 50, initial: false, terminal: true },
 ]
 
-const loadTaskStatusesMock = vi.fn()
-const addDeliverableMock = vi.hoisted(() => vi.fn())
-const removeDeliverableMock = vi.hoisted(() => vi.fn())
+const mockProjectStore = vi.hoisted(() => ({
+  taskStatuses: [],
+  taskStatusesLoaded: true,
+  loadTaskStatuses: vi.fn(),
+  addDeliverable: vi.fn(),
+  removeDeliverable: vi.fn(),
+  submitToBidDocument: vi.fn(),
+  currentProject: null,
+}))
 
 vi.mock('@/stores/project', () => ({
-  useProjectStore: () => ({
-    taskStatuses: mockStatuses,
-    taskStatusesLoaded: true,
-    loadTaskStatuses: loadTaskStatusesMock,
-    addDeliverable: addDeliverableMock,
-    removeDeliverable: removeDeliverableMock,
-    submitToBidDocument: vi.fn(),
-  }),
+  useProjectStore: () => mockProjectStore,
 }))
 
 vi.mock('@/stores/user', () => ({
   useUserStore: () => ({
     userName: '测试用户',
     currentUser: { id: 9 },
+    isBidManager: false,
   }),
 }))
 
@@ -87,9 +87,11 @@ function mountBoard(props = {}) {
 describe('TaskBoard (dynamic columns)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    loadTaskStatusesMock.mockClear()
-    addDeliverableMock.mockReset()
-    removeDeliverableMock.mockReset()
+    mockProjectStore.taskStatuses = mockStatuses
+    mockProjectStore.loadTaskStatuses = vi.fn()
+    mockProjectStore.addDeliverable = vi.fn()
+    mockProjectStore.removeDeliverable = vi.fn()
+    mockProjectStore.currentProject = null
   })
 
   it('renders one column per enabled status from the dict except the merged in-progress lane', async () => {
@@ -160,6 +162,31 @@ describe('TaskBoard (dynamic columns)', () => {
     })
   })
 
+  it('project lead can change status (primaryLeadUserId matches)', async () => {
+    mockProjectStore.currentProject = { primaryLeadUserId: 9, secondaryLeadUserId: null }
+    const wrapper = mountBoard({ tasks: [{ id: 2, name: 'T2', status: 'TODO', assigneeId: 999 }] })
+    await flushPromises()
+    // availableStatuses = 5 mock minus IN_PROGRESS = 4 items; upload hidden for non-assignee
+    const items = wrapper.findAllComponents({ name: 'ElDropdownItem' })
+    expect(items.length).toBe(4)
+    expect(items.at(0).props('disabled')).toBe(true) // TODO matches current status
+    for (let i = 1; i < items.length; i++) {
+      expect(items.at(i).props('disabled')).toBe(false) // project lead allows changes
+    }
+  })
+
+  it('secondary project lead can change status', async () => {
+    mockProjectStore.currentProject = { primaryLeadUserId: null, secondaryLeadUserId: 9 }
+    const wrapper = mountBoard({ tasks: [{ id: 2, name: 'T2', status: 'TODO', assigneeId: 999 }] })
+    await flushPromises()
+    const items = wrapper.findAllComponents({ name: 'ElDropdownItem' })
+    expect(items.length).toBe(4)
+    expect(items.at(0).props('disabled')).toBe(true)
+    for (let i = 1; i < items.length; i++) {
+      expect(items.at(i).props('disabled')).toBe(false)
+    }
+  })
+
   it('uploads the selected file through projectStore and emits the saved deliverable', async () => {
     const file = new File(['技术方案'], '技术方案.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -170,7 +197,7 @@ describe('TaskBoard (dynamic columns)', () => {
       deliverableType: 'TECHNICAL',
       url: 'project-documents://12/技术方案.docx',
     }
-    addDeliverableMock.mockResolvedValue(saved)
+    mockProjectStore.addDeliverable.mockResolvedValue(saved)
     const task = { id: 31, name: '编写技术方案', status: 'TODO' }
     const wrapper = mountBoard({ projectId: '12', tasks: [task] })
     await flushPromises()
@@ -181,7 +208,7 @@ describe('TaskBoard (dynamic columns)', () => {
     wrapper.vm.handleFileChange({ raw: file })
     await wrapper.vm.handleSaveDeliverable()
 
-    expect(addDeliverableMock).toHaveBeenCalledWith('12', 31, expect.objectContaining({
+    expect(mockProjectStore.addDeliverable).toHaveBeenCalledWith('12', 31, expect.objectContaining({
       name: '技术方案.docx',
       deliverableType: 'TECHNICAL',
       file,
@@ -219,7 +246,7 @@ describe('TaskBoard (dynamic columns)', () => {
 describe('TaskBoard (drag to change status)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    loadTaskStatusesMock.mockClear()
+    mockProjectStore.loadTaskStatuses = vi.fn()
   })
 
   it('emits status-change with target column code when task is dropped in another column', async () => {
@@ -300,7 +327,7 @@ describe('TaskBoard (drag to change status)', () => {
 describe('TaskBoard (store bootstrap)', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    loadTaskStatusesMock.mockClear()
+    mockProjectStore.loadTaskStatuses = vi.fn()
   })
 
   it('calls projectStore.loadTaskStatuses if not yet loaded', async () => {

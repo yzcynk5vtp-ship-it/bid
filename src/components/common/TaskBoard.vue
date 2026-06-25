@@ -199,10 +199,14 @@ onMounted(() => {
 const normalizeStatus = (status) => String(status || '').toUpperCase()
 
 const canChangeStatus = (task) => {
-  // 仅任务执行人或管理员/组长可变更状态
-  if (isTaskAssignee(task)) return true
-  if (userStore.isBidManager) return true
-  return false
+  if (isTaskAssignee(task) || userStore.isBidManager) return true
+  const project = projectStore.currentProject
+  if (!project) return false
+  const uid = userStore?.currentUser?.id
+  return uid != null && (
+    (project.primaryLeadUserId != null && String(uid) === String(project.primaryLeadUserId)) ||
+    (project.secondaryLeadUserId != null && String(uid) === String(project.secondaryLeadUserId))
+  )
 }
 
 const columns = computed(() => availableStatuses.value
@@ -214,9 +218,7 @@ const columns = computed(() => availableStatuses.value
     terminal: s.terminal
   })))
 
-const terminalCodes = computed(() => new Set(
-  statuses.value.filter((s) => s.terminal).map((s) => s.code)
-))
+const terminalCodes = computed(() => new Set(statuses.value.filter((s) => s.terminal).map((s) => s.code)))
 
 const progress = computed(() => {
   if (props.tasks.length === 0) return 0
@@ -235,9 +237,7 @@ const getTasksByStatus = (code) => {
   return props.tasks.filter((t) => normalizeStatus(t.status) === code)
 }
 
-const getTaskCount = (code) => {
-  return getTasksByStatus(code).length
-}
+const getTaskCount = (code) => getTasksByStatus(code).length
 
 const getColumnHeaderStyle = (column) => {
   const color = column?.color || 'var(--text-muted)'
@@ -255,13 +255,9 @@ const isUrgent = (deadline) => {
   return diffDays <= 3
 }
 
-const handleTaskClick = (task) => {
-  emit('task-click', task)
-}
+const handleTaskClick = (task) => emit('task-click', task)
 
-const handleStatusChange = (task, newStatus) => {
-  emit('status-change', task, newStatus)
-}
+const handleStatusChange = (task, newStatus) => emit('status-change', task, newStatus)
 
 const {
   isStatusTransitionInFlight, onDragChange, handleMouseDragStart, handleMouseDrop,
