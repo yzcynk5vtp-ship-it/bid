@@ -114,8 +114,10 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { projectsApi } from '@/api/modules/projects.js'
 import { useUserStore } from '@/stores/user.js'
+import { GLOBAL_MANAGE_ROLES } from '@/constants/roleCodes.js'
 import UserPicker from '@/components/common/UserPicker.vue'
 import TaskRejectDialog from './TaskRejectDialog.vue'
+
 const props = defineProps({
   projectId: { type: [String, Number], required: true },
   canUseAI: Boolean,
@@ -149,8 +151,7 @@ function isTaskAssignee(task) {
 
 const canReviewTasks = computed(() => {
   const roleCode = userStore?.currentUser?.roleCode || userStore?.currentUser?.role || ''
-  const GLOBAL_REVIEW_ROLES = ['admin', '/bidAdmin', 'bid-TeamLeader']
-  if (GLOBAL_REVIEW_ROLES.includes(roleCode)) {
+  if (GLOBAL_MANAGE_ROLES.some(r => r.toLowerCase() === roleCode?.toLowerCase())) {
     return true
   }
   const currentUserId = userStore?.currentUser?.id
