@@ -263,10 +263,7 @@ public class TaskService {
         if (projectId == null || !projectRepository.existsById(projectId)) {
             return;
         }
-        if (!TaskProjectVisibilityPolicy.canAccessProject(
-                projectId,
-                projectAccessScopeService.getAllowedProjectIdsForCurrentUser()
-        )) {
+        if (!TaskProjectVisibilityPolicy.canAccessProject(projectId, projectAccessScopeService.getAllowedProjectIdsForCurrentUser())) {
             throw new AccessDeniedException("权限不足，无法访问该项目任务");
         }
     }

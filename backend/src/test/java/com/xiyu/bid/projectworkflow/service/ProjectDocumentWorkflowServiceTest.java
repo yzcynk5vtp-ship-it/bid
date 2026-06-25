@@ -1,6 +1,7 @@
 package com.xiyu.bid.projectworkflow.service;
 
 import com.xiyu.bid.entity.Project;
+import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentCreateRequest;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentDTO;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentDownloadFile;
@@ -10,6 +11,7 @@ import com.xiyu.bid.projectworkflow.repository.ProjectScoreDraftRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
+import com.xiyu.bid.security.CurrentUserResolver;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,6 +39,8 @@ class ProjectDocumentWorkflowServiceTest {
     private ProjectRepository projectRepository;
     private ProjectDocumentWorkflowService service;
     private ProjectDocumentDownloadService downloadService;
+    private CurrentUserResolver currentUserResolver;
+    private ProjectLeadAssignmentRepository projectLeadAssignmentRepository;
 
     @BeforeEach
     void setUp() {
@@ -47,6 +52,8 @@ class ProjectDocumentWorkflowServiceTest {
         userRepository = mock(UserRepository.class);
         bindingGateway = mock(ProjectDocumentBindingGateway.class);
         fileStorage = mock(ProjectDocumentFileStorage.class);
+        projectLeadAssignmentRepository = mock(ProjectLeadAssignmentRepository.class);
+        currentUserResolver = mock(CurrentUserResolver.class);
 
         ProjectWorkflowGuardService guardService = new ProjectWorkflowGuardService(
                 projectRepository,
@@ -61,12 +68,23 @@ class ProjectDocumentWorkflowServiceTest {
                 guardService,
                 projectDocumentRepository,
                 userRepository,
+                projectLeadAssignmentRepository,
                 viewAssembler,
-                bindingGateway
+                bindingGateway,
+                currentUserResolver
         );
         downloadService = new ProjectDocumentDownloadService(guardService, fileStorage);
 
         when(projectRepository.findById(1001L)).thenReturn(Optional.of(Project.builder().id(1001L).status(Project.Status.BIDDING).build()));
+        when(currentUserResolver.getCurrentRoleCode()).thenReturn("admin");
+        when(currentUserResolver.requireCurrentUser()).thenReturn(
+                com.xiyu.bid.entity.User.builder()
+                        .id(1L)
+                        .roleProfile(com.xiyu.bid.entity.RoleProfile.builder().code("admin").build())
+                        .build());
+        doReturn(new Long[]{null, null})
+                .when(projectLeadAssignmentRepository)
+                .resolveLeadIdsByProjectId(1001L);
     }
 
     @Test
@@ -221,19 +239,12 @@ class ProjectDocumentWorkflowServiceTest {
 
     @Test
     void deleteProjectDocument_asNonAdmin_shouldThrowAccessDeniedException() {
+        when(currentUserResolver.getCurrentRoleCode()).thenReturn("bid-Team");
+
         org.springframework.security.core.Authentication auth = mock(org.springframework.security.core.Authentication.class);
         when(auth.isAuthenticated()).thenReturn(true);
         when(auth.getName()).thenReturn("regularuser");
         org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(auth);
-
-        com.xiyu.bid.entity.RoleProfile roleProfile = com.xiyu.bid.entity.RoleProfile.builder()
-                .code("bid-Team")
-                .build();
-        com.xiyu.bid.entity.User user = com.xiyu.bid.entity.User.builder()
-                .username("regularuser")
-                .roleProfile(roleProfile)
-                .build();
-        when(userRepository.findByUsername("regularuser")).thenReturn(Optional.of(user));
 
         ProjectDocument doc = ProjectDocument.builder()
                 .id(9001L)

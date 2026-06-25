@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.projectworkflow.dto.ProjectScoreDraftGenerateRequest;
 import com.xiyu.bid.projectworkflow.dto.ProjectScoreDraftUpdateRequest;
 import com.xiyu.bid.projectworkflow.dto.ProjectTaskCreateRequest;
@@ -19,6 +20,7 @@ import com.xiyu.bid.notification.service.NotificationApplicationService;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
+import com.xiyu.bid.security.CurrentUserResolver;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import com.xiyu.bid.task.service.TaskHistoryRecorder;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,8 +73,10 @@ class ProjectWorkflowServiceTest {
                 guardService,
                 projectDocumentRepository,
                 userRepository,
+                mock(ProjectLeadAssignmentRepository.class),
                 new ProjectDocumentViewAssembler(),
-                mock(ProjectDocumentBindingGateway.class)
+                mock(ProjectDocumentBindingGateway.class),
+                mock(CurrentUserResolver.class)
         );
         ProjectDocumentUploadWorkflowService projectDocumentUploadWorkflowService =
                 mock(ProjectDocumentUploadWorkflowService.class);
