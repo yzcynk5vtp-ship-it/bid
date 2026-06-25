@@ -115,7 +115,7 @@ import { ElMessage } from 'element-plus'
 import { User, Calendar, OfficeBuilding, UploadFilled } from '@element-plus/icons-vue'
 import { projectsApi } from '@/api/modules/projects.js'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
-import { useUserStore } from '@/stores/user.js'
+import { isTaskAssignee, isBidReviewer } from '@/utils/permission.js'
 import ProjectDocumentTable from '@/views/Project/stages/components/ProjectDocumentTable.vue'
 
 const props = defineProps({
@@ -123,7 +123,6 @@ const props = defineProps({
   availableStatuses: { type: Array, required: true }
 })
 const emit = defineEmits(['status-change', 'deliverable-changed'])
-const userStore = useUserStore()
 
 const PRIORITY_TYPE_MAP = { HIGH: 'danger', MEDIUM: 'warning', LOW: 'info' }
 const PRIORITY_TEXT_MAP = { HIGH: '高', MEDIUM: '中', LOW: '低' }
@@ -141,9 +140,6 @@ const formattedDate = computed(() => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 })
 
-function matchesCurrentUser(id) { const uid = userStore?.currentUser?.id; return uid != null && id != null && String(uid) === String(id) }
-function isTaskAssignee(task) { return matchesCurrentUser(task?.assigneeId) }
-function isBidReviewer(item) { return matchesCurrentUser(item?.reviewerId) }
 function hasDeliverable(task) { return task.deliverables && task.deliverables.length > 0 }
 
 // 上传交付物弹窗（独立，与项目详情页 TaskBoard.vue 统一）

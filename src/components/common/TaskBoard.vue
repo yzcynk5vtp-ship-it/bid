@@ -152,6 +152,7 @@ import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
 import { useTaskBoardDrag } from './useTaskBoardDrag'
 import { getPriorityType, getPriorityLabel as getPriorityText } from '@/views/Dashboard/workbench-formatters.js'
+import { isTaskAssignee } from '@/utils/permission.js'
 
 const props = defineProps({
   tasks: {
@@ -195,11 +196,6 @@ onMounted(() => {
 })
 
 const normalizeStatus = (status) => String(status || '').toUpperCase()
-
-const isTaskAssignee = (task) => {
-  const uid = userStore.currentUser?.id
-  return uid != null && task?.assigneeId != null && String(uid) === String(task.assigneeId)
-}
 
 const canChangeStatus = (task) => {
   // 仅任务执行人或管理员/组长可变更状态
