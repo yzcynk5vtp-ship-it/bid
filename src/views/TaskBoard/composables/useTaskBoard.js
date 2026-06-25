@@ -2,11 +2,12 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { tasksApi } from '@/api/modules/dashboard'
 import { projectsApi } from '@/api/modules/projects'
+import { TASK_STATUS, getTaskStatusDisplayName } from '@/constants/taskStatus.js'
 
 const COLUMNS = [
-  { key: 'TODO', title: '待开始', color: '#909399' },
-  { key: 'REVIEW', title: '待审核', color: '#e6a23c' },
-  { key: 'COMPLETED', title: '已完成', color: '#67c23a' }
+  { key: TASK_STATUS.TODO, title: '待开始', color: '#909399' },
+  { key: TASK_STATUS.REVIEW, title: '待审核', color: '#e6a23c' },
+  { key: TASK_STATUS.COMPLETED, title: '已完成', color: '#67c23a' }
 ]
 
 const AVAILABLE_STATUSES = COLUMNS.map(({ key, title }) => ({ code: key, name: title }))
@@ -52,7 +53,7 @@ export function useTaskBoard() {
     item.status = newStatus
     try {
       await tasksApi.updateStatus(item.id, newStatus)
-      const name = AVAILABLE_STATUSES.find((s) => s.code === newStatus)?.name || newStatus
+      const name = getTaskStatusDisplayName(newStatus)
       ElMessage.success(`任务状态已更新为：${name}`)
     } catch (e) {
       item.status = oldStatus

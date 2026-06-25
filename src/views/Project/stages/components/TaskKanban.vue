@@ -122,9 +122,10 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { projectsApi } from '@/api/modules/projects.js'
+import { useTaskActions } from '@/composables/useTaskActions.js'
+import { TASK_STATUS } from '@/constants/taskStatus.js'
 import { useUserStore } from '@/stores/user.js'
-import { isTaskAssignee } from '@/utils/permission.js'
-import { ROLE_CODES, GLOBAL_MANAGE_ROLES } from '@/constants/roleCodes.js'
+import { GLOBAL_MANAGE_ROLES } from '@/constants/roleCodes.js'
 import UserPicker from '@/components/common/UserPicker.vue'
 const props = defineProps({
   projectId: { type: [String, Number], required: true },
@@ -137,23 +138,42 @@ const emit = defineEmits(['openScoreParse', 'openDecompose'])
 const userStore = useUserStore()
 
 const columns = [
-  { status: 'TODO', label: '待办', tag: '' },
-  { status: 'IN_PROGRESS', label: '进行中', tag: 'primary' },
-  { status: 'REVIEW', label: '待审核', tag: 'warning' },
-  { status: 'COMPLETED', label: '已完成', tag: 'success' },
+  { status: TASK_STATUS.TODO, label: '待办', tag: '' },
+  { status: TASK_STATUS.IN_PROGRESS, label: '进行中', tag: 'primary' },
+  { status: TASK_STATUS.REVIEW, label: '待审核', tag: 'warning' },
+  { status: TASK_STATUS.COMPLETED, label: '已完成', tag: 'success' },
 ]
 const tasks = ref([])
 const grouped = computed(() => {
   const g = {}
   for (const t of tasks.value) {
-    const s = t.status || 'TODO'
+    const s = t.status || TASK_STATUS.TODO
     if (!g[s]) g[s] = []
     g[s].push(t)
   }
-return g
-	})
+  return g
+})
 
-	const canReviewTasks = computed(() => {
+const {
+  isTaskAssignee,
+  hasDeliverable,
+  showSubmitDialog,
+  submittingTask,
+  submittingTaskLoading,
+  deliverableFileList,
+  deliverableUploadRef,
+  submitNotes,
+  openDeliverableUpload,
+  openSubmitDialog,
+  confirmSubmit,
+} = useTaskActions({
+  getProjectId: () => props.projectId,
+  onSubmitted: async () => {
+    await loadTasks()
+  },
+})
+
+const canReviewTasks = computed(() => {
   const roleCode = userStore?.currentUser?.roleCode || userStore?.currentUser?.role || ''
   if (GLOBAL_MANAGE_ROLES.some(r => r.toLowerCase() === roleCode.toLowerCase())) {
     return true
@@ -192,7 +212,7 @@ async function handleCreate() {
       description: createForm.description,
       assigneeId: createForm.assigneeId,
       dueDate: createForm.dueDate || null,
-      status: 'TODO'
+      status: TASK_STATUS.TODO
     })
     ElMessage.success('任务已创建')
     showCreateDialog.value = false
@@ -203,62 +223,10 @@ async function handleCreate() {
   } catch (e) { ElMessage.error(e?.response?.data?.msg || '创建失败') }
   finally { creating.value = false }
 }
-// Deliverable upload + submit dialog
-const showSubmitDialog = ref(false)
-const submittingTask = ref(null)
-const submittingTaskLoading = ref(false)
-const deliverableFileList = ref([])
-const deliverableUploadRef = ref(null)
-const submitNotes = ref('')
-
-function hasDeliverable(task) {
-  return !!(task.deliverableUrl || task.deliverableName || task.fileUrl)
-}
-
-function openDeliverableUpload(task) {
-  submittingTask.value = task
-  showSubmitDialog.value = true
-  deliverableFileList.value = task.deliverableUrl ? [{ name: task.deliverableName || '已上传文件', url: task.deliverableUrl }] : []
-  submitNotes.value = task.completionNotes || ''
-}
-
-function openSubmitDialog(task) {
-  if (!hasDeliverable(task)) {
-    ElMessage.warning('请先上传交付物')
-    return
-  }
-  submittingTask.value = task
-  showSubmitDialog.value = true
-  deliverableFileList.value = task.deliverableUrl ? [{ name: task.deliverableName || '已上传文件', url: task.deliverableUrl }] : []
-  submitNotes.value = task.completionNotes || ''
-}
-
-async function confirmSubmit() {
-  if (!submittingTask.value) return
-  submittingTaskLoading.value = true
-  try {
-    // Upload deliverable if selected
-    if (deliverableUploadRef.value?.uploadFiles?.length > 0) {
-      const formData = new FormData()
-      formData.append('file', deliverableUploadRef.value.uploadFiles[0].raw)
-      formData.append('taskId', submittingTask.value.id)
-      await projectsApi.createTaskDeliverable(props.projectId, submittingTask.value.id, formData)
-    }
-    // Update completion notes and status
-    if (submitNotes.value) {
-      await projectsApi.updateTask(submittingTask.value.id, { completionNotes: submitNotes.value })
-    }
-    await projectsApi.updateTaskStatus(props.projectId, submittingTask.value.id, 'REVIEW')
-    ElMessage.success('已提交审核')
-    showSubmitDialog.value = false
-    await loadTasks()
-  } catch (e) { ElMessage.error(e?.response?.data?.msg || '提交失败') }
-  finally { submittingTaskLoading.value = false; submittingTask.value = null }
-}
 
 async function approveTask(task) {
   try {
-    await projectsApi.updateTaskStatus(props.projectId, task.id, 'COMPLETED')
+    await projectsApi.updateTaskStatus(props.projectId, task.id, TASK_STATUS.COMPLETED)
     ElMessage.success('审核通过')
     await loadTasks()
   } catch (e) { ElMessage.error(e?.response?.data?.msg || '审核失败') }
@@ -273,7 +241,7 @@ async function confirmReject() {
   rejectingLoading.value = true
   try {
     await projectsApi.updateTask(rejectingTask.value.id, { rejectionReason: rejectReason.value.trim() })
-    await projectsApi.updateTaskStatus(props.projectId, rejectingTask.value.id, 'TODO')
+    await projectsApi.updateTaskStatus(props.projectId, rejectingTask.value.id, TASK_STATUS.TODO)
     ElMessage.success('已驳回，任务退回待办')
     showRejectDialog.value = false
     await loadTasks()
