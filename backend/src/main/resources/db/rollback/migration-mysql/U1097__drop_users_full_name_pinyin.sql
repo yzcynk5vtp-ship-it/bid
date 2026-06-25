@@ -1,4 +1,5 @@
--- Rollback for V1097: re-add full_name_pinyin column to users table.
+-- Input: V1097__drop_users_full_name_pinyin.sql
+-- Rollback for V1097__drop_users_full_name_pinyin.sql
 -- Note: This only restores the column schema; historical pinyin data is lost after V1097.
 -- PinyinUtils.java was deleted in PR #1088, so the column will remain empty unless backfilled.
 
