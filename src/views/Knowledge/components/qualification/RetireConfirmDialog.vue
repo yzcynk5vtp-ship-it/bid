@@ -17,7 +17,7 @@
 
       <el-form :model="form" label-position="top" @submit.prevent>
         <el-form-item
-          label="下架原因（必填，≤200 字符）"
+          label="下架原因（必填，4-200 字符）"
           :error="reasonError"
         >
           <el-input
@@ -67,36 +67,30 @@ const visible = computed({
 })
 
 const form = ref({ reason: '', confirmed: false })
-const reasonError = ref('')
+const trimmedReason = computed(() => form.value.reason?.trim() || '')
+const reasonError = computed(() => {
+  if (trimmedReason.value.length > 0 && trimmedReason.value.length < 4) return '下架原因不少于4个字'
+  if (trimmedReason.value.length > 200) return '下架原因不超过200字'
+  return ''
+})
 const submitting = ref(false)
 
 const canSubmit = computed(() => {
-  const reason = form.value.reason?.trim() || ''
-  return reason.length >= 4 && reason.length <= 200 && form.value.confirmed
+  return trimmedReason.value.length >= 4 && trimmedReason.value.length <= 200 && form.value.confirmed
 })
 
 watch(() => props.modelValue, (val) => {
   if (val) {
     form.value = { reason: '', confirmed: false }
-    reasonError.value = ''
     submitting.value = false
   }
 })
 
 const handleSubmit = async () => {
-  const reason = form.value.reason?.trim() || ''
-  if (reason.length < 4) {
-    reasonError.value = '下架原因不少于4个字'
-    return
-  }
-  if (reason.length > 200) {
-    reasonError.value = '下架原因不超过200字'
-    return
-  }
-  reasonError.value = ''
+  if (!canSubmit.value) return
   submitting.value = true
   try {
-    await emit('confirm', { id: props.data?.id, reason })
+    await emit('confirm', { id: props.data?.id, reason: form.value.reason?.trim() })
     visible.value = false
   } finally {
     submitting.value = false
