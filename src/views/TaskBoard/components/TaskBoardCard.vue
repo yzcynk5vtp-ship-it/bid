@@ -104,13 +104,14 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User, Calendar, OfficeBuilding, UploadFilled } from '@element-plus/icons-vue'
 import { projectsApi } from '@/api/modules/projects.js'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 import { isTaskAssignee, isBidReviewer } from '@/utils/permission.js'
 import { getPriorityType, getPriorityLabel } from '@/views/Dashboard/workbench-formatters.js'
+import { useDeliverableUpload } from '@/composables/useDeliverableUpload.js'
 import ProjectDocumentTable from '@/views/Project/stages/components/ProjectDocumentTable.vue'
 
 const props = defineProps({
@@ -136,45 +137,27 @@ const formattedDate = computed(() => {
 function hasDeliverable(task) { return task.deliverables && task.deliverables.length > 0 }
 
 // 上传交付物弹窗（独立，与项目详情页 TaskBoard.vue 统一）
-const uploadDialogVisible = ref(false)
-const uploadingTask = ref(null)
-const uploadingLoading = ref(false)
-const uploadFileList = ref([])
-const deliverableForm = reactive({ name: '', type: 'document', file: null })
-
-function openUploadDialog(task) {
-  uploadingTask.value = task
-  deliverableForm.name = ''
-  deliverableForm.type = 'document'
-  deliverableForm.file = null
-  uploadFileList.value = []
-  uploadDialogVisible.value = true
-}
-
-function handleFileChange(file) {
-  deliverableForm.file = file.raw
-}
-
-async function handleSaveDeliverable() {
-  if (!uploadingTask.value || !deliverableForm.name) return
-  uploadingLoading.value = true
-  try {
+const {
+  dialogVisible: uploadDialogVisible,
+  currentTask: uploadingTask,
+  fileList: uploadFileList,
+  form: deliverableForm,
+  saving: uploadingLoading,
+  openDialog: openUploadDialog,
+  handleFileChange,
+  save: handleSaveDeliverable,
+} = useDeliverableUpload({
+  onSave: async (task, payload) => {
     const typeMap = { document: 'DOCUMENT', qualification: 'QUALIFICATION', technical: 'TECHNICAL', quotation: 'QUOTATION', other: 'OTHER' }
     const formData = new FormData()
-    formData.append('file', deliverableForm.file)
-    formData.append('taskId', uploadingTask.value.id)
-    formData.append('name', deliverableForm.name)
-    formData.append('deliverableType', typeMap[deliverableForm.type] || 'DOCUMENT')
-    await projectsApi.createTaskDeliverable(uploadingTask.value.projectId, uploadingTask.value.id, formData)
-    ElMessage.success('交付物已保存')
-    uploadDialogVisible.value = false
-    emit('deliverable-changed', uploadingTask.value)
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.msg || '交付物上传失败')
-  } finally {
-    uploadingLoading.value = false
-  }
-}
+    formData.append('file', payload.file)
+    formData.append('taskId', task.id)
+    formData.append('name', payload.name)
+    formData.append('deliverableType', typeMap[payload.type] || 'DOCUMENT')
+    await projectsApi.createTaskDeliverable(task.projectId, task.id, formData)
+    emit('deliverable-changed', task)
+  },
+})
 
 // === 提交任务弹窗（仅完成情况说明 + 提交审核，交付物已在独立弹窗上传） ===
 const showSubmitDialog = ref(false)

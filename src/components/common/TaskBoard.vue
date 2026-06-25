@@ -145,12 +145,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { MoreFilled, User, Calendar, Document, MagicStick, Upload, DocumentAdd, UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { MoreFilled, User, Calendar, Document, MagicStick, Upload, DocumentAdd, UploadFilled } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
 import { useTaskBoardDrag } from './useTaskBoardDrag'
+import { useDeliverableUpload } from '@/composables/useDeliverableUpload.js'
 import { getPriorityType, getPriorityLabel as getPriorityText } from '@/views/Dashboard/workbench-formatters.js'
 import { isTaskAssignee } from '@/utils/permission.js'
 import { hexToSoftBackground } from '@/utils/color.js'
@@ -176,14 +177,32 @@ const emit = defineEmits(['task-click', 'status-change', 'generate-tasks', 'subm
 const projectStore = useProjectStore()
 const userStore = useUserStore()
 
-const showUploadDialog = ref(false)
-const currentTask = ref(null)
-const fileList = ref([])
-
-const deliverableForm = ref({
-  name: '',
-  type: 'document',
-  file: null
+const {
+  dialogVisible: showUploadDialog,
+  currentTask,
+  fileList,
+  form: deliverableForm,
+  saving: uploadSaving,
+  openDialog: handleUploadDeliverable,
+  handleFileChange,
+  save: handleSaveDeliverable,
+} = useDeliverableUpload({
+  onSave: async (task, payload) => {
+    const typeMap = {
+      document: 'DOCUMENT', qualification: 'QUALIFICATION',
+      technical: 'TECHNICAL', quotation: 'QUOTATION', other: 'OTHER',
+    }
+    const saved = await projectStore.addDeliverable(props.projectId, task.id, {
+      name: payload.name,
+      deliverableType: typeMap[payload.type] || 'DOCUMENT',
+      size: payload.file ? `${(payload.file.size / 1024).toFixed(1)}KB` : null,
+      fileType: payload.file?.type || null,
+      file: payload.file,
+      uploaderId: userStore.currentUser?.id ?? null,
+      uploaderName: userStore.userName,
+    })
+    emit('add-deliverable', task.id, saved)
+  },
 })
 
 const statuses = computed(() => projectStore.taskStatuses)
@@ -265,58 +284,6 @@ const {
   normalizeStatus,
   emitStatusChange: handleStatusChange,
 })
-
-const handleUploadDeliverable = (task) => {
-  currentTask.value = task
-  showUploadDialog.value = true
-  deliverableForm.value = {
-    name: '',
-    type: 'document',
-    file: null
-  }
-  fileList.value = []
-}
-
-const handleFileChange = (file) => {
-  deliverableForm.value.file = file.raw
-}
-
-const handleSaveDeliverable = async () => {
-  if (!currentTask.value || !deliverableForm.value.name) {
-    ElMessage.warning('请填写交付物名称')
-    return
-  }
-
-  try {
-    const typeMap = {
-      document: 'DOCUMENT',
-      qualification: 'QUALIFICATION',
-      technical: 'TECHNICAL',
-      quotation: 'QUOTATION',
-      other: 'OTHER'
-    }
-
-    const savedDeliverable = await projectStore.addDeliverable(props.projectId, currentTask.value.id, {
-      name: deliverableForm.value.name,
-      deliverableType: typeMap[deliverableForm.value.type] || 'DOCUMENT',
-      size: deliverableForm.value.file ? `${(deliverableForm.value.file.size / 1024).toFixed(1)}KB` : null,
-      fileType: deliverableForm.value.file?.type || null,
-      file: deliverableForm.value.file,
-      uploaderId: userStore.currentUser?.id ?? null,
-      uploaderName: userStore.userName,
-    })
-
-    emit('add-deliverable', currentTask.value.id, savedDeliverable)
-
-    showUploadDialog.value = false
-    deliverableForm.value = { name: '', type: 'document', file: null }
-    fileList.value = []
-
-    ElMessage.success('交付物已保存')
-  } catch (error) {
-    ElMessage.error(error?.message || '交付物上传失败')
-  }
-}
 
 const handleRemoveDeliverable = async (task, deliverable) => {
   try {
