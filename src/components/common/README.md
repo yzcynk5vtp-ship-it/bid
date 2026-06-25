@@ -15,5 +15,7 @@
 | `ApprovalDialog.vue` | Component | 审批对话框 |
 | `CommonIcon.vue` | Component | 通用图标封装 |
 | `FeaturePlaceholder.vue` | Component | 功能占位态 |
+| `MentionInput.vue` | Component | 支持 @ 提及同事的输入框，用户候选复用真实用户搜索 API |
 | `TaskBoard.vue` | Component | 任务看板 |
+| `UserPicker.vue` | Component | 通用用户选择器，支持搜索/候选人模式和姓名工号展示 |
 | `icons.ts` | Utility | 图标映射定义 |

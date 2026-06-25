@@ -112,17 +112,17 @@ describe('useUserPicker', () => {
     expect(options.value).toEqual([])
   })
 
-  it('formatLabel returns "姓名（部门·角色）" format', () => {
+  it('formatLabel returns common "姓名（工号）" format', () => {
     const { formatLabel } = useUserPicker({ mode: 'search' })
 
-    expect(formatLabel(mockUser)).toBe('张三（投标管理部·投标管理员）')
+    expect(formatLabel(mockUser)).toBe('张三（20260509）')
   })
 
-  it('formatLabel omits empty dept or role parts', () => {
+  it('formatLabel falls back through employee id aliases', () => {
     const { formatLabel } = useUserPicker({ mode: 'search' })
 
-    expect(formatLabel({ name: '李四', roleName: '销售' })).toBe('李四（销售）')
-    expect(formatLabel({ name: '王五', deptName: '技术部' })).toBe('王五（技术部）')
+    expect(formatLabel({ name: '李四', username: '03645' })).toBe('李四（03645）')
+    expect(formatLabel({ name: '王五', employeeId: 'E005' })).toBe('王五（E005）')
     expect(formatLabel({ name: '赵六' })).toBe('赵六')
   })
 })

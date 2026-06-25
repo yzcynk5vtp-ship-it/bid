@@ -8,7 +8,7 @@ Repository 只定义数据访问接口和查询边界，不写业务判断。这
 ## 边界清单
 | 文件 | 地位 | 功能 |
 |------|------|------|
-| `UserRepository.java` | Repository | 用户数据访问 |
+| `UserRepository.java` | Repository | 用户数据访问；用户搜索覆盖姓名、用户名和工号 |
 | `TenderRepository.java` | Repository | 标讯数据访问 |
 | `ProjectRepository.java` | Repository | 项目数据访问 |
 | `TaskRepository.java` | Repository | 任务数据访问 |

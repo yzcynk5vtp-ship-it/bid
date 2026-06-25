@@ -8,12 +8,14 @@ import com.xiyu.bid.project.entity.ProjectLeadAssignment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface ProjectLeadAssignmentRepository extends JpaRepository<ProjectLeadAssignment, Long> {
     Optional<ProjectLeadAssignment> findByProjectId(Long projectId);
+    List<ProjectLeadAssignment> findByProjectIdIn(Collection<Long> projectIds);
     List<ProjectLeadAssignment> findByPrimaryLeadUserId(Long userId);
     List<ProjectLeadAssignment> findBySecondaryLeadUserId(Long userId);
 }

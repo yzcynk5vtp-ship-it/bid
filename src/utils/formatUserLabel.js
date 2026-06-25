@@ -1,4 +1,5 @@
 import { formatDisplayName } from './formatDisplayName.js'
+import { firstNonBlank } from './firstNonBlank.js'
 
 /**
  * Universal user option label formatter.
@@ -7,12 +8,13 @@ import { formatDisplayName } from './formatDisplayName.js'
  */
 export function formatUserLabel(user) {
   if (!user) return '—'
-  const name = user.fullName || user.name || user.nickname || ''
-  const employeeNumber = user.employeeNumber
-    || user.employeeId
-    || user.jobNumber
-    || user.staffId
-    || user.username
-    || ''
+  const name = firstNonBlank(user.fullName, user.name, user.nickname)
+  const employeeNumber = firstNonBlank(
+    user.employeeNumber,
+    user.employeeId,
+    user.jobNumber,
+    user.staffId,
+    user.username
+  )
   return formatDisplayName(name, employeeNumber)
 }

@@ -13,7 +13,7 @@
       v-for="user in mergedOptions"
       :key="user.id"
       :label="formatLabel(user)"
-      :value="user.id"
+      :value="getOptionValue(user)"
     />
     <template v-if="mergedOptions.length === 0" #empty>
       无匹配用户
@@ -33,6 +33,7 @@ const props = defineProps({
   roleCode: { type: String, default: '' },
   placeholder: { type: String, default: '请选择用户' },
   disabled: { type: Boolean, default: false },
+  valueField: { type: String, default: 'id' },
   initialOptions: { type: Array, default: () => [] },
 })
 
@@ -73,9 +74,14 @@ function handleRemoteSearch(query) {
   }
 }
 
+function getOptionValue(user) {
+  if (!user) return null
+  return user[props.valueField] ?? user.id
+}
+
 function handleChange(value) {
   // Use loose equality so both numeric and string ids from stubbed selects work.
-  const selected = mergedOptions.value.find((user) => user.id == value)
+  const selected = mergedOptions.value.find((user) => getOptionValue(user) == value)
   emit('update:modelValue', value)
   if (selected) {
     emit('select', selected)

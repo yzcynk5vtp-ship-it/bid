@@ -11,7 +11,8 @@ export const usersApi = {
       params: { q: query, limit },
       ...requestOptions,
     })
-    return data
+    const users = Array.isArray(data) ? data : []
+    return users.map(normalizeUserOption)
   },
 
   /**

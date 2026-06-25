@@ -32,7 +32,7 @@
 | `taskExtendedField.js` | API 模块 | 项目任务扩展字段 schema 读取（启用字段列表），供 TaskForm 动态渲染 |
 | `taskExtendedFieldAdmin.js` | API 模块 | 管理员对任务扩展字段 schema 的 CRUD、启停与排序调用 |
 | `tenders.js` | API 模块 | 标讯列表、详情、入项、上传任务和人工录入文档识别调用 |
-| `users.js` | API 模块 | 用户搜索与任务负责人候选人查询，候选人来自后端组织归属/数据权限过滤 |
+| `users.js` | API 模块 | 用户搜索与任务负责人候选人查询，候选人来自后端组织归属/数据权限过滤；搜索和候选人返回值统一标准化为 UserPicker 可消费字段 |
 | `workflowForm.js` | API 模块 | 流程表单运行态模板读取、附件上传、实例提交，以及管理员模板配置、发布、OA 绑定和试提交接口 |
 
 `auth.js` 返回的用户快照会保留会话级权限字段，例如 `allowedProjectIds` 和 `allowedDepts`，供 store 和路由恢复使用。

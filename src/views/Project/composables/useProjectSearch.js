@@ -1,5 +1,4 @@
-import { ref, reactive, computed } from 'vue'
-import { usersApi } from '@/api/modules/users.js'
+import { ref, computed } from 'vue'
 import { chinaRegionOptions } from '@/components/common/chinaRegionData.js'
 
 export const statusOptions = [
@@ -75,8 +74,8 @@ export function useProjectSearch() {
     sourceModule: '',
     bidStatus: '',
     stage: '',
-    projectLeaderName: null,
-    biddingLeaderName: null,
+    projectLeaderId: null,
+    biddingLeaderId: null,
     leaderDepartment: '',
     region: '',
     biddingPlatform: '',
@@ -89,26 +88,12 @@ export function useProjectSearch() {
     revenueMax: null,
   })
 
-  const userList = computed(() => [])
-
-  const userOptions = reactive({ pm: [], bp: [] })
-  const userLoading = reactive({ pm: false, bp: false })
-
-  async function searchUsers(query, scope) {
-    if (!query || query.length < 1) { userOptions[scope] = []; return }
-    userLoading[scope] = true
-    try {
-      const result = await usersApi.search(query, 20)
-      userOptions[scope] = Array.isArray(result) ? result : []
-    } finally { userLoading[scope] = false }
-  }
-
   const isFiltered = computed(() => {
     const f = searchForm.value
     return !!(
       f.name || f.ownerUnit || f.projectType || f.customerType || f.priority ||
-      f.sourceModule || f.bidStatus || f.stage || f.projectLeaderName ||
-      f.biddingLeaderName || f.leaderDepartment || f.region || f.biddingPlatform ||
+      f.sourceModule || f.bidStatus || f.stage || f.projectLeaderId ||
+      f.biddingLeaderId || f.leaderDepartment || f.region || f.biddingPlatform ||
       f.bidMonth ||
       (f.bidOpenTimeRange && f.bidOpenTimeRange.length === 2) ||
       (f.createTimeRange && f.createTimeRange.length === 2) ||
@@ -129,8 +114,8 @@ export function useProjectSearch() {
       sourceModule: '',
       bidStatus: '',
       stage: '',
-      projectLeaderName: null,
-      biddingLeaderName: null,
+      projectLeaderId: null,
+      biddingLeaderId: null,
       leaderDepartment: '',
       region: '',
       biddingPlatform: '',
@@ -142,16 +127,10 @@ export function useProjectSearch() {
       revenueMin: null,
       revenueMax: null,
     }
-    userOptions.pm = []
-    userOptions.bp = []
   }
 
   return {
     searchForm,
-    userList,
-    userOptions,
-    userLoading,
-    searchUsers,
     isFiltered,
     statusOptions,
     projectTypeOptions,

@@ -4,7 +4,7 @@
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 import { ref, onUnmounted } from 'vue'
 import { usersApi } from '@/api/modules/users.js'
-import { formatDisplayName } from '@/utils/formatDisplayName.js'
+import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const DEBOUNCE_MS = 300
 
@@ -113,12 +113,7 @@ export function useUserPicker(options = {}) {
   }
 
   function formatLabel(user) {
-    if (!user) return ''
-    const name = user.name || user.fullName || ''
-    if (!name) return ''
-    const parts = [user.deptName, user.roleName].filter(Boolean)
-    if (parts.length === 0) return name
-    return `${name}（${parts.join('·')}）`
+    return formatUserLabel(user)
   }
 
   // P1.4: 组件卸载时清理未完成请求和防抖定时器

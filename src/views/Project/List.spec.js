@@ -45,8 +45,8 @@ describe('Project/List.vue layout', () => {
     // Search fields extracted to ProjectSearchCard
     expect(searchCardSource).toContain('searchForm.projectType')
     expect(searchCardSource).toContain('searchForm.priority')
-    expect(searchCardSource).toContain('searchForm.projectLeaderName')
-    expect(searchCardSource).toContain('searchForm.biddingLeaderName')
+    expect(searchCardSource).toContain('searchForm.projectLeaderId')
+    expect(searchCardSource).toContain('searchForm.biddingLeaderId')
     expect(searchCardSource).toContain('searchForm.bidOpenTimeRange')
     expect(searchCardSource).toContain('type="daterange"')
   })
@@ -67,6 +67,15 @@ describe('Project/List.vue layout', () => {
 
   it('renders ProjectSearchCard component', () => {
     expect(projectListSource).toContain('ProjectSearchCard')
+  })
+
+  it('uses common UserPicker for project user filters', () => {
+    expect(searchCardSource).toContain('import UserPicker')
+    expect(searchCardSource).toContain('v-model="searchForm.projectLeaderId"')
+    expect(searchCardSource).toContain('v-model="searchForm.biddingLeaderId"')
+    expect(searchCardSource).not.toContain('value-field="name"')
+    expect(searchCardSource).toContain('mode="search"')
+    expect(searchCardSource).not.toContain('formatUserLabel')
   })
 
   it('uses scoped styles', () => {

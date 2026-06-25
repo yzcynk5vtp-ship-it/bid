@@ -61,6 +61,14 @@ const activeIdx = ref(0)
 const loading = ref(false)
 const triggerStart = ref(-1)
 let searchTimer = null
+let currentAbortController = null
+
+function cancelCurrentSearch() {
+  if (currentAbortController) {
+    currentAbortController.abort()
+    currentAbortController = null
+  }
+}
 
 watch(() => props.modelValue, (val) => {
   if (val !== text.value) text.value = val
@@ -71,6 +79,7 @@ watch(text, (val) => {
 })
 
 const closePopover = () => {
+  cancelCurrentSearch()
   showPopover.value = false
   candidates.value = []
   activeIdx.value = 0
@@ -78,16 +87,26 @@ const closePopover = () => {
 }
 
 const runSearch = async (query) => {
+  cancelCurrentSearch()
+  const abortController = new AbortController()
+  currentAbortController = abortController
   loading.value = true
   try {
-    const response = await usersApi.search(query, MAX_CANDIDATES)
-    const list = Array.isArray(response?.data) ? response.data : []
-    candidates.value = list.slice(0, MAX_CANDIDATES)
-    activeIdx.value = 0
-  } catch {
+    const results = await usersApi.search(query, MAX_CANDIDATES, { signal: abortController.signal })
+    if (!abortController.signal.aborted) {
+      candidates.value = (Array.isArray(results) ? results : []).slice(0, MAX_CANDIDATES)
+      activeIdx.value = 0
+    }
+  } catch (err) {
+    if (err?.name === 'AbortError' || abortController.signal.aborted) return
     candidates.value = []
   } finally {
-    loading.value = false
+    if (!abortController.signal.aborted) {
+      loading.value = false
+    }
+    if (currentAbortController === abortController) {
+      currentAbortController = null
+    }
   }
 }
 
@@ -103,6 +122,7 @@ const handleInput = (val) => {
   triggerStart.value = cursor - match[0].length
   showPopover.value = true
   if (searchTimer) clearTimeout(searchTimer)
+  cancelCurrentSearch()
   const query = match[1]
   searchTimer = setTimeout(() => runSearch(query), props.debounceMs)
 }
@@ -145,6 +165,7 @@ onBeforeUnmount(() => {
     clearTimeout(searchTimer)
     searchTimer = null
   }
+  cancelCurrentSearch()
 })
 
 defineExpose({ submit })

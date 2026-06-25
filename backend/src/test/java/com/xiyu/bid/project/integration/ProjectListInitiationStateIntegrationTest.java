@@ -4,7 +4,9 @@ import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.entity.ProjectLeadAssignment;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
+import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
@@ -49,10 +51,16 @@ class ProjectListInitiationStateIntegrationTest {
     @Autowired
     private ProjectInitiationDetailsRepository initiationDetailsRepository;
 
+    @Autowired
+    private ProjectLeadAssignmentRepository projectLeadAssignmentRepository;
+
     private User salesUser;
+    private User primaryLeadUser;
+    private User secondaryLeadUser;
 
     @BeforeEach
     void setUp() {
+        projectLeadAssignmentRepository.deleteAll();
         initiationDetailsRepository.deleteAll();
         projectRepository.deleteAll();
         tenderRepository.deleteAll();
@@ -65,6 +73,26 @@ class ProjectListInitiationStateIntegrationTest {
                 .role(User.Role.MANAGER)
                 .enabled(true)
                 .departmentName("销售部")
+                .build());
+
+        primaryLeadUser = userRepository.save(User.builder()
+                .username("primaryLead")
+                .password("XiyuDemo!2026")
+                .email("primary-lead@example.com")
+                .fullName("王主投")
+                .role(User.Role.MANAGER)
+                .enabled(true)
+                .departmentName("投标部")
+                .build());
+
+        secondaryLeadUser = userRepository.save(User.builder()
+                .username("secondaryLead")
+                .password("XiyuDemo!2026")
+                .email("secondary-lead@example.com")
+                .fullName("李副投")
+                .role(User.Role.MANAGER)
+                .enabled(true)
+                .departmentName("投标部")
                 .build());
 
         Tender tender = tenderRepository.save(Tender.builder()
@@ -88,6 +116,13 @@ class ProjectListInitiationStateIntegrationTest {
                 .teamMembers(List.of(salesUser.getId()))
                 .build());
 
+        projectLeadAssignmentRepository.save(ProjectLeadAssignment.builder()
+                .projectId(project.getId())
+                .primaryLeadUserId(primaryLeadUser.getId())
+                .secondaryLeadUserId(secondaryLeadUser.getId())
+                .assignedBy(salesUser.getId())
+                .build());
+
         initiationDetailsRepository.save(ProjectInitiationDetails.builder()
                 .projectId(project.getId())
                 .ownerUserId(salesUser.getId())
@@ -104,6 +139,9 @@ class ProjectListInitiationStateIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].name").value("测试待立项项目"))
+                .andExpect(jsonPath("$.data[0].projectLeaderId").value(salesUser.getId()))
+                .andExpect(jsonPath("$.data[0].biddingLeaderId").value(primaryLeadUser.getId()))
+                .andExpect(jsonPath("$.data[0].secondaryBiddingLeaderId").value(secondaryLeadUser.getId()))
                 .andExpect(jsonPath("$.data[0].bidStatus").value("PENDING_INITIATION"));
     }
 
@@ -148,5 +186,46 @@ class ProjectListInitiationStateIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].name").value("测试待立项项目"))
                 .andExpect(jsonPath("$.data[0].bidStatus").value("INITIATED"));
+    }
+
+    @Test
+    @WithMockUser(username = "sales", roles = {"BID_PROJECTLEADER", "MANAGER"})
+    void getProjects_shouldFilterByProjectLeaderId() throws Exception {
+        mockMvc.perform(get("/api/projects")
+                        .param("projectLeaderId", salesUser.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("测试待立项项目"));
+
+        mockMvc.perform(get("/api/projects")
+                        .param("projectLeaderId", primaryLeadUser.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    @WithMockUser(username = "sales", roles = {"BID_PROJECTLEADER", "MANAGER"})
+    void getProjects_shouldFilterByPrimaryOrSecondaryBiddingLeaderId() throws Exception {
+        mockMvc.perform(get("/api/projects")
+                        .param("biddingLeaderId", primaryLeadUser.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("测试待立项项目"));
+
+        mockMvc.perform(get("/api/projects")
+                        .param("biddingLeaderId", secondaryLeadUser.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].name").value("测试待立项项目"));
+
+        mockMvc.perform(get("/api/projects")
+                        .param("biddingLeaderId", salesUser.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(0));
     }
 }
