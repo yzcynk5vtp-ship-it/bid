@@ -10,9 +10,6 @@
       :customerTypeOptions="customerTypeOptions"
       :bidMonthOptions="bidMonthOptions"
       :chinaRegionOptions="chinaRegionOptions"
-      :userOptions="userOptions"
-      :userLoading="userLoading"
-      :searchUsers="searchUsers"
       @search="onSearch"
       @reset="onReset"
     />
@@ -171,7 +168,7 @@ const selectedProjects = ref([])
 function handleSelectionChange(rows) { selectedProjects.value = rows }
 
 const {
-  searchForm, userOptions, userLoading, searchUsers, isFiltered,
+  searchForm, isFiltered,
   projectTypeOptions, customerTypeOptions,
   sourceOptions, statusOptions, stageOptions, priorityOptions,
   generateBidMonthOptions, handleReset: clearFilters, chinaRegionOptions,
@@ -195,8 +192,8 @@ const handleExport = async () => {
     if (searchForm.value.sourceModule) params.sourceModule = searchForm.value.sourceModule
     if (searchForm.value.bidStatus) params.bidStatus = searchForm.value.bidStatus
     if (searchForm.value.stage) params.stage = searchForm.value.stage
-    if (searchForm.value.projectLeaderName) params.projectLeaderName = searchForm.value.projectLeaderName
-    if (searchForm.value.biddingLeaderName) params.biddingLeaderName = searchForm.value.biddingLeaderName
+    if (searchForm.value.projectLeaderId) params.projectLeaderId = searchForm.value.projectLeaderId
+    if (searchForm.value.biddingLeaderId) params.biddingLeaderId = searchForm.value.biddingLeaderId
     if (searchForm.value.leaderDepartment) params.leaderDepartment = searchForm.value.leaderDepartment
     if (searchForm.value.region) params.region = searchForm.value.region
     if (searchForm.value.biddingPlatform) params.biddingPlatform = searchForm.value.biddingPlatform

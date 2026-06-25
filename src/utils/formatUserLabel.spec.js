@@ -10,6 +10,10 @@ describe('formatUserLabel', () => {
     expect(formatUserLabel({ name: '李四', username: '03645' })).toBe('李四（03645）')
   })
 
+  it('falls back to username when employeeNumber is blank', () => {
+    expect(formatUserLabel({ name: '李四', employeeNumber: ' ', username: '03645' })).toBe('李四（03645）')
+  })
+
   it('prefers fullName over name', () => {
     expect(formatUserLabel({ name: 'zs', fullName: '张三', employeeNumber: '1' })).toBe('张三（1）')
   })

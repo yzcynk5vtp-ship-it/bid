@@ -75,10 +75,16 @@ public class ProjectDTO {
     private String bidStatus;
     /** 项目负责人姓名 */
     private String projectLeaderName;
+    /** 项目负责人用户 ID，用于列表精确筛选 */
+    private Long projectLeaderId;
     /** 负责人部门 */
     private String leaderDepartment;
     /** 投标负责人姓名 */
     private String biddingLeaderName;
+    /** 主投标负责人用户 ID，用于列表精确筛选 */
+    private Long biddingLeaderId;
+    /** 副投标负责人用户 ID，用于列表精确筛选 */
+    private Long secondaryBiddingLeaderId;
     /** 中标状态 */
     private String bidResultStatus;
     /** 投标平台 */

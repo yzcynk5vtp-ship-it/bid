@@ -25,6 +25,46 @@ describe('usersApi', () => {
     expect(result).toHaveLength(1)
   })
 
+  it('normalizes user search results to common option fields', async () => {
+    httpClient.get.mockResolvedValue({
+      success: true,
+      data: [{
+        userId: 9,
+        name: '张经理',
+        deptName: '投标管理部',
+        employeeId: 'E009',
+      }],
+    })
+
+    const result = await usersApi.search('张')
+
+    expect(result).toEqual([{
+      userId: 9,
+      id: 9,
+      name: '张经理',
+      deptName: '投标管理部',
+      departmentName: '投标管理部',
+      employeeId: 'E009',
+      employeeNumber: 'E009',
+    }])
+  })
+
+  it('normalizes blank employeeNumber through username fallback', async () => {
+    httpClient.get.mockResolvedValue({
+      success: true,
+      data: [{ id: 10, name: '李四', employeeNumber: ' ', username: '03645' }],
+    })
+
+    const result = await usersApi.search('03645')
+
+    expect(result[0]).toMatchObject({
+      id: 10,
+      name: '李四',
+      employeeNumber: '03645',
+      employeeId: '03645',
+    })
+  })
+
   it('respects custom limit', async () => {
     httpClient.get.mockResolvedValue({ success: true, data: [] })
     await usersApi.search('bob', 5)

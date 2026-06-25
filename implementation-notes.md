@@ -1,3 +1,64 @@
+# 设计评估建议采纳修复实施记录
+
+## 问题口径
+
+- 上一轮已修复标讯/项目列表选人显示工号，但 Review 指出项目列表仍用 `valueField="name"` 做姓名筛选，存在同名误匹配。
+- 前端 `firstNonBlank` 逻辑在用户归一化和标签格式化中重复。
+- `MentionInput` 直接调用 `usersApi.search()`，仍按旧 `response.data` 结构读取，且缺少请求取消，可能导致 @ 候选为空或旧请求覆盖新请求。
+- `useProjectSearch` 中残留空 `userList`，已无业务引用。
+
+## 决策与权衡
+
+- 项目列表筛选改为用户 ID 精确匹配：搜索表单使用 `projectLeaderId` / `biddingLeaderId`，`UserPicker` 回到默认 ID value，不再使用 `value-field="name"`。
+- 后端 `ProjectDTO` 补充 `projectLeaderId`、`biddingLeaderId`、`secondaryBiddingLeaderId`；项目负责人 ID 优先取立项 `ownerUserId`，再回退标讯 `projectManagerId`，最后回退项目 `managerId`；投标负责人 ID 优先取 `ProjectLeadAssignment.primaryLeadUserId`，副负责人单独返回用于筛选。
+- `/api/projects` 与 `/api/projects/export` 增加 ID 参数，同时保留姓名参数兼容旧调用；本轮不把项目列表改为服务端分页/Repository JOIN 查询，避免扩大改造面。
+- 抽出 `src/utils/firstNonBlank.js`，让用户字段归一化和标签格式化共享同一空白判断。
+- `MentionInput` 改为读取 `usersApi.search()` 的数组返回，并通过 `AbortController` 取消旧请求。
+- 后端用户搜索的 username fallback 保留，但补充注释：这是组织同步历史数据的展示兼容，长期应回填 `employee_number`。
+
+## 未纳入本次范围
+
+- 不做用户表 `employee_number` 历史回填或组织同步链路改造。
+- 不做用户搜索 `LIKE '%q%'` 的索引/全文检索优化。
+- 不做项目列表服务端分页或 DB JOIN 级负责人过滤重构。
+- 不做 UserPicker option 二级部门/角色展示优化。
+
+## 验证
+
+- 前端：`pnpm exec vitest run src/api/modules/users.spec.js src/composables/useUserPicker.spec.js src/components/common/UserPicker.spec.js src/components/common/MentionInput.spec.js src/utils/firstNonBlank.spec.js src/utils/formatUserLabel.spec.js src/views/Project/List.spec.js`：7 files / 56 tests passed；保留既有 `useUserPicker.spec.js` 中 Vue lifecycle warning。
+- 后端：`mvn -f backend/pom.xml test -Dtest=UserSearchServiceTest,UserSearchControllerTest,UserRepositorySearchTest,ProjectControllerAuthorizationTest,ProjectControllerIntegrationTest,ProjectListInitiationStateIntegrationTest`：29 tests passed，BUILD SUCCESS；提交前因行数预算拆分 `ProjectListEnrichmentSupport` 后补跑 `mvn -f backend/pom.xml test -Dtest=ProjectListInitiationStateIntegrationTest,ProjectControllerIntegrationTest,ProjectControllerAuthorizationTest`：15 tests passed，BUILD SUCCESS；保留 Maven `systemPath`、git-commit-id 插件参数、ByteBuddy agent 等既有 warning。
+- 通用：`git diff --check`：通过，无空白错误。
+
+# 标讯/项目列表选人工号未知修复实施记录
+
+## 问题口径
+
+- 标讯列表和项目列表的选人入口能按姓名选到人，但下拉展示里的工号缺失，用户看到“未知”或只看到姓名。
+- 其他选人场景能显示工号，说明统一候选人路径已有工号，问题集中在列表筛选使用的用户搜索路径。
+
+## 根因判断
+
+- 标讯列表筛选已经使用统一 `UserPicker`，但走的是 `mode="search"`，依赖 `/api/users/search`；上一轮主要修的是 `mode="candidates"` 的候选人端点。
+- 项目列表筛选原来没有用统一 `UserPicker`，而是局部 `el-select + usersApi.search()`，字段与展示逻辑独立。
+- `usersApi.search()` 之前直接返回后端原始 DTO，未做 `id/departmentName/employeeId/employeeNumber` 统一标准化。
+- 后端搜索 DTO 的 `employeeNumber` 只取 `users.employee_number`；组织同步用户里用户名通常就是工号，但 `employee_number` 可能为空。
+
+## 决策与权衡
+
+- 前端把 `usersApi.search()` 与 `getAssignableCandidates()` 统一走 `normalizeUserOption()`，并让标准化同时兼容 `employeeNumber/employeeId/jobNumber/staffId/username`。
+- `UserPicker` 的展示统一改为 `formatUserLabel()` 的 `姓名（工号）` 口径，避免 search/candidates 两种模式展示不一致。
+- `UserPicker` 增加 `valueField`，项目列表可复用统一组件但仍保持原有筛选参数为姓名，避免扩大项目列表后端查询契约。
+- 后端 `/api/users/search` 在 `employeeNumber` 为空时回退用户名；这是对当前组织同步“用户名即工号”事实的最小修复，不新增 DTO 字段暴露。
+- `UserRepository.searchActiveUsers()` 增加 `employee_number` 查询条件，让真实 `employee_number` 已落库的用户也可按工号搜索。
+- 暂未做组织同步持久化工号和历史数据回填；这是更长期的正确性改造，范围大于本次列表选人显示修复。
+
+## 验证
+
+- RED：新增/调整前后端回归测试后，确认 `usersApi.search()` 未标准化、`UserPicker.formatLabel()` 未显示工号。
+- GREEN：`pnpm exec vitest run src/api/modules/users.spec.js src/composables/useUserPicker.spec.js src/components/common/UserPicker.spec.js src/utils/formatUserLabel.spec.js src/views/Project/List.spec.js`：5 files / 49 tests passed。
+- GREEN：`mvn -f backend/pom.xml test -Dtest=UserSearchServiceTest,UserSearchControllerTest,UserRepositorySearchTest`：14 tests passed。
+- `git diff --check`：通过。
+
 # 退出登录未回登录页修复实施记录
 
 ## 问题口径

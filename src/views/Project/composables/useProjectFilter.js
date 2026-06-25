@@ -31,6 +31,12 @@ function matchFilter(filterVal, fieldVal) {
   return fieldVal === filterVal
 }
 
+function matchId(filterVal, ...fieldVals) {
+  if (filterVal == null || filterVal === '') return true
+  const expected = String(filterVal)
+  return fieldVals.some((fieldVal) => fieldVal != null && String(fieldVal) === expected)
+}
+
 const SORTERS = {
   createdAt: byDateField,
   bidOpenTime: byDateField,
@@ -58,8 +64,8 @@ export function useProjectFilter(searchForm) {
       if (!matchFilter(f.sourceModule, p.sourceModule)) return false
       if (!matchFilter(f.bidStatus, p.bidStatus)) return false
       if (!matchFilter(f.stage, p.stage)) return false
-      if (f.projectLeaderName && !(p.projectLeaderName || '').includes(f.projectLeaderName)) return false
-      if (f.biddingLeaderName && !(p.biddingLeaderName || '').includes(f.biddingLeaderName)) return false
+      if (!matchId(f.projectLeaderId, p.projectLeaderId)) return false
+      if (!matchId(f.biddingLeaderId, p.biddingLeaderId, p.secondaryBiddingLeaderId)) return false
       if (f.leaderDepartment && p.leaderDepartment !== f.leaderDepartment) return false
       if (f.region && !(p.region || '').includes(f.region)) return false
       if (f.biddingPlatform && !(p.biddingPlatform || '').includes(f.biddingPlatform)) return false

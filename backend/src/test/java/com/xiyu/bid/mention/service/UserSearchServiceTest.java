@@ -70,8 +70,8 @@ class UserSearchServiceTest {
         List<UserSearchResult> results = service.search("ali", 5);
 
         assertThat(results).hasSize(2);
-        assertThat(results.get(0)).isEqualTo(new UserSearchResult(3L, "Alice Smith", null, "MANAGER", null, "manager"));
-        assertThat(results.get(1)).isEqualTo(new UserSearchResult(4L, "Bob Lee", null, "MANAGER", null, "manager"));
+        assertThat(results.get(0)).isEqualTo(new UserSearchResult(3L, "Alice Smith", "alice", "MANAGER", null, "manager"));
+        assertThat(results.get(1)).isEqualTo(new UserSearchResult(4L, "Bob Lee", "bob", "MANAGER", null, "manager"));
     }
 
     @Test
@@ -122,6 +122,32 @@ class UserSearchServiceTest {
                 return n.equalsIgnoreCase("email") || n.equalsIgnoreCase("password");
             }).count();
         assertThat(leaky).isZero();
+    }
+
+    @Test
+    @DisplayName("employee number is preserved in search results")
+    void employeeNumber_IsPreserved() {
+        User user = User.builder()
+            .id(6L).username("zhangsan").email("z@x.com").password("p")
+            .fullName("张三").employeeNumber("E006").role(User.Role.MANAGER).build();
+        when(userRepository.searchActiveUsers(anyString(), anyInt())).thenReturn(List.of(user));
+
+        List<UserSearchResult> results = service.search("张", 10);
+
+        assertThat(results.get(0).employeeNumber()).isEqualTo("E006");
+    }
+
+    @Test
+    @DisplayName("username is used as employee number fallback for organization synced users")
+    void username_IsEmployeeNumberFallback() {
+        User user = User.builder()
+            .id(7L).username("03645").email("u@x.com").password("p")
+            .fullName("李四").employeeNumber(" ").role(User.Role.MANAGER).build();
+        when(userRepository.searchActiveUsers(anyString(), anyInt())).thenReturn(List.of(user));
+
+        List<UserSearchResult> results = service.search("03645", 10);
+
+        assertThat(results.get(0).employeeNumber()).isEqualTo("03645");
     }
 
     @Test

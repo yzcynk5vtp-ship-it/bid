@@ -34,7 +34,7 @@ const mountInput = (props = {}) =>
 describe('MentionInput', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    usersApi.search.mockResolvedValue({ data: [{ id: 7, name: 'Alice', role: 'BID_SPECIALIST' }] })
+    usersApi.search.mockResolvedValue([{ id: 7, name: 'Alice', role: 'BID_SPECIALIST' }])
   })
 
   it('mounts with initial value', () => {
@@ -64,6 +64,7 @@ describe('MentionInput', () => {
     await flushPromises()
     expect(usersApi.search).toHaveBeenCalled()
     expect(usersApi.search.mock.calls[0][0]).toBe('ali')
+    expect(usersApi.search.mock.calls[0][2]).toMatchObject({ signal: expect.any(AbortSignal) })
   })
 
   it('submit emits parsed content', async () => {

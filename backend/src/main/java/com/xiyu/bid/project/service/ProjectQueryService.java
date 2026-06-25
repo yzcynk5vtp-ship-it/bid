@@ -5,12 +5,13 @@ import com.xiyu.bid.demo.service.DemoFusionService;
 import com.xiyu.bid.demo.service.DemoModeService;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.project.core.ProjectStage;
-import com.xiyu.bid.project.core.ProjectStatusPolicy;
 import com.xiyu.bid.project.dto.ProjectDTO;
 import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.entity.ProjectLeadAssignment;
 import com.xiyu.bid.project.entity.ProjectResult;
 import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
+import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.project.repository.ProjectResultRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
@@ -47,6 +48,9 @@ public class ProjectQueryService {
     /** Details repository for leader/department fields. */
     private final ProjectInitiationDetailsRepository
             projectInitiationDetailsRepository;
+
+    /** Lead assignment repo for exact leader user id fields. */
+    private final ProjectLeadAssignmentRepository projectLeadAssignmentRepository;
 
     /** Evaluation repo for sub-stage in EVALUATING stage. */
     private final ProjectEvaluationRepository
@@ -115,6 +119,15 @@ public class ProjectQueryService {
                                         ::getProjectId,
                                 d -> d));
 
+        Map<Long, ProjectLeadAssignment> leadAssignmentMap =
+                projectLeadAssignmentRepository
+                        .findByProjectIdIn(ids)
+                        .stream()
+                        .collect(Collectors.toMap(
+                                ProjectLeadAssignment::getProjectId,
+                                Function.identity(),
+                                (a, b) -> a));
+
         // Batch-fetch evaluations for list fields (shortlistedCount, customerRevenue)
         Map<Long, TenderEvaluation> evalMap = tenderIds.isEmpty()
                 ? java.util.Collections.emptyMap()
@@ -145,9 +158,22 @@ public class ProjectQueryService {
                         && det.getAnnualEcommerceAmount() != null) {
                     dto.setRevenue(det.getAnnualEcommerceAmount());
                 }
+                if (dto.getProjectLeaderId() == null
+                        && det.getOwnerUserId() != null) {
+                    dto.setProjectLeaderId(det.getOwnerUserId());
+                }
             }
 
-            populateFromTender(dto, tenderMap);
+            ProjectLeadAssignment leadAssignment =
+                    leadAssignmentMap.get(dto.getId());
+            if (leadAssignment != null) {
+                dto.setBiddingLeaderId(
+                        leadAssignment.getPrimaryLeadUserId());
+                dto.setSecondaryBiddingLeaderId(
+                        leadAssignment.getSecondaryLeadUserId());
+            }
+
+            ProjectListEnrichmentSupport.populateFromTender(dto, tenderMap);
 
             // Evaluation-derived fields: shortlistedCount & customerRevenue
             TenderEvaluation eval = evalMap.get(dto.getTenderId());
@@ -162,16 +188,16 @@ public class ProjectQueryService {
                 }
             }
 
-            ProjectStage stage = resolveStage(dto.getStage());
-            boolean submitted = isInitiationSubmitted(det);
+            ProjectStage stage = ProjectListEnrichmentSupport.resolveStage(dto.getStage());
+            boolean submitted = ProjectListEnrichmentSupport.isInitiationSubmitted(det);
             // Populate bidResultStatus from the actual project result (project_result table),
             // not from ProjectInitiationDetails.bid_result_status (which may be NULL).
             // This ensures bidStatus reflects the real result type after result registration.
             String bidResult = projectResultMap.getOrDefault(dto.getId(), dto.getBidResultStatus());
-            dto.setBidStatus(ProjectStatusPolicy.compute(
+            dto.setBidStatus(ProjectListEnrichmentSupport.computeBidStatus(
                     stage,
                     bidResult,
-                    submitted).name());
+                    submitted));
 
             if (stage == ProjectStage.EVALUATING) {
                 projectEvaluationRepository
@@ -180,100 +206,6 @@ public class ProjectQueryService {
                                 ev.getSubStage()));
             }
         }
-    }
-
-    private void populateFromTender(
-            final ProjectDTO dto,
-            final Map<Long, Tender> tenderMap) {
-        Long tenderId = dto.getTenderId();
-        if (tenderId == null) {
-            return;
-        }
-        Tender t = tenderMap.get(tenderId);
-        if (t == null) {
-            return;
-        }
-        if (dto.getOwnerUnit() == null
-                && t.getPurchaserName() != null) {
-            dto.setOwnerUnit(t.getPurchaserName());
-        }
-        if (dto.getBidOpenTime() == null
-                && t.getBidOpeningTime() != null) {
-            dto.setBidOpenTime(t.getBidOpeningTime());
-        }
-        if (dto.getProjectType() == null
-                && t.getProjectType() != null) {
-            dto.setProjectType(t.getProjectType());
-        }
-        if (dto.getCustomerType() == null
-                && t.getCustomerType() != null) {
-            dto.setCustomerType(t.getCustomerType());
-        }
-        if (dto.getRegion() == null && t.getRegion() != null) {
-            dto.setRegion(t.getRegion());
-        }
-        if (dto.getPriority() == null && t.getPriority() != null) {
-            dto.setPriority(t.getPriority());
-        }
-        if (dto.getBiddingPlatform() == null
-                && t.getSourcePlatform() != null) {
-            dto.setBiddingPlatform(t.getSourcePlatform());
-        }
-        if (dto.getBidMonth() == null
-                && t.getBidOpeningTime() != null) {
-            dto.setBidMonth(t.getBidOpeningTime()
-                    .toLocalDate()
-                    .toString()
-                    .substring(0, 7));
-        }
-        // sourceModule 收敛到 Tender.SourceType 分类（中文 label），与项目列表 UI 筛选项对齐：
-        // 具体招标平台名（如"建工招采"）由 biddingPlatform 字段承载。
-        if (dto.getSourceModule() == null && t.getSourceType() != null) {
-            dto.setSourceModule(t.getSourceType().getLabel());
-        }
-        if (dto.getBudget() == null && t.getBudget() != null) {
-            dto.setBudget(t.getBudget());
-        }
-        // Leader fields: fallback to tender when not populated by initiation details
-        if (isBlank(dto.getProjectLeaderName())
-                && !isBlank(t.getProjectManagerName())) {
-            dto.setProjectLeaderName(t.getProjectManagerName());
-        }
-        if (isBlank(dto.getLeaderDepartment())
-                && !isBlank(t.getDepartment())) {
-            dto.setLeaderDepartment(t.getDepartment());
-        }
-        if (isBlank(dto.getBiddingLeaderName())
-                && !isBlank(t.getBiddingPersonName())) {
-            dto.setBiddingLeaderName(t.getBiddingPersonName());
-        }
-    }
-
-    private static boolean isBlank(String s) {
-        return s == null || s.isBlank();
-    }
-
-    private static ProjectStage resolveStage(final String stageValue) {
-        if (stageValue == null || stageValue.isBlank()) {
-            return ProjectStage.INITIATED;
-        }
-        try {
-            return ProjectStage.valueOf(stageValue.trim());
-        } catch (IllegalArgumentException ex) {
-            return ProjectStage.INITIATED;
-        }
-    }
-
-    private static boolean isInitiationSubmitted(
-            final ProjectInitiationDetails details) {
-        if (details == null || details.getReviewStatus() == null) {
-            return false;
-        }
-        return switch (details.getReviewStatus()) {
-            case "PENDING_REVIEW", "APPROVED" -> true;
-            case "DRAFT", "REJECTED" -> false;
-            default -> false;
-        };
     }
 
     private List<ProjectDTO> mergeDemoProjectsIfNeeded(

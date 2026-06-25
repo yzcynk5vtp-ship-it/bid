@@ -62,6 +62,8 @@ public class ProjectController {
             @RequestParam(required = false) String sourceModule,
             @RequestParam(required = false) String bidStatus,
             @RequestParam(required = false) String stage,
+            @RequestParam(required = false) Long projectLeaderId,
+            @RequestParam(required = false) Long biddingLeaderId,
             @RequestParam(required = false) String projectLeaderName,
             @RequestParam(required = false) String biddingLeaderName,
             @RequestParam(required = false) String leaderDepartment,
@@ -80,6 +82,8 @@ public class ProjectController {
         if (sourceModule != null && !sourceModule.isBlank()) projects = projects.stream().filter(p -> sourceModule.equals(p.getSourceModule())).toList();
         if (bidStatus != null && !bidStatus.isBlank()) projects = projects.stream().filter(p -> bidStatus.equals(p.getBidStatus())).toList();
         if (stage != null && !stage.isBlank()) projects = projects.stream().filter(p -> stage.equals(p.getStage())).toList();
+        if (projectLeaderId != null) projects = projects.stream().filter(p -> projectLeaderId.equals(p.getProjectLeaderId())).toList();
+        if (biddingLeaderId != null) projects = projects.stream().filter(p -> biddingLeaderId.equals(p.getBiddingLeaderId()) || biddingLeaderId.equals(p.getSecondaryBiddingLeaderId())).toList();
         if (projectLeaderName != null && !projectLeaderName.isBlank()) projects = projects.stream().filter(p -> containsIgnoreCase(p.getProjectLeaderName(), projectLeaderName)).toList();
         if (biddingLeaderName != null && !biddingLeaderName.isBlank()) projects = projects.stream().filter(p -> containsIgnoreCase(p.getBiddingLeaderName(), biddingLeaderName)).toList();
         if (leaderDepartment != null && !leaderDepartment.isBlank()) projects = projects.stream().filter(p -> leaderDepartment.equals(p.getLeaderDepartment())).toList();
@@ -221,6 +225,8 @@ public class ProjectController {
             @RequestParam(required = false) String sourceModule,
             @RequestParam(required = false) String bidStatus,
             @RequestParam(required = false) String stage,
+            @RequestParam(required = false) Long projectLeaderId,
+            @RequestParam(required = false) Long biddingLeaderId,
             @RequestParam(required = false) String projectLeaderName,
             @RequestParam(required = false) String biddingLeaderName,
             @RequestParam(required = false) String leaderDepartment,
@@ -228,7 +234,7 @@ public class ProjectController {
             @RequestParam(required = false) String biddingPlatform,
             @RequestParam(required = false) String bidMonth) throws Exception {
         log.info("GET /api/projects/export - Exporting projects (status={})", status);
-        var result = projectExportService.exportProjectsAsExcel(status, name, ownerUnit, projectType, customerType, priority, sourceModule, bidStatus, stage, projectLeaderName, biddingLeaderName, leaderDepartment, region, biddingPlatform, bidMonth);
+        var result = projectExportService.exportProjectsAsExcel(status, name, ownerUnit, projectType, customerType, priority, sourceModule, bidStatus, stage, projectLeaderId, biddingLeaderId, projectLeaderName, biddingLeaderName, leaderDepartment, region, biddingPlatform, bidMonth);
         var headers = new HttpHeaders();
         headers.setContentDispositionFormData("attachment", "投标项目列表_" + result.filename());
         return ResponseEntity.ok().headers(headers).contentType(MediaType.APPLICATION_OCTET_STREAM).body(new InputStreamResource(result.data()));

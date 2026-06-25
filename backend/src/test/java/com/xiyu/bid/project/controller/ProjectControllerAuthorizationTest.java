@@ -35,6 +35,8 @@ class ProjectControllerAuthorizationTest {
                 String.class,
                 String.class,
                 String.class,
+                Long.class,
+                Long.class,
                 String.class,
                 String.class,
                 String.class,

@@ -62,14 +62,10 @@
           start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" class="filter-date-picker" clearable />
       </el-form-item>
       <el-form-item label="项目负责人" class="search-field">
-        <el-select v-model="searchForm.projectLeaderName" placeholder="全部" clearable filterable remote :remote-method="(q) => searchUsers(q, 'pm')" :loading="userLoading.pm" class="filter-select">
-          <el-option v-for="u in userOptions.pm" :key="u.id" :label="formatUserLabel(u)" :value="u.name" />
-        </el-select>
+        <UserPicker v-model="searchForm.projectLeaderId" mode="search" placeholder="全部" clearable class="filter-select" />
       </el-form-item>
       <el-form-item label="投标负责人" class="search-field">
-        <el-select v-model="searchForm.biddingLeaderName" placeholder="全部" clearable filterable remote :remote-method="(q) => searchUsers(q, 'bp')" :loading="userLoading.bp" class="filter-select">
-          <el-option v-for="u in userOptions.bp" :key="u.id" :label="formatUserLabel(u)" :value="u.name" />
-        </el-select>
+        <UserPicker v-model="searchForm.biddingLeaderId" mode="search" placeholder="全部" clearable class="filter-select" />
       </el-form-item>
       <el-form-item label="投标平台" class="search-field">
         <el-input v-model="searchForm.biddingPlatform" placeholder="请输入" clearable class="search-input" />
@@ -88,7 +84,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Search, RefreshLeft } from '@element-plus/icons-vue'
-import { formatUserLabel } from '@/utils/formatUserLabel.js'
+import UserPicker from '@/components/common/UserPicker.vue'
 
 const props = defineProps({
   searchForm: { type: Object, required: true },
@@ -100,9 +96,6 @@ const props = defineProps({
   customerTypeOptions: { type: Array, default: () => [] },
   bidMonthOptions: { type: Array, default: () => [] },
   chinaRegionOptions: { type: Array, default: () => [] },
-  userOptions: { type: Object, default: () => ({ pm: [], bp: [] }) },
-  userLoading: { type: Object, default: () => ({ pm: false, bp: false }) },
-  searchUsers: { type: Function, default: () => {} },
 })
 
 defineEmits(['search', 'reset'])

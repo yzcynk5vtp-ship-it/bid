@@ -42,12 +42,7 @@ function mockComposable(overrides = {}) {
     loading: ref(false),
     search: vi.fn(),
     loadCandidates: vi.fn(),
-    formatLabel: (user) => {
-      if (!user) return ''
-      const name = user.name || ''
-      const parts = [user.deptName, user.roleName].filter(Boolean)
-      return parts.length === 0 ? name : `${name}（${parts.join('·')}）`
-    },
+    formatLabel: (user) => user ? `${user.name}（${user.employeeNumber}）` : '—',
   }
   useUserPickerMock.mockReturnValue({ ...defaults, ...overrides })
 }
@@ -111,6 +106,22 @@ describe('UserPicker', () => {
     })
   })
 
+  it('supports non-id valueField while still emitting full user object', async () => {
+    mockComposable({ options: ref([mockUser]) })
+    const wrapper = mount(UserPicker, {
+      props: { mode: 'search', valueField: 'name' },
+      global: { stubs: elementStubs },
+    })
+
+    const option = wrapper.findComponent({ name: 'ElOption' })
+    expect(option.props('value')).toBe('张三')
+
+    await wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', '张三')
+
+    expect(wrapper.emitted('update:modelValue').at(-1)[0]).toBe('张三')
+    expect(wrapper.emitted('select')[0][0]).toMatchObject({ id: 1, name: '张三' })
+  })
+
   it('passes placeholder to el-select', () => {
     const wrapper = mount(UserPicker, {
       props: { mode: 'search', placeholder: '请选择执行人' },
@@ -135,6 +146,6 @@ describe('UserPicker', () => {
       global: { stubs: elementStubs },
     })
     const option = wrapper.findComponent({ name: 'ElOption' })
-    expect(option.props('label')).toBe('张三（投标管理部·投标管理员）')
+    expect(option.props('label')).toBe('张三（20260509）')
   })
 })
