@@ -183,6 +183,7 @@ import { useUserStore } from '@/stores/user.js'
 import { isBidManager } from '@/utils/permission'
 import AdaptiveFormPage from '@/components/common/AdaptiveFormPage.vue'
 import UserPicker from '@/components/common/UserPicker.vue'
+import { toUserName } from '@/utils/userPicker.js'
 import { useInitiationStageActions } from './useInitiationStageActions.js'
 import { POSITION_OPTIONS, CONTACT_METHOD_OPTIONS, TENDENCY_OPTIONS, IMPACT_OPTIONS } from '@/views/Bidding/detail/components/customerInfoMatrixConfig.js'
 
@@ -211,8 +212,8 @@ const fieldDisabled = computed(() => locked.value || evalPrefilled.value)
 const userRole = computed(() => userStore.currentUser?.roleCode || userStore.currentUser?.role || '')
 const isApprovalMode = computed(() => isBidManager(userRole.value) && reviewStatus.value === 'PENDING_REVIEW')
 const approvalForm = reactive({ biddingLeaderId: null, biddingLeaderLabel: '', biddingAssistantId: null, biddingAssistantLabel: '' })
-function onLeaderSelect(user) { if (user) { approvalForm.biddingLeaderLabel = user.name || user.fullName || '' } }
-function onAssistantSelect(user) { if (user) { approvalForm.biddingAssistantLabel = user.name || user.fullName || '' } }
+function onLeaderSelect(user) { if (user) { approvalForm.biddingLeaderLabel = toUserName(user) } }
+function onAssistantSelect(user) { if (user) { approvalForm.biddingAssistantLabel = toUserName(user) } }
 const uploadUrl = '/api/upload'
 const uploadHeaders = computed(() => { const t = userStore?.token; return t ? { Authorization: 'Bearer ' + t } : {} })
 const riskTagType = computed(() => form.aiRiskLevel === 'HIGH' ? 'danger' : form.aiRiskLevel === 'MEDIUM' ? 'warning' : form.aiRiskLevel === 'LOW' ? 'success' : 'info')

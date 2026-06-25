@@ -118,6 +118,7 @@ import QualityCheckDialog from './components/QualityCheckDialog.vue'
 import { useProjectDetailContext } from '@/composables/projectDetail/context.js'
 import { useProjectDraftingPermissions } from '@/composables/projectDetail/useProjectDraftingPermissions.js'
 import UserPicker from '@/components/common/UserPicker.vue'
+import { toUserName } from '@/utils/userPicker.js'
 const userStore = useUserStore()
 const ctx = useProjectDetailContext()
 const { bidAgent } = ctx
@@ -200,7 +201,7 @@ async function load() {
 
 function handleReviewerSelected(user) {
   selectedReviewer.value = user
-  reviewerName.value = user?.name || ''
+  reviewerName.value = toUserName(user)
 
   // 验证：不能选择项目经理或团队成员
   const project = ctx.project?.value || {}

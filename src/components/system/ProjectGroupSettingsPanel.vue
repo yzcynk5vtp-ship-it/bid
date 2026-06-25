@@ -66,6 +66,7 @@
 
 <script setup>
 import UserPicker from '@/components/common/UserPicker.vue'
+import { toUserName } from '@/utils/userPicker.js'
 
 const props = defineProps({
   projectGroups: { type: Array, required: true },
@@ -88,7 +89,7 @@ const roleOptions = [
 ]
 
 const handleManagerSelect = (row, user) => {
-  row.manager = user?.name || ''
+  row.manager = toUserName(user)
   syncMeta(row)
 }
 

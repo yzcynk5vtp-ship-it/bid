@@ -659,3 +659,11 @@
 | `src/views/Bidding/list/components/AssignDialog.vue` | `mode="candidates"` → `mode="search"` |
 | `.agent-locks/user-picker-pinyin-search.yml` | **新建**：文件锁 (entity + migration)
 
+## P1 修复（思维链 Review 驱动）
+
+| 问题 | 位置 | 修复内容 | 状态 |
+|------|------|---------|------|
+| mergedOptions 去重 | `UserPicker.vue:58-67` | 已有 Map 去重逻辑，无需修改 | ✅ 验证通过 |
+| 多选编辑回显标签显示为数字ID | `ReminderSettingsDialog.vue:94-104` | 新增 `userPickerInitialOptions`，编辑时从 `reminderTargets` 构造 `{id, name}` 格式传入 `:initial-options`，确保 UserPicker 已选项显示用户姓名而非纯 ID 数字 | ✅ 已修复 |
+| 用户对象→ID 转换代码分散5个组件 | `DraftingStage.vue:202` / `InitiationStage.vue:214-215` / `ProjectGroupSettingsPanel.vue:91` / `ReminderSettingsDialog.vue:100-107` | 新增 `src/utils/userPicker.js` 提供：`toUserIds()` / `toUserName()` / `toReminderTargets()` / `fromReminderTargets()` 四个通用函数，消除重复 | ✅ 已修复 |
+

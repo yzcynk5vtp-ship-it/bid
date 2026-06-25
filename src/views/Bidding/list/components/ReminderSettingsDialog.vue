@@ -28,6 +28,7 @@
           multiple
           placeholder="搜索并选择通知对象（姓名/工号/拼音）"
           style="width: 100%"
+          :initial-options="userPickerInitialOptions"
           @select="handleUsersSelected"
         />
       </el-form-item>
@@ -63,6 +64,7 @@
 import { ref, computed, watch } from 'vue'
 import { useReminderSettings } from './useReminderSettings.js'
 import UserPicker from '@/components/common/UserPicker.vue'
+import { toReminderTargets, fromReminderTargets, toUserIds } from '@/utils/userPicker.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, required: true },
@@ -88,22 +90,21 @@ const modelValue = computed({
 // UserPicker 使用 userId 数组，转换为 API 需要的格式
 const selectedUserIds = ref([])
 
-// 编辑时从 reminderTargets 恢复 userId 列表
+// 编辑时从 reminderTargets 恢复 userId 列表，并构造 initialOptions 用于标签显示
+const userPickerInitialOptions = ref([])
+
 watch(editingReminder, (reminder) => {
   if (reminder && reminder.reminderTargets) {
-    selectedUserIds.value = reminder.reminderTargets.map(t => t.userId)
+    selectedUserIds.value = toUserIds(fromReminderTargets(reminder.reminderTargets))
+    userPickerInitialOptions.value = fromReminderTargets(reminder.reminderTargets)
   } else {
     selectedUserIds.value = []
+    userPickerInitialOptions.value = []
   }
 })
 
 function handleUsersSelected(users) {
-  // 将 User 对象数组转换为 API 需要的格式
-  form.reminderTargets = users.map(user => ({
-    userId: user.id,
-    userName: user.name,
-    wecomUserId: user.wecomUserId || ''
-  }))
+  form.reminderTargets = toReminderTargets(users)
 }
 
 function handleSave() {
@@ -117,6 +118,7 @@ function removeTarget(target) {
   if (index > -1) {
     form.reminderTargets.splice(index, 1)
     selectedUserIds.value = selectedUserIds.value.filter(id => id !== target.userId)
+    userPickerInitialOptions.value = fromReminderTargets(form.reminderTargets)
   }
 }
 
