@@ -52,6 +52,50 @@ describe('RetireConfirmDialog', () => {
     expect(wrapper.emitted('confirm')[0][0]).toEqual({ id: 1, reason: '证书已过期不再使用' })
   })
 
+  it('should show error when reason is less than 4 characters', async () => {
+    const wrapper = mount(RetireConfirmDialog, {
+      props: {
+        modelValue: true,
+        data: { id: 1, name: 'ISO', certificateNo: 'C001' }
+      },
+      global: { stubs }
+    })
+    wrapper.vm.form.reason = '过期'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.reasonError).toBe('下架原因不少于4个字')
+  })
+
+  it('should clear error when reason reaches 4 characters', async () => {
+    const wrapper = mount(RetireConfirmDialog, {
+      props: {
+        modelValue: true,
+        data: { id: 1, name: 'ISO', certificateNo: 'C001' }
+      },
+      global: { stubs }
+    })
+    wrapper.vm.form.reason = '过期'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.reasonError).toBe('下架原因不少于4个字')
+    wrapper.vm.form.reason = '证书已过期'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.reasonError).toBe('')
+  })
+
+  it('should enable submit when reason >= 4 chars and confirmed', async () => {
+    const wrapper = mount(RetireConfirmDialog, {
+      props: {
+        modelValue: true,
+        data: { id: 1, name: 'ISO', certificateNo: 'C001' }
+      },
+      global: { stubs }
+    })
+    wrapper.vm.form.reason = '证书已过期'
+    wrapper.vm.form.confirmed = true
+    await wrapper.vm.$nextTick()
+    const submitBtn = wrapper.findAll('.el-button').find(b => b.text().includes('确认下架'))
+    expect(submitBtn?.attributes('disabled')).toBeUndefined()
+  })
+
   it('should reset form when dialog opens', async () => {
     const wrapper = mount(RetireConfirmDialog, {
       props: {
