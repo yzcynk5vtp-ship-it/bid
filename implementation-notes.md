@@ -618,3 +618,43 @@
 
 - `mvn -f backend/pom.xml test -Dtest=UserSearchServiceTest,AssignmentCandidatePolicyTest,AssignmentCandidateControllerTest`：28 tests passed，0 failures，0 errors。
 - `git diff --check`：通过，无空白错误。
+
+# 用户选择框标准化 + 拼音搜索实施记录
+
+## 问题口径
+
+- 用户选择框（转派/指派标讯）使用 `mode="candidates"`（固定候选列表），只能选下拉预加载的人。几千人的组织里无法搜索未预加载的用户。
+- 需要按 **姓名**、**工号**、**姓名拼音** 进行搜索。
+- **投标负责人选择框（`mode="search"`）是正确的标准**，系统中所有选择框应统一为该行为。
+
+## 决策与权衡
+
+1. **拼音方案选择**：选择在数据库增加 `full_name_pinyin` 列，配合 `@PrePersist`/`@PreUpdate` 生命周期钩子在应用层自动维护。不选择全运行时计算（性能差），不选纯 SQL 函数（MySQL 8.0 无内置拼音函数）。
+2. **Pinyin4j 库**：使用 `com.belerweb:pinyin4j:2.5.1` — 成熟、轻量、无外部依赖。Maven 代理问题通过 `pom.xml` 直接引用，仓库中心已有。
+3. **拼音存储格式**：**全拼连续无空格**（`"张三" → "zhangsan"`，不是 `"zhang san"`）。这样 `LIKE '%zhangsan%'` 匹配全拼搜索，`LIKE '%ang%'` 也匹配部分拼音。
+4. **`mode="candidates" → "search"` 转换**：3 处 Bidding 相关的转派/指派对话框改为 `mode="search"`，移除 `context="tender"`（search mode 不使用 context）。`@select` 事件和 `v-model` 完全兼容。
+5. **`fullNamePinyin` 的 `@PreUpdate` 策略**：每次更新时重新计算拼音（不设条件），确保 fullName 改变时拼音列始终同步。`@PrePersist` 只在 null 时设置，兼容初始未见 persister 或直接 JDBC 写入的情况。
+6. **不修改 `UserPicker.vue` 或 `useUserPicker.js`**：两个 mode 已支持完善，无需改 composable。
+7. **不修改已为 `mode="search"` 的其他组件**（ProjectSearchCard.vue, InitiationStage.vue 等）：它们本来就是正确的。
+
+## 测试覆盖
+
+- 新增 `PinyinUtilsTest`：12 个用例覆盖 null/空/空白/汉字/英文/数字混合/多音字
+- 新增 `UserSearchServiceTest.searchByPinyin`：验证拼音搜索的 service 层管道
+- 回归 `UserSearchServiceTest` + `UserSearchControllerTest`：总计 25 tests passed, BUILD SUCCESS
+
+## 改动摘要
+
+| 文件 | 改动 |
+|---|---|
+| `backend/pom.xml` | 添加 `com.belerweb:pinyin4j:2.5.1` 依赖 |
+| `backend/.../common/util/PinyinUtils.java` | **新建**：汉字→全拼无空格转换工具类 |
+| `backend/.../db/migration-mysql/V1096__add_users_full_name_pinyin.sql` | **新建**：users 表增加 `full_name_pinyin` 列（idempotent 模式） |
+| `backend/.../entity/User.java` | 新增 `fullNamePinyin` 字段 + `@PrePersist`/`@PreUpdate` 自动维护 |
+| `backend/.../repository/UserRepository.java` | `searchActiveUsers` 查询增加 `full_name_pinyin` 匹配 |
+| `backend/.../common/util/PinyinUtilsTest.java` | **新建**：12 个拼音转换测试 |
+| `backend/.../mention/service/UserSearchServiceTest.java` | 新增拼音搜索 service 层测试 |
+| `src/views/Bidding/List.vue` | `mode="candidates"` → `mode="search"` |
+| `src/views/Bidding/detail/DetailPage.vue` | `mode="candidates"` → `mode="search"` |
+| `src/views/Bidding/list/components/AssignDialog.vue` | `mode="candidates"` → `mode="search"` |
+| `.agent-locks/user-picker-pinyin-search.yml` | **新建**：文件锁 (entity + migration)
