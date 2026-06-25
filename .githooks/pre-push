@@ -106,6 +106,10 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
 done
 
 # 1) refuse force pushes to protected branches.
+#    差异化策略:
+#      - Gitee (origin) main: 绝对禁止 force push（Gitee 是唯一真值，只能通过 PR 合入）
+#      - GitHub (github) main: 允许 force-with-lease（单向镜像，Gitee → GitHub）
+#      - 其他远端 + 其他受保护分支: 默认禁止
 while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
     if [[ "${remote_ref}" =~ ${PROTECTED_BRANCHES_REGEX} ]]; then
         # New ref creation (remote_sha is all zeros) is allowed.
@@ -114,15 +118,44 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
         fi
         # Non-fast-forward detection: remote_sha must be an ancestor of local_sha.
         if ! git merge-base --is-ancestor "${remote_sha}" "${local_sha}" 2>/dev/null; then
-            if [ "${FORCE_PUSH_OK:-0}" != "1" ]; then
-                echo "::pre-push:: refusing non-fast-forward push to ${remote_ref}." >&2
-                echo "  remote: ${remote_sha}" >&2
-                echo "  local : ${local_sha}" >&2
-                echo "  If this is intentional (e.g. authorized history surgery for #224)," >&2
-                echo "  rerun with FORCE_PUSH_OK=1 git push ..." >&2
+            # 判断是否为允许的特例：GitHub remote 的 main 分支（单向镜像）
+            is_github_mirror=0
+            case "$remote_url" in
+              *github.com*|*github-bid*)
+                # 只有 main 分支且是 Gitee→GitHub 镜像方向才允许
+                if [[ "${remote_ref}" == "refs/heads/main" ]]; then
+                    is_github_mirror=1
+                fi
+                ;;
+            esac
+
+            if [ "${FORCE_PUSH_OK:-0}" != "1" ] && [ "$is_github_mirror" != "1" ]; then
+                echo "" >&2
+                echo "╔══════════════════════════════════════════════════════════════╗" >&2
+                echo "║  ❌ 禁止非快进推送（force push）到 ${remote_ref} ║" >&2
+                echo "╠══════════════════════════════════════════════════════════════╣" >&2
+                echo "║  远端: $remote" >&2
+                echo "║  远端 SHA: ${remote_sha:0:12}" >&2
+                echo "║  本地 SHA: ${local_sha:0:12}" >&2
+                echo "║                                                          ║" >&2
+                if [[ "${remote_ref}" == "refs/heads/main" ]]; then
+                    echo "║  原因: 重写 main 分支历史会覆盖他人的提交。            ║" >&2
+                    echo "║  正确做法:                                              ║" >&2
+                    echo "║    1. git pull --rebase  （同步到最新）                 ║" >&2
+                    echo "║    2. 解决冲突                                          ║" >&2
+                    echo "║    3. git push          （正常推送）                    ║" >&2
+                else
+                    echo "║  原因: 重写受保护分支历史。                            ║" >&2
+                fi
+                echo "╚══════════════════════════════════════════════════════════════╝" >&2
+                echo "" >&2
                 exit 1
             fi
-            echo "::pre-push:: FORCE_PUSH_OK=1 set, allowing non-fast-forward push to ${remote_ref}." >&2
+            if [ "$is_github_mirror" = "1" ]; then
+                echo "::pre-push:: GitHub main 单向镜像，允许 force-with-lease 推送。" >&2
+            else
+                echo "::pre-push:: FORCE_PUSH_OK=1 set, allowing non-fast-forward push to ${remote_ref}." >&2
+            fi
         fi
 
         # 2) root-commit ratchet: refuse pushes that would grow the root count.
