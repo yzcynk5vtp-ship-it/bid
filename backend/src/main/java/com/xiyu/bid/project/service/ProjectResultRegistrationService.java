@@ -219,11 +219,13 @@ public class ProjectResultRegistrationService {
             return "unknown";
         }
         String fullName = user.getFullName();
-        String employeeId = user.getEmployeeNumber();
+        // CO-300: employeeNumber 为空时回退到 username（getDisplayEmployeeNumber 已封装此逻辑），
+        // 确保操作人始终为"姓名（工号）"格式，与 AuditLogItemMapper 保持一致。
+        String employeeId = user.getDisplayEmployeeNumber();
         if (isStrBlank(fullName)) {
-            return employeeId != null && !employeeId.isBlank() ? employeeId : "unknown";
+            return isStrBlank(employeeId) ? "unknown" : employeeId;
         }
-        if (employeeId != null && !employeeId.isBlank()) {
+        if (!isStrBlank(employeeId)) {
             return "%s（%s）".formatted(fullName, employeeId);
         }
         return fullName;
