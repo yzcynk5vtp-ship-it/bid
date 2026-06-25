@@ -1,7 +1,7 @@
 <template>
   <el-select
     v-model="selectedId"
-    :filterable="mode === 'search'"
+    :filterable="mode !== 'search'"
     :remote="mode === 'search'"
     :remote-method="handleRemoteSearch"
     :loading="loading"
