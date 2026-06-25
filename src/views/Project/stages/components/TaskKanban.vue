@@ -151,7 +151,7 @@ function isTaskAssignee(task) {
 
 const canReviewTasks = computed(() => {
   const roleCode = userStore?.currentUser?.roleCode || userStore?.currentUser?.role || ''
-  if (GLOBAL_MANAGE_ROLES.some(r => r.toLowerCase() === roleCode?.toLowerCase())) {
+  if (GLOBAL_MANAGE_ROLES.some(r => r.toLowerCase() === roleCode.toLowerCase())) {
     return true
   }
   const currentUserId = userStore?.currentUser?.id
