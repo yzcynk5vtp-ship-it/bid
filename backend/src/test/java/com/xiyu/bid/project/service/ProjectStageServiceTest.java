@@ -8,6 +8,7 @@ import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy;
+import com.xiyu.bid.project.domain.ProjectStageTransitionedEvent;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +34,7 @@ class ProjectStageServiceTest {
 
     private ProjectRepository projectRepo;
     private ProjectNotificationService notificationService;
+    private ApplicationEventPublisher eventPublisher;
     private ProjectStageService service;
 
     private static final Long PID = 1L;
@@ -42,7 +44,7 @@ class ProjectStageServiceTest {
     @BeforeEach
     void setup() {
         projectRepo = mock(ProjectRepository.class);
-        ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
+        eventPublisher = mock(ApplicationEventPublisher.class);
         notificationService = mock(ProjectNotificationService.class);
         service = new ProjectStageService(projectRepo, eventPublisher, notificationService);
         when(projectRepo.save(any(Project.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -131,6 +133,22 @@ class ProjectStageServiceTest {
         assertEquals(ProjectStage.DRAFTING.name(), captor.getValue().getStage());
         // 同一个 entity 引用被更新（@Auditable AOP 关心的是方法成功返回）
         assertEquals(ProjectStage.DRAFTING.name(), p.getStage());
+    }
+
+    @Test
+    void requestTransition_publishesStageTransitionedEvent_withFromAndTo() {
+        // CO-324: 推进后发 ProjectStageTransitionedEvent，由 audit listener 记录"从 XX 推进至 YY"。
+        mockProjectAtStage(ProjectStage.EVALUATING);
+        service.requestTransition(PID, ProjectStage.RESULT_PENDING, GATE);
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        ProjectStageTransitionedEvent evt = captor.getAllValues().stream()
+                .filter(ProjectStageTransitionedEvent.class::isInstance)
+                .map(ProjectStageTransitionedEvent.class::cast)
+                .findFirst().orElseThrow(() -> new AssertionError("ProjectStageTransitionedEvent 未发布"));
+        assertEquals(PID, evt.projectId());
+        assertEquals(ProjectStage.EVALUATING, evt.fromStage(), "事件应携带源阶段");
+        assertEquals(ProjectStage.RESULT_PENDING, evt.toStage(), "事件应携带目标阶段");
     }
 
     @Test
