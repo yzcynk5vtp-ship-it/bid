@@ -12,9 +12,8 @@
       <el-form-item label="指派给" required>
         <UserPicker
           v-model="localForm.assignee"
-          mode="candidates"
-          context="tender"
-          placeholder="选择人员"
+          mode="search"
+          placeholder="搜索人员（姓名/工号/拼音）"
           class="full-width"
           @select="onUserSelect"
         />

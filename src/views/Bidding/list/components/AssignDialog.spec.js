@@ -34,13 +34,13 @@ function mountDialog(props = {}) {
 }
 
 describe('AssignDialog', () => {
-  it('renders UserPicker with candidates mode and tender context', () => {
+  it('renders UserPicker with search mode (remote search)', () => {
     const wrapper = mountDialog()
 
     const picker = wrapper.findComponent({ name: 'UserPicker' })
     expect(picker.exists()).toBe(true)
-    expect(picker.props('mode')).toBe('candidates')
-    expect(picker.props('context')).toBe('tender')
+    expect(picker.props('mode')).toBe('search')
+    expect(picker.props('context')).toBeUndefined()
   })
 
   it('shows department automatically when user is selected via @select', async () => {
