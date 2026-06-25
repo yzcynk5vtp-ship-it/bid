@@ -4,6 +4,7 @@
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.service;
 
+import com.xiyu.bid.audit.service.AuditLogService;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import com.xiyu.bid.project.core.ProjectStage;
@@ -44,7 +45,8 @@ class ProjectStageServiceTest {
         projectRepo = mock(ProjectRepository.class);
         ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
         notificationService = mock(ProjectNotificationService.class);
-        service = new ProjectStageService(projectRepo, eventPublisher, notificationService);
+        AuditLogService auditLogService = mock(AuditLogService.class);
+        service = new ProjectStageService(projectRepo, eventPublisher, notificationService, auditLogService);
         when(projectRepo.save(any(Project.class))).thenAnswer(inv -> inv.getArgument(0));
     }
 
