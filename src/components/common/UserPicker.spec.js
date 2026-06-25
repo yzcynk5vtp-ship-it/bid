@@ -23,16 +23,11 @@ const mockUser = {
 }
 
 const elementStubs = {
-  ElSelect: {
-    name: 'ElSelect',
-    props: ['modelValue', 'filterable', 'remote', 'remoteMethod', 'loading', 'placeholder'],
+  ElSelectV2: {
+    name: 'ElSelectV2',
+    props: ['modelValue', 'filterable', 'options', 'remote', 'remoteMethod', 'loading', 'placeholder', 'disabled', 'clearable', 'multiple', 'valueKey'],
     emits: ['update:modelValue', 'change'],
-    template: '<select class="el-select-stub"><slot /><slot name="empty" /></select>',
-  },
-  ElOption: {
-    name: 'ElOption',
-    props: ['label', 'value'],
-    template: '<option :value="value">{{ label }}</option>',
+    template: '<div class="el-select-v2-stub"><slot name="empty" /></div>',
   },
 }
 
@@ -53,12 +48,12 @@ describe('UserPicker', () => {
     mockComposable()
   })
 
-  it('renders el-select with filterable and remote when mode=search', () => {
+  it('renders el-select-v2 with filterable and remote when mode=search', () => {
     const wrapper = mount(UserPicker, {
       props: { mode: 'search' },
       global: { stubs: elementStubs },
     })
-    const select = wrapper.findComponent({ name: 'ElSelect' })
+    const select = wrapper.findComponent({ name: 'ElSelectV2' })
     expect(select.props('filterable')).toBe(true)
     expect(select.props('remote')).toBe(true)
   })
@@ -79,7 +74,7 @@ describe('UserPicker', () => {
       props: { modelValue: 1, mode: 'search' },
       global: { stubs: elementStubs },
     })
-    await wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', 2)
+    await wrapper.findComponent({ name: 'ElSelectV2' }).vm.$emit('change', 2)
     const emitted = wrapper.emitted('update:modelValue')
     expect(emitted).toBeTruthy()
     expect(emitted[emitted.length - 1][0]).toBe(2)
@@ -92,7 +87,7 @@ describe('UserPicker', () => {
       props: { mode: 'search' },
       global: { stubs: elementStubs },
     })
-    await wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', 1)
+    await wrapper.findComponent({ name: 'ElSelectV2' }).vm.$emit('change', 1)
     const emitted = wrapper.emitted('select')
     expect(emitted).toBeTruthy()
     expect(emitted[0][0]).toMatchObject({
@@ -112,22 +107,18 @@ describe('UserPicker', () => {
       props: { mode: 'search', valueField: 'name' },
       global: { stubs: elementStubs },
     })
-
-    const option = wrapper.findComponent({ name: 'ElOption' })
-    expect(option.props('value')).toBe('张三')
-
-    await wrapper.findComponent({ name: 'ElSelect' }).vm.$emit('change', '张三')
+    await wrapper.findComponent({ name: 'ElSelectV2' }).vm.$emit('change', '张三')
 
     expect(wrapper.emitted('update:modelValue').at(-1)[0]).toBe('张三')
     expect(wrapper.emitted('select')[0][0]).toMatchObject({ id: 1, name: '张三' })
   })
 
-  it('passes placeholder to el-select', () => {
+  it('passes placeholder to el-select-v2', () => {
     const wrapper = mount(UserPicker, {
       props: { mode: 'search', placeholder: '请选择执行人' },
       global: { stubs: elementStubs },
     })
-    expect(wrapper.findComponent({ name: 'ElSelect' }).props('placeholder')).toBe('请选择执行人')
+    expect(wrapper.findComponent({ name: 'ElSelectV2' }).props('placeholder')).toBe('请选择执行人')
   })
 
   it('shows empty state when options are empty', () => {
@@ -139,13 +130,16 @@ describe('UserPicker', () => {
     expect(wrapper.text()).toContain('无匹配用户')
   })
 
-  it('uses formatLabel for option labels', () => {
+  it('passes selectOptions as options prop with value/label format', () => {
     mockComposable({ options: ref([mockUser]) })
     const wrapper = mount(UserPicker, {
       props: { mode: 'search' },
       global: { stubs: elementStubs },
     })
-    const option = wrapper.findComponent({ name: 'ElOption' })
-    expect(option.props('label')).toBe('张三（20260509）')
+    const select = wrapper.findComponent({ name: 'ElSelectV2' })
+    expect(select.props('options')).toEqual([
+      { value: 1, label: '张三（20260509）' },
+    ])
+    expect(select.props('valueKey')).toBe('id')
   })
 })

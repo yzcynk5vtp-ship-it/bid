@@ -1,6 +1,7 @@
 <template>
-  <el-select
+  <el-select-v2
     v-model="selectedId"
+    :options="selectOptions"
     :filterable="true"
     :remote="mode === 'search'"
     :remote-method="handleRemoteSearch"
@@ -9,18 +10,13 @@
     :disabled="disabled"
     :clearable="clearable"
     :multiple="multiple"
+    :value-key="valueField"
     @change="handleChange"
   >
-    <el-option
-      v-for="user in mergedOptions"
-      :key="user.id"
-      :label="formatLabel(user)"
-      :value="getOptionValue(user)"
-    />
-    <template v-if="mergedOptions.length === 0" #empty>
+    <template v-if="selectOptions.length === 0" #empty>
       无匹配用户
     </template>
-  </el-select>
+  </el-select-v2>
 </template>
 
 <script setup>
@@ -64,6 +60,17 @@ const mergedOptions = computed(() => {
     if (u?.id != null) byId.set(u.id, u)
   }
   return Array.from(byId.values())
+})
+
+// Convert to el-select-v2 options format { value, label }
+// el-select-v2 is data-driven and correctly handles remote search results
+// (el-select + slot el-option has a bug where optionsArray is not recomputed
+//  after remote results arrive while the dropdown is open)
+const selectOptions = computed(() => {
+  return mergedOptions.value.map((user) => ({
+    value: getOptionValue(user),
+    label: formatLabel(user),
+  }))
 })
 
 watch(() => props.modelValue, (val) => {
