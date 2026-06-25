@@ -51,6 +51,8 @@ public final class RoleProfileCatalog {
 
     // PRD §2 角色：销售/业务负责人、投标负责人、投标部门管理员、任务执行人
     public static final String SALES_CODE = "bid-projectLeader";
+    /** 语义别名：投标项目负责人（即 SALES_CODE），用于业务代码中更清晰地表达意图 */
+    public static final String PROJECT_LEADER_CODE = SALES_CODE;
     public static final String BID_LEAD_CODE = "bid-TeamLeader";
     public static final String BID_ADMIN_CODE = "/bidAdmin";
     public static final String BID_SPECIALIST_CODE = "bid-Team";
@@ -107,6 +109,7 @@ public final class RoleProfileCatalog {
         map.put(SALES_CODE, new SeedDefinition(SALES_CODE, "投标项目负责人", "立项发起人，维护客户与开标信息", true, "self",
                 List.of("dashboard", "bidding", "project",
                         "project.create", "project.view", "deposit.return.fill",
+                        "retrospective.submit",
                         BIDDING_CREATE_PERMISSION,
                         "dashboard:view_welcome_banner", "dashboard:view_metric_cards", "dashboard:view_calendar",
                         "dashboard:view_tender_list", "dashboard:view_project_list", "dashboard:view_active_projects",
