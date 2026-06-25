@@ -2,7 +2,6 @@ package com.xiyu.bid.tender.service;
 
 import com.xiyu.bid.batch.core.TenderStatusTransitionPolicy;
 import com.xiyu.bid.entity.Project;
-import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.project.dto.ProjectDTO;
@@ -10,7 +9,6 @@ import com.xiyu.bid.project.service.ProjectService;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.UserRepository;
-import com.xiyu.bid.task.dto.TaskDTO;
 import com.xiyu.bid.task.service.TaskService;
 import com.xiyu.bid.tender.controller.TenderEvaluationController.TenderBidResult;
 import com.xiyu.bid.tender.dto.TenderReviewRequest;
@@ -31,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -72,9 +69,6 @@ class TenderEvaluationServiceTest {
     @Mock
     private InitiationPrefillService initiationPrefillService;
 
-    @Mock
-    private TenderBidTaskFactory bidTaskFactory;
-
     private TenderEvaluationService service;
 
     @BeforeEach
@@ -91,8 +85,7 @@ class TenderEvaluationServiceTest {
                 accessGuard,
                 eventPublisher,
                 tenderEvaluationDocumentService,
-                initiationPrefillService,
-                bidTaskFactory
+                initiationPrefillService
         );
         // 决策类端点默认放行；individual 测试覆写为 false 检验 403 路径。
         org.mockito.Mockito.lenient()
@@ -151,22 +144,15 @@ class TenderEvaluationServiceTest {
                 .name("测试标讯")
                 .status(Project.Status.PENDING_INITIATION)
                 .build());
-        when(bidTaskFactory.reuseOrCreate(any(), any(), any(), any())).thenReturn(TaskDTO.builder()
-                .id(202L)
-                .title("【待立项】测试标讯")
-                .status(Task.Status.TODO)
-                .build());
-
         TenderBidResult result = service.proceedToBid(1L, 99L);
 
         assertThat(result.projectId()).isEqualTo(101L);
-        assertThat(result.taskId()).isEqualTo(202L);
+        assertThat(result.taskId()).isNull();
         verify(projectService).createProject(argThat(project ->
                 project.getTenderId().equals(1L)
                         && project.getManagerId().equals(18L)
                         && project.getStatus() == Project.Status.PENDING_INITIATION
         ));
-        verify(bidTaskFactory).reuseOrCreate(eq(1L), eq(101L), eq("测试标讯"), eq(18L));
     }
 
     @Test
@@ -190,22 +176,15 @@ class TenderEvaluationServiceTest {
                 .name("测试标讯")
                 .status(Project.Status.PENDING_INITIATION)
                 .build());
-        when(bidTaskFactory.reuseOrCreate(any(), any(), any(), any())).thenReturn(TaskDTO.builder()
-                .id(202L)
-                .title("【待立项】测试标讯")
-                .status(Task.Status.TODO)
-                .build());
-
         TenderBidResult result = service.proceedToBid(1L, 99L);
 
         assertThat(result.projectId()).isEqualTo(101L);
-        assertThat(result.taskId()).isEqualTo(202L);
+        assertThat(result.taskId()).isNull();
         verify(projectService).createProject(argThat(project ->
                 project.getTenderId().equals(1L)
                         && project.getManagerId().equals(99L)
                         && project.getStatus() == Project.Status.PENDING_INITIATION
         ));
-        verify(bidTaskFactory).reuseOrCreate(eq(1L), eq(101L), eq("测试标讯"), eq(99L));
     }
 
     @Test
@@ -247,7 +226,6 @@ class TenderEvaluationServiceTest {
                 () -> service.proceedToBid(1L, 999L));
 
         verify(projectService, org.mockito.Mockito.never()).createProject(any());
-        verify(bidTaskFactory, org.mockito.Mockito.never()).reuseOrCreate(any(), any(), any(), any());
     }
 
     @Test
