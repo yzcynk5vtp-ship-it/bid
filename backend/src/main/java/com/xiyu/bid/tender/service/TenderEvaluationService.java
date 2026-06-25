@@ -21,7 +21,6 @@ import com.xiyu.bid.tender.dto.TenderReviewRequest;
 import com.xiyu.bid.tender.entity.TenderEvaluation;
 import com.xiyu.bid.tender.repository.TenderEvaluationRepository;
 import com.xiyu.bid.projectworkflow.entity.ProjectDocument;
-import com.xiyu.bid.task.dto.TaskDTO;
 import com.xiyu.bid.task.service.TaskService;
 import com.xiyu.bid.webhook.domain.TenderStatusChangedEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +41,7 @@ import java.util.Optional;
  *   <li>V119 评估表草稿 / 提交（委托给 {@link TenderEvaluationSubmissionService}）</li>
  *   <li>V130 审核确认（委托给 {@link TenderEvaluationReviewService}）</li>
  *   <li>管理员审核（投标 / 弃标）</li>
- *   <li>投标立项（创建项目 + 待办）</li>
+ *   <li>投标立项（创建项目）</li>
  * </ul>
  */
 @Service
@@ -62,7 +61,6 @@ public class TenderEvaluationService {
     private final ApplicationEventPublisher eventPublisher;
     private final TenderEvaluationDocumentService documentService;
     private final InitiationPrefillService initiationPrefillService;
-    private final TenderBidTaskFactory bidTaskFactory;
     private final TenderEvaluationSubmissionMapper mapper = new TenderEvaluationSubmissionMapper();
 
     public TenderEvaluationService(
@@ -77,8 +75,7 @@ public class TenderEvaluationService {
             TenderProjectAccessGuard accessGuard,
             ApplicationEventPublisher eventPublisher,
             TenderEvaluationDocumentService documentService,
-            InitiationPrefillService initiationPrefillService,
-            TenderBidTaskFactory bidTaskFactory) {
+            InitiationPrefillService initiationPrefillService) {
         this.tenderEvaluationRepository = tenderEvaluationRepository;
         this.tenderRepository = tenderRepository;
         this.projectService = projectService;
@@ -91,7 +88,6 @@ public class TenderEvaluationService {
         this.eventPublisher = eventPublisher;
         this.documentService = documentService;
         this.initiationPrefillService = initiationPrefillService;
-        this.bidTaskFactory = bidTaskFactory;
     }
 
     // ---------- V119: 项目评估表草稿/提交 facade（委托给 TenderEvaluationSubmissionService） ----------
@@ -227,7 +223,7 @@ public class TenderEvaluationService {
         }
 
         if (tender.getStatus() != Tender.Status.BIDDING) {
-            throw new IllegalStateException("标讯状态不是已投标，无法创建立项待办");
+            throw new IllegalStateException("标讯状态不是已投标，无法立项");
         }
 
         var evaluationOpt = tenderEvaluationRepository.findByTenderId(tenderId);
@@ -262,15 +258,14 @@ public class TenderEvaluationService {
             log.error("CO-323: prefill initiation failed for tender {}, this may cause submission validation errors later", tenderId, ex);
         }
 
-        TaskDTO createdTask = bidTaskFactory.reuseOrCreate(
-                tenderId, createdProject.getId(), tender.getTitle(), projectManagerId);
-
-        log.info("Project {} and task {} created for tender {}", createdProject.getId(), createdTask.getId(), tenderId);
+        // CO-349: 不再创建"【待立项】"占位任务——它会卡住"提交投标"的全任务完成闸门
+        // （AllTasksCompletedPolicy），导致报"仍有 N 个任务未完成"。历史残留由迁移脚本清理。
+        log.info("Project {} created for tender {}", createdProject.getId(), tenderId);
         return new TenderBidResult(
                 createdProject.getId(),
                 createdProject.getName(),
-                createdTask.getId(),
-                createdTask.getTitle()
+                null,
+                null
         );
     }
 
