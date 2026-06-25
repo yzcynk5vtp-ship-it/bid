@@ -112,7 +112,7 @@ const BOTTOM_MATRIX = {
     bid_team: [],
   },
   TRACKING: {
-    admin_lead: [],
+    admin_lead: ['nextStep', 'prevStep', 'submit'],  // CO-350: 管理员关联CRM后需要提交按钮
     'bid-TeamLeader': ['editBasic', 'editEvaluation', 'save', 'cancel'],
     sales: ['nextStep', 'prevStep', 'submit'],
     bid_team: [],
