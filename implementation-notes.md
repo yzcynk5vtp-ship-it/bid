@@ -1,3 +1,47 @@
+# CO-338 任务看板详情抽屉 + CSS宽度修复
+
+## 范围
+- CO-338 核心：卡片点击弹出任务详情抽屉（复用 TaskForm.vue）
+- 评论1：CSS 三列宽度修复（minmax/min-width/word-break）
+- 不含：评论2（弹窗统一）、评论3（项目详情页权限过滤）、CO-339（按状态禁用按钮）
+
+## 关键设计决策
+
+### 1. 抽屉位置：TaskBoardPage.vue 模板内
+- 参考 `ProjectTaskBoardCard.vue` 的已有模式，直接在页面模板中加入 `<el-drawer>` + `<TaskForm>`
+- 不抽成 composable，因为 drawer 状态是页面级
+
+### 2. 提交流程：放在 TaskBoardPage 而非 TaskForm
+- TaskForm 的 `submitForReview()` 只做校验 + emit 事件
+- 实际 API 调用（上交付物/更新 completionNote/更新状态）由 TaskBoardPage 的 `handleSubmitForReview()` 处理
+- 保持 TaskForm 通用性
+
+### 3. 字段映射
+| API item field | TaskForm model |
+|---|---|
+| `title` | `name` |
+| `dueDate` | `deadline` |
+| `content` | `content` |
+| `completionNotes` | `completionNote` |
+| `projectId` | `projectId` |
+| `assigneeId` | `assigneeId` |
+
+### 4. canDeliver 读取方式
+- TaskForm expose 了 `canDeliver`（computed）
+- 父组件通过 `taskFormRef.value?.canDeliver` 访问
+- 由于是 computed 不是 ref，需要在模板中通过方法或 computed 触发读取
+
+### 5. @click.stop 策略
+- 卡片根：`@click="emit('task-click', item)"`
+- card-actions 区域：`@click.stop` 防止按钮点击触发布袋
+- dialog 是模态，不需要 stopPropagation（不会传递到卡片）
+
+### 6. CSS 宽度修复
+- `grid-template-columns: repeat(3, minmax(0, 1fr))`
+- `.task-card` 加 `min-width: 0`
+- `.task-name`、`.task-project` 加 `word-break: break-all`
+- BID_REVIEW 的 ProjectDocumentTable 外层包 `overflow-x: auto`
+
 # 设计评估建议采纳修复实施记录
 
 ## 问题口径
@@ -667,3 +711,45 @@
 | 多选编辑回显标签显示为数字ID | `ReminderSettingsDialog.vue:94-104` | 新增 `userPickerInitialOptions`，编辑时从 `reminderTargets` 构造 `{id, name}` 格式传入 `:initial-options`，确保 UserPicker 已选项显示用户姓名而非纯 ID 数字 | ✅ 已修复 |
 | 用户对象→ID 转换代码分散5个组件 | `DraftingStage.vue:202` / `InitiationStage.vue:214-215` / `ProjectGroupSettingsPanel.vue:91` / `ReminderSettingsDialog.vue:100-107` | 新增 `src/utils/userPicker.js` 提供：`toUserIds()` / `toUserName()` / `toReminderTargets()` / `fromReminderTargets()` 四个通用函数，消除重复 | ✅ 已修复 |
 
+
+# CO-338 任务看板详情抽屉实施记录
+
+## 范围确认
+- CO-338 核心：卡片点击弹出任务详情抽屉（复用 TaskForm.vue，mode="view"）
+- 评论1：CSS 三列宽度修复（minmax + word-break）
+- 排除：评论2（弹窗统一）、评论3（项目详情页权限过滤）、CO-339（按状态禁用按钮）
+
+## 关键设计决策
+
+| 决策 | 选择 | 理由 |
+|------|------|------|
+| 抽屉位置 | TaskBoardPage.vue 模板内 | 参考已有模式，drawer 状态是页面级，不抽 composable |
+| 提交审核 API | 放在 TaskBoardPage.handleSubmitForReview | TaskForm.submitForReview 只做校验+返回数据，保持通用性 |
+| canDeliver 读取 | taskFormRef.value?.canDeliver computed | TaskForm expose 了 canDeliver，父组件通过 ref 访问 |
+| @click.stop | card-actions 和 dialog 外层加 stop | 防止按钮点击触发卡片根绑定的事件冒泡 |
+| 字段映射 | title→name, dueDate→deadline, content→content, completionNotes→completionNote | TaskForm model 字段名不同，handleTaskClick 做映射 |
+
+## API 交互流程
+
+handleSubmitForReview:
+1. 调用 form.submitForReview() 获取校验数据和交付物
+2. 遍历 data.deliverableFiles，通过 FormData 逐个上传到 createTaskDeliverable
+3. 调用 updateTask(taskId, {completionNotes}) 保存完成说明
+4. 调用 updateTaskStatus(projectId, taskId, 'REVIEW') 提交审核
+5. 刷新卡片列表 loadTasks()，关闭 drawer
+
+## 测试覆盖
+
+| 文件 | 测试数量 | 新增覆盖 |
+|------|---------|---------|
+| TaskBoardCard.spec.js | 7 | card-click emit, 按钮阻止冒泡 |
+| TaskBoardPage.spec.js | 5 | 3列渲染, 卡片展示, drawer打开, 提审按钮显示, 提审 API 交互 |
+| useTaskBoard.spec.js | 2 | 回归（未改动） |
+
+## 验证结果
+
+| 检查项 | 结果 |
+|--------|------|
+| npx vitest run src/views/TaskBoard | ✅ 14 tests passed (3 files) |
+| npm run check:line-budgets | ✅ passed (guarded_changes=2) |
+| npm run build | ✅ success (no new warnings) |

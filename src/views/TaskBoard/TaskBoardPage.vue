@@ -31,6 +31,7 @@
             :available-statuses="availableStatuses"
             @status-change="handleStatusChange"
             @deliverable-changed="handleDeliverableChanged"
+            @task-click="handleTaskClick"
           />
           <el-empty
             v-if="getTasksByStatus(column.key).length === 0"
@@ -40,12 +41,45 @@
         </div>
       </div>
     </div>
+
+    <!-- 任务详情抽屉 -->
+    <el-drawer
+      v-model="drawerVisible"
+      title="任务详情"
+      size="520px"
+      direction="rtl"
+      :destroy-on-close="true"
+    >
+      <TaskForm
+        v-if="selectedTask"
+        ref="taskFormRef"
+        v-model="selectedTask"
+        mode="view"
+      />
+      <template #footer>
+        <div class="drawer-footer">
+          <el-button @click="drawerVisible = false">关闭</el-button>
+          <el-button
+            v-if="canSubmitForReview"
+            type="primary"
+            :loading="submitting"
+            @click="handleSubmitForReview"
+          >
+            提交审核
+          </el-button>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 
 <script setup>
+import { ref, computed, nextTick } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import TaskBoardCard from './components/TaskBoardCard.vue'
+import TaskForm from '@/components/project/TaskForm.vue'
+import { projectsApi } from '@/api/modules/projects.js'
 import { useTaskBoard } from './composables/useTaskBoard.js'
 
 const {
@@ -59,6 +93,83 @@ const {
   handleDeliverableChanged,
   loadTasks
 } = useTaskBoard()
+
+// 抽屉状态
+const drawerVisible = ref(false)
+const selectedTask = ref(null)
+const taskFormRef = ref(null)
+const submitting = ref(false)
+
+// 提交审核按钮显隐：仅执行人+TODO状态时显示
+const canSubmitForReview = computed(() => {
+  return taskFormRef.value?.canDeliver === true
+})
+
+function handleTaskClick(item) {
+  const taskData = {
+    name: item.title,
+    deadline: item.dueDate || '',
+    content: item.content || '',
+    completionNote: item.completionNotes || '',
+    projectId: item.projectId,
+    assigneeId: item.assigneeId,
+    id: item.id,
+    status: item.status || 'TODO',
+    extendedFields: {},
+    attachments: [],
+  }
+  selectedTask.value = taskData
+  // 等待 nextTick 让 TaskForm 渲染完成
+  nextTick(() => {
+    drawerVisible.value = true
+  })
+}
+
+async function handleSubmitForReview() {
+  if (!selectedTask.value?.id || !selectedTask.value?.projectId) {
+    ElMessage.warning('任务数据不完整')
+    return
+  }
+  submitting.value = true
+  try {
+    // 通过 TaskForm 校验 + 获取带交付物文件的完整数据
+    const form = taskFormRef.value
+    const result = form?.submitForReview?.()
+    if (!result || result.valid === false) return
+
+    const data = result.data
+    const projectId = data.projectId
+    const taskId = data.id
+
+    // 上传新增交付物
+    const files = data.deliverableFiles || []
+    for (const file of files) {
+      if (file?.raw) {
+        const formData = new FormData()
+        formData.append('file', file.raw)
+        formData.append('taskId', taskId)
+        await projectsApi.createTaskDeliverable(projectId, taskId, formData)
+      }
+    }
+
+    // 保存完成情况说明
+    if (data.completionNote) {
+      await projectsApi.updateTask(taskId, { completionNotes: data.completionNote })
+    }
+
+    // 更新状态为 REVIEW
+    await projectsApi.updateTaskStatus(projectId, taskId, 'REVIEW')
+
+    ElMessage.success('已提交审核')
+    drawerVisible.value = false
+    selectedTask.value = null
+    await loadTasks()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || '提交审核失败')
+  } finally {
+    submitting.value = false
+  }
+}
 </script>
 
 <style scoped lang="scss">
@@ -78,7 +189,7 @@ const {
 
 .board-columns {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   min-height: 400px;
 }
@@ -111,6 +222,6 @@ const {
   gap: 8px;
 }
 
-@media (max-width: 1200px) { .board-columns { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 768px) { .board-columns { grid-template-columns: 1fr; } }
+@media (max-width: 1200px) { .board-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 768px) { .board-columns { grid-template-columns: minmax(0, 1fr); } }
 </style>
