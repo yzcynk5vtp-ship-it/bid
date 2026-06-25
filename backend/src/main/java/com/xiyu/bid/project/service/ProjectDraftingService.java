@@ -1,4 +1,4 @@
-// Input: 项目 id、leads 请求、当前用户；依赖 ProjectLeadAssignmentRepository + TaskRepository + ProjectStageService
+// Input: 项目 id、leads 请求、当前用户；依赖 ProjectLeadAssignmentRepository + TaskRepository + ProjectStageService + ProjectDocumentRepository
 // Output: ProjectDraftingViewDto；主/副投标负责人分配；纯编排，核心规则委托给 AllTasksCompletedPolicy / BidReviewPolicy；§3.6 CLOSED 全字段锁定
 // Pos: project/service/ - 编排层
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
@@ -24,6 +24,7 @@ import com.xiyu.bid.project.entity.ProjectLeadAssignment;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.repository.TaskRepository;
@@ -58,6 +59,7 @@ public class ProjectDraftingService {
     private final BidReviewAppService bidReviewAppService;
     private final ProjectEvaluationRepository projectEvaluationRepository;
     private final ProjectNotificationService notificationService;
+    private final ProjectDocumentRepository projectDocumentRepository;
 
     @Auditable(action = "ASSIGN_PROJECT_LEADS", entityType = "ProjectLeadAssignment",
             description = "分配主/副投标负责人")
@@ -98,12 +100,7 @@ public class ProjectDraftingService {
             description = "DRAFTING → EVALUATING 闸门检查")
     public ProjectDraftingViewDto gateAdvanceToEvaluation(Long projectId, Long currentUserId) {
         mustGetProject(projectId);
-        AllTasksCompletedPolicy.Decision d = gateDecision(projectId);
-        if (!d.allowed()) {
-            int incomplete = ((AllTasksCompletedPolicy.Decision.Deny) d).incompleteCount();
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "仍有 " + incomplete + " 个任务未完成，无法推进到评标");
-        }
+        assertAllTasksCompleted(projectId, "无法推进到评标");
         ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
         return toView(projectId, lead);
     }
@@ -178,6 +175,18 @@ public class ProjectDraftingService {
                     projectId, currentStage);
             return toView(projectId, lead);
         }
+
+        // 校验所有任务已完成（复用 DRAFTING → EVALUATING 闸门）
+        assertAllTasksCompleted(projectId, "无法提交投标");
+
+        // 校验已上传标书文件
+        boolean hasBidDocument = !projectDocumentRepository
+                .findByProjectIdAndFiltersOrderByCreatedAtDesc(projectId, "BID_DOCUMENT", null, null)
+                .isEmpty();
+        if (!hasBidDocument) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "尚未上传标书文件，无法提交投标");
+        }
+
         projectStageService.requestTransition(projectId, ProjectStage.EVALUATING,
                 ProjectStageTransitionPolicy.GateInputs.EMPTY);
         ensureEvaluationInitialized(projectId, currentUserId);
@@ -208,6 +217,15 @@ public class ProjectDraftingService {
                         : AllTasksCompletedPolicy.TaskState.valueOf(t.getStatus().name()))
                 .toList();
         return AllTasksCompletedPolicy.decide(states);
+    }
+
+    private void assertAllTasksCompleted(Long projectId, String action) {
+        AllTasksCompletedPolicy.Decision decision = gateDecision(projectId);
+        if (!decision.allowed()) {
+            int incomplete = ((AllTasksCompletedPolicy.Decision.Deny) decision).incompleteCount();
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "仍有 " + incomplete + " 个任务未完成，" + action);
+        }
     }
 
     private Project mustGetProject(Long projectId) {

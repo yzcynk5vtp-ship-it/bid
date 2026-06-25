@@ -12,6 +12,8 @@ import com.xiyu.bid.project.entity.ProjectLeadAssignment;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectEvaluationRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.projectworkflow.entity.ProjectDocument;
+import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TaskRepository;
@@ -31,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -47,12 +50,13 @@ class ProjectDraftingServiceTest {
     @Mock UserRepository userRepository;
     @Mock ProjectEvaluationRepository projectEvaluationRepository;
     @Mock ProjectNotificationService notificationService;
+    @Mock ProjectDocumentRepository projectDocumentRepository;
 
     ProjectDraftingService service;
 
     @BeforeEach
     void setUp() {
-        service = new ProjectDraftingService(leadRepo, projectRepository, taskRepository, projectStageService, projectAccessScopeService, userRepository, bidReviewAppService, projectEvaluationRepository, notificationService);
+        service = new ProjectDraftingService(leadRepo, projectRepository, taskRepository, projectStageService, projectAccessScopeService, userRepository, bidReviewAppService, projectEvaluationRepository, notificationService, projectDocumentRepository);
         lenient().when(projectRepository.findById(1L))
                 .thenReturn(Optional.of(Project.builder().id(1L).build()));
         lenient().when(leadRepo.save(any(ProjectLeadAssignment.class)))
@@ -187,6 +191,19 @@ class ProjectDraftingServiceTest {
         lenient().when(projectEvaluationRepository.findByProjectId(1L)).thenReturn(Optional.empty());
         lenient().when(projectEvaluationRepository.save(any(com.xiyu.bid.project.entity.ProjectEvaluation.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        prepareBidDocument();
+    }
+
+    private void prepareBidDocument() {
+        lenient().when(projectDocumentRepository.findByProjectIdAndFiltersOrderByCreatedAtDesc(
+                        eq(1L), eq("BID_DOCUMENT"), eq(null), eq(null)))
+                .thenReturn(List.of(ProjectDocument.builder().id(1L).projectId(1L).name("bid.pdf").build()));
+    }
+
+    private void prepareNoBidDocument() {
+        lenient().when(projectDocumentRepository.findByProjectIdAndFiltersOrderByCreatedAtDesc(
+                        eq(1L), eq("BID_DOCUMENT"), eq(null), eq(null)))
+                .thenReturn(List.of());
     }
 
     /** 构造项目级负责人分配 mock：primaryLeadId/secondaryLeadId 任一为 null 表示未分配该角色。 */
@@ -232,10 +249,93 @@ class ProjectDraftingServiceTest {
     }
 
     @Test
-    void submitBid_approvedReview_allowsIncompleteTasks() {
+    void submitBid_approvedReview_incompleteTasks_denied_409() {
         prepareSubmitBidHappyPath();
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.IN_PROGRESS).build()));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        prepareLeadAssignment(1L, 2L);
+
+        assertThatThrownBy(() -> service.submitBid(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(rse.getReason()).contains("仍有 1 个任务未完成", "无法提交投标");
+                });
+    }
+
+    @Test
+    void submitBid_approvedReview_todoTask_denied_409() {
+        prepareSubmitBidHappyPath();
+        when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
+                Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.TODO).build()));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        prepareLeadAssignment(1L, 2L);
+
+        assertThatThrownBy(() -> service.submitBid(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(rse.getReason()).contains("仍有 1 个任务未完成");
+                });
+    }
+
+    @Test
+    void submitBid_approvedReview_reviewStatusTask_denied_409() {
+        prepareSubmitBidHappyPath();
+        when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
+                Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.REVIEW).build()));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        prepareLeadAssignment(1L, 2L);
+
+        assertThatThrownBy(() -> service.submitBid(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(rse.getReason()).contains("仍有 1 个任务未完成");
+                });
+    }
+
+    @Test
+    void submitBid_approvedReview_missingBidDocument_denied_409() {
+        prepareSubmitBidHappyPath();
+        prepareNoBidDocument();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        prepareLeadAssignment(1L, 2L);
+
+        assertThatThrownBy(() -> service.submitBid(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(rse.getReason()).contains("尚未上传标书文件");
+                });
+    }
+
+    @Test
+    void submitBid_afterDraftingStage_isIdempotent() {
+        prepareSubmitBidHappyPath();
+        when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
+                Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.IN_PROGRESS).build()));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        prepareLeadAssignment(1L, 2L);
+        when(projectStageService.currentStage(1L)).thenReturn(ProjectStage.EVALUATING);
+
+        var view = service.submitBid(1L, 1L);
+
+        assertThat(view).isNotNull();
+        verify(projectStageService, never()).requestTransition(eq(1L), eq(ProjectStage.EVALUATING), any());
+    }
+
+    @Test
+    void submitBid_approvedReview_allTasksCompleted_allowed() {
+        prepareSubmitBidHappyPath();
+        when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
+                Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.COMPLETED).build(),
+                Task.builder().id(2L).projectId(1L).title("b").status(Task.Status.CANCELLED).build()));
         when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
         prepareLeadAssignment(1L, 2L);
 
