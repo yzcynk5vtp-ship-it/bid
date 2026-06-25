@@ -10,6 +10,7 @@ import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import com.xiyu.bid.project.core.AllTasksCompletedPolicy;
+import com.xiyu.bid.project.core.BidReadinessPolicy;
 import com.xiyu.bid.project.core.BidReviewPolicy;
 import com.xiyu.bid.project.core.BidReviewStatus;
 import com.xiyu.bid.project.core.BidSubmissionAuthorizationPolicy;
@@ -100,7 +101,7 @@ public class ProjectDraftingService {
             description = "DRAFTING → EVALUATING 闸门检查")
     public ProjectDraftingViewDto gateAdvanceToEvaluation(Long projectId, Long currentUserId) {
         mustGetProject(projectId);
-        assertAllTasksCompleted(projectId, "无法推进到评标");
+        assertBidReadiness(projectId, "无法推进到评标");
         ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
         return toView(projectId, lead);
     }
@@ -108,10 +109,15 @@ public class ProjectDraftingService {
     // ── 标书审核流程（委托给 BidReviewAppService）────────────────────────
 
     public ProjectDraftingViewDto submitForReview(Long projectId, Long reviewerId, Long currentUserId) {
+        // 服务层角色 + 项目级负责人校验（与 submitBid 对齐；防止 OSS legacy fallback 误授权）
+        ProjectLeadAssignment lead = assertCanSubmit(projectId, currentUserId);
+
+        // 闸门校验：所有任务已完成 + 标书文件已上传（与 submitBid 一致）
+        assertBidReadiness(projectId, "无法提交标书审核");
+
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
         mustGetProject(projectId);
         bidReviewAppService.submitForReview(projectId, reviewerId, currentUserId);
-        ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
         return toView(projectId, lead);
     }
 
@@ -140,24 +146,7 @@ public class ProjectDraftingService {
 
         // 业务角色校验：仅投标系统管理员/投标管理员/投标组长/投标项目负责人/投标专员可以提交投标
         // （通过 roleProfile.code 判断，不回退到 User.role 枚举）
-        User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "用户不存在"));
-
-        // 直接使用 roleProfile.code，不经过 RoleProfileCatalog.definitionForCode 的 fallback
-        // （definitionForCode 对未注册 code 会 fallback 到 admin，会导致 admin_staff 等角色被误判为 admin）
-        String effectiveRoleCode = currentUser.getRoleProfile() != null
-                ? currentUser.getRoleProfile().getCode()
-                : null;
-
-        // 项目级投标负责人分配（同时用于权限校验和返回视图，避免重复查询）
-        ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
-
-        // 纯核心授权决策：角色白名单 + 项目级负责人匹配
-        BidSubmissionAuthorizationPolicy.Decision authDecision =
-                BidSubmissionAuthorizationPolicy.canSubmitBid(effectiveRoleCode, currentUserId, lead);
-        if (!authDecision.allowed()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, authDecision.reason());
-        }
+        ProjectLeadAssignment lead = assertCanSubmit(projectId, currentUserId);
 
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
         mustGetProject(projectId);
@@ -176,16 +165,8 @@ public class ProjectDraftingService {
             return toView(projectId, lead);
         }
 
-        // 校验所有任务已完成（复用 DRAFTING → EVALUATING 闸门）
-        assertAllTasksCompleted(projectId, "无法提交投标");
-
-        // 校验已上传标书文件
-        boolean hasBidDocument = !projectDocumentRepository
-                .findByProjectIdAndFiltersOrderByCreatedAtDesc(projectId, "BID_DOCUMENT", null, null)
-                .isEmpty();
-        if (!hasBidDocument) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "尚未上传标书文件，无法提交投标");
-        }
+        // 复用 BidReadinessPolicy 闸门（任务全完成 + 标书文件已上传）
+        assertBidReadiness(projectId, "无法提交投标");
 
         projectStageService.requestTransition(projectId, ProjectStage.EVALUATING,
                 ProjectStageTransitionPolicy.GateInputs.EMPTY);
@@ -219,12 +200,41 @@ public class ProjectDraftingService {
         return AllTasksCompletedPolicy.decide(states);
     }
 
-    private void assertAllTasksCompleted(Long projectId, String action) {
-        AllTasksCompletedPolicy.Decision decision = gateDecision(projectId);
-        if (!decision.allowed()) {
-            int incomplete = ((AllTasksCompletedPolicy.Decision.Deny) decision).incompleteCount();
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "仍有 " + incomplete + " 个任务未完成，" + action);
+    /**
+     * 共享角色 + 项目级负责人校验：返回 lead 用于后续视图复用，避免重复查询。
+     * 失败时映射 {@link BidSubmissionAuthorizationPolicy.Decision.Cause#IDENTITY} → 403。
+     */
+    private ProjectLeadAssignment assertCanSubmit(Long projectId, Long currentUserId) {
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "用户不存在"));
+        String effectiveRoleCode = currentUser.getRoleProfile() != null
+                ? currentUser.getRoleProfile().getCode() : null;
+        ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
+        BidSubmissionAuthorizationPolicy.Decision d =
+                BidSubmissionAuthorizationPolicy.canSubmitBid(effectiveRoleCode, currentUserId, lead);
+        if (!d.allowed()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, d.reason());
+        }
+        return lead;
+    }
+
+    /**
+     * 共享标书编制闸门：所有任务已完成 + 标书文件已上传。
+     * 失败时映射 {@link BidReadinessPolicy.Decision.Cause#STATE} → 409。
+     */
+    private void assertBidReadiness(Long projectId, String action) {
+        List<AllTasksCompletedPolicy.TaskState> taskStates = taskRepository.findByProjectId(projectId).stream()
+                .map(t -> t.getStatus() == null
+                        ? AllTasksCompletedPolicy.TaskState.TODO
+                        : AllTasksCompletedPolicy.TaskState.valueOf(t.getStatus().name()))
+                .toList();
+        boolean hasBidDocument = !projectDocumentRepository
+                .findByProjectIdAndFiltersOrderByCreatedAtDesc(
+                        projectId, BidReadinessPolicy.BID_DOCUMENT_CATEGORY, null, null)
+                .isEmpty();
+        BidReadinessPolicy.Decision d = BidReadinessPolicy.check(taskStates, hasBidDocument);
+        if (!d.allowed()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, d.reason() + "，" + action);
         }
     }
 
