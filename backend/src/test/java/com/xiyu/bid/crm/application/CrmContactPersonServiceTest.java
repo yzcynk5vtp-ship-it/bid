@@ -123,4 +123,17 @@ class CrmContactPersonServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).name()).isEqualTo("吴九");
     }
+
+    @Test
+    void pageList_acceptsUnknownFieldPosition() {
+        // CO-329：CRM 实际响应带 VO 未定义的 position 字段，Jackson 默认抛
+        // UnrecognizedPropertyException，parseListResponse catch 后返回空列表，
+        // 导致客户信息矩阵对接人列带不过来。修复后应忽略未知字段并正常解析。
+        String body = "{\"code\":0,\"data\":[{\"id\":8,\"name\":\"郑十\",\"position\":\"1\"}]}";
+
+        List<ContactPersonInfoVO> result = serviceWith(body).pageList(21045L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).name()).isEqualTo("郑十");
+    }
 }
