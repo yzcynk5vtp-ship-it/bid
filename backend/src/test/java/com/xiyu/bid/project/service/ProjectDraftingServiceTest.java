@@ -109,6 +109,7 @@ class ProjectDraftingServiceTest {
     void gate_allowsWhenNoTasks() {
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of());
         when(leadRepo.findByProjectId(1L)).thenReturn(Optional.empty());
+        prepareBidDocument();
         var view = service.gateAdvanceToEvaluation(1L, 99L);
         assertThat(view.getGateReady()).isTrue();
         assertThat(view.getIncompleteTaskCount()).isZero();
@@ -130,6 +131,7 @@ class ProjectDraftingServiceTest {
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.COMPLETED).build(),
                 Task.builder().id(2L).projectId(1L).title("b").status(Task.Status.CANCELLED).build()));
         when(leadRepo.findByProjectId(1L)).thenReturn(Optional.empty());
+        prepareBidDocument();
         var view = service.gateAdvanceToEvaluation(1L, 99L);
         assertThat(view.getGateReady()).isTrue();
     }
@@ -430,5 +432,71 @@ class ProjectDraftingServiceTest {
         assertThatThrownBy(() -> service.submitBid(1L, 1L))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode").isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
+    // ── CO-346：submitForReview 服务层角色 + 闸门校验 ─────────────────────────
+
+    @Test
+    void submitForReview_unauthorizedRole_denied_403() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-otherDept")));
+
+        assertThatThrownBy(() -> service.submitForReview(1L, 99L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode").isEqualTo(HttpStatus.FORBIDDEN);
+
+        verify(bidReviewAppService, never())
+                .submitForReview(any(Long.class), any(Long.class), any(Long.class));
+    }
+
+    @Test
+    void submitForReview_admin_delegatesToBidReviewAppService() {
+        // admin 通过 assertCanSubmit；闸门校验通过后委托给 BidReviewAppService
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "admin")));
+        lenient().when(taskRepository.findByProjectId(1L)).thenReturn(List.of());
+        prepareBidDocument();
+        org.mockito.Mockito.lenient().doNothing().when(bidReviewAppService)
+                .submitForReview(any(Long.class), any(Long.class), any(Long.class));
+
+        service.submitForReview(1L, 99L, 1L);
+
+        verify(bidReviewAppService).submitForReview(1L, 99L, 1L);
+    }
+
+    @Test
+    void submitForReview_incompleteTasks_denied_409() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "admin")));
+        when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
+                Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.IN_PROGRESS).build(),
+                Task.builder().id(2L).projectId(1L).title("b").status(Task.Status.REVIEW).build()));
+
+        assertThatThrownBy(() -> service.submitForReview(1L, 99L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(rse.getReason()).contains("仍有 2 个任务未完成", "无法提交标书审核");
+                });
+
+        verify(bidReviewAppService, never())
+                .submitForReview(any(Long.class), any(Long.class), any(Long.class));
+    }
+
+    @Test
+    void submitForReview_missingBidDocument_denied_409() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "admin")));
+        lenient().when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
+                Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.COMPLETED).build()));
+        prepareNoBidDocument();
+
+        assertThatThrownBy(() -> service.submitForReview(1L, 99L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException rse = (ResponseStatusException) ex;
+                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(rse.getReason()).contains("尚未上传标书文件", "无法提交标书审核");
+                });
+
+        verify(bidReviewAppService, never())
+                .submitForReview(any(Long.class), any(Long.class), any(Long.class));
     }
 }
