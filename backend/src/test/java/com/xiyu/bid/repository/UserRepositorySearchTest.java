@@ -68,7 +68,7 @@ class UserRepositorySearchTest {
 
     @Test
     void searchActiveUsers_RanksEnabledUsersBeforeDisabled() {
-        // enabled 用户排在前面（优先选可登录的），disabled 排后面
+        // 同等相关（都姓王、都是前缀匹配）时，enabled 作 tiebreaker 让可登录用户靠前
         User disabled = User.builder()
             .username("wangwu")
             .email("wangwu@example.com")
@@ -94,6 +94,51 @@ class UserRepositorySearchTest {
         List<User> results = userRepository.searchActiveUsers("王", 10);
 
         assertThat(results).extracting(User::getFullName).containsExactly("王六", "王五");
+    }
+
+    @Test
+    void searchActiveUsers_ExactNameMatchBeatsEnabledNoise() {
+        // 用户报告的 Bug 场景：搜"郑蓉蓉"时，被一堆 enabled=true 的无关人员挤到中间。
+        // 修复后排序：精确姓名匹配 > 姓名前缀匹配 > enabled 噪声。
+        // 这里"郑蓉蓉"是 enabled=false（组织同步保守置灰），另有两个 enabled=true 的"郑某"
+        // 仅前缀匹配"郑"——精确匹配的郑蓉蓉必须排第一。
+        User target = User.builder()
+            .username("zhengrr")
+            .email("zhengrr@example.com")
+            .password("p")
+            .fullName("郑蓉蓉")
+            .employeeNumber("E050")
+            .role(User.Role.MANAGER)
+            .enabled(false)
+            .build();
+        User enabledPrefix1 = User.builder()
+            .username("zhengyi")
+            .email("zhengyi@example.com")
+            .password("p")
+            .fullName("郑一")
+            .employeeNumber("E051")
+            .role(User.Role.MANAGER)
+            .enabled(true)
+            .build();
+        User enabledPrefix2 = User.builder()
+            .username("zhenger")
+            .email("zhenger@example.com")
+            .password("p")
+            .fullName("郑二")
+            .employeeNumber("E052")
+            .role(User.Role.MANAGER)
+            .enabled(true)
+            .build();
+        entityManager.persist(target);
+        entityManager.persist(enabledPrefix1);
+        entityManager.persist(enabledPrefix2);
+        entityManager.flush();
+
+        List<User> results = userRepository.searchActiveUsers("郑蓉蓉", 10);
+
+        assertThat(results).isNotEmpty();
+        // 精确匹配的郑蓉蓉必须排第一位，不能被 enabled=true 的"郑一""郑二"挤下去
+        assertThat(results.get(0).getFullName()).isEqualTo("郑蓉蓉");
     }
 
     @Test

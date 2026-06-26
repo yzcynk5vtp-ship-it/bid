@@ -67,6 +67,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
         + "OR LOWER(u.employee_number) LIKE LOWER(CONCAT('%', :q, '%')) "
         + "OR LOWER(u.full_name_pinyin) LIKE LOWER(CONCAT('%', :q, '%')) "
         + "OR LOWER(u.employee_number_pinyin) LIKE LOWER(CONCAT('%', :q, '%'))) "
-        + "ORDER BY u.enabled DESC, u.full_name LIMIT :lim", nativeQuery = true)
+        // 相关性优先排序：精确匹配 > 姓名前缀 > 拼音前缀 > 工号前缀；
+        // enabled 仅作同等相关时的 tiebreaker（组织同步保守地把大量真实员工置为 enabled=false，
+        // 不能让 enabled 抢占搜索相关性，否则会出现"搜郑蓉蓉却排在固定人员中间"）。
+        + "ORDER BY "
+        + "  (CASE WHEN LOWER(u.full_name) = LOWER(:q) THEN 0 ELSE 1 END), "
+        + "  (CASE WHEN LOWER(u.full_name) LIKE LOWER(CONCAT(:q, '%')) THEN 0 ELSE 1 END), "
+        + "  (CASE WHEN LOWER(u.full_name_pinyin) LIKE LOWER(CONCAT(:q, '%')) THEN 0 ELSE 1 END), "
+        + "  (CASE WHEN LOWER(u.employee_number) LIKE LOWER(CONCAT(:q, '%')) "
+        + "         OR LOWER(u.username) LIKE LOWER(CONCAT(:q, '%')) THEN 0 ELSE 1 END), "
+        + "  u.enabled DESC, "
+        + "  u.full_name "
+        + "LIMIT :lim", nativeQuery = true)
     List<User> searchActiveUsers(@Param("q") String query, @Param("lim") int limit);
 }
