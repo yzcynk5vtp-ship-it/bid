@@ -52,7 +52,7 @@ public class KnowledgeCaseController {
     private final ProjectAccessScopeService projectAccessScopeService;
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('project')")
     public ResponseEntity<Page<KnowledgeCaseResponse>> queryCases(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String scoringCategory,

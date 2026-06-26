@@ -962,3 +962,47 @@ https://gitee.com/allinai888/bid/pulls/55
 - 决策 D2：三元组只有在请求同时提供招标主体、报名截止、开标时间时才参与去重；避免把缺字段历史数据误判为重复。
 - 决策 D3：使用全局 `IllegalArgumentException -> HTTP 400` 映射返回 `标讯已存在`，不新增 Controller 分支或新异常类型，保持最小改动。
 - 变更：`TenderRepository` 新增三元组查询；`TenderIntegrationCommandService` 新建前执行业务去重；补充 DataJpaTest 覆盖不同 sourceId 重复拒绝、同主体不同时间正常创建。
+
+
+## 2026-06-26 CO-362 投标专员 403 知识库/资源管理模块接口权限不足
+
+### 问题口径
+- Linear CO-362：投标专员（bid_specialist）登录后访问知识库（案例库/归档/人员证书/品牌授权）与资源管理（平台账号/CA 证书）模块列表接口返回 403。
+- Issue 给出的根因假设「投标专员有 ROLE_STAFF」并建议方案A（放行 STAFF）——**经代码取证此假设错误**。
+
+### 关键发现（推翻 Issue 根因）
+- `RoleProfileCatalog.ROLES_WITHOUT_LEGACY_ROLE_COMPAT`（L76）包含 `bid-Team`（投标专员 code）。
+- `UserDetailsServiceImpl` 对在该集合中的角色**跳过** legacy `ROLE_STAFF/ADMIN/MANAGER` 颁发（L91 `if (!skipLegacyCompat) authorities.add("ROLE_"+legacyRole.name())`）。
+- 即投标专员登录后 authority 集 = `{bid-Team, ROLE_BID_TEAM} ∪ catalog menuPermissions`，其中 catalog 已授予 `project`、`resource`、`brand-auth.view` 等权限点，但**没有** `ROLE_STAFF/ADMIN/MANAGER`。
+- 因此 Issue 方案A（放行 STAFF）完全无效——投标专员根本没有 ROLE_STAFF。
+
+### 决策与权衡
+- D1 修复方式：改用 catalog 已有权限点（`project`/`resource`/`brand-auth.view`）做 `hasAuthority()` 放行，而非新增角色或新增权限点（用户明确要求「项目里已有角色，不对项目里角色单独加权限」）。
+- D2 PersonnelController 放行口径：对齐该 Controller 既有写法 `hasAnyAuthority('/bidAdmin','bid-TeamLeader','bid-Team')`，与 POST/PUT 已用同一 authority 集一致，而非新引入 `hasAuthority('personnel.view')`。
+- D3 敏感写操作保护：依赖方法级 `@PreAuthorize` 覆盖类级（`PreAuthorizeBehaviorTest` 已验证此语义）。revoke/deactivate/delete/password 等方法级注解保持 `hasAnyRole('ADMIN','MANAGER')` / `hasRole('ADMIN')` 不动，投标专员仍 403。
+- D4 类级放宽的影响面：类级改为 `hasAuthority(...)` 后，无方法级注解的只读端点（如 operation-logs/attachments/export/template）也会被投标专员访问——这些均为读操作，符合「投标专员可读知识库/资源」的意图，可接受。
+- D5 SecurityConfig 路径级兜底：`/api/cases/**` 原路径级 `hasAnyRole("ADMIN","MANAGER")` 会先于方法级拦截投标专员，故需同步放开。用 `AuthorizationManagers.anyOf(hasAnyRole,hasAuthority("project"))` 表达 OR 语义，不破坏既有 ADMIN/MANAGER 放行。
+
+### 变更范围（仅注解字符串，无方法体/无重构/无重命名）
+- `SecurityConfig.java` L173：`/api/cases/**` → `access(anyOf(hasAnyRole("ADMIN","MANAGER"), hasAuthority("project")))`，补两个 import。
+- `ProjectArchiveController.java`：GET `/api/archive`、GET `/api/archive/stats` 方法级 → `hasAuthority('project')`（类级 L46 保留 `hasAnyRole('ADMIN','MANAGER')` 保护 export/detail/preview/download）。
+- `KnowledgeCaseController.java`：GET `/api/cases` 方法级 → `hasAuthority('project')`（类级 `isAuthenticated()` 保留）。
+- `PersonnelController.java`：类级 + GET list + GET `/{id}` → `hasAnyAuthority('/bidAdmin','bid-TeamLeader','bid-Team')`。
+- `ManufacturerAuthorizationController.java`：类级 + GET list + GET `/{id}` → `hasAuthority('brand-auth.view')`（revoke 方法级 `hasAnyRole('ADMIN','MANAGER')` 保留）。
+- `PlatformAccountController.java`：类级 → `hasAuthority('resource')`（所有写操作 create/borrow/return/delete/password 均有方法级 `hasAnyRole/hasRole('ADMIN')` 保留，统计/逾期/导入也有方法级保留；GET 列表 + GET /{id} 继承类级放行）。
+- `CaCertificateController.java`：**自审发现类级放宽会扩大写权限面**——borrow approve/reject/return/cancel 端点无方法级 @PreAuthorize，原靠类级 `hasAnyRole` 兜底。故改用与 ProjectArchiveController 一致的安全口径：类级保留 `hasAnyRole('ADMIN','MANAGER')`，仅 GET list / GET overview / GET /{id} 方法级 → `hasAuthority('resource')`；deactivate 方法级 `hasAnyRole('ADMIN','MANAGER')` 保留。
+- 顺手修：`ProjectWorkflowIntegrationTest.java` L70/L77 CO-361 遗留编译错误（`Status.IN_PROGRESS`→`REVIEW`、`"doing"`→`"review"`），否则阻塞全部测试编译。用户已确认。
+
+### TDD 证据
+- 新增 `KnowledgeResourceAccessSecurityTest`（8 用例，覆盖 PlatformAccount + CaCertificate，含 borrow-approve 写保护回归）与 `KnowledgeAccessSecurityTest`（15 用例，覆盖 ProjectArchive + KnowledgeCase + Personnel + ManufacturerAuthorization，含 revoke 写保护回归）。
+- Red 阶段：投标专员 GET 各端点断言 200 实际 403（4+2 处）；listCases 无权限断言 403 实际 200（因类级 isAuthenticated 放行）。共 5+2 处 Red 失败符合预期。
+- Green 阶段：应用注解改动后 23 用例全绿（投标专员 200 / 无权限 403 / MANAGER 回归 200 / 写操作 revoke 仍 403 / 写操作 borrow-approve 仍 403）。
+- 回归：`RoleProfileCatalogTest`、`PreAuthorizeBehaviorTest`、`SecurityConfigProfileGateTest`、`KnowledgeCaseControllerExportTest`、`EndpointPermissionPolicyTest` 全绿。
+- 预存在失败（与本改动无关）：`ArchitectureTest#root_controller_package_should_only_contain_whitelisted_classes` 因 `HomeSsoController` 报错，在 stash 我的改动后仍失败，属 main 既有问题。
+
+### 遇到的坑
+- **自审发现 CaCertificateController 类级放宽扩大写权限面**：borrow approve/reject/return/cancel 无方法级注解，若类级改 `hasAuthority('resource')` 则投标专员可越权审批借用。修正为类级保留 `hasAnyRole('ADMIN','MANAGER')`，仅放读端点；补 `approveCaBorrow_shouldReturn403_forBidSpecialist` 回归用例锁定。
+- `PageImpl` 序列化：`new PageImpl<>(List.of())` 会触发 `Pageable.unpaged().getSort()` 的 `UnsupportedOperationException` 导致 500；必须 `new PageImpl<>(List.of(), PageRequest.of(0,N), 0)` 显式带 Pageable。
+- `BrandAuthExportService` 是 `final` 类，项目 Mockito 走 `mock-maker-subclass`（`src/test/resources/mockito-extensions/org.mockito.plugins.MockMaker` 配 `mock-maker-subclass`）无法 `@MockBean`；本测试所有端点都不调用它，改在 TestConfig 里 `new` 出真实实例注入（用 `@MockBean` 的两个 repository 构造）。
+- `@WithMockUser` 不能同时给 `roles` 与 `authorities`（抛 `IllegalStateException: You cannot define roles attribute with authorities attribute`）；MANAGER 回归用 `authorities={"ROLE_MANAGER","xxx"}` 显式带角色 + catalog 权限点（生产 MANAGER 走 catalog 映射到 ADMIN "all" 权限）。
+- `ProjectArchiveStatsResponse` 是 record，4 参便捷构造器形参为 `Long`，传 `0`（int）不自动装箱，需 `0L`。
