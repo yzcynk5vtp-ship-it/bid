@@ -1,7 +1,9 @@
 package com.xiyu.bid.tender.service;
 
 import com.xiyu.bid.batch.repository.TenderAssignmentRecordRepository;
+import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.tender.repository.TenderAttachmentRepository;
 import com.xiyu.bid.repository.TenderRepository;
@@ -19,10 +21,13 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -158,5 +163,79 @@ class TenderQueryServiceTest {
         assertThat(result.getContent()).isEmpty();
         assertThat(result.getTotalElements()).isZero();
         verify(accessGuard).filterVisibleTenders(List.of());
+    }
+
+    @Test
+    @DisplayName("CO-333: 标讯已有项目负责人姓名时，关联项目后不被覆盖（立即投标后前端显示不变化）")
+    void shouldNotOverrideProjectManagerNameWhenTenderAlreadyHasOne() {
+        Tender tender = tender(1L, "已投标标讯");
+        tender.setProjectManagerName("韩超");
+
+        when(tenderRepository.findById(1L)).thenReturn(Optional.of(tender));
+        TenderDTO dto = new TenderDTO();
+        dto.setId(1L);
+        dto.setProjectManagerName("韩超");
+        when(tenderMapper.toDTO(tender)).thenReturn(dto);
+
+        // 关联项目存在（管理员点击「立即投标」后 tender.projectId 已设置）
+        Project project = new Project();
+        project.setManagerId(99L);
+        when(projectRepository.findByTenderId(1L)).thenReturn(List.of(project));
+        when(tenderAttachmentRepository.findByTenderId(1L)).thenReturn(List.of());
+
+        TenderQueryService service = createService();
+        TenderDTO result = service.getTenderById(1L);
+
+        assertThat(result.getProjectManagerName()).isEqualTo("韩超");
+        // 不应触发用 project.managerId 反查用户（标讯自身已有姓名，提前返回）
+        verify(userRepository, never()).findById(any());
+    }
+
+    @Test
+    @DisplayName("CO-333: 标讯无项目负责人姓名时，仍用项目 managerId 反查补充（保留原兜底逻辑）")
+    void shouldFallbackToProjectManagerIdWhenTenderHasNoName() {
+        Tender tender = tender(1L, "已投标标讯");
+
+        when(tenderRepository.findById(1L)).thenReturn(Optional.of(tender));
+        TenderDTO dto = new TenderDTO();
+        dto.setId(1L);
+        when(tenderMapper.toDTO(tender)).thenReturn(dto);
+
+        Project project = new Project();
+        project.setManagerId(99L);
+        when(projectRepository.findByTenderId(1L)).thenReturn(List.of(project));
+        User manager = new User();
+        manager.setId(99L);
+        manager.setFullName("李四");
+        when(userRepository.findById(99L)).thenReturn(Optional.of(manager));
+        when(tenderAttachmentRepository.findByTenderId(1L)).thenReturn(List.of());
+
+        TenderQueryService service = createService();
+        TenderDTO result = service.getTenderById(1L);
+
+        assertThat(result.getProjectManagerName()).isEqualTo("李四");
+    }
+
+    @Test
+    @DisplayName("CO-333: 批量查询时标讯已有项目负责人姓名不被项目 managerId 覆盖")
+    void shouldNotOverrideProjectManagerNameInBatchWhenTenderAlreadyHasOne() {
+        TenderDTO dto = new TenderDTO();
+        dto.setId(1L);
+        dto.setProjectManagerName("韩超");
+
+        Project project = new Project();
+        project.setTenderId(1L);
+        project.setManagerId(99L);
+        when(projectRepository.findByTenderIdIn(Set.of(1L))).thenReturn(List.of(project));
+        User manager = new User();
+        manager.setId(99L);
+        manager.setFullName("李四");
+        when(userRepository.findByIdIn(Set.of(99L))).thenReturn(List.of(manager));
+        when(tenderAssignmentRecordRepository.findLatestByTenderIds(Set.of(1L))).thenReturn(List.of());
+
+        TenderQueryService service = createService();
+        service.enrichAssignmentInfoBatch(List.of(dto));
+
+        assertThat(dto.getProjectManagerName()).isEqualTo("韩超");
     }
 }
