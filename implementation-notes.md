@@ -1006,3 +1006,17 @@ handleSubmitForReview:
 | `npm run check:line-budgets` | ✅ passed |
 | `mvn -Dtest=TenderProjectAccessGuardVisibilityTest,...` | ✅ 45 passed, 2 skipped |
 | Commit hooks | ✅ 全部通过 |
+
+---
+
+## 2026-06-26 第 3 次生产部署（CO-346，验证 validate 预检重复部署鲁棒性）
+
+本次为独立部署任务，非 CO-338 范围。完整报告见 `docs/release/deploy-report-2026-06-26-3rd.md`，CHANGELOG 已追加。
+
+### 关键决策
+- **SSH 密钥**：`/tmp/xiyu-prod-deploy-crm-test` 缺失，经用户确认复用 `~/.ssh/xiyu_cursor_deploy`（连通性 + sudo 免密验证通过）。
+- **mysqldump 兼容**：服务器是 MariaDB 5.5.68 客户端连 MySQL 8.0.43 服务端，不认 `--set-gtid-purged=OFF`，去掉后备份成功。
+- **前端 baseURL**：`VITE_API_BASE_URL=http://172.16.38.78:8080` 传入但被 `src/api/config.js:47` 生产构建强制 `baseURL=""`（同源，bug 复发 3 次后的代码层强制）。
+
+### 核心验证结论
+validate 预检在重复部署（`e51a673bc` 相对服务器 `b77fc9170` 代码零 diff、schema 无变化）下**仍无条件执行并通过**（165 migrations），证明其为不可短路的门禁，不依赖"是否有变化"启发式判断。CO-346 systemName 字段经 webhook_delivery_tasks 表对比（id=129 无 vs id=130/131 有）精确验证生效。
