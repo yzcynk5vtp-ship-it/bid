@@ -42,8 +42,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /** 查询所有启用用户。 */
     List<User> findByEnabledTrue();
 
-    /** 查找 full_name_pinyin 为空且 full_name 非空的存量用户（供启动回填 runner 使用）。 */
-    @Query("SELECT u FROM User u WHERE u.fullNamePinyin IS NULL AND u.fullName IS NOT NULL AND u.fullName <> ''")
+    /** 查找需要（重新）回填 full_name_pinyin 的用户：null 行 + 旧格式行（不含空格=未升级首字母缩写）。 */
+    @Query("SELECT u FROM User u WHERE u.fullName IS NOT NULL AND u.fullName <> '' "
+        + "AND (u.fullNamePinyin IS NULL "
+        + "     OR (u.fullNamePinyin NOT LIKE '% %' AND u.fullNamePinyin <> u.fullName))")
     List<User> findByFullNamePinyinNullAndFullNameNotNull();
 
     List<User> findByIdIn(Collection<Long> ids);
