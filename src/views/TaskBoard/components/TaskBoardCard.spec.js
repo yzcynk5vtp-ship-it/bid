@@ -183,4 +183,29 @@ describe('TaskBoardCard', () => {
     expect(uploadBtn.attributes('disabled')).toBeUndefined()
     expect(submitBtn.attributes('disabled')).toBeUndefined()
   })
+
+  // === CO-338 恢复：卡片点击 emit task-click + 按钮冒泡隔离 ===
+  it('emits task-click when card root is clicked', async () => {
+    const item = createMockTask()
+    const wrapper = createWrapper(item)
+    await flushPromises()
+    await wrapper.find('.task-card').trigger('click')
+    expect(wrapper.emitted('task-click')).toBeTruthy()
+    expect(wrapper.emitted('task-click')[0]).toEqual([item])
+  })
+
+  it('does NOT emit task-click when an action button is clicked (bubble isolated)', async () => {
+    const item = createMockTask({ assigneeId: 1, deliverables: [{ name: 'file.pdf' }] })
+    const wrapper = createWrapper(item)
+    await flushPromises()
+    await wrapper.find('[data-testid="submit-task-btn"]').trigger('click')
+    expect(wrapper.emitted('task-click')).toBeFalsy()
+  })
+
+  it('wraps BID_REVIEW ProjectDocumentTable in overflow-x container', async () => {
+    const item = createMockBidReview({ reviewerId: 1 })
+    const wrapper = createWrapper(item)
+    await flushPromises()
+    expect(wrapper.find('.bid-review-documents').exists()).toBe(true)
+  })
 })
