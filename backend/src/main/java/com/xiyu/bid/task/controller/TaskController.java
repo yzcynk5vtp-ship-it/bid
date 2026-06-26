@@ -149,7 +149,7 @@ public class TaskController {
     }
 
     @PatchMapping("/{id:\\d+}/assign")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Auditable(action = "UPDATE", entityType = "Task", description = "分配任务")
     public ResponseEntity<ApiResponse<TaskDTO>> assignTask(
             @PathVariable Long id,
