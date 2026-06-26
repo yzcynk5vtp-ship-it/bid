@@ -2,7 +2,7 @@
 // Output: 标准化 API 响应和用例入口
 // Pos: Controller/接口适配层
 // 维护声明: 仅维护 Home SSO 协议适配与参数校验；业务规则下沉到 service.
-package com.xiyu.bid.controller;
+package com.xiyu.bid.crm.infrastructure;
 
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.dto.AuthResponse;
