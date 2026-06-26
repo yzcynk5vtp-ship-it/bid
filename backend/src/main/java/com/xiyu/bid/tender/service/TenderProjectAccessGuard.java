@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-class TenderProjectAccessGuard {
+public class TenderProjectAccessGuard {
 
     private final ProjectRepository projectRepository;
     private final ProjectAccessScopeService projectAccessScopeService;
@@ -77,7 +77,7 @@ class TenderProjectAccessGuard {
     /**
      * 批量过滤可见标讯。一次加载用户可见项目ID + 一次批量加载关联项目，消除 N+1。
      */
-    List<Tender> filterVisibleTenders(List<Tender> tenders) {
+    public List<Tender> filterVisibleTenders(List<Tender> tenders) {
         if (tenders.isEmpty()) return tenders;
 
         // Admin 全可见

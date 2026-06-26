@@ -17,6 +17,7 @@ import com.xiyu.bid.repository.QualificationRepository;
 import com.xiyu.bid.repository.TemplateRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
+import com.xiyu.bid.tender.service.TenderProjectAccessGuard;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Row;
@@ -50,6 +51,7 @@ public class ExcelExportService {
     private final ExportConfig exportConfig;
     private final IAuditLogService auditLogService;
     private final ProjectAccessScopeService projectAccessScopeService;
+    private final TenderProjectAccessGuard tenderProjectAccessGuard;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_ONLY_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -171,8 +173,8 @@ public class ExcelExportService {
     }
 
     private ExportResult exportTenders() throws IOException {
-        ExportAccessFilter ac = new ExportAccessFilter(projectRepository, projectAccessScopeService);
-        Set<Long> exportableIds = ac.exportableTenderIds();
+        ExportAccessFilter ac = new ExportAccessFilter(projectRepository, projectAccessScopeService, tenderProjectAccessGuard);
+        Set<Long> exportableIds = ac.exportableProjectIds(); // Still needed for project checks inside if any
         return new PagedEntityExporter<>(
                 page -> tenderRepository.findAll(page),
                 exportConfig.getMaxRecords(),
@@ -187,12 +189,12 @@ public class ExcelExportService {
                     row.createCell(6).setCellValue(t.getAiScore() != null ? t.getAiScore() : 0);
                     row.createCell(7).setCellValue(t.getRiskLevel() != null ? t.getRiskLevel().name() : "");
                 },
-                (t) -> ac.canExportTender(t, exportableIds)
+                (t) -> ac.canExportTender(t)
         ).export("标讯列表");
     }
 
     private ExportResult exportProjects() throws IOException {
-        ExportAccessFilter ac = new ExportAccessFilter(projectRepository, projectAccessScopeService);
+        ExportAccessFilter ac = new ExportAccessFilter(projectRepository, projectAccessScopeService, tenderProjectAccessGuard);
         Set<Long> exportableIds = ac.exportableProjectIds();
         return new PagedEntityExporter<>(
                 page -> projectRepository.findAll(page),

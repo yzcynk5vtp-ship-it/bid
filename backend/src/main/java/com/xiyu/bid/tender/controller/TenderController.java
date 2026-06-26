@@ -102,7 +102,7 @@ public class TenderController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER')")
     @Operation(summary = "修改标讯")
     public ResponseEntity<ApiResponse<TenderDTO>> updateTender(@PathVariable Long id, @Valid @RequestBody TenderRequest req, @AuthenticationPrincipal UserDetails user) {
         log.info("PUT /api/tenders/{}", id);
@@ -120,7 +120,7 @@ public class TenderController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER')")
     @Operation(summary = "删除标讯")
     public ResponseEntity<ApiResponse<Void>> deleteTender(@PathVariable Long id, @AuthenticationPrincipal UserDetails user) {
         rejectDemoMutation(id);
@@ -129,7 +129,7 @@ public class TenderController {
     }
 
     @GetMapping("/{id}/audit-logs")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'BID_TEAMLEADER', 'BIDADMIN')")
     @Operation(summary = "标讯审计日志")
     public ResponseEntity<ApiResponse<List<com.xiyu.bid.audit.dto.AuditLogItemDTO>>> getAuditLogs(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("查询成功", tenderAuditService.getAuditLogs(id)));
@@ -154,17 +154,17 @@ public class TenderController {
     }
 
     @GetMapping("/import-template")
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BID_TEAM')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_TEAM')")
     @Operation(summary = "下载标讯批量导入模板")
-    public ResponseEntity<byte[]> downloadImportTemplate() {
+    public ResponseEntity<org.springframework.core.io.Resource> downloadImportTemplate() {
         byte[] body = tenderImportService.generateTemplate();
         String filename = URLEncoder.encode("标讯批量导入模板.xlsx", StandardCharsets.UTF_8).replace("+", "%20");
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"tender-import-template.xlsx\"; filename*=UTF-8''" + filename)
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).body(body);
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")).body(new org.springframework.core.io.ByteArrayResource(body));
     }
 
     @PostMapping(path = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BID_TEAM')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_TEAM')")
     @Idempotent
     @Operation(summary = "批量导入标讯")
     public ResponseEntity<ApiResponse<com.xiyu.bid.tender.dto.TenderImportResultDTO>> importTenders(@RequestParam("file") MultipartFile file, @AuthenticationPrincipal UserDetails user) {

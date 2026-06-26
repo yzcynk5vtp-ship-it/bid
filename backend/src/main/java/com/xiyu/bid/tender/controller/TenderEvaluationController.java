@@ -49,7 +49,7 @@ import java.util.List;
 @RequestMapping("/api/tenders")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
 public class TenderEvaluationController {
 
     private final TenderEvaluationService tenderEvaluationService;
