@@ -24,6 +24,12 @@
   - **新旧流程对比**：旧流程需"后端启动失败 4 分钟超时"才发现 checksum mismatch，且 repair 靠手动写一次性 Runner；新流程在 restart 前 ~2 秒内完成 validate，失败时旧 jar 仍在线（服务不中断），repair 一键调用。
   - **验证**：pre-commit 门禁（构造测试 5/5）+ 部署预检（实战自动生效）+ repair 工具（实战被 deploy 调用）。生产 smoke 15/15 P0 通过。
   - **结论**：同类事故在源头（pre-commit）、部署阶段（validate 预检）、处置阶段（repair-runner）三层都被收敛，达到加固设计目标。
+- **第 3 次生产部署：validate 预检在重复部署下依然生效**（2026-06-26）：部署 `e51a673bc`（代码等同 `b77fc9170` CO-346 CRM 回调 status 置空 + 操作人姓名工号 + systemName），验证 validate 预检在"重复部署、schema 无变化、jar 代码相同"场景下不会因"反正没变化"短路跳过。
+  - **重复部署场景**：`e51a673bc` 相对服务器已运行的 `b77fc9170` 仅 docs 差异，代码零 diff。服务器先停 DB 备份（`winbid-20260626-113107.sql` 35M）→ 上传 archive → `remote-deploy.sh` 覆盖 jar 前无条件跑 `flyway-repair-runner.sh validate`（165 migrations 全过）→ 覆盖 jar → restart。
+  - **核心结论**：validate 预检是无条件前置门禁，不依赖"是否有变化"的启发式判断。即使本次为重复部署，预检仍完整执行并通过，证明其在任何部署场景下都能拦截 checksum mismatch，第 2 次的加固设计目标在重复部署场景依然成立。
+  - **CO-346 验证**：webhook_delivery_tasks 表对比 id=129（部署前，feedback 无 systemName）与 id=130/131（部署后，feedback 新增 `"systemName":"投标管理系统"`），精确证明 CO-346 回调 systemName 字段已生效。`OperatorDisplayName.format()` 在操作人信息缺失时返回空字符串（null 安全），符合设计。
+  - **smoke 结果**：14/15 通过（health UP、登录、8 项业务列表、CRM page-list 契约 200 total=31、Prometheus protected 403）。1 项 P0 失败"前端首页"为本地网络无法直连 80 端口（timeout），服务器侧 nginx 验证 200 且 `index-BrUfC-at.js` 与 release 一致，属检测位置局限非部署问题。
+  - **非致命观察**：`systemctl restart` 期间旧进程 shutdown hook 出现 `NoClassDefFoundError`（jar 被 cp 覆盖后旧 class loader 找不到类），属既有行为，新进程 11594 正常启动。
 
 ### Added
 - **西域组织架构 SDK 接入 Phase 1**（分支 `agent/cursor/organization-sdk-integration`）：实现 SDK 直连接入框架、Bearer token 动态换取、HTTP fallback 路径清理。
