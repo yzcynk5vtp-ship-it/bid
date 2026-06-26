@@ -46,6 +46,7 @@ public class CaCertificateController {
     // ========== CA 证书 CRUD ==========
 
     @GetMapping
+    @PreAuthorize("hasAuthority('resource')")
     public ResponseEntity<Page<CaCertificateDTO>> list(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String borrowStatus,
@@ -57,11 +58,13 @@ public class CaCertificateController {
     }
 
     @GetMapping("/overview")
+    @PreAuthorize("hasAuthority('resource')")
     public ResponseEntity<Map<String, Long>> overview() {
         return ResponseEntity.ok(caService.getOverview());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('resource')")
     public ResponseEntity<CaCertificateDTO> getById(@PathVariable Long id) {
         return ResponseEntity.ok(caService.getById(id));
     }

@@ -44,7 +44,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/knowledge/brand-auth")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+@PreAuthorize("hasAuthority('brand-auth.view')")
 public class ManufacturerAuthorizationController {
 
     /** Create service. */
@@ -68,7 +68,7 @@ public class ManufacturerAuthorizationController {
 
     /** List authorizations with pagination and filters. */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAuthority('brand-auth.view')")
     public ResponseEntity<Map<String, Object>> list(
             @RequestParam(required = false) final List<String> productLines,
             @RequestParam(required = false) final String brandId,
@@ -106,7 +106,7 @@ public class ManufacturerAuthorizationController {
 
     /** Get single authorization by ID. */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAuthority('brand-auth.view')")
     public ResponseEntity<ManufacturerAuthorizationDTO> detail(
             @PathVariable final Long id) {
         return listService.getDetail(id)

@@ -53,7 +53,7 @@ public class ProjectArchiveController {
     private final ArchiveFileRepository archiveFileRepository;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAuthority('project')")
     public ResponseEntity<Page<ProjectArchiveResponse>> queryProjectArchives(
             ProjectArchiveQuery query,
             @RequestParam(defaultValue = "0") int page,
@@ -63,7 +63,7 @@ public class ProjectArchiveController {
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PreAuthorize("hasAuthority('project')")
     public ResponseEntity<ProjectArchiveStatsResponse> getArchiveStats() {
         ProjectArchiveStatsResponse stats = workflowService.getStats();
         return ResponseEntity.ok(stats);
