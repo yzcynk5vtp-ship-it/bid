@@ -47,7 +47,20 @@ public final class AuditActionPolicy {
             "REVIEWED",
             "CLOSED",
             "VIEW_PASSWORD",
-            "ATTACHMENT_CHANGE"
+            "ATTACHMENT_CHANGE",
+            // CO-324: 项目生命周期过去分词与缺失动词——与 @Auditable action 实际命名对齐
+            // 原集合仅含动词原形，PROJECT_CLOSURE_APPROVED / REGISTER_PROJECT_RESULT /
+            // TRANSITION_EVALUATION_SUB_STAGE / ATTACH_EVALUATION_EVIDENCE / ABANDON_BID /
+            // GATE_ADVANCE_TO_EVALUATION / PROJECT_REBID_CREATED 等均无法匹配，被错误丢弃。
+            "APPROVED",      // PROJECT_CLOSURE_APPROVED 等 endsWith(_APPROVED)
+            "REJECTED",      // PROJECT_CLOSURE_REJECTED 等 endsWith(_REJECTED)
+            "CREATED",       // PROJECT_REBID_CREATED 等 endsWith(_CREATED)
+            "REGISTER",      // REGISTER_PROJECT_RESULT 等 startsWith(REGISTER_)
+            "ABANDON",       // ABANDON_BID 等 startsWith(ABANDON_)
+            "GATE",          // GATE_ADVANCE_TO_EVALUATION 等 startsWith(GATE_)
+            "ADVANCE",       // ADVANCE_* 推进类操作
+            "TRANSITION",    // TRANSITION_EVALUATION_SUB_STAGE 等 startsWith(TRANSITION_)
+            "ATTACH"         // ATTACH_EVALUATION_EVIDENCE 等 startsWith(ATTACH_)
     );
 
     public boolean shouldRecord(String action) {

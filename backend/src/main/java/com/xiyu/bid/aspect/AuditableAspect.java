@@ -165,7 +165,14 @@ public class AuditableAspect {
         if (value instanceof Long longVal) {
             return longVal.toString();
         }
-        return invokeNoArgIdMethod(value, "getProjectId");
+        String pid = invokeNoArgIdMethod(value, "getProjectId");
+        if (pid != null) {
+            return pid;
+        }
+        // CO-324: 对 Project 实体/DTO 等自身 id 即 projectId 的对象，fallback 到 getId()。
+        // createProject 等方法入参/返回值为 ProjectDTO（仅含 id，无 projectId 字段），
+        // 原 extractProjectIdFromObject 只认 getProjectId() 会导致 project_id 写 null。
+        return invokeNoArgIdMethod(value, "getId");
     }
 
     private String extractIdFromObject(Object value, int depth) {
