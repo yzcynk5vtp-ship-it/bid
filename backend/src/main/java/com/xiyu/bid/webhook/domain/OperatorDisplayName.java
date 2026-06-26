@@ -19,8 +19,8 @@ public final class OperatorDisplayName {
 
     /**
      * 格式化为"姓名（工号）"。
-     * <p>工号取 {@link User#getDisplayEmployeeNumber()}（employee_number 为空时 fallback 到 username）；
-     * 姓名或工号为空时只返回非空部分，避免出现"（）"。
+     * <p>姓名为空时 fallback 到 username；工号取 {@link User#getDisplayEmployeeNumber()}（employee_number 为空时也 fallback 到 username）；
+     * 两者都为空时只返回非空部分，避免出现"（）"。
      *
      * @param user 操作人，null 时返回空字符串
      */
@@ -28,12 +28,16 @@ public final class OperatorDisplayName {
         if (user == null) {
             return "";
         }
-        String fullName = user.getFullName() != null ? user.getFullName() : "";
+        // fullName 为空时 fallback 到 username，确保始终有姓名展示
+        String fullName = user.getFullName();
+        if (fullName == null || fullName.isBlank()) {
+            fullName = user.getUsername() != null ? user.getUsername() : "";
+        }
         String employeeNumber = user.getDisplayEmployeeNumber();
         if (employeeNumber == null || employeeNumber.isBlank()) {
             return fullName;
         }
-        if (fullName.isEmpty()) {
+        if (fullName.isBlank()) {
             return employeeNumber;
         }
         return "%s（%s）".formatted(fullName, employeeNumber);
