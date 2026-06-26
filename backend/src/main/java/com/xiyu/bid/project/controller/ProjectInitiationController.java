@@ -66,7 +66,7 @@ public class ProjectInitiationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<InitiationViewDto>> get(@PathVariable Long projectId) {
         InitiationViewDto dto = service.getByProject(projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "立项未提交"));

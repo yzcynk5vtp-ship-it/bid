@@ -41,7 +41,7 @@ public class ProjectEvaluationController {
 
     /** 切换评标子状态：投标团队（ADMIN/MANAGER）。蓝图 §3.3.1.3 */
     @PatchMapping("/sub-stage")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
     public ResponseEntity<ApiResponse<EvaluationDTO>> transitionSubStage(
             @PathVariable Long projectId,
             @Valid @RequestBody EvaluationSubStageUpdateRequest req,
@@ -53,7 +53,7 @@ public class ProjectEvaluationController {
 
     /** 推进到结果确认阶段。 */
     @PostMapping("/advance")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
     public ResponseEntity<ApiResponse<Void>> advance(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -63,7 +63,7 @@ public class ProjectEvaluationController {
 
     /** 附加评标证据：投标团队（ADMIN/MANAGER）。 */
     @PostMapping("/evidence")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
     public ResponseEntity<ApiResponse<EvaluationDTO>> attachEvidence(
             @PathVariable Long projectId,
             @Valid @RequestBody EvaluationEvidenceAttachRequest req,
@@ -76,7 +76,7 @@ public class ProjectEvaluationController {
 
     /** 填写项目评估表单：投标团队（ADMIN/MANAGER）。 */
     @PatchMapping("/form")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
     public ResponseEntity<ApiResponse<EvaluationDTO>> updateForm(
             @PathVariable Long projectId,
             @Valid @RequestBody EvaluationFormUpdateRequest req,
@@ -87,7 +87,7 @@ public class ProjectEvaluationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<EvaluationDTO>> get(@PathVariable Long projectId) {
         EvaluationDTO dto = service.getByProject(projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "评标尚未开始"));
@@ -96,7 +96,7 @@ public class ProjectEvaluationController {
 
     /** 弃标申请：bid-TeamLeader（映射 MANAGER）。 */
     @PostMapping("/abandon")
-    @PreAuthorize("hasAnyRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
     public ResponseEntity<ApiResponse<EvaluationDTO>> abandonBid(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectAbandonBidRequest req,

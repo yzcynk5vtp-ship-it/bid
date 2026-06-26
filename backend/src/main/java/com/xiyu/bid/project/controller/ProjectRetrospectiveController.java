@@ -50,7 +50,7 @@ public class ProjectRetrospectiveController {
 
     /** 查询复盘：ADMIN/MANAGER 可见。 */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RetrospectiveDTO>> get(@PathVariable Long projectId) {
         return service.getByProject(projectId)
                 .map(dto -> ResponseEntity.ok(ApiResponse.success("ok", dto)))
