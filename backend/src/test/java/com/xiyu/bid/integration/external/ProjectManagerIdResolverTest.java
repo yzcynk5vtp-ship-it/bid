@@ -83,4 +83,67 @@ class ProjectManagerIdResolverTest {
 
         assertThat(resolver.resolveByFullName("  韩超  ")).isEqualTo(25L);
     }
+
+    // ── CO-333 模糊匹配增强测试 ────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("CO-333: 姓名含全角中间点，库中存半角点 → 标准化后唯一匹配成功")
+    void resolveByFullName_fullWidthMiddleDot_matchesHalfWidth() {
+        // 推送来的姓名含全角中间点，库里存的是半角点
+        when(userRepository.findByFullName("伊合巴来木.伊尼哈木"))
+                .thenReturn(List.of(User.builder().id(100L).fullName("伊合巴来木.伊尼哈木").build()));
+
+        assertThat(resolver.resolveByFullName("伊合巴来木·伊尼哈木")).isEqualTo(100L);
+    }
+
+    @Test
+    @DisplayName("CO-333: 姓名含全角空格，库中存半角无空格 → 标准化后唯一匹配成功")
+    void resolveByFullName_fullWidthSpaces_normalizedMatches() {
+        when(userRepository.findByFullName("李雷"))
+                .thenReturn(List.of(User.builder().id(101L).fullName("李雷").build()));
+
+        assertThat(resolver.resolveByFullName("李　雷")).isEqualTo(101L);
+    }
+
+    @Test
+    @DisplayName("CO-333: 姓名中间含多余空格 → 去空格后唯一匹配成功")
+    void resolveByFullName_innerSpaces_removedMatches() {
+        when(userRepository.findByFullName("张三"))
+                .thenReturn(List.of(User.builder().id(102L).fullName("张三").build()));
+
+        assertThat(resolver.resolveByFullName("张   三")).isEqualTo(102L);
+        assertThat(resolver.resolveByFullName("张 三")).isEqualTo(102L);
+    }
+
+    @Test
+    @DisplayName("CO-333: 全角字母/数字混在半角姓名中 → 标准化后唯一匹配成功")
+    void resolveByFullName_fullWidthChars_normalizedMatches() {
+        when(userRepository.findByFullName("TOM01"))
+                .thenReturn(List.of(User.builder().id(103L).fullName("TOM01").build()));
+
+        assertThat(resolver.resolveByFullName("TOM01")).isEqualTo(103L);
+        assertThat(resolver.resolveByFullName("ＴＯＭ０１")).isEqualTo(103L);
+    }
+
+    @Test
+    @DisplayName("CO-333: 标准化后出现重名 → 返回 null 避免误绑（谨慎优先）")
+    void resolveByFullName_standardizationCausesDuplicate_returnsNull() {
+        // "张 三" 和 "张山" 标准化后都是 "张 三"（去空格后碰巧相同，或标准化后重名）
+        when(userRepository.findByFullName("张 三")).thenReturn(List.of(
+                User.builder().id(104L).fullName("张 三").build(),
+                User.builder().id(105L).fullName("张山").build()));
+
+        assertThat(resolver.resolveByFullName("张 三")).isNull();
+    }
+
+    @Test
+    @DisplayName("CO-333: 精确匹配失败，标准化后唯一匹配成功（trim + 去空格 + 中间点标准化）")
+    void resolveByFullName_exactFails_standardizedMatches_returnsId() {
+        // 输入 "王凯 毅 " → trim 后 "王凯 毅"，标准化后 "王凯毅"
+        // 精确匹配 "王凯 毅" 失败，标准化匹配 "王凯毅" 成功
+        when(userRepository.findByFullName("王凯 毅")).thenReturn(List.of());  // 精确匹配失败
+        when(userRepository.findByFullName("王凯毅")).thenReturn(List.of(User.builder().id(106L).fullName("王凯毅").build()));  // 标准化后匹配成功
+
+        assertThat(resolver.resolveByFullName("王凯 毅 ")).isEqualTo(106L);
+    }
 }
