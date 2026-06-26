@@ -51,6 +51,12 @@ function computeCanDeleteDocument(role) {
   return resolveDraftingRoleGroup(role) === 'admin_lead'
 }
 
+// 对齐 canManageTaskBoardTopActions：admin_lead ∪ lead_assist 可操作任务看板顶部按钮
+function computeCanManageTaskBoardTopActions(role) {
+  const group = resolveDraftingRoleGroup(role)
+  return group === 'admin_lead' || group === 'lead_assist'
+}
+
 describe('resolveDraftingRoleGroup', () => {
   it.each([
     ['admin', 'admin_lead'],
@@ -174,6 +180,25 @@ describe('canDeleteDocument — 删除文档权限（仅 admin_lead）', () => {
   })
 })
 
+describe('canManageTaskBoardTopActions — 任务看板顶部按钮权限（admin_lead ∪ lead_assist）', () => {
+  it.each([
+    ['admin', true],
+    ['/bidAdmin', true],
+    ['bid-TeamLeader', true],
+    ['bid-projectLeader', true],
+    ['bid-Team', true],
+    ['bid-administration', false],
+    ['bid-otherDept', false],
+    ['staff', false],
+    ['sales', false],
+    ['', false],
+    [null, false],
+    [undefined, false],
+  ])('角色 %s → canManageTaskBoardTopActions=%s', (role, expected) => {
+    expect(computeCanManageTaskBoardTopActions(role)).toBe(expected)
+  })
+})
+
 // 对齐 TaskKanban.vue 中 isTaskAssignee 的逻辑
 // 仅任务执行人本人可提交/上传交付物（对齐后端 ProjectTaskAuthorizationPolicy.canSubmitTask）
 function computeIsTaskAssignee(task, currentUserId) {
@@ -282,6 +307,17 @@ describe('CO-355: reactive(composable) 真实调用（解包 + 项目级 lead �
     expect(typeof permWith('admin').canManageBidFiles).toBe('boolean')
     expect(permWith('admin').canManageBidFiles).toBe(true)
     expect(permWith('bid-otherDept').canManageBidFiles).toBe(false)
+  })
+  it('canManageTaskBoardTopActions 解包为 boolean 且按角色组（admin_lead ∪ lead_assist）', () => {
+    expect(typeof permWith('admin').canManageTaskBoardTopActions).toBe('boolean')
+    expect(permWith('admin').canManageTaskBoardTopActions).toBe(true)
+    expect(permWith('/bidAdmin').canManageTaskBoardTopActions).toBe(true)
+    expect(permWith('bid-TeamLeader').canManageTaskBoardTopActions).toBe(true)
+    expect(permWith('bid-projectLeader').canManageTaskBoardTopActions).toBe(true)
+    expect(permWith('bid-Team').canManageTaskBoardTopActions).toBe(true)
+    expect(permWith('bid-otherDept').canManageTaskBoardTopActions).toBe(false)
+    expect(permWith('bid-administration').canManageTaskBoardTopActions).toBe(false)
+    expect(permWith('staff').canManageTaskBoardTopActions).toBe(false)
   })
 })
 

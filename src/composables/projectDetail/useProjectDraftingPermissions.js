@@ -93,6 +93,11 @@ export function useProjectDraftingPermissions(opts = {}) {
     roleGroup.value === 'admin_lead' || roleGroup.value === 'lead_assist'
   )
 
+  /** 任务看板顶部管理按钮总开关（AI评分标准解析、AI自动拆解任务、添加任务） */
+  const canManageTaskBoardTopActions = computed(() =>
+    roleGroup.value === 'admin_lead' || roleGroup.value === 'lead_assist'
+  )
+
   /** 提交任务（任务执行人将任务从待办→待审核） */
   const canSubmitTask = computed(() => roleGroup.value === 'executor')
 
@@ -194,6 +199,7 @@ export function useProjectDraftingPermissions(opts = {}) {
     canCreateTask,
     canSubmitTask,
     canReviewTask,
+    canManageTaskBoardTopActions,
     // 文档
     canUploadDocument,
     canDownloadDocument,
