@@ -51,6 +51,7 @@ public class ProjectService {
         return ProjectMapper.toDTO(project);
     }
 
+    @Auditable(action = "CREATE_PROJECT", entityType = "Project", description = "创建项目")
     public ProjectDTO createProject(ProjectDTO projectDTO) {
         ProjectDTO normalized = ProjectPayloadValidator.validateAndNormalize(projectDTO, true);
         Project existingProject = ExistingTenderProjectSelector.selectAccessible(

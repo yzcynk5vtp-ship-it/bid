@@ -96,6 +96,24 @@ class AuditableAspectQueryActionTest {
         assertThat(entryCaptor.getValue().getEntityId()).isEqualTo("99");
     }
 
+    /**
+     * CO-324: createProject 返回 ProjectDTO（仅含 getId()，无 getProjectId()），
+     * extractProjectIdFromObject 需 fallback 到 getId() 才能正确写入 project_id。
+     */
+    @Test
+    void projectIdFallsBackToGetIdWhenGetProjectIdAbsent() throws Throwable {
+        when(signature.getMethod()).thenReturn(method("createProjectLike"));
+        when(joinPoint.proceed()).thenReturn(new ProjectLikeRecord(77L));
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        aspect.auditMethod(joinPoint);
+
+        ArgumentCaptor<AuditLogService.AuditLogEntry> entryCaptor =
+                ArgumentCaptor.forClass(AuditLogService.AuditLogEntry.class);
+        verify(auditLogService).log(entryCaptor.capture());
+        assertThat(entryCaptor.getValue().getProjectId()).isEqualTo(77L);
+    }
+
     static Stream<Method> queryActionMethods() {
         return Stream.of("read", "query", "view", "search", "list", "get")
                 .map(AuditableAspectQueryActionTest::method);
@@ -144,8 +162,26 @@ class AuditableAspectQueryActionTest {
         public String create() {
             return "created";
         }
+
+        @Auditable(action = "CREATE_PROJECT", entityType = "Project")
+        public ProjectLikeRecord createProjectLike() {
+            return new ProjectLikeRecord(77L);
+        }
     }
 
     record CreatedRecord(Long id) {
+    }
+
+    /** 模拟 ProjectDTO：仅含 getId()，无 getProjectId()。 */
+    static final class ProjectLikeRecord {
+        private final Long id;
+
+        ProjectLikeRecord(Long id) {
+            this.id = id;
+        }
+
+        public Long getId() {
+            return id;
+        }
     }
 }
