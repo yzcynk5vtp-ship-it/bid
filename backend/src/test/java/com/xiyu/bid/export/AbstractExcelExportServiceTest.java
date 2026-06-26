@@ -14,6 +14,7 @@ import com.xiyu.bid.repository.QualificationRepository;
 import com.xiyu.bid.repository.TemplateRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
+import com.xiyu.bid.tender.service.TenderProjectAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -51,6 +52,9 @@ abstract class AbstractExcelExportServiceTest {
     @Mock
     protected ProjectAccessScopeService projectAccessScopeService;
 
+    @Mock
+    protected TenderProjectAccessGuard tenderProjectAccessGuard;
+
     protected ExcelExportService excelExportService;
     protected Tender testTender;
     protected Project testProject;
@@ -75,7 +79,8 @@ abstract class AbstractExcelExportServiceTest {
                 templateRepository,
                 exportConfig,
                 auditLogService,
-                projectAccessScopeService
+                projectAccessScopeService,
+                tenderProjectAccessGuard
         );
         lenient().when(projectAccessScopeService.currentUserHasAdminAccess()).thenReturn(true);
 
