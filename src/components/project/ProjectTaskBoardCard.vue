@@ -8,7 +8,7 @@
         </div>
         <div class="actions">
           <el-button
-            v-if="canManageProjectTasks"
+            v-if="perm.canManageTaskBoardTopActions"
             link
             type="success"
             class="header-action header-action--tender"
@@ -19,7 +19,7 @@
             AI评分标准解析
           </el-button>
           <el-button
-            v-if="canManageProjectTasks"
+            v-if="perm.canManageTaskBoardTopActions"
             link
             type="warning"
             class="header-action header-action--score"
@@ -30,7 +30,7 @@
             AI 自动拆解任务
           </el-button>
           <el-button
-            v-if="canManageProjectTasks"
+            v-if="perm.canManageTaskBoardTopActions"
             link
             type="primary"
             class="header-action header-action--add"
@@ -39,14 +39,6 @@
             @click="handleAddTaskClick"
           >
             添加任务
-          </el-button>
-          <el-button
-            v-if="isDemoMode"
-            link
-            type="warning"
-            @click="$emit('reset-tasks')"
-          >
-            重置任务
           </el-button>
         </div>
       </div>
@@ -97,14 +89,14 @@
 </template>
 
 <script setup>
-import { computed, getCurrentInstance, ref } from 'vue'
+import { computed, getCurrentInstance, ref, reactive } from 'vue'
 import { DocumentChecked, List, Plus } from '@element-plus/icons-vue'
 import TaskBoard from '@/components/common/TaskBoard.vue'
 import TaskForm from '@/components/project/TaskForm.vue'
+import { useProjectDraftingPermissions } from '@/composables/projectDetail/useProjectDraftingPermissions'
 
 const emit = defineEmits([
   'add-task',
-  'reset-tasks',
   'task-click',
   'status-change',
   'open-score-parse',
@@ -131,15 +123,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  isDemoMode: {
-    type: Boolean,
-    default: false,
-  },
   showSubmitButton: {
     type: Boolean,
     default: true,
   },
 })
+
+const perm = reactive(useProjectDraftingPermissions())
 
 const normalizedProjectId = computed(() => String(props.projectId ?? ''))
 
