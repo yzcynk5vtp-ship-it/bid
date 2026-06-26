@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link TenderIntegrationMapper#toEntity} 的单元测试。
@@ -18,15 +19,18 @@ import static org.mockito.Mockito.mock;
 class TenderIntegrationServiceMapToEntityTest {
 
     private TenderIntegrationMapper mapper;
+    private ProjectManagerIdResolver managerIdResolver;
 
     @BeforeEach
     void setUp() {
+        managerIdResolver = mock(ProjectManagerIdResolver.class);
         TenderEvaluationIntegrationMapper evaluationMapper = new TenderEvaluationIntegrationMapper(
                 mock(TenderEvaluationRepository.class),
                 mock(TenderEvaluationSubmissionMapper.class));
         mapper = new TenderIntegrationMapper(
                 mock(TenderMapper.class),
-                evaluationMapper);
+                evaluationMapper,
+                managerIdResolver);
     }
 
     private TenderPushRequest baseRequest() {
@@ -82,6 +86,60 @@ class TenderIntegrationServiceMapToEntityTest {
 
         assertThat(t.getSourceType()).isEqualTo(Tender.SourceType.EXTERNAL_PLATFORM);
         assertThat(t.getStatus()).isEqualTo(Tender.Status.PENDING_ASSIGNMENT);
+    }
+
+    @Test
+    @DisplayName("CO-333: projectManagerName 唯一匹配用户时，同步写入 projectManagerId（可见性锚点）")
+    void toEntity_withProjectManagerName_resolvesUserId() {
+        TenderPushRequest r = baseRequest();
+        r.setProjectManagerName("韩超");
+        when(managerIdResolver.resolveByFullName("韩超")).thenReturn(25L);
+
+        Tender t = mapper.toEntity(r);
+
+        assertThat(t.getProjectManagerName()).isEqualTo("韩超");
+        assertThat(t.getProjectManagerId()).isEqualTo(25L);
+    }
+
+    @Test
+    @DisplayName("CO-333: projectManagerName 无匹配用户时，projectManagerId 保持 null（不阻断）")
+    void toEntity_withProjectManagerName_noMatch_keepsNullId() {
+        TenderPushRequest r = baseRequest();
+        r.setProjectManagerName("不存在的人");
+        when(managerIdResolver.resolveByFullName("不存在的人")).thenReturn(null);
+
+        Tender t = mapper.toEntity(r);
+
+        assertThat(t.getProjectManagerName()).isEqualTo("不存在的人");
+        assertThat(t.getProjectManagerId()).isNull();
+    }
+
+    @Test
+    @DisplayName("CO-333: projectManagerName 重名时跳过 id 绑定避免误绑")
+    void toEntity_withProjectManagerName_duplicateName_skipsIdBinding() {
+        TenderPushRequest r = baseRequest();
+        r.setProjectManagerName("张伟");
+        when(managerIdResolver.resolveByFullName("张伟")).thenReturn(null);
+
+        Tender t = mapper.toEntity(r);
+
+        assertThat(t.getProjectManagerName()).isEqualTo("张伟");
+        assertThat(t.getProjectManagerId()).isNull();
+    }
+
+    @Test
+    @DisplayName("CO-333: applyUpdate 同步更新 projectManagerName + projectManagerId")
+    void applyUpdate_withProjectManagerName_resolvesUserId() {
+        TenderPushRequest r = baseRequest();
+        r.setProjectManagerName("李四");
+        when(managerIdResolver.resolveByFullName("李四")).thenReturn(30L);
+        Tender existing = new Tender();
+
+        mapper.applyUpdate(existing, r);
+
+        assertThat(existing.getProjectManagerName()).isEqualTo("李四");
+        assertThat(existing.getProjectManagerId()).isEqualTo(30L);
+        assertThat(existing.getStatus()).isEqualTo(Tender.Status.EVALUATED);
     }
 
     @Test
