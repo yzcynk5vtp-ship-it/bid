@@ -2,6 +2,7 @@
   <div
     class="task-card"
     :class="{ 'task-high': item.priority === 'HIGH', 'task-review': item.type === 'BID_REVIEW' }"
+    @click="emit('task-click', item)"
   >
     <div class="task-header">
       <div class="header-tags">
@@ -32,13 +33,16 @@
       <span>{{ item.projectName }}</span>
     </div>
 
-    <!-- BID_REVIEW：标书文件列表（只读下载） -->
-    <ProjectDocumentTable v-if="item.type === 'BID_REVIEW' && item.projectId" :project-id="item.projectId" readonly />
+    <!-- BID_REVIEW：标书文件列表（只读下载，包 overflow-x 防止撑破列宽） -->
+    <div v-if="item.type === 'BID_REVIEW' && item.projectId" class="bid-review-documents" @click.stop>
+      <ProjectDocumentTable :project-id="item.projectId" readonly />
+    </div>
 
-    <!-- TASK 操作：交付物上传 + 提交 -->
+    <!-- TASK 操作：交付物上传 + 提交（@click.stop 防止点按钮冒泡触发卡片点击） -->
     <TaskBoardTaskActions
       v-if="item.type === 'TASK'"
       :item="item"
+      @click.stop
       @deliverable-changed="(t) => emit('deliverable-changed', t)"
     />
 
@@ -46,6 +50,7 @@
     <TaskBoardBidReviewActions
       v-if="item.type === 'BID_REVIEW'"
       :item="item"
+      @click.stop
       @deliverable-changed="(t) => emit('deliverable-changed', t)"
     />
   </div>
@@ -63,7 +68,7 @@ const props = defineProps({
   item: { type: Object, required: true },
   availableStatuses: { type: Array, required: true }
 })
-const emit = defineEmits(['status-change', 'deliverable-changed'])
+const emit = defineEmits(['status-change', 'deliverable-changed', 'task-click'])
 
 const { hasDeliverable } = useTaskActions()
 
@@ -91,6 +96,8 @@ const formattedDate = computed(() => {
   padding: 12px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
   transition: box-shadow 0.2s ease;
+  cursor: pointer;
+  min-width: 0;
   &:hover { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12); }
   &.task-high { border-left: 3px solid #f56c6c; }
   &.task-review { border-left: 3px solid #e6a23c; }
@@ -105,7 +112,7 @@ const formattedDate = computed(() => {
   .type-tag { flex-shrink: 0; }
 }
 
-.task-name { font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #303133; }
+.task-name { font-size: 14px; font-weight: 500; margin-bottom: 6px; color: #303133; word-break: break-all; }
 .task-desc { font-size: 12px; color: #909399; margin-bottom: 8px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-meta {
   display: flex;
@@ -116,6 +123,7 @@ const formattedDate = computed(() => {
   .deadline-urgent { color: #f56c6c; }
 }
 
-.task-project { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 12px; color: #909399; .el-icon { flex-shrink: 0; } }
+.task-project { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 12px; color: #909399; word-break: break-all; .el-icon { flex-shrink: 0; } }
+.bid-review-documents { margin-top: 8px; overflow-x: auto; }
 :deep(.project-documents) { margin-top: 8px; .el-card__header { padding: 8px 12px; } .el-card__body { padding: 8px; } }
 </style>
