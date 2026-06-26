@@ -135,13 +135,104 @@ class TenderAttachmentDownloadServiceTest {
     @Test
     @DisplayName("https:// URL 不可达时返回 404 或 502")
     void download_externalUrlUnreachable_returns404Or502() {
-        // 使用一个保证不可达的端口
-        String fileUrl = "https://localhost:12345/nonexistent/file.pdf";
+        // 使用一个保证不可达的端口（非私有地址）
+        String fileUrl = "https://example.com:12345/nonexistent/file.pdf";
         assertThatThrownBy(() -> service.download(fileUrl))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> {
                     int code = ((ResponseStatusException) ex).getStatusCode().value();
                     assertThat(code).isIn(404, 502);
                 });
+    }
+
+    // ── SSRF 防护 ──────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("SSRF: localhost 被拒绝返回 400")
+    void download_localhost_returns400() {
+        assertThatThrownBy(() -> service.download("https://localhost/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
+                        .isEqualTo(400));
+    }
+
+    @Test
+    @DisplayName("SSRF: 127.0.0.1 被拒绝返回 400")
+    void download_loopbackIp_returns400() {
+        assertThatThrownBy(() -> service.download("https://127.0.0.1/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
+                        .isEqualTo(400));
+    }
+
+    @Test
+    @DisplayName("SSRF: 10.x 私有 IP 被拒绝返回 400")
+    void download_privateIp10_returns400() {
+        assertThatThrownBy(() -> service.download("https://10.0.0.1/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
+                        .isEqualTo(400));
+    }
+
+    @Test
+    @DisplayName("SSRF: 192.168.x 私有 IP 被拒绝返回 400")
+    void download_privateIp192_returns400() {
+        assertThatThrownBy(() -> service.download("https://192.168.1.1/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
+                        .isEqualTo(400));
+    }
+
+    @Test
+    @DisplayName("SSRF: 172.16.x 私有 IP 被拒绝返回 400")
+    void download_privateIp172_returns400() {
+        assertThatThrownBy(() -> service.download("https://172.16.0.1/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
+                        .isEqualTo(400));
+    }
+
+    @Test
+    @DisplayName("SSRF: 0.0.0.0 被拒绝返回 400")
+    void download_anyLocalIp_returns400() {
+        assertThatThrownBy(() -> service.download("https://0.0.0.0/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
+                        .isEqualTo(400));
+    }
+
+    @Test
+    @DisplayName("SSRF: 配置域名白名单后，非白名单域名被拒绝返回 400")
+    void download_nonWhitelistedHost_returns400() {
+        ReflectionTestUtils.setField(service, "allowedExternalHosts", "allowed.example.com");
+        assertThatThrownBy(() -> service.download("https://evil.com/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value())
+                        .isEqualTo(400));
+    }
+
+    @Test
+    @DisplayName("SSRF: 配置域名白名单后，白名单域名通过校验")
+    void download_whitelistedHost_passesValidation() {
+        ReflectionTestUtils.setField(service, "allowedExternalHosts", "allowed.example.com");
+        // 白名单校验通过后，由于实际不可达会返回 404/502 而非 400
+        assertThatThrownBy(() -> service.download("https://allowed.example.com:12345/file.pdf"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    int code = ((ResponseStatusException) ex).getStatusCode().value();
+                    assertThat(code).isIn(404, 502);
+                });
+    }
+
+    @Test
+    @DisplayName("SSRF: isPrivateOrLoopbackAddress 正确识别私有地址")
+    void isPrivateOrLoopbackAddress_correctlyIdentifiesPrivateAddresses() {
+        assertThat(TenderAttachmentDownloadService.isPrivateOrLoopbackAddress("localhost")).isTrue();
+        assertThat(TenderAttachmentDownloadService.isPrivateOrLoopbackAddress("127.0.0.1")).isTrue();
+        assertThat(TenderAttachmentDownloadService.isPrivateOrLoopbackAddress("10.0.0.1")).isTrue();
+        assertThat(TenderAttachmentDownloadService.isPrivateOrLoopbackAddress("192.168.1.1")).isTrue();
+        assertThat(TenderAttachmentDownloadService.isPrivateOrLoopbackAddress("172.16.0.1")).isTrue();
+        assertThat(TenderAttachmentDownloadService.isPrivateOrLoopbackAddress("0.0.0.0")).isTrue();
+        assertThat(TenderAttachmentDownloadService.isPrivateOrLoopbackAddress("example.com")).isFalse();
     }
 }
