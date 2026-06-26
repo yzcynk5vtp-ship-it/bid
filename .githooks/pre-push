@@ -77,12 +77,14 @@ case "$remote_url" in
 esac
 
 # ==============================================================================
-# 前置门禁 C: agent/* 分支 PR 脚本使用提醒
+# 前置门禁 C+D: agent/* 分支检查
+#   C: 首次 push 时提醒使用统一脚本创建 PR
+#   D: 禁止推送已合入 main 的分支，防止 PR 合并后继续推送导致代码丢失
 # ==============================================================================
 while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
   branch="${local_ref#refs/heads/}"
   if [[ "$branch" == agent/* ]]; then
-    # 只在首次 push 时提醒（远端还没有这个 ref）
+    # 门禁 C: 首次 push 时提醒使用统一脚本
     if [[ "${remote_sha}" == "0000000000000000000000000000000000000000" ]]; then
       echo ""
       echo "╔══════════════════════════════════════════════════════════════╗"
@@ -101,7 +103,29 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
       echo "╚══════════════════════════════════════════════════════════════╝"
       echo ""
     fi
-    break
+
+    # 门禁 D: 禁止推送已合入 main 的分支
+    # 防止 PR 合并后继续往同一分支推送新提交，导致代码未合入
+    if git branch -r --merged origin/main 2>/dev/null | grep -qwE "origin/${branch}$"; then
+      echo ""
+      echo "╔══════════════════════════════════════════════════════════════╗"
+      echo "║  ❌ 拒绝推送到已合入 main 的分支                           ║"
+      echo "╠══════════════════════════════════════════════════════════════╣"
+      echo "║  分支: $branch                                              ║"
+      echo "║  该分支已合入 main，继续推送会导致新提交不在 PR 中。       ║"
+      echo "║                                                              ║"
+      echo "║  正确做法:                                                   ║"
+      echo "║    1. 切回锚点分支: git checkout agent/<name>-init         ║"
+      echo "║    2. 同步 main: git pull origin main --rebase             ║"
+      echo "║    3. 开新分支: ./scripts/agent-start-task.sh \\            ║"
+      echo "║                  <name> <task> origin/main --in-place       ║"
+      echo "║                                                              ║"
+      echo "║  如需紧急修复，请使用 --force 强制推送（不推荐）：          ║"
+      echo "║    git push origin $branch --force-with-lease               ║"
+      echo "╚══════════════════════════════════════════════════════════════╝"
+      echo ""
+      exit 1
+    fi
   fi
 done
 
