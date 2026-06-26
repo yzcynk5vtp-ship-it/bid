@@ -93,11 +93,9 @@
         <!-- CRM商机关联状态 -->
         <!-- CO-311: 使用 evaluationTabLinked 而非直接读 tender.crmOpportunityName,
              确保关联失败时与基本信息 tab 同步回滚到"未关联"状态 -->
+        <!-- CO-360: 删除关联商机后的提示文案，只保留商机名称标签 -->
         <div v-if="evaluationTabLinked" class="crm-status-bar">
-          <el-alert type="warning" :closable="false" show-icon>
-            <template #title>核对评估表内容，如需修改，请返回CRM修改对应商机信息</template>
-          </el-alert>
-          <el-tag type="success" size="default" effect="plain" class="mt-2">
+          <el-tag type="success" size="default" effect="plain">
             已关联商机：{{ tender?.crmOpportunityName }}
           </el-tag>
         </div>
