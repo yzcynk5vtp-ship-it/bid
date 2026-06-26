@@ -1,0 +1,9 @@
+version: 1
+task: "hook-merged-branch-guard"
+locks:
+  - path: ".githooks/pre-push"
+    scope: "file"
+    owner: "agent/kimi"
+    branch: "agent/kimi/hook-merged-branch-guard"
+    expiresAt: "2026-06-27T00:00:00.000Z"
+    reason: "工程化防护：新增禁止推送已合入 main 分支的门禁"
