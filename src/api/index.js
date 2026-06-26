@@ -47,6 +47,7 @@ import { taskStatusDictAdminApi } from './modules/taskStatusDictAdmin.js'
 import { taskExtendedFieldApi } from './modules/taskExtendedField.js'
 import { taskExtendedFieldAdminApi } from './modules/taskExtendedFieldAdmin.js'
 import { taskActivityApi } from './modules/taskActivity.js'
+import { tasksApi } from './modules/tasks.js'
 import { organizationIntegrationApi, weComIntegrationApi } from './modules/systemIntegration.js'
 import { tenderFavoritesApi } from './modules/tenderFavorites.js'
 
@@ -84,6 +85,7 @@ export {
   taskExtendedFieldApi,
   taskExtendedFieldAdminApi,
   taskActivityApi,
+  tasksApi,
   tenderFavoritesApi,
   weComIntegrationApi,
   organizationIntegrationApi
@@ -116,6 +118,7 @@ export default {
   taskExtendedField: () => Promise.resolve(taskExtendedFieldApi),
   taskExtendedFieldAdmin: () => Promise.resolve(taskExtendedFieldAdminApi),
   taskActivity: () => Promise.resolve(taskActivityApi),
+  tasks: () => Promise.resolve(tasksApi),
   tenderFavorites: () => Promise.resolve(tenderFavoritesApi),
   weComIntegration: () => Promise.resolve(weComIntegrationApi),
   organizationIntegration: () => Promise.resolve(organizationIntegrationApi)

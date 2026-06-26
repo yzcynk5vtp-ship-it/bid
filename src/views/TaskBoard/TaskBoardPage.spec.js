@@ -27,6 +27,27 @@ vi.mock('@/views/TaskBoard/composables/useTaskBoard.js', () => ({
 }))
 
 // Mock API modules
+vi.mock('@/api/modules/tasks.js', () => ({
+  tasksApi: {
+    getTaskById: vi.fn().mockResolvedValue({
+      data: {
+        data: {
+          id: 1,
+          projectId: 10,
+          title: '任务1',
+          content: '这是详细说明内容',
+          status: 'TODO',
+          priority: 'HIGH',
+          assigneeId: 1,
+          assigneeName: '张三',
+          completionNotes: '',
+          attachments: [],
+          deliverables: [],
+        }
+      }
+    }),
+  }
+}))
 vi.mock('@/api/modules/projects.js', () => ({
   projectsApi: {
     createTaskDeliverable: vi.fn().mockResolvedValue({}),

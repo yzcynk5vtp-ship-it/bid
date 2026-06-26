@@ -50,12 +50,14 @@
       direction="rtl"
       :destroy-on-close="true"
     >
-      <TaskForm
-        v-if="selectedTask"
-        ref="taskFormRef"
-        v-model="selectedTask"
-        mode="view"
-      />
+      <div v-loading="loadingTaskDetail">
+        <TaskForm
+          v-if="selectedTask"
+          ref="taskFormRef"
+          v-model="selectedTask"
+          mode="view"
+        />
+      </div>
       <template #footer>
         <div class="drawer-footer">
           <el-button @click="drawerVisible = false">关闭</el-button>
@@ -80,6 +82,7 @@ import { ElMessage } from 'element-plus'
 import TaskBoardCard from './components/TaskBoardCard.vue'
 import TaskForm from '@/components/project/TaskForm.vue'
 import { projectsApi } from '@/api/modules/projects.js'
+import { tasksApi } from '@/api/modules/tasks.js'
 import { useTaskBoard } from './composables/useTaskBoard.js'
 import { taskBackendToCard } from '@/views/Project/project-utils.js'
 
@@ -100,18 +103,27 @@ const drawerVisible = ref(false)
 const selectedTask = ref(null)
 const taskFormRef = ref(null)
 const submitting = ref(false)
+const loadingTaskDetail = ref(false)
 
 // 提交审核按钮显隐：仅执行人+TODO状态时显示
 const canSubmitForReview = computed(() => {
   return taskFormRef.value?.canDeliver === true
 })
 
-function handleTaskClick(item) {
+async function handleTaskClick(item) {
   if (item.type !== 'TASK') return
-  selectedTask.value = { ...taskBackendToCard(item), deliverableFiles: [] }
-  nextTick(() => {
+  loadingTaskDetail.value = true
+  try {
+    const res = await tasksApi.getTaskById(item.id)
+    const taskData = res?.data?.data || res?.data || {}
+    selectedTask.value = { ...taskBackendToCard(taskData), deliverableFiles: [] }
+    await nextTick()
     drawerVisible.value = true
-  })
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.msg || '加载任务详情失败')
+  } finally {
+    loadingTaskDetail.value = false
+  }
 }
 
 async function handleSubmitForReview() {
