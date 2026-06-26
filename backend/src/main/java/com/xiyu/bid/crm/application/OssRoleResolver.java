@@ -6,7 +6,6 @@ import com.xiyu.bid.integration.organization.domain.policy.JobRoleLookupResolver
 import com.xiyu.bid.integration.organization.domain.policy.OssMenuPermissionMapper;
 import com.xiyu.bid.integration.organization.infrastructure.mapper.PositionToRoleMapper;
 import com.xiyu.bid.repository.UserRepository;
-import com.xiyu.bid.security.domain.LoginRoleWhitelist;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -39,6 +38,17 @@ public class OssRoleResolver {
 
     /**
      * 从 OSS jobList 解析内部角色码。
+     * <p>
+     * OSS sysRoleList 中的 roleCode（如 admin、HomeReadonly、KunLunAdmin 等）是 OSS/Home/CRM
+     * 等系统的角色码，不是 bid 系统的 RoleProfile code。即使名字相同（如 OSS 的 "admin" 和 bid
+     * 的 "admin"）也是不同系统的角色，不能直接复用。
+     * <p>
+     * 因此本方法只通过以下途径解析 bid 角色码：
+     * <ol>
+     *   <li>sysRoleList 中 status=1 的 roleName（中文角色名称，如"投标管理员"）通过映射表匹配</li>
+     *   <li>jobName（岗位名，如"投标项目负责人"）通过映射表或正则匹配</li>
+     *   <li>fallback 到本地 User.roleCode</li>
+     * </ol>
      *
      * @param jobList          OSS 返回的 jobList
      * @param jobNumber        用户工号
@@ -56,22 +66,7 @@ public class OssRoleResolver {
             return null;
         }
 
-        // 1. 优先从 sysRoleList 中找 roleCode 直接匹配内部白名单的角色
-        if (jobInfo.getSysRoleList() != null) {
-            for (CrmJobListResponse.SysRole sysRole : jobInfo.getSysRoleList()) {
-                if ("1".equals(sysRole.getStatus()) && !Boolean.TRUE.equals(sysRole.getDel())) {
-                    String ossRoleCode = sysRole.getRoleCode();
-                    if (ossRoleCode != null && !ossRoleCode.isBlank()
-                            && LoginRoleWhitelist.isAllowed(ossRoleCode)) {
-                        log.info("OSS login: role resolved from sysRoleList roleCode: {} -> {}",
-                                sysRole.getRoleName(), ossRoleCode);
-                        return ossRoleCode;
-                    }
-                }
-            }
-        }
-
-        // 2. 从 sysRoleList 的 roleName 解析
+        // 1. 从 sysRoleList 的 roleName 解析（不使用 roleCode，因为 OSS roleCode 是 OSS 系统角色码）
         if (jobInfo.getSysRoleList() != null) {
             for (CrmJobListResponse.SysRole sysRole : jobInfo.getSysRoleList()) {
                 if ("1".equals(sysRole.getStatus()) && !Boolean.TRUE.equals(sysRole.getDel())) {
@@ -90,7 +85,7 @@ public class OssRoleResolver {
             }
         }
 
-        // 3. 从 jobName 解析
+        // 2. 从 jobName 解析
         String jobName = jobInfo.getJobName();
         if (jobName != null && !jobName.isBlank()) {
             String roleCode = JobRoleLookupResolver.mapOssRoleTextToInternal(jobName);
@@ -103,7 +98,7 @@ public class OssRoleResolver {
             }
         }
 
-        // 4. fallback 到本地 User.roleCode
+        // 3. fallback 到本地 User.roleCode
         return resolveLocalRoleCode(fallbackUsername);
     }
 
