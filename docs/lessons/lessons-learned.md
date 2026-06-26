@@ -1185,3 +1185,73 @@ echo "✅ Flyway migration versions: no duplicates"
 
 ---
 
+## 18. 简单 bug 多轮修不对：先定位"空值从哪来"，再改格式化逻辑
+
+### 问题背景
+
+PR #1162 修复"EVALUATED webhook 回调缺少操作人姓名（工号）"，但用户反馈修复后格式不对——只有姓名没有工号。随后又反馈只有工号没有姓名。一个看似简单的字符串格式化 bug，改了 3 轮：
+
+| 轮次 | 修了什么 | 结果 | 为什么失败 |
+|------|---------|------|-----------|
+| 第 1 轮 (PR #1174) | `TenderSubmissionService.participateBid` 中 `User::getFullName` → `OperatorDisplayName.format()` | 没有解决用户反馈的问题 | 修错了调用方，问题在 `OperatorDisplayName` 本身的 fallback 逻辑 |
+| 第 2 轮 (PR #1176) | `OperatorDisplayName.format()` 中 `fullName` 为空时 fallback 到 `username` | 正确修复 | 找到了真正的根因 |
+
+**真正的根因**：`OperatorDisplayName.format()` 第 36-38 行，当 `user.getFullName()` 为空时直接返回工号，没有 fallback 到 `username` 作为姓名。API Key 对应的用户可能没有设置 `fullName` 字段，导致回调中只有工号没有姓名。
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 用户说"格式不对"，没问清是哪种不对就直接改 | 先确认具体现象：是"有姓名无工号"还是"有工号无姓名"？方向反了白改 | 收到 bug 反馈时，先确认**实际输出**和**期望输出**的具体差异 |
+| 第 1 轮修了 `TenderSubmissionService` 而不是 `OperatorDisplayName` | 修了调用方没修格式化器本身 | 格式化 bug 先看**格式化函数本身**的分支逻辑，不要先看调用方 |
+| `OperatorDisplayName.format()` 有 4 个分支但只测了正常路径 | 边界分支（fullName 为空、employeeNumber 为空）缺少测试 | 格式化函数必须有**全分支测试**，特别是空值 fallback 分支 |
+
+### 操作规范
+
+1. **收到"格式不对"反馈时，先确认具体现象**：
+   - 问用户：实际输出是什么？期望输出是什么？
+   - 不要凭"格式不对"三个字就推测方向
+
+2. **格式化 bug 先看格式化函数本身**：
+   ```
+   OperatorDisplayName.format() ← 先看这里
+     ↓
+   调用方（TenderSubmissionService 等） ← 后看这里
+   ```
+   格式化函数是所有调用方的公共逻辑，bug 大概率在这里。
+
+3. **格式化函数必须有全分支测试**：
+   - 正常路径：fullName + employeeNumber 都有
+   - fullName 为空 → fallback 到什么？
+   - employeeNumber 为空 → fallback 到什么？
+   - 两者都为空 → 返回什么？
+   每个分支都要有测试用例，不能只测正常路径。
+
+4. **字符串格式化 bug 的标准排查路径**：
+   ```
+   1. 确认实际输出 vs 期望输出的具体差异
+   2. 找到生成该字符串的格式化函数
+   3. 逐分支检查：哪个分支产生了实际输出？
+   4. 该分支的 fallback 逻辑是否正确？
+   5. 修复 + 补全分支测试
+   ```
+
+### 验证命令
+
+```bash
+# 快速检查格式化函数的全分支覆盖
+grep -A 20 "public static String format" backend/src/main/java/com/xiyu/bid/webhook/domain/OperatorDisplayName.java
+
+# 检查测试是否覆盖了空值分支
+grep -E "empty|null|blank|fallback" backend/src/test/java/com/xiyu/bid/webhook/domain/OperatorDisplayNameTest.java
+```
+
+### 相关文档
+
+- `backend/src/main/java/com/xiyu/bid/webhook/domain/OperatorDisplayName.java` — 格式化函数
+- PR #1174 — 第 1 轮修复（修了调用方，没解决根因）
+- PR #1176 — 第 2 轮修复（修了格式化函数本身，正确）
+- 本节 §16 — 同类教训："Bug 修复前必须先验证实际行为，避免推测式修复"
+
+---
+
