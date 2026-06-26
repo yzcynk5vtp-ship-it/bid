@@ -41,23 +41,23 @@ class OperatorDisplayNameTest {
     }
 
     @Test
-    @DisplayName("姓名为空时只返回工号")
-    void empty_full_name_returns_employee_number_only() {
+    @DisplayName("姓名为空时 fallback 到 username → \"username（工号）\"")
+    void empty_full_name_falls_back_to_username() {
         User user = new User();
         user.setFullName("");
         user.setUsername("zhangsan");
         user.setEmployeeNumber("06100");
-        assertThat(OperatorDisplayName.format(user)).isEqualTo("06100");
+        assertThat(OperatorDisplayName.format(user)).isEqualTo("zhangsan（06100）");
     }
 
     @Test
-    @DisplayName("姓名 null 时只返回工号")
-    void null_full_name_returns_employee_number_only() {
+    @DisplayName("姓名 null 时 fallback 到 username → \"username（工号）\"")
+    void null_full_name_falls_back_to_username() {
         User user = new User();
         user.setFullName(null);
         user.setUsername("zhangsan");
         user.setEmployeeNumber("06100");
-        assertThat(OperatorDisplayName.format(user)).isEqualTo("06100");
+        assertThat(OperatorDisplayName.format(user)).isEqualTo("zhangsan（06100）");
     }
 
     @Test
