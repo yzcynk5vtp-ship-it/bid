@@ -35,18 +35,22 @@ public final class PinyinUtils {
 
     /**
      * Converts the Chinese characters in {@code input} to lowercase pinyin
-     * without tone marks. All pinyin syllables are concatenated without spaces
-     * so that {@code LIKE '%zhangsan%'} matches on any substring of the full
-     * pinyin. Non-Chinese characters are kept as-is.
+     * without tone marks, and appends a space-delimited pinyin-initials token
+     * so that {@code LIKE '%zrr%'} matches "郑蓉蓉" via the initials "zrr".
+     * <p>
+     * The returned string has the form {@code "fullpinyin initials"} when the
+     * input contains at least one Han character; non-Chinese inputs are
+     * returned as-is (no initials token).
      * <p>
      * Examples:
      * <pre>
-     *   toPinyin("张三")       → "zhangsan"
-     *   toPinyin("张三123")    → "zhangsan123"
+     *   toPinyin("张三")       → "zhangsan zs"
+     *   toPinyin("郑蓉蓉")     → "zhengrongrong zrr"
+     *   toPinyin("欧阳小明")   → "ouyangxiaoming oyxm"
+     *   toPinyin("张三123")    → "zhangsan123 zs"
      *   toPinyin("hello")     → "hello"
      *   toPinyin(null)        → ""
      *   toPinyin("")          → ""
-     *   toPinyin("欧阳小明")   → "ouyangxiaoming"
      * </pre>
      *
      * @param input the source string, may be null
@@ -56,24 +60,32 @@ public final class PinyinUtils {
         if (input == null || input.isEmpty()) {
             return "";
         }
-        StringBuilder result = new StringBuilder(input.length() * 2);
+        StringBuilder full = new StringBuilder(input.length() * 2);
+        StringBuilder initials = new StringBuilder();
+        boolean hasHan = false;
         char[] chars = input.trim().toCharArray();
         for (char ch : chars) {
             if (Character.toString(ch).matches("\\p{Script=Han}")) {
+                hasHan = true;
                 try {
                     String[] pinyins = PinyinHelper.toHanyuPinyinStringArray(ch, FORMAT);
                     if (pinyins != null && pinyins.length > 0) {
-                        result.append(pinyins[0]);
+                        full.append(pinyins[0]);
+                        initials.append(pinyins[0].charAt(0));
                     } else {
-                        result.append(ch);
+                        full.append(ch);
                     }
                 } catch (BadHanyuPinyinOutputFormatCombination e) {
-                    result.append(ch);
+                    full.append(ch);
                 }
             } else {
-                result.append(ch);
+                full.append(ch);
             }
         }
-        return result.toString().toLowerCase(Locale.ROOT);
+        String result = full.toString().toLowerCase(Locale.ROOT);
+        if (hasHan) {
+            result = result + " " + initials.toString().toLowerCase(Locale.ROOT);
+        }
+        return result;
     }
 }

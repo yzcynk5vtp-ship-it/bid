@@ -209,4 +209,28 @@ class UserRepositorySearchTest {
             .extracting(User::getFullName)
             .contains("欧阳小明");
     }
+
+    @Test
+    void searchActiveUsers_MatchesPinyinInitials() {
+        // 用户报告的 Bug：搜 zrr（郑蓉蓉的拼音首字母缩写）搜不到。
+        // 根因：full_name_pinyin 原来只存全拼 zhengrongrong，LIKE '%zrr%' 匹配不上。
+        // 修复：PinyinUtils.toPinyin 现在返回 "zhengrongrong zrr"（全拼+空格+首字母缩写）。
+        User user = User.builder()
+            .username("06234")
+            .email("zhengrr@example.com")
+            .password("p")
+            .fullName("郑蓉蓉")
+            .employeeNumber("E050")
+            .role(User.Role.MANAGER)
+            .enabled(true)
+            .build();
+        entityManager.persist(user);
+        entityManager.flush();
+
+        // 搜首字母缩写 zrr 应命中"郑蓉蓉"
+        List<User> initialsResults = userRepository.searchActiveUsers("zrr", 10);
+        assertThat(initialsResults)
+            .extracting(User::getFullName)
+            .contains("郑蓉蓉");
+    }
 }
