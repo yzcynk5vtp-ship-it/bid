@@ -1,5 +1,7 @@
 package com.xiyu.bid.crm.application;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,12 @@ public record CrmUserPermission(
         return menus == null ? Collections.emptyList() : Collections.unmodifiableList(menus);
     }
 
+    /**
+     * {@code @JsonIgnore} 防止 Jackson 把 {@code isEmpty()} 误认为 {@code empty} 属性的 getter
+     * （{@code isXxx()} 命名约定），导致序列化出多余的 {@code "empty":false} 字段，
+     * 反序列化时在非宽松 ObjectMapper 下报 "Unrecognized field empty"。
+     */
+    @JsonIgnore
     public boolean isEmpty() {
         return systemPermissions.isEmpty()
                 || systemPermissions.values().stream().allMatch(list -> list == null || list.isEmpty());
