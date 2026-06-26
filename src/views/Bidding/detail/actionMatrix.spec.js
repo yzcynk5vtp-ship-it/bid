@@ -381,12 +381,22 @@ describe('getBottomActions', () => {
       ])
     })
 
-    it('bid_lead sees editBasic, editEvaluation, save, and cancel (editing mode buttons)', () => {
-      expectActions(getBottomActions(TRACKING, 'bid-TeamLeader'), [
-        ACTIONS.EDIT_BASIC,
-        ACTIONS.EDIT_EVALUATION,
-        ACTIONS.SAVE,
-        ACTIONS.CANCEL,
+    it('bid_lead sees nextStep in basic info tab', () => {
+      expectActions(getBottomActions(TRACKING, 'bid-TeamLeader', false, false), [
+        { key: 'nextStep', label: '下一步', type: 'primary', icon: null },
+      ])
+    })
+
+    it('bid_lead sees prevStep and submit in evaluation tab (not submitted)', () => {
+      expectActions(getBottomActions(TRACKING, 'bid-TeamLeader', false, true, false), [
+        { key: 'prevStep', label: '上一步', type: 'default', icon: null },
+        { key: 'submit', label: '提交', type: 'primary', icon: null },
+      ])
+    })
+
+    it('bid_lead sees only prevStep in evaluation tab (already submitted)', () => {
+      expectActions(getBottomActions(TRACKING, 'bid-TeamLeader', false, true, true), [
+        { key: 'prevStep', label: '上一步', type: 'default', icon: null },
       ])
     })
 
