@@ -4,7 +4,6 @@
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.service;
 
-import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.casework.application.ProjectClosedEvent;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.project.core.ProjectStatusPolicy;
@@ -12,6 +11,7 @@ import com.xiyu.bid.exception.ResourceNotFoundException;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy.GateInputs;
+import com.xiyu.bid.project.domain.ProjectStageTransitionedEvent;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
@@ -68,8 +68,6 @@ public class ProjectStageService {
     /**
      * 推进阶段：校验 + 持久化 + 审计。非法跳转 / CLOSED 终态 / 同态 → 409。
      */
-    @Auditable(action = "PROJECT_STAGE_TRANSITIONED", entityType = "Project",
-            description = "推进项目阶段")
     public ProjectStage requestTransition(Long projectId, ProjectStage target, GateInputs gateInputs) {
         return requestTransition(projectId, target, gateInputs, null);
     }
@@ -102,6 +100,9 @@ public class ProjectStageService {
 
         // 通知 #18: 阶段推进(任意→下一阶段) → 团队成员
         notificationService.notifyStageTransition(projectId, current, target);
+        // CO-324: 发事件由 audit 模块记录「从 XX 推进至 YY」操作日志（含源+目标阶段）。
+        // service 不直接注入 IAuditLogService（ArchitectureTest RULE 12），用事件解耦。
+        eventPublisher.publishEvent(new ProjectStageTransitionedEvent(projectId, current, target));
 
         // 蓝图 4.1.1.2.1：项目阶段机进入 CLOSED 之后触发 AI 案例沉淀。
         // 这里把"已结项"信号发到 ProjectClosedEvent，由 ProjectClosedEventListener 异步处理。
