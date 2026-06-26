@@ -109,6 +109,9 @@ public class TenderQueryService {
 
     private void enrichProjectManager(TenderDTO dto, Project project) {
         if (project.getManagerId() == null) return;
+        // CO-333: 标讯自身已存项目负责人姓名时不被项目 managerId 反查覆盖，
+        // 避免管理员点击「立即投标」生成项目后，前端项目负责人显示值发生变化。
+        if (dto.getProjectManagerName() != null && !dto.getProjectManagerName().isBlank()) return;
         userRepository.findById(project.getManagerId())
                 .ifPresent(manager -> dto.setProjectManagerName(manager.getFullName()));
     }
@@ -150,7 +153,14 @@ public class TenderQueryService {
         Map<Long, String> assigneeNames = fetchAssigneeNames(tenderIds);
 
         for (TenderDTO dto : dtos) {
-            dto.setProjectManagerName(managerNames.get(dto.getId()));
+            // CO-333: 标讯自身已存项目负责人姓名时不被项目 managerId 反查覆盖，
+            // 避免管理员点击「立即投标」生成项目后，前端项目负责人显示值发生变化。
+            if (dto.getProjectManagerName() == null || dto.getProjectManagerName().isBlank()) {
+                String managerName = managerNames.get(dto.getId());
+                if (managerName != null) {
+                    dto.setProjectManagerName(managerName);
+                }
+            }
             dto.setAssigneeName(assigneeNames.get(dto.getId()));
         }
     }
