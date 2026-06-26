@@ -9,6 +9,7 @@ import com.xiyu.bid.repository.TenderRepository;
 import com.xiyu.bid.repository.TemplateRepository;
 import com.xiyu.bid.audit.service.IAuditLogService;
 import com.xiyu.bid.service.ProjectAccessScopeService;
+import com.xiyu.bid.tender.service.TenderProjectAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -48,6 +49,9 @@ class ExcelExportServiceSecurityTest {
     @Mock
     private ProjectAccessScopeService projectAccessScopeService;
 
+    @Mock
+    private TenderProjectAccessGuard tenderProjectAccessGuard;
+
     private ExcelExportService excelExportService;
 
     private ExportConfig exportConfig;
@@ -68,7 +72,8 @@ class ExcelExportServiceSecurityTest {
                 templateRepository,
                 exportConfig,
                 auditLogService,
-                projectAccessScopeService
+                projectAccessScopeService,
+                tenderProjectAccessGuard
         );
         lenient().when(projectAccessScopeService.currentUserHasAdminAccess()).thenReturn(true);
     }

@@ -60,7 +60,9 @@ public class TenderSubmissionService {
         Tender.Status oldBidStatus = tender.getStatus();
         tender.setStatus(Tender.Status.BIDDING);
 
-        String operatorName = userRepository.findById(userId).map(User::getFullName).orElse("未知");
+        String operatorName = userRepository.findById(userId)
+                .map(OperatorDisplayName::format)
+                .orElse("未知");
         Boolean recShouldBid = null;
         String recReason = null;
         var evalOpt = tenderEvaluationRepository.findByTenderId(tenderId);
