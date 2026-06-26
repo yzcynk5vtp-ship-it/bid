@@ -113,7 +113,6 @@ const BOTTOM_MATRIX = {
   },
   TRACKING: {
     admin_lead: ['nextStep', 'prevStep', 'submit'],  // CO-350: 管理员关联CRM后需要提交按钮
-    'bid-TeamLeader': ['editBasic', 'editEvaluation', 'save', 'cancel'],
     sales: ['nextStep', 'prevStep', 'submit'],
     bid_team: [],
   },
@@ -204,10 +203,10 @@ export function getBottomActions(status, role, _requiresReview, evaluationTabAct
 
   // CO-350 修复：TRACKING 多步流程角色受 tab 状态约束
   // 基本信息tab 只显「下一步」(触发关联CRM/进入评估)；评估表tab 显「上一步」+「提交」
-  // 覆盖 sales 全部 + admin_lead 中走 nextStep 流程的(admin/bidAdmin/manager)；
-  // bid-TeamLeader 走独立编辑流程(editBasic/save/cancel)，必须排除，否则被过滤清空
+  // 覆盖 sales 全部 + admin_lead 全部(含 admin/bidAdmin/bid-TeamLeader/manager)：
+  // bid-TeamLeader 同属投标管理类角色(isBidManager)，与 /bidAdmin 走同一 nextStep 流程。
   if (status === 'TRACKING'
-      && (group === 'sales' || (group === 'admin_lead' && role !== 'bid-TeamLeader'))) {
+      && (group === 'sales' || group === 'admin_lead')) {
     if (evaluationTabActive) {
       // 评估表 tab: 显示「上一步」「提交」（提交成功后隐藏提交按钮）
       result = result.filter(a => a.key === 'prevStep' || (a.key === 'submit' && !evaluationSubmitted))
