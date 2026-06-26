@@ -6,6 +6,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Optional;
@@ -31,8 +33,8 @@ class HomeSsoClientTest {
         properties.setAuthBaseUrl(BASE_URL);
     }
 
-    private String buildUrl() {
-        return BASE_URL + "/oauth/getCheckToken";
+    private String buildUrl(String token) {
+        return BASE_URL + "/oauth/getCheckToken?token=" + token;
     }
 
     private String validTokenResponse(String username) {
@@ -64,7 +66,7 @@ class HomeSsoClientTest {
     void validateTokenAndGetUsername_validToken_returnsUsername() {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-        server.expect(requestTo(buildUrl()))
+        server.expect(requestTo(buildUrl(VALID_TOKEN)))
                 .andRespond(withSuccess(validTokenResponse(USERNAME), MediaType.APPLICATION_JSON));
 
         HomeSsoClient client = new HomeSsoClient(new TestCrmHttpClient(restTemplate, properties), properties);
@@ -79,7 +81,7 @@ class HomeSsoClientTest {
     void validateTokenAndGetUsername_invalidToken_returnsEmpty() {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-        server.expect(requestTo(buildUrl()))
+        server.expect(requestTo(buildUrl(INVALID_TOKEN)))
                 .andRespond(withSuccess(invalidTokenResponse(), MediaType.APPLICATION_JSON));
 
         HomeSsoClient client = new HomeSsoClient(new TestCrmHttpClient(restTemplate, properties), properties);
@@ -94,7 +96,7 @@ class HomeSsoClientTest {
     void validateTokenAndGetUsername_networkError_returnsEmpty() {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-        server.expect(requestTo(buildUrl()))
+        server.expect(requestTo(buildUrl(VALID_TOKEN)))
                 .andRespond(withServerError());
 
         HomeSsoClient client = new HomeSsoClient(new TestCrmHttpClient(restTemplate, properties), properties);
@@ -109,7 +111,7 @@ class HomeSsoClientTest {
     void validateTokenAndGetUsername_missingUsername_returnsEmpty() {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-        server.expect(requestTo(buildUrl()))
+        server.expect(requestTo(buildUrl(VALID_TOKEN)))
                 .andRespond(withSuccess("""
                         {
                           "code": 0,
@@ -133,7 +135,7 @@ class HomeSsoClientTest {
     void validateTokenAndGetUsername_nullData_returnsEmpty() {
         RestTemplate restTemplate = new RestTemplate();
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-        server.expect(requestTo(buildUrl()))
+        server.expect(requestTo(buildUrl(VALID_TOKEN)))
                 .andRespond(withSuccess("""
                         {
                           "code": 0,
@@ -158,13 +160,18 @@ class HomeSsoClientTest {
         }
 
         @Override
-        public CrmResponseHandler.CrmApiResponse getWithBearerToken(String baseUrl, String path, String token) {
-            String url = baseUrl + path;
+        public CrmResponseHandler.CrmApiResponse getWithQueryParams(String baseUrl, String path,
+                MultiValueMap<String, String> queryParams) {
+            StringBuilder url = new StringBuilder(baseUrl + path);
+            if (queryParams != null && !queryParams.isEmpty()) {
+                url.append("?");
+                queryParams.forEach((key, values) -> values.forEach(v -> url.append(key).append("=").append(v)));
+            }
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             org.springframework.http.HttpEntity<Void> request = new org.springframework.http.HttpEntity<>(headers);
             try {
                 org.springframework.http.ResponseEntity<String> response = restTemplate.exchange(
-                        url, org.springframework.http.HttpMethod.GET, request, String.class);
+                        url.toString(), org.springframework.http.HttpMethod.GET, request, String.class);
                 return CrmResponseHandler.parse(response.getBody());
             } catch (RuntimeException e) {
                 return CrmResponseHandler.CrmApiResponse.parseError(e.getMessage());
