@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,7 +74,7 @@ class TenderIntegrationCommandServiceEventTest {
         TenderEvaluationIntegrationMapper evaluationMapper = new TenderEvaluationIntegrationMapper(
                 tenderEvaluationRepository, submissionMapper);
         TenderIntegrationMapper mapper = new TenderIntegrationMapper(
-                tenderMapper, evaluationMapper);
+                tenderMapper, evaluationMapper, mock(ProjectManagerIdResolver.class));
         TenderEvaluationIntegrationService evaluationService = new TenderEvaluationIntegrationService(
                 tenderEvaluationRepository, evaluationMapper, projectDocumentRepository);
         TenderIntegrationResolver helper = new TenderIntegrationResolver(tenderRepository);

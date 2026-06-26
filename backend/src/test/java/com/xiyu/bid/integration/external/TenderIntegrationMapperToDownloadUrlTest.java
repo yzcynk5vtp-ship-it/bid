@@ -258,7 +258,7 @@ class TenderIntegrationMapperToDownloadUrlTest {
         ));
 
         // 使用反射调用 normalizeFileUrls（包私有方法）
-        TenderIntegrationMapper mapper = new TenderIntegrationMapper(null, null);
+        TenderIntegrationMapper mapper = new TenderIntegrationMapper(null, null, null);
         java.lang.reflect.Method method = TenderIntegrationMapper.class
                 .getDeclaredMethod("normalizeFileUrls", TenderDTO.class);
         method.setAccessible(true);
