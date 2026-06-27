@@ -250,8 +250,8 @@ class ProjectDocumentWorkflowPolicyTest {
     // ==================== canDeleteProjectDocument ====================
 
     @ParameterizedTest
-    @ValueSource(strings = {RoleProfileCatalog.ADMIN_CODE, RoleProfileCatalog.BID_ADMIN_CODE, RoleProfileCatalog.BID_LEAD_CODE})
-    void canDeleteProjectDocument_whenAdminOrBidAdminOrTeamLeader_shouldPermit(String roleCode) {
+    @ValueSource(strings = {RoleProfileCatalog.ADMIN_CODE, RoleProfileCatalog.BID_ADMIN_CODE})
+    void canDeleteProjectDocument_whenAdminOrBidAdmin_shouldPermit(String roleCode) {
         var result = ProjectDocumentWorkflowPolicy.canDeleteProjectDocument(roleCode);
         assertThat(result.allowed()).isTrue();
         assertThat(result.reason()).isNull();
@@ -259,6 +259,7 @@ class ProjectDocumentWorkflowPolicyTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
+            RoleProfileCatalog.BID_LEAD_CODE,
             RoleProfileCatalog.SALES_CODE,
             RoleProfileCatalog.BID_SPECIALIST_CODE,
             RoleProfileCatalog.BID_OTHER_DEPT_CODE,

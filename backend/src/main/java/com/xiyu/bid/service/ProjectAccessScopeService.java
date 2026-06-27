@@ -80,9 +80,11 @@ public class ProjectAccessScopeService {
                 .collect(Collectors.toList()));
 
         // CO-361: Add projects where user is assigned as secondary bidding lead (副投标负责人)
-        allowedIds.addAll(leadAssignmentRepository.findBySecondaryLeadUserId(user.getId()).stream()
-                .map(a -> a.getProjectId())
-                .collect(Collectors.toList()));
+        if (RoleProfileCatalog.BID_SPECIALIST_CODE.equalsIgnoreCase(user.getRoleCode())) {
+            allowedIds.addAll(leadAssignmentRepository.findBySecondaryLeadUserId(user.getId()).stream()
+                    .map(a -> a.getProjectId())
+                    .collect(Collectors.toList()));
+        }
 
         // CO-361: Add projects where user is the project leader (项目负责人, owner_user_id in initiation details)
         allowedIds.addAll(initiationDetailsRepository.findByOwnerUserId(user.getId()).stream()

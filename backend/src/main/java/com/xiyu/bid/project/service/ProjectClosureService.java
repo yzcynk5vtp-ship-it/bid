@@ -23,6 +23,9 @@ import com.xiyu.bid.notification.core.NotificationType;
 import com.xiyu.bid.notification.dto.CreateNotificationRequest;
 import com.xiyu.bid.notification.service.NotificationApplicationService;
 import com.xiyu.bid.project.service.ProjectClosureDepositAssembler.DepositStatusInfo;
+import com.xiyu.bid.documentexport.dto.DocumentExportCreateRequest;
+import com.xiyu.bid.documentexport.dto.DocumentExportDTO;
+import com.xiyu.bid.documentexport.service.DocumentExportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -46,6 +49,7 @@ public class ProjectClosureService {
     private final ProjectClosureDepositAssembler depositAssembler;
     private final UserRepository userRepository;
     private final NotificationApplicationService notificationService;
+    private final DocumentExportService documentExportService;
 
     @Transactional(readOnly = true)
     public ClosurePreviewDTO preview(Long projectId) {
@@ -202,6 +206,30 @@ public class ProjectClosureService {
         Project saved = projectRepository.save(newProject);
         log.info("Rebid project created: oldProjectId={} newProjectId={} userId={}", projectId, saved.getId(), userId);
         return saved.getId();
+    }
+
+    /**
+     * 一键导出项目文档
+     * 依赖 DocumentExportService 将在线文档内容按结构全量导出。
+     */
+    @Auditable(action = "PROJECT_CLOSURE_EXPORT_DOCS", entityType = "ProjectClosure", description = "一键导出项目文档")
+    public DocumentExportDTO exportDocuments(Long projectId, Long userId) {
+        mustGetProject(projectId);
+        ProjectClosure closure = closureRepository.findByProjectId(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到项目结项申请，请先提交结项"));
+        if (!"APPROVED".equals(closure.getReviewStatus()) && !Boolean.TRUE.equals(closure.getStageLocked())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "项目必须在结项审批通过后才能进行结项归档导出");
+        }
+        
+        String userName = userRepository.findById(userId).map(User::getFullName).orElse("未知用户");
+        
+        DocumentExportCreateRequest request = new DocumentExportCreateRequest();
+        request.setFormat("json");
+        request.setExportedBy(userId);
+        request.setExportedByName(userName);
+        
+        log.info("Triggering one-click document export for closure: projectId={} userId={}", projectId, userId);
+        return documentExportService.createExport(projectId, request);
     }
 
     private Project mustGetProject(Long projectId) {

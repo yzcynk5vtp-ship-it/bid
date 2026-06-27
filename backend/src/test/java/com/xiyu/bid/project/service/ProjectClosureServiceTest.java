@@ -48,6 +48,7 @@ class ProjectClosureServiceTest {
     private ProjectClosureDepositAssembler depositAssembler;
     private UserRepository userRepository;
     private NotificationApplicationService notificationService;
+    private com.xiyu.bid.documentexport.service.DocumentExportService documentExportService;
     private ProjectClosureService service;
 
     private static final Long PID = 1L;
@@ -65,7 +66,8 @@ class ProjectClosureServiceTest {
         depositAssembler = new ProjectClosureDepositAssembler(feeRepo, initiationRepo);
         userRepository = mock(UserRepository.class);
         notificationService = mock(NotificationApplicationService.class);
-        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler, userRepository, notificationService);
+        documentExportService = mock(com.xiyu.bid.documentexport.service.DocumentExportService.class);
+        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler, userRepository, notificationService, documentExportService);
         Project p = new Project();
         p.setId(PID);
         when(projectRepo.findById(PID)).thenReturn(Optional.of(p));

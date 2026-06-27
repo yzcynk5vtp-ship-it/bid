@@ -48,11 +48,7 @@ public final class BidSubmissionAuthorizationPolicy {
             return Decision.deny(Decision.Cause.IDENTITY, "项目尚未分配投标负责人，请联系管理员");
         }
         boolean matched;
-        if (RoleProfileCatalog.SALES_CODE.equals(roleCode)) {
-            // 投标项目负责人：仅匹配 primaryLeadUserId
-            matched = lead.getPrimaryLeadUserId() != null
-                    && lead.getPrimaryLeadUserId().equals(currentUserId);
-        } else if (RoleProfileCatalog.BID_SPECIALIST_CODE.equals(roleCode)) {
+        if (RoleProfileCatalog.BID_SPECIALIST_CODE.equals(roleCode)) {
             // bid_specialist 投标专员：可作为投标负责人(primary)或投标辅助人员(secondary)
             matched = (lead.getPrimaryLeadUserId() != null
                     && lead.getPrimaryLeadUserId().equals(currentUserId))

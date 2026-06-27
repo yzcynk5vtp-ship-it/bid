@@ -80,29 +80,31 @@ class BidSubmissionAuthorizationPolicyTest {
     // ── sales：仅匹配 primaryLeadUserId ──────────────────────────────────────
 
     @Test
-    void canSubmitBid_sales_asPrimaryLead_allowed() {
+    void canSubmitBid_sales_denied_asSalesAreNotAllowed() {
         var d = BidSubmissionAuthorizationPolicy.canSubmitBid("bid-projectLeader", 1L, lead(1L, 2L));
-        assertThat(d.allowed()).isTrue();
+        assertThat(d.allowed()).isFalse();
+        assertThat(d.reason()).contains("当前角色无权限提交投标");
     }
 
     @Test
     void canSubmitBid_sales_asSecondaryLead_denied() {
-        // sales 只能匹配 primaryLead，不能匹配 secondaryLead
         var d = BidSubmissionAuthorizationPolicy.canSubmitBid("bid-projectLeader", 1L, lead(2L, 1L));
         assertThat(d.allowed()).isFalse();
-        assertThat(d.reason()).contains("不是该项目的投标负责人");
+        assertThat(d.reason()).contains("当前角色无权限提交投标");
     }
 
     @Test
     void canSubmitBid_sales_notLead_denied() {
         var d = BidSubmissionAuthorizationPolicy.canSubmitBid("bid-projectLeader", 1L, lead(2L, 3L));
         assertThat(d.allowed()).isFalse();
+        assertThat(d.reason()).contains("当前角色无权限提交投标");
     }
 
     @Test
     void canSubmitBid_sales_nullCurrentUserId_denied() {
         var d = BidSubmissionAuthorizationPolicy.canSubmitBid("bid-projectLeader", null, lead(1L, 2L));
         assertThat(d.allowed()).isFalse();
+        assertThat(d.reason()).contains("当前角色无权限提交投标");
     }
 
     // ── bid_specialist：匹配 primaryLeadUserId 或 secondaryLeadUserId ──────────
@@ -128,11 +130,10 @@ class BidSubmissionAuthorizationPolicyTest {
     // ── lead 为 null / 字段为 null ───────────────────────────────────────────
 
     @Test
-    void canSubmitBid_sales_leadNull_denied_withContactAdminMessage() {
+    void canSubmitBid_sales_leadNull_denied_withNoPermissionMessage() {
         var d = BidSubmissionAuthorizationPolicy.canSubmitBid("bid-projectLeader", 1L, null);
         assertThat(d.allowed()).isFalse();
-        assertThat(d.reason()).contains("尚未分配投标负责人");
-        assertThat(d.reason()).contains("联系管理员");
+        assertThat(d.reason()).contains("当前角色无权限提交投标");
     }
 
     @Test

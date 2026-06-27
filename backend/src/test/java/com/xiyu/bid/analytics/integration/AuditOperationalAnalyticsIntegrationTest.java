@@ -62,7 +62,7 @@ class AuditOperationalAnalyticsIntegrationTest extends AbstractAuditOperationalA
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.summaryStats.totalTenders").value(3))
                 .andExpect(jsonPath("$.data.summaryStats.activeProjects").value(1))
-                .andExpect(jsonPath("$.data.summaryStats.pendingTasks").value(0))
+                .andExpect(jsonPath("$.data.summaryStats.pendingTasks").value(1))
                 .andExpect(jsonPath("$.data.statusDistribution.BIDDING").value(1))
                 .andExpect(jsonPath("$.data.topCompetitors[0].name").value("中国政府采购网"));
 

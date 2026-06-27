@@ -125,4 +125,14 @@ class ProjectClosureControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.stageLocked").value(true));
     }
+
+    @Test
+    void exportDocuments_happy_returns200() throws Exception {
+        when(service.exportDocuments(eq(1L), eq(1L)))
+                .thenReturn(com.xiyu.bid.documentexport.dto.DocumentExportDTO.builder()
+                        .id(999L).projectId(1L).projectName("测试项目").format("json").build());
+        mockMvc.perform(post("/api/projects/1/closure/export-documents"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.format").value("json"));
+    }
 }
