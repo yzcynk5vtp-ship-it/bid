@@ -1432,3 +1432,32 @@ CO-361 的单点修复暴露了系统性根因：`User.getRoleCode()`（`User.ja
 - 既有 @WebMvcTest 技术债（3 个 controller 测试 origin/main 即失败，CI 未覆盖）——留独立任务。
 - 前端 `biddingAssistantName` 回显兜底（T017-T018）——Phase 6 独立处理。
 
+### T016 评估结论（2026-06-27）——保持现状不收敛
+对「非 OSS、非 admin 的本地用户 cache miss」场景，`DataScopeConfigService.getRoleCode()` 返回 null（fail-closed，防 DB roleCode 越权），`EffectiveRolePolicy.decide()` 返回实体 roleCode（LOCAL_USER，可能为 "manager"）。`DataScopeConfigService` 注释明确指出「OSS 用户 DB roleCode 可能是 /bidAdmin 等历史同步值，fallback 会越权」，故对非 admin 一律 fail-closed。
+
+**决策（用户确认方向 C）**：`DataScopeConfigService` 保持独立的收紧实现，不并入 `EffectiveRoleResolver`。理由：
+1. `DataScopeConfigService` 语义更安全（非 admin 非 OSS 也 fail-closed），收敛需先收紧 `EffectiveRolePolicy`，会动已改的 7 个 Guard/Service 引入回归风险。
+2. 最小侵入、不破坏已验证的安全边界。
+3. `EffectiveRoleResolver` 用于新场景（服务层权限校验），`DataScopeConfigService` 继续用于数据范围配置，两者职责清晰、语义各自正确。
+
+T016 标记为「评估完成-不改动」。纯核心 `BatchAssignmentPolicy.isAdmin` 签名（T014 调整）保持不变（纯核心无法访问缓存，`isAdmin` 走实体 roleCode 对非 OSS 用户是安全的 over-deny）。
+
+### 2026-06-27 T017-T018 前端 biddingAssistantName 回显兜底
+
+**问题**：APPROVED 状态下"标书制作人员（已分配）"卡片中，投标辅助人员始终显示"（未分配）"，即使已分配。
+
+**根因**（数据流断裂）：
+- APPROVED 卡片（`InitiationStage.vue:169`）读 `form.biddingAssistantName` 显示
+- 后端 `InitiationViewDto` 只返回 `biddingLeaderName`（V133 新增），**不返回** `biddingAssistantName`（无此字段）
+- `ProjectInitiationApprovalService:100-103` 审批时**只**为 `primaryLeadUserId` 查 user 设 `setBiddingLeaderName`，`secondaryLeadUserId` 仅存 ID 到 `ProjectLeadAssignment`，不查名字
+- 前端 `useInitiationStageActions.js:177` 的 `if (data.biddingAssistantName) form.biddingAssistantName = ...` 是死代码（`data.biddingAssistantName` 永远 undefined）
+- `loadUserLabel(secondaryLeadUserId, 'assistant')` 异步加载了名字到 `approvalForm.biddingAssistantLabel`，但 APPROVED 卡片读的是 `form.biddingAssistantName`——两个不同 reactive 对象，未同步
+
+**修复**（前端兜底，CO-373 范围）：
+- `useInitiationStageActions.js` `loadUserLabel` 的 assistant 分支：加载到 user 后，把 `u.name` 同步到 `form.biddingAssistantName`（与 `biddingLeaderName` 存纯姓名的格式对齐），APPROVED 卡片即可正确显示
+- line 177 的前向兼容兜底保留（后端未来若补 `biddingAssistantName` 字段会自动生效），注释更新说明当前实际回显靠 `loadUserLabel`
+
+**未做**（超出 CO-373 范围）：后端 `InitiationViewDto` + `ProjectInitiationDetails` entity 补 `biddingAssistantName` 字段 + DB 迁移——留独立任务。
+
+**验证**：`InitiationStage.spec.js` 11 tests passed（未破坏现有测试）。
+
