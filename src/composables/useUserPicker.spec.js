@@ -121,7 +121,7 @@ describe('useUserPicker', () => {
   it('formatLabel falls back through employee id aliases', () => {
     const { formatLabel } = useUserPicker({ mode: 'search' })
 
-    expect(formatLabel({ name: '李四', username: '03645' })).toBe('李四（03645）')
+    expect(formatLabel({ name: '李四', username: '03645' })).toBe('李四')
     expect(formatLabel({ name: '王五', employeeId: 'E005' })).toBe('王五（E005）')
     expect(formatLabel({ name: '赵六' })).toBe('赵六')
   })

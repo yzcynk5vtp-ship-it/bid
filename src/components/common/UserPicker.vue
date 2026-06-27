@@ -41,6 +41,10 @@ const props = defineProps({
   // 可选：按 roleCode 在前端进一步过滤候选（如辅助人员仅展示 bid-Team 角色）。
   // 之所以放在前端是因为 usersApi.search 不支持 roleCode 过滤；保留偏离实现的原有语义。
   roleFilter: { type: String, default: '' },
+  // 是否在挂载时自动加载候选人。外部已加载好候选列表时设为 false，避免重复请求。
+  loadOnMount: { type: Boolean, default: true },
+  // 是否在下拉选项标签后追加部门/组织信息（如分发场景需要展示部门）。
+  showDepartment: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])
@@ -86,7 +90,7 @@ const selectOptions = computed(() => {
     .filter((user) => matchesRoleFilter(user))
     .map((user) => ({
       value: getOptionValue(user),
-      label: formatLabel(user),
+      label: buildOptionLabel(user),
     }))
 })
 
@@ -122,6 +126,14 @@ function handleRemoteSearch(query) {
   }
 }
 
+function buildOptionLabel(user) {
+  const base = formatLabel(user)
+  if (!props.showDepartment) return base
+  const dept = user?.deptName || user?.departmentName || user?.dept || user?.orgName
+  if (!dept) return base
+  return `${base} · ${dept}`
+}
+
 function getOptionValue(user) {
   if (!user) return null
   return user[props.valueField] ?? user.id
@@ -149,7 +161,7 @@ function handleChange(value) {
 }
 
 onMounted(() => {
-  if (props.mode === 'candidates') {
+  if (props.mode === 'candidates' && props.loadOnMount) {
     loadCandidates()
   }
 })

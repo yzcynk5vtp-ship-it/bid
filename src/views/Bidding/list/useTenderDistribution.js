@@ -132,7 +132,6 @@ export function useTenderDistribution({
     showAssignDialog,
     distributeLoading,
     assignLoading,
-    loadingCandidates,
     candidates,
     distributeForm,
     activeTender,

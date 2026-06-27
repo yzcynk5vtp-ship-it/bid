@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 
 export function useProjectDetailWorkflow(context) {
   const { userStore, route, projectStore, isApiProject } = context
@@ -31,6 +31,8 @@ export function useProjectDetailWorkflow(context) {
     { id: 'U004', name: '李工', role: 'tech', status: 'approved', comment: '技术方案符合要求', reviewTime: '2025-02-26 10:30' },
   ])
   const reviewerForm = ref({ userId: '', role: '' })
+  // 统一 UserPicker 选中后通过 @select 回传完整用户对象，避免再用 [].find 查找。
+  const selectedReviewerUser = ref(null)
   const sealFileList = ref([])
   const sealForm = ref({ sealTypes: [], reason: '', files: [], count: 1, expectedTime: '' })
   const submitForm = ref({
@@ -43,11 +45,6 @@ export function useProjectDetailWorkflow(context) {
     remark: '',
   })
   const templates = ref([])
-
-  const availableReviewers = computed(() => {
-    const existingIds = reviewers.value.map((r) => r.id)
-    return [].filter((u) => !existingIds.includes(u.id))
-  })
 
   const getStepOrder = (step) => ({ draft: 0, review: 1, seal: 2, submit: 3 }[step] ?? 0)
   const getStepStatusText = (step) => {
@@ -86,12 +83,17 @@ export function useProjectDetailWorkflow(context) {
     context.processDialogVisible.value = false
   }
   const handleReview = () => { if (!bidProcess.value.steps.draft.completed) return context.message.warning('请先完成初稿编制'); activeProcessTab.value = 'review'; context.processDialogVisible.value = true }
-  const handleAddReviewer = () => { reviewerForm.value = { userId: '', role: '' }; context.reviewerDialogVisible.value = true }
+  const handleAddReviewer = () => {
+    reviewerForm.value = { userId: '', role: '' }
+    selectedReviewerUser.value = null
+    context.reviewerDialogVisible.value = true
+  }
+  const handleReviewerSelect = (user) => { selectedReviewerUser.value = user || null }
   const handleConfirmAddReviewer = () => {
     if (!reviewerForm.value.userId || !reviewerForm.value.role) return context.message.warning('请填写完整信息')
-    const user = [].find((u) => u.id === reviewerForm.value.userId)
+    const user = selectedReviewerUser.value
     if (!user) return context.message.warning('未找到评审人信息')
-    reviewers.value.push({ id: user.id, name: user.name, role: reviewerForm.value.role, status: 'pending', comment: '', reviewTime: '' })
+    reviewers.value.push({ id: user.id, name: user.name || user.fullName, role: reviewerForm.value.role, status: 'pending', comment: '', reviewTime: '' })
     context.reviewerDialogVisible.value = false
     context.message.success('评审人已添加')
   }
@@ -147,11 +149,11 @@ export function useProjectDetailWorkflow(context) {
   }
 
   return {
-    activeProcessTab, bidProcess, draftFileList, draftForm, reviewers, reviewerForm, sealFileList, sealForm, submitForm, templates,
-    availableReviewers, getStepStatusText, canOperateStep, getCurrentPhaseType, getCurrentPhaseText, getProcessProgress,
+    activeProcessTab, bidProcess, draftFileList, draftForm, reviewers, reviewerForm, selectedReviewerUser, sealFileList, sealForm, submitForm, templates,
+    getStepStatusText, canOperateStep, getCurrentPhaseType, getCurrentPhaseText, getProcessProgress,
     getReviewerRoleType, getReviewerRoleText, getReviewStatusType, getReviewStatusText, getReviewProgress, getReviewedCount, canCompleteReview,
     handleInitiateProcess, handleDraftSubmit, handleDraftFileSuccess, ensureDemoUpload, handleSaveDraft, handleReview, handleAddReviewer,
-    handleConfirmAddReviewer, handleRemindReviewer, handleRemoveReviewer, handleCompleteReview, handleSealApply, handleSealFileSuccess,
+    handleReviewerSelect, handleConfirmAddReviewer, handleRemindReviewer, handleRemoveReviewer, handleCompleteReview, handleSealApply, handleSealFileSuccess,
     handleSubmitSeal, handleSubmit, handleSubmitPackage, handleDownloadDeliverable,
   }
 }

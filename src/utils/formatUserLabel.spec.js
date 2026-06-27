@@ -6,12 +6,12 @@ describe('formatUserLabel', () => {
     expect(formatUserLabel({ name: '张三', employeeNumber: '20260509' })).toBe('张三（20260509）')
   })
 
-  it('falls back to username when no employeeNumber', () => {
-    expect(formatUserLabel({ name: '李四', username: '03645' })).toBe('李四（03645）')
+  it('does not use username as employeeNumber fallback', () => {
+    expect(formatUserLabel({ name: '李四', username: '03645' })).toBe('李四')
   })
 
-  it('falls back to username when employeeNumber is blank', () => {
-    expect(formatUserLabel({ name: '李四', employeeNumber: ' ', username: '03645' })).toBe('李四（03645）')
+  it('falls back to plain name when employeeNumber is blank', () => {
+    expect(formatUserLabel({ name: '李四', employeeNumber: ' ', username: '03645' })).toBe('李四')
   })
 
   it('prefers fullName over name', () => {

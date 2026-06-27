@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import ProjectArchive from '../ProjectArchive.vue'
 import httpClient from '@/api/client.js'
@@ -37,9 +37,9 @@ describe('ProjectArchive', () => {
           loading: vi.fn()
         },
         stubs: {
-          ElCard: true,
-          ElForm: true,
-          ElFormItem: true,
+          ElCard: { template: '<div class="el-card-stub"><slot /><slot name="header" /></div>' },
+          ElForm: { template: '<form><slot /></form>' },
+          ElFormItem: { props: ['label'], template: '<div><slot /></div>' },
           ElInput: true,
           ElDatePicker: true,
           ElSelect: true,
@@ -63,6 +63,12 @@ describe('ProjectArchive', () => {
           ArchiveStatsCards: true,
           ArchiveStatusTabs: true,
           ArchiveDetailDrawer: true,
+          UserPicker: {
+            name: 'UserPicker',
+            props: ['modelValue', 'mode', 'valueField', 'placeholder', 'initialOptions', 'clearable'],
+            emits: ['update:modelValue', 'select'],
+            template: '<div class="user-picker-stub" />',
+          },
           Files: true,
           Search: true,
           Refresh: true
@@ -72,8 +78,7 @@ describe('ProjectArchive', () => {
     })
 
     // Wait for onMounted to fire and async API calls to complete
-    await new Promise(resolve => setTimeout(resolve, 150))
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     // Verify both API calls were made
     expect(httpClient.get).toHaveBeenCalledTimes(2)
@@ -108,19 +113,25 @@ describe('ProjectArchive', () => {
     const wrapper = mount(ProjectArchive, {
       global: {
         stubs: {
-          ElCard: true, ElForm: true, ElFormItem: true, ElInput: true, ElDatePicker: true,
+          ElCard: { template: '<div class="el-card-stub"><slot /><slot name="header" /></div>' }, ElForm: true, ElFormItem: { props: ['label'], template: '<div><slot /></div>' }, ElInput: true, ElDatePicker: true,
           ElSelect: true, ElOption: true, ElButton: true, ElTable: true, ElTableColumn: true,
           ElPagination: true, ElDrawer: true, ElRadioGroup: true, ElRadioButton: true,
           ElIcon: true, ElTag: true, ElEmpty: true, ElTimeline: true, ElTimelineItem: true,
           FileCategoryPopover: true, ArchiveStatsCards: true,
-          ArchiveStatusTabs: true, ArchiveDetailDrawer: true, Files: true, Search: true, Refresh: true
+          ArchiveStatusTabs: true, ArchiveDetailDrawer: true,
+          UserPicker: {
+            name: 'UserPicker',
+            props: ['modelValue', 'mode', 'valueField', 'placeholder', 'initialOptions', 'clearable'],
+            emits: ['update:modelValue', 'select'],
+            template: '<div class="user-picker-stub" />',
+          },
+          Files: true, Search: true, Refresh: true
         }
       },
       attachTo: document.body
     })
 
-    await new Promise(resolve => setTimeout(resolve, 150))
-    await wrapper.vm.$nextTick()
+    await flushPromises()
 
     // Trigger search with a project name filter
     wrapper.vm.filters.projectName = '西域'
@@ -133,6 +144,50 @@ describe('ProjectArchive', () => {
     const listCall = getSpy.mock.calls[2]
     expect(listCall[0]).toBe('/api/archive')
     expect(listCall[1].params.projectName).toBe('西域')
+
+    wrapper.unmount()
+  })
+
+  it('renders UserPickers for project manager and bid manager filters', async () => {
+    httpClient.get
+      .mockResolvedValueOnce({
+        totalArchives: 1,
+        closedProjects: 0,
+        caseCount: 0,
+        reuseCount: 0,
+        projectManagers: [{ id: 1, name: '张经理', employeeNumber: '20260509' }],
+        bidManagers: [{ id: 2, name: '李经理', employeeNumber: '20260510' }],
+      })
+      .mockResolvedValueOnce({
+        content: [],
+        totalElements: 0
+      })
+
+    const wrapper = mount(ProjectArchive, {
+      global: {
+        stubs: {
+          ElCard: { template: '<div class="el-card-stub"><slot /><slot name="header" /></div>' }, ElForm: true, ElFormItem: { props: ['label'], template: '<div><slot /></div>' }, ElInput: true, ElDatePicker: true,
+          ElSelect: true, ElOption: true, ElButton: true, ElTable: true, ElTableColumn: true,
+          ElPagination: true, ElDrawer: true, ElRadioGroup: true, ElRadioButton: true,
+          ElIcon: true, ElTag: true, ElEmpty: true, ElTimeline: true, ElTimelineItem: true,
+          FileCategoryPopover: true, ArchiveStatsCards: true,
+          ArchiveStatusTabs: true, ArchiveDetailDrawer: true,
+          UserPicker: {
+            name: 'UserPicker',
+            props: ['modelValue', 'mode', 'valueField', 'placeholder', 'initialOptions', 'clearable'],
+            emits: ['update:modelValue', 'select'],
+            template: '<div class="user-picker-stub" />',
+          },
+          Files: true, Search: true, Refresh: true
+        }
+      },
+      attachTo: document.body
+    })
+
+    await flushPromises()
+
+    expect(wrapper.vm.projectManagerOptions).toEqual([{ id: 1, name: '张经理', employeeNumber: '20260509' }])
+    expect(wrapper.vm.bidManagerOptions).toEqual([{ id: 2, name: '李经理', employeeNumber: '20260510' }])
 
     wrapper.unmount()
   })
