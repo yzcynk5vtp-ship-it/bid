@@ -90,10 +90,5 @@ logging:
     com.xiyu: INFO
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: ${LOG_PATH:/var/log/xiyu-bid}/application.log
-    max-size: 10MB
-    max-history: 30
+  # 日志文件路径在 logback-spring.xml 中通过 LOG_PATH 环境变量统一控制，
+  # 避免 Spring Boot 默认 file appender 与自定义 logback 配置冲突。

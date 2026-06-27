@@ -1,0 +1,15 @@
+version: 1
+task: "logback-config-fix"
+locks:
+  - path: "backend/src/main/resources/application-prod.yml"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/kimi/logback-config-fix"
+    expiresAt: "2026-06-28T22:45:00.000Z"
+    reason: "修复 logback-spring.xml XML 语法错误，移除 application-prod.yml 中与自定义 logback 冲突的 file 配置"
+  - path: "backend/src/main/resources/logback-spring.xml"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/kimi/logback-config-fix"
+    expiresAt: "2026-06-28T22:45:00.000Z"
+    reason: "修复 XML 标签闭合错误，并补齐生产环境 JSON 文件日志 appender"
