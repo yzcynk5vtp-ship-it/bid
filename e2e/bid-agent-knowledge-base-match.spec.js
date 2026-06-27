@@ -57,7 +57,7 @@ async function seedPersonnel(session) {
         {
           name: '一级建造师',
           certificateNumber: `E2E-CERT-${suffix}`,
-          type: 'PROFESSIONAL',
+          type: 'CONSTRUCTOR',
           issueDate: '2022-06-01',
           expiryDate: '2027-12-31',
         },
