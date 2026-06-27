@@ -66,7 +66,9 @@ public class TaskDtoMapper {
                 .assigneeDeptName(task.getAssigneeDeptName())
                 .assigneeRoleCode(task.getAssigneeRoleCode())
                 .assigneeRoleName(task.getAssigneeRoleName())
-                .status(task.getStatus())
+                // CO-361: 复用 Task.Status.normalizedForDisplay() 归一废弃的 IN_PROGRESS→TODO，
+                // 与独立看板 TaskBoardItemMapper.mapTaskStatus 语义对齐，避免项目详情看板任务消失
+                .status(task.getStatus() == null ? null : task.getStatus().normalizedForDisplay())
                 .priority(task.getPriority())
                 .dueDate(task.getDueDate())
                 .createdAt(task.getCreatedAt())

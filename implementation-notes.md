@@ -1058,4 +1058,89 @@ const source = searching ? options.value : mergedOptions.value
 - `npx vitest run src/composables/useUserPicker.spec.js src/composables/projectDetail/taskAssigneePayload.spec.js`：21 passed。
 - RED 证明：还原 `UserPicker.vue` 后新测试失败，输出显示 `固定人员乙（00002）` 与 `郑蓉蓉（06234）` 同时出现——正是用户描述的"混在固定人员里"。
 
+---
+
+## 2026-06-27 CO-361 项目详情页任务看板缺失任务（两入口展示逻辑一致）
+
+### 问题
+Linear CO-361（多次修复未根治：PR#1153/#1156/#1197）。任务看板有两个入口，IN_PROGRESS（已废弃）状态处理不一致，导致项目详情页看板任务消失：
+- **独立看板** `GET /api/task-board/items`（TaskBoardService → `TaskBoardItemMapper.mapTaskStatus`，第 92 行 `case IN_PROGRESS -> STATUS_TODO`）—— 已归一化。
+- **项目详情看板** `GET /api/tasks/project/{projectId}`（TaskService.getTasksByProjectId → `TaskDtoMapper.toDTO`，第 69 行 `.status(task.getStatus())`）—— 原样返回 IN_PROGRESS。
+- 前端 `TaskBoard.vue` 第 210 行 `availableStatuses = statuses.filter(s => s.code !== 'IN_PROGRESS')` 把 IN_PROGRESS 列过滤掉 → 项目详情看板中状态仍为 IN_PROGRESS 的任务直接消失。
+
+PR#1153 只在写入侧废弃 IN_PROGRESS，读出/展示侧（项目详情看板）从未对齐。PR#1197 的 `TaskVisibilityPolicy`（执行人可见性）逻辑正确，不是本 bug 根因。
+
+### 决策与权衡
+- **方向选择**：在展示层 `TaskDtoMapper.toDTO` 做兜底归一（IN_PROGRESS→TODO），与 `TaskBoardItemMapper` 语义对齐。备选是改 `TaskBoard.vue` 不过滤 IN_PROGRESS，但那样会让前端出现一个已废弃的列，且独立看板早已走归一逻辑——保持两入口同构更安全。
+- **最小改动**：单行三元 `task.getStatus() == Task.Status.IN_PROGRESS ? Task.Status.TODO : task.getStatus()`，不抽公共方法。`TaskBoardItemMapper` 返回 String、本处返回 `Task.Status` 枚举（`TaskDTO.status` 字段类型），类型不同不宜强行共用常量，避免为复用而引入跨层耦合。
+- **未扩展到 CANCELLED**：`TaskBoardItemMapper` 把 CANCELLED→COMPLETED，但 CO-361 范围仅 IN_PROGRESS 消失问题；CANCELLED 不在本次 issue 描述内，不顺手扩大改造面。
+- **未触碰数据迁移**：`V1101__normalize_in_progress_tasks.sql`（`UPDATE tasks SET status='TODO' WHERE status='IN_PROGRESS'`）已存在，但只清理历史存量，运行后仍可能有新的 IN_PROGRESS（写入侧废弃是软约束、或迁移未跑的环境）。展示层兜底是防御性最后一道，确保任何路径下都不消失。
+- **null 安全**：`Task.Status` 是枚举，`==` 对 null 返回 false 走 else 分支返回 null，与原 `.status(task.getStatus())` 行为一致，不引入 NPE。
+
+### 未纳入本次范围
+- 不改 `TaskBoard.vue` / `useProjectDetailInit.js` / `project-utils.js`（前端展示链路保持原样）。
+- 不改 `TaskVisibilityPolicy` / `TaskService.getTasksByProjectId`（PR#1197 可见性逻辑正确）。
+- 不改 `TaskBoardItemMapper`（参考实现，已正确）。
+- 不改 `ProjectTaskWorkflowService`（项目工作流视图，`mapStatus` 走 doing，不同链路，不在 CO-361 范围）。
+- 不做 CANCELLED 归一、不做写入侧强制约束加强。
+
+### 修改文件范围
+- `backend/src/main/java/com/xiyu/bid/task/service/TaskDtoMapper.java`（第 69 行 + 2 行注释，共 +3/-1）
+- `backend/src/test/java/com/xiyu/bid/task/service/TaskDtoMapperTest.java`（+56 行：2 个新测试 + 注释）
+
+### 验证（TDD Red→Green + 回归）
+- **Red**：先加 `toDTO_normalizesInProgressToTodo`，跑 `mvn test -Dtest=TaskDtoMapperTest` → Tests run: 11, Failures: 1，失败信息 `expected: TODO but was: IN_PROGRESS`，证明 bug 存在于 `TaskDtoMapper.toDTO`。
+- **Green**：改第 69 行归一后 → Tests run: 11, Failures: 0, BUILD SUCCESS。`toDTO_keepsCanonicalStatusesUntouched`（TODO/REVIEW/COMPLETED 原样保留）同时通过。
+- **回归**：
+  - `TaskVisibilityPolicyTest`：16 passed。
+  - `TaskServiceProjectAccessTest`：5 passed。
+  - `ArchitectureTest`：25 passed（架构守卫未违反）。
+  - `ProjectWorkflowIntegrationTest`：3 passed（`@SpringBootTest` + H2 内存库，含 `/api/projects/{id}/tasks` 端到端）。
+- 日志中 `notification_delivery_task` 唯一约束报错与 `/tasks/decompose` 500 是该集成测试既有非确定性噪声（H2 并发下通知去重约束偶发冲突），与本次改动无关，最终测试全绿。
+
+---
+
+## 2026-06-27 CO-361 Review 发现 A+B 修复（CANCELLED 同形缺口 + 状态归一收口）
+
+### 问题（思维链 Review 识别）
+前序提交 `f7fee2e76` 修了 IN_PROGRESS 缺口后，启动 Review 发现两个相邻设计问题：
+
+**发现A（中风险）CANCELLED 同形缺口**：
+- `TaskTransitionPolicy.java:23-24` 允许 TODO→CANCELLED 合法转换（有真实写入路径）
+- `task_status_dict`（V101）种子只有 TODO/IN_PROGRESS/REVIEW/COMPLETED 四条，无 CANCELLED 列
+- 前端 `TaskBoard.vue:210` `availableStatuses` 按字典生成列，无 CANCELLED 列 → CANCELLED 任务在项目详情看板消失（与 IN_PROGRESS 同形 bug）
+- `TaskService.getTasksByProjectId`（line 173/175）两个分支都不过滤 CANCELLED
+- 关键事实核实：独立看板 `TaskBoardService` 在 `fromTask` 之前用 `isVisibleTask` 前置过滤 CANCELLED（line 72/112/120），所以 `mapTaskStatus` 里 `case CANCELLED->COMPLETED` 是死代码——独立看板对 CANCELLED 真实语义 = **不展示**
+
+**发现B（低风险）状态归一逻辑重复**：
+- IN_PROGRESS→TODO 归一在 `TaskDtoMapper.toDTO`（三元）和 `TaskBoardItemMapper.mapTaskStatus`（switch）两处独立实现
+- 是 CO-361 三次复发（PR#1153/#1156/#1197）的结构性根因——状态模型变更需同步多处，易遗漏
+
+### 决策与权衡
+- **发现A方向**：选择在 `TaskService.getTasksByProjectId` 过滤 CANCELLED，对齐独立看板 `isVisibleTask` 语义。**不**在 Mapper 归一 CANCELLED→COMPLETED——那样与独立看板"不展示"语义冲突，反而制造新不一致。最终直接复用 `TaskBoardItemMapper.isVisibleTask` 静态方法（`TaskService` 同包可访问），既对齐语义又消除重复。最初抽了私有 `visibleNonCancelled`，但把 `TaskService` 推到 310 行触发 `ResponsibilityArchitectureTest` 行预算门禁（max 300），遂重构为三元选 list + 统一 `.filter(TaskBoardItemMapper::isVisibleTask)`，行数回到 300。
+- **发现B方向**：在 `Task.Status` 枚举加 `normalizedForDisplay()` 纯方法（仅 IN_PROGRESS→TODO），两处 Mapper 复用，单一真相源。CANCELLED 不纳入归一（它走过滤路径）。
+- **TaskBoardItemMapper.mapTaskStatus 的 CANCELLED→COMPLETED 分支保留**：虽是 isVisibleTask 前置过滤后的死代码，但保留避免语义争议，行为不变（12 个测试印证）。
+- **前端 filter 未清理**：`TaskBoard.vue:210` 的 `filter(s => s.code !== 'IN_PROGRESS')` 与 `project-utils.js` 的 `TASK_STATUS_FROM_API[IN_PROGRESS]` 在后端归一+过滤后成为冗余防御，但删它触达 e2e 联动门禁且非本次核心，保留并在本 notes 记录为后续清理项。
+
+### 修改文件范围（4 源 + 1 测试 + notes）
+- `backend/.../entity/Task.java`：枚举加 `normalizedForDisplay()` 方法（+11 行）
+- `backend/.../task/service/TaskDtoMapper.java`：第 71 行改用枚举方法（保持 null 安全）
+- `backend/.../task/service/TaskBoardItemMapper.java`：`mapTaskStatus` 复用枚举方法，保留 CANCELLED 分支
+- `backend/.../task/service/TaskService.java`：`getTasksByProjectId` 重构为三元选 list + 统一 filter CANCELLED（复用 `TaskBoardItemMapper.isVisibleTask`），行数持平
+- `backend/.../task/service/TaskServiceProjectAccessTest.java`：+2 个 CANCELLED 过滤测试（覆盖全量可见/执行人可见两分支）+ task helper 重载 status
+
+### 未纳入本次范围
+- 前端 `TaskBoard.vue` filter / `project-utils.js` 双向映射表的冗余清理（待后续，需 e2e 联动评估）。
+- `TaskBoardItemMapper.mapTaskStatus` CANCELLED 死代码分支的清理（保留避免争议）。
+- `FlywayRollbackScriptCoverageTest` 既有债务（main 上即红，与本次无关）。
+
+### 验证（74 tests 全绿）
+- `TaskBoardItemMapperTest`：12 passed（含 5 个 mapTaskStatus，验证枚举复用未破坏归一行为）
+- `TaskDtoMapperTest`：11 passed（含前序 2 个 CO-361 归一测试）
+- `TaskVisibilityPolicyTest`：16 passed
+- `TaskServiceProjectAccessTest`：7 passed（含 2 个新增 CANCELLED 过滤测试）
+- `ArchitectureTest`：25 passed（FP-Java 架构守卫未违反）
+- `ProjectWorkflowIntegrationTest`：3 passed（`@SpringBootTest` 端到端，含 `/api/tasks/project/{id}`）
+- 日志噪声同前序（notification_delivery_task H2 去重约束 + decompose 500），非本次引入。
+
 
