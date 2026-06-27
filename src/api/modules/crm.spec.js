@@ -49,11 +49,11 @@ describe('crmApi', () => {
     expect(httpClient.post).toHaveBeenCalledWith('/api/xiyu/crm/chances/search-by-tender', params)
   })
 
-  it('getContactPersons(): gets contact persons using path variable', async () => {
-    httpClient.get.mockResolvedValue({ data: [] })
+  it('getContactPersons(): gets contact persons using POST request body', async () => {
+    httpClient.post.mockResolvedValue({ data: [] })
 
     await crmApi.getContactPersons(285001)
 
-    expect(httpClient.get).toHaveBeenCalledWith('/api/xiyu/crm/chances/285001/contact-persons')
+    expect(httpClient.post).toHaveBeenCalledWith('/api/xiyu/crm/chances/contact-persons', 285001)
   })
 })
