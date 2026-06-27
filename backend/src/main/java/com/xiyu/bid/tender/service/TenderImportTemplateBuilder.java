@@ -96,7 +96,11 @@ public class TenderImportTemplateBuilder {
             dict.setColumnWidth(i, 5500);
         }
 
-        List<String> regions = TenderImportService.REGIONS;
+        List<String> regions = TenderImportService.REGIONS.stream()
+                // 字典 sheet 只展示推荐格式（直辖市市-市），不展示兼容的"仅市"格式
+                // 避免用户看字典 sheet 困惑该填哪种；TenderRegionCatalog.isValid 仍接受两种
+                .filter(r -> !java.util.Set.of("北京市", "天津市", "上海市", "重庆市").contains(r))
+                .toList();
         List<String> customerTypes = TenderImportService.CUSTOMER_TYPES;
         List<String> priorities = TenderImportService.PRIORITIES;
         List<String> projectTypes = TenderImportService.PROJECT_TYPES;

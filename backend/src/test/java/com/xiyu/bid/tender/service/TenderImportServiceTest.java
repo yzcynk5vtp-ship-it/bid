@@ -323,6 +323,26 @@ class TenderImportServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("字典 sheet 地区列只列推荐格式（直辖市市-市），不列兼容的仅市格式")
+    void dictionarySheetRegionColumnExcludesMunicipalityOnlyName() throws Exception {
+        byte[] bytes = service.generateTemplate();
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet dict = workbook.getSheet("字典参考");
+            assertThat(dict).isNotNull();
+            List<String> regions = readColumn(dict, 0);
+
+            // 直辖市推荐格式"市-市"应存在
+            assertThat(regions).contains("北京市-北京市", "天津市-天津市", "上海市-上海市", "重庆市-重庆市");
+            // 直辖市兼容的"仅市"格式不应在字典 sheet 展示（避免用户困惑该填哪种）
+            assertThat(regions).doesNotContain("北京市", "天津市", "上海市", "重庆市");
+            // 港澳台仍保留本级行政区名
+            assertThat(regions).contains("台湾省", "香港特别行政区", "澳门特别行政区");
+            // 普通省+市格式仍保留
+            assertThat(regions).contains("广东省深圳市");
+        }
+    }
+
     private List<String> readColumn(Sheet sheet, int colIndex) {
         List<String> values = new ArrayList<>();
         int last = sheet.getLastRowNum();
