@@ -61,14 +61,13 @@
       </template>
 
       <!-- Admin/Manager View: 10-column full view -->
+      <div v-if="isManagerView" class="ca-table-wrapper">
       <el-table
-        v-if="isManagerView"
         v-loading="loading"
         :data="filteredData"
         stripe
         empty-text="暂无 CA 证书数据"
         highlight-current-row
-        :header-cell-style="{ whiteSpace: 'nowrap' }"
         @row-click="handleRowClick"
       >
         <el-table-column type="index" label="序号" width="55" />
@@ -136,15 +135,15 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <!-- Default View: 5-column simplified view -->
+      <div v-else class="ca-table-wrapper">
       <el-table
-        v-else
         v-loading="loading"
         :data="filteredData"
         stripe
         empty-text="暂无 CA 证书数据"
-        :header-cell-style="{ whiteSpace: 'nowrap' }"
       >
         <el-table-column type="index" label="序号" width="55" />
         <el-table-column label="关联平台" min-width="140" show-overflow-tooltip>
@@ -179,6 +178,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
     </el-card>
 
     <!-- Detail Drawer -->
@@ -499,6 +499,23 @@ onMounted(loadData)
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* 表头强制单行显示，参照 Project/List.vue 标准方案（历史沉淀）。
+   关键：只作用到 th 的直接子 .cell，并加 overflow:visible + text-overflow:clip，
+   否则 .cell 默认 overflow:hidden 会把超出列宽的单行文字截断导致看不到标题。 */
+.ca-table-wrapper { overflow-x: auto; }
+.ca-table-wrapper :deep(.el-table th.el-table__cell > .cell) {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  padding-right: 20px;
+  position: relative;
+}
+/* td cell 也允许溢出可见，避免 el-tag/短文本被 .cell 默认 overflow:hidden 截断。
+   保留 white-space:normal 允许长文本换行，不撑爆列宽。 */
+.ca-table-wrapper :deep(.el-table td.el-table__cell > .cell) {
+  overflow: visible;
 }
 
 .stat-row {
