@@ -74,10 +74,6 @@
                 </div>
               </div>
             </el-dropdown-item>
-            <el-dropdown-item v-if="globalSearchEnabled" command="profile">
-              <el-icon><User /></el-icon>
-              个人中心
-            </el-dropdown-item>
             <el-dropdown-item command="keyword-subscription">
               <el-icon><Bell /></el-icon>
               关键词订阅
@@ -127,7 +123,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
-  Search, Bell, ArrowDown, ArrowLeft, User, Setting,
+  Search, Bell, ArrowDown, ArrowLeft, Setting,
   SwitchButton, Expand, Fold, Menu, DocumentChecked
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -214,9 +210,6 @@ const handleMobileSearch = () => {
 
 const handleCommand = async (command) => {
   switch (command) {
-    case 'profile':
-      router.push('/profile')
-      break
     case 'keyword-subscription':
       router.push('/bidding/keyword-subscription')
       break
