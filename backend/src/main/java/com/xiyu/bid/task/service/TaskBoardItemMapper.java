@@ -87,13 +87,11 @@ final class TaskBoardItemMapper {
         if (status == null) {
             return STATUS_TODO;
         }
-        return switch (status) {
-            case TODO -> STATUS_TODO;
-            case IN_PROGRESS -> STATUS_TODO;
-            case REVIEW -> STATUS_REVIEW;
-            case COMPLETED -> STATUS_COMPLETED;
-            case CANCELLED -> STATUS_COMPLETED;
-        };
+        if (status == Task.Status.CANCELLED) {
+            return STATUS_COMPLETED;
+        }
+        // CO-361: 复用 Task.Status.normalizedForDisplay()，与 TaskDtoMapper.toDTO 共用归一逻辑
+        return status.normalizedForDisplay().name();
     }
 
     private static String mapBidReviewStatus(String status) {

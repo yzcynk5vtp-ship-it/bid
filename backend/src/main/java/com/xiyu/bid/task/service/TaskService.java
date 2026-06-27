@@ -168,11 +168,12 @@ public class TaskService {
         assertCanAccessProject(projectId);
         User currentUser = assignmentSupport.resolveEnabledUserByUsername(username);
         Long[] leadIds = leadAssignmentRepository.resolveLeadIdsByProjectId(projectId);
-        if (TaskVisibilityPolicy.canViewAllProjectTasks(
-                currentUser.getRoleCode(), currentUser.getId(), leadIds[0], leadIds[1])) {
-            return toDTOsWithNames(taskRepository.findByProjectId(projectId));
-        }
-        return toDTOsWithNames(taskRepository.findByProjectIdAndAssigneeId(projectId, currentUser.getId()));
+        List<Task> tasks = TaskVisibilityPolicy.canViewAllProjectTasks(
+                currentUser.getRoleCode(), currentUser.getId(), leadIds[0], leadIds[1])
+                ? taskRepository.findByProjectId(projectId)
+                : taskRepository.findByProjectIdAndAssigneeId(projectId, currentUser.getId());
+        // CO-361: 复用 TaskBoardItemMapper.isVisibleTask 过滤 CANCELLED，与独立看板展示语义一致
+        return toDTOsWithNames(tasks.stream().filter(TaskBoardItemMapper::isVisibleTask).toList());
     }
 
     @Transactional(readOnly = true)
