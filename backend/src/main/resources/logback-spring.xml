@@ -10,9 +10,9 @@
     <springProfile name="dev | test | mysql">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-no-trace}] %logger{36} - %msg%n</pattern>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-no-trace}] [user=%X{userId:-anon}, role=%X{roleCode:-anon}] %logger{36} - %msg%n</pattern>
                 <charset>UTF-8</charset>
-            </encoder>
+            </appender>
         </appender>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
@@ -28,6 +28,8 @@
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                 <customFields>{"application":"${APP_NAME}"}</customFields>
                 <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <includeMdcKeyName>roleCode</includeMdcKeyName>
             </encoder>
         </appender>
         <root level="WARN">
@@ -40,7 +42,7 @@
     <springProfile name="!dev &amp; !test &amp; !mysql &amp; !prod &amp; !staging">
         <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
             <encoder>
-                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-no-trace}] %logger{36} - %msg%n</pattern>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-no-trace}] [user=%X{userId:-anon}, role=%X{roleCode:-anon}] %logger{36} - %msg%n</pattern>
                 <charset>UTF-8</charset>
             </encoder>
         </appender>

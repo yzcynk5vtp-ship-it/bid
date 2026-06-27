@@ -1,5 +1,6 @@
 package com.xiyu.bid.dto;
 
+import com.xiyu.bid.annotation.Sensitive;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -10,6 +11,7 @@ public class LoginRequest {
     private String username;
 
     @NotBlank(message = "Password is required")
+    @Sensitive
     private String password;
 
     private Boolean rememberMe = false;

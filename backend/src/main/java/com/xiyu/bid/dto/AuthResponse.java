@@ -1,5 +1,6 @@
 package com.xiyu.bid.dto;
 
+import com.xiyu.bid.annotation.Sensitive;
 import com.xiyu.bid.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,6 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 public class AuthResponse {
 
+    @Sensitive
     private String token;
     @Builder.Default
     private String type = "Bearer";

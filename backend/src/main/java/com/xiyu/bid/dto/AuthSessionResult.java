@@ -1,5 +1,6 @@
 package com.xiyu.bid.dto;
 
+import com.xiyu.bid.annotation.Sensitive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,6 +15,7 @@ public class AuthSessionResult {
     /** 认证响应. */
     private AuthResponse authResponse;
     /** 刷新令牌. */
+    @Sensitive
     private String refreshToken;
     /**
      * H13 根治 (2026-06-14): access token 不再放 {@link AuthResponse#getToken()} (响应 body),
@@ -21,5 +23,6 @@ public class AuthSessionResult {
      * 构造 Set-Cookie; {@code @JsonIgnore} 确保它绝不进响应 body (否则 XSS 仍可从响应盗取).
      */
     @com.fasterxml.jackson.annotation.JsonIgnore
+    @Sensitive
     private String accessToken;
 }
