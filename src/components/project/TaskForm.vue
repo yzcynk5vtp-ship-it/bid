@@ -94,7 +94,7 @@
 
           <el-form-item label="状态">
             <el-select v-model="localValue.status" style="width: 100%" :loading="loadingStatuses" :disabled="!canManageStatus">
-              <el-option v-for="s in availableStatuses" :key="s.code" :label="s.name" :value="s.code" />
+              <el-option v-for="s in statuses" :key="s.code" :label="s.name" :value="s.code" />
             </el-select>
           </el-form-item>
 
@@ -157,9 +157,6 @@ const canManageStatus = computed(() => {
   if (taskAssigneeId == null) return true
   return String(currentUserId) !== String(taskAssigneeId)
 })
-const availableStatuses = computed(() =>
-  statuses.value.filter(s => s.code !== 'IN_PROGRESS')
-)
 /** 执行人可在任务TODO状态下填写交付物和完成情况说明，并提交审核。 */
 const canDeliver = computed(() => {
   if (props.mode !== 'view') return false

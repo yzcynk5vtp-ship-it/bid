@@ -44,7 +44,7 @@
                 <el-icon class="more-icon"><MoreFilled /></el-icon>
                 <template #dropdown>
                   <el-dropdown-item
-                    v-for="s in availableStatuses"
+                    v-for="s in statuses"
                     :key="s.code"
                     :disabled="normalizeStatus(task.status) === s.code || !canChangeStatus(task)"
                     @click="handleStatusChange(task, s.code)"
@@ -199,8 +199,6 @@ const {
 
 const statuses = computed(() => projectStore.taskStatuses)
 
-const availableStatuses = computed(() => statuses.value.filter((s) => s.code !== 'IN_PROGRESS'))
-
 onMounted(() => {
   if (!projectStore.taskStatusesLoaded) {
     projectStore.loadTaskStatuses()
@@ -220,7 +218,7 @@ const canChangeStatus = (task) => {
   )
 }
 
-const columns = computed(() => availableStatuses.value
+const columns = computed(() => statuses.value
   .map((s) => ({
     key: s.code,
     title: s.name,
