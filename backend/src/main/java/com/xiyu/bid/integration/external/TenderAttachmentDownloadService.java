@@ -15,11 +15,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 附件下载服务（CO-280 403 修复）。
@@ -44,6 +49,10 @@ public class TenderAttachmentDownloadService {
     /** 文件存储目录，与 LocalDocumentStorage / DocInsightController 共享同一配置。 */
     @Value("${app.doc-insight.upload-dir:}")
     private String configuredUploadDir;
+
+    /** 外部下载域名白名单（逗号分隔），为空时仅阻止私有地址。 */
+    @Value("${app.integration.external-download-allowed-hosts:}")
+    private String allowedExternalHosts;
 
     /**
      * 下载文件。
@@ -98,6 +107,7 @@ public class TenderAttachmentDownloadService {
         long fileSize;
         try {
             URI uri = URI.create(fileUrl);
+            validateExternalUrl(uri);
             displayName = extractFileNameFromPath(uri.getPath());
             resource = new UrlResource(uri);
             if (!resource.exists()) {
@@ -112,6 +122,70 @@ public class TenderAttachmentDownloadService {
         }
         HttpHeaders headers = buildDownloadHeaders(displayName, fileSize);
         return new ResponseEntity<>(resource, headers, HttpStatus.OK);
+    }
+
+    /**
+     * 校验外部 URL，防止 SSRF 攻击。
+     *
+     * <p>检查规则：
+     * <ul>
+     *   <li>协议必须是 http 或 https</li>
+     *   <li>主机名不能为 localhost 或私有 IP 地址（RFC 1918 + 环回 + 链路本地）</li>
+     *   <li>若配置了域名白名单，主机名必须在白名单中</li>
+     * </ul>
+     */
+    void validateExternalUrl(URI uri) {
+        String scheme = uri.getScheme();
+        if (scheme == null || (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "外部 URL 协议必须是 http 或 https");
+        }
+        String host = uri.getHost();
+        if (host == null || host.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "外部 URL 缺少有效主机名");
+        }
+        String normalizedHost = host.toLowerCase().trim();
+        if (isPrivateOrLoopbackAddress(normalizedHost)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "禁止访问内部网络地址");
+        }
+        if (allowedExternalHosts != null && !allowedExternalHosts.isBlank()) {
+            Set<String> allowed = Arrays.stream(allowedExternalHosts.split(","))
+                    .map(String::trim)
+                    .map(String::toLowerCase)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toSet());
+            if (!allowed.contains(normalizedHost)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "外部 URL 域名不在允许列表中");
+            }
+        }
+    }
+
+    /** 判断主机名是否为 localhost 或私有 IP 地址（RFC 1918 / 环回 / 链路本地 / 任意本地）。 */
+    static boolean isPrivateOrLoopbackAddress(String host) {
+        if ("localhost".equalsIgnoreCase(host)) {
+            return true;
+        }
+        if (host.startsWith("[") && host.endsWith("]")) {
+            // IPv6 字面量，如 [::1]
+            String inner = host.substring(1, host.length() - 1);
+            if ("::1".equals(inner)) {
+                return true;
+            }
+            try {
+                InetAddress addr = InetAddress.getByName(inner);
+                return addr.isLoopbackAddress() || addr.isSiteLocalAddress()
+                        || addr.isAnyLocalAddress() || addr.isLinkLocalAddress();
+            } catch (UnknownHostException e) {
+                return true;
+            }
+        }
+        try {
+            InetAddress addr = InetAddress.getByName(host);
+            return addr.isLoopbackAddress() || addr.isSiteLocalAddress()
+                    || addr.isAnyLocalAddress() || addr.isLinkLocalAddress();
+        } catch (UnknownHostException e) {
+            // 域名无法解析时不视为私有地址（可能仅是 DNS 暂时不可达）
+            return false;
+        }
     }
 
     /** 构造下载响应头（Content-Disposition + Content-Type + Content-Length）。 */
