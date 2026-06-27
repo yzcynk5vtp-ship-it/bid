@@ -10,6 +10,7 @@
 import httpClient from '../client.js'
 import { apiModeFailure, demoReadonlyFailure, isDemoEntityId, isNumericId } from './projectApiGuards.js'
 import * as tenderBreakdownApi from './projectTenderBreakdown.js'
+import * as projectDocumentsApi from './projectDocuments.js'
 function matchesProjectStatus(projectStatus, filterStatus) {
   return String(projectStatus || '').toLowerCase() === String(filterStatus || '').toLowerCase()
 }
@@ -200,47 +201,32 @@ export const projectsApi = {
 
   /**
    * 获取项目文档
+   * @deprecated 请使用 projectDocumentsApi.getDocuments() 替代
    */
   async getDocuments(projectId, params = {}) {
-    if (!isNumericId(projectId)) {
-      return apiModeFailure('project')
-    }
-
-    if (isDemoEntityId(projectId)) {
-      return { success: true, data: [] }
-    }
-
-    return httpClient.get(`/api/projects/${projectId}/documents`, { params })
+    return projectDocumentsApi.getDocuments(projectId, params)
   },
 
   /**
    * 上传文档
+   * @deprecated 请使用 projectDocumentsApi.uploadDocument() 替代
    */
   async uploadDocument(projectId, formData) {
-    if (!isNumericId(projectId)) return apiModeFailure('project')
-    if (isDemoEntityId(projectId)) return demoReadonlyFailure()
-    if (formData.get('file')) {
-      return httpClient.post(`/api/projects/${projectId}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 })
-    }
-
-    return httpClient.post(`/api/projects/${projectId}/documents`, {
-      name: formData.get('name') || formData.get('file')?.name || '项目文档',
-      size: formData.get('size') || '1MB',
-      fileType: formData.get('fileType') || formData.get('file')?.type || 'application/octet-stream',
-      uploaderId: formData.get('uploaderId') ? Number(formData.get('uploaderId')) : null,
-      uploaderName: formData.get('uploaderName') || '' })
+    return projectDocumentsApi.uploadDocument(projectId, formData)
   },
 
+  /**
+   * @deprecated 请使用 projectDocumentsApi.deleteDocument() 替代
+   */
   async deleteDocument(projectId, documentId) {
-    if (!isNumericId(projectId) || !isNumericId(documentId)) {
-      return apiModeFailure('document')
-    }
+    return projectDocumentsApi.deleteDocument(projectId, documentId)
+  },
 
-    if (isDemoEntityId(projectId) || isDemoEntityId(documentId)) {
-      return demoReadonlyFailure()
-    }
-
-    return httpClient.delete(`/api/projects/${projectId}/documents/${documentId}`)
+  /**
+   * @deprecated 请使用 projectDocumentsApi.getDocumentDownloadUrl() 替代
+   */
+  getDocumentDownloadUrl(projectId, documentId) {
+    return projectDocumentsApi.getDocumentDownloadUrl(projectId, documentId)
   },
 
   async createReminder(projectId, data) {

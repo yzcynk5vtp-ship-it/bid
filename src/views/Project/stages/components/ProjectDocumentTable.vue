@@ -33,8 +33,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { projectsApi } from '@/api/modules/projects.js'
-import httpClient from '@/api/client.js'
-import { getApiUrl } from '@/api/config.js'
+import { downloadWithFilename } from '@/utils/download.js'
 
 const props = defineProps({
   projectId: { type: [String, Number], required: true },
@@ -73,28 +72,15 @@ async function onFileSelected(e) {
 }
 
 async function handleDownload(row) {
-  const url = row.fileUrl || row.url
-  if (!url) { ElMessage.info('文件地址不可用'); return }
+  const downloadUrl = projectsApi.getDocumentDownloadUrl(props.projectId, row.id)
+  if (!downloadUrl) {
+    ElMessage.info('文件地址不可用')
+    return
+  }
   try {
-    // Use authenticated download via httpClient to preserve JWT auth headers
-    const resolvedUrl = url.startsWith('http') ? url : getApiUrl(url)
-    const response = await httpClient.get(resolvedUrl, { responseType: 'blob' })
-    const blob = new Blob([response.data])
-    const blobUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = blobUrl
-    a.download = row.name || 'download'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(blobUrl)
+    await downloadWithFilename(downloadUrl, row.name || 'download')
   } catch {
-    // Fallback: if authenticated download fails, try direct window.open
-    if (url.startsWith('http')) {
-      window.open(url, '_blank')
-    } else {
-      ElMessage.error('文件下载失败')
-    }
+    ElMessage.error('文件下载失败')
   }
 }
 
