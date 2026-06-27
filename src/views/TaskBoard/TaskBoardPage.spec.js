@@ -202,6 +202,13 @@ describe('CO-370 TaskBoardPage handleSubmitForReview', () => {
 
     // 必须调用 uploadTaskFilesWithFallback
     expect(mockUploadTaskFilesWithFallback).toHaveBeenCalledTimes(1)
+    // 第1个参数必须包含 assigneeId 以便后续权限校验
+    const taskArg = mockUploadTaskFilesWithFallback.mock.calls[0][0]
+    expect(taskArg).toEqual(expect.objectContaining({
+      id: 1,
+      projectId: 10,
+      assigneeId: 1,
+    }))
     // 第3个参数是 ctx，必须包含 projectStore / projectId / userStore
     const ctxArg = mockUploadTaskFilesWithFallback.mock.calls[0][2]
     expect(ctxArg).toEqual(expect.objectContaining({

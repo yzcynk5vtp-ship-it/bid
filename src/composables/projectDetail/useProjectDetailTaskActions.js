@@ -3,6 +3,7 @@ import { taskTemplates } from './constants.js'
 import { normalizeProjectTaskList, openScoreDraftDialogWhenTenderSourceMissing } from './projectDetailTaskGeneration.js'
 import { createTaskAssigneePayload, uploadTaskFilesWithFallback } from './taskAssigneePayload.js'
 import { normalizeTaskStatusForApi, taskFormDtoToBackend, taskBackendToCard } from '@/views/Project/project-utils'
+import { tasksApi } from '@/api/modules/tasks.js'
 export function useProjectDetailTaskActions(context) {
   const { route, userStore, projectStore, projectsApi, tenderBreakdownApi = projectsApi, isApiProject, message, state, workflow } = context
   const pushActivity = (action) => state.activities.value.unshift({ id: Date.now(), user: userStore.userName, action, time: new Date().toLocaleString('zh-CN', { hour12: false }) })
@@ -212,7 +213,18 @@ export function useProjectDetailTaskActions(context) {
     }).catch(() => {})
   }
 
-  const handleTaskClick = (task) => { state.currentTask.value = task }
+  const handleTaskClick = async (task) => {
+    state.currentTask.value = task
+    try {
+      const res = await tasksApi.getTaskById(task.id)
+      const taskData = res?.data?.data || res?.data || {}
+      if (state.currentTask.value?.id === task.id) {
+        state.currentTask.value = { ...taskBackendToCard(taskData), deliverableFiles: [] }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
 
   const handleSaveTask = async (payload = {}) => {
     const { mode = 'create', data = {}, done } = payload

@@ -101,7 +101,24 @@ public class BatchAttachmentService {
             List<BatchAttachResultDTO.MatchedItem> matched,
             List<BatchAttachResultDTO.UnmatchedItem> unmatched
     ) {
-        try (ZipInputStream zis = new ZipInputStream(file.getInputStream())) {
+        byte[] zipBytes;
+        try {
+            zipBytes = file.getBytes();
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("读取压缩包失败", e);
+        }
+
+        boolean useGbk = false;
+        try (ZipInputStream testZis = new ZipInputStream(new java.io.ByteArrayInputStream(zipBytes), java.nio.charset.StandardCharsets.UTF_8)) {
+            testZis.getNextEntry();
+        } catch (IllegalArgumentException e) {
+            useGbk = true;
+        } catch (java.io.IOException | RuntimeException e) {
+            // ignore
+        }
+
+        java.nio.charset.Charset charset = useGbk ? java.nio.charset.Charset.forName("GBK") : java.nio.charset.StandardCharsets.UTF_8;
+        try (ZipInputStream zis = new ZipInputStream(new java.io.ByteArrayInputStream(zipBytes), charset)) {
             ZipEntry entry;
             while ((entry = zis.getNextEntry()) != null) {
                 if (entry.isDirectory()) {
