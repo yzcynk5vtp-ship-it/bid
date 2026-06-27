@@ -21,6 +21,12 @@ public final class TraceConstants {
     /** MDC 中存储 traceId 的 key。 */
     public static final String MDC_TRACE_KEY = "traceId";
 
+    /** MDC 中存储当前用户 ID 的 key。 */
+    public static final String MDC_USER_ID_KEY = "userId";
+
+    /** MDC 中存储当前用户角色 code 的 key。 */
+    public static final String MDC_ROLE_CODE_KEY = "roleCode";
+
     private TraceConstants() {
     }
 }

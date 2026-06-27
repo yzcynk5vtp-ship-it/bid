@@ -4,6 +4,7 @@
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.controller;
 
+import com.xiyu.bid.annotation.LogOperation;
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.project.dto.ClosureDTO;
 import com.xiyu.bid.project.dto.ClosurePreviewDTO;
@@ -67,6 +68,7 @@ public class ProjectClosureController {
     /** 审核通过：系统管理员/投标管理员/投标组长/投标项目负责人/投标辅助。 */
     @PostMapping("/approve")
     @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
+    @LogOperation
     public ResponseEntity<ApiResponse<ClosureDTO>> approve(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -78,6 +80,7 @@ public class ProjectClosureController {
     /** 审核驳回：管理员/组长/投标项目负责人/投标辅助。 */
     @PostMapping("/reject")
     @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
+    @LogOperation
     public ResponseEntity<ApiResponse<ClosureDTO>> reject(
             @PathVariable Long projectId,
             @Valid @RequestBody ClosureReviewRequest req,

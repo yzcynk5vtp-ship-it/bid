@@ -4,6 +4,7 @@
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.controller;
 
+import com.xiyu.bid.annotation.LogOperation;
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.project.dto.ProjectDraftingViewDto;
 import com.xiyu.bid.project.dto.ProjectLeadAssignmentRequest;
@@ -64,6 +65,7 @@ public class ProjectDraftingController {
     /** 提交投标（审核通过 + 闸门通过后推进到评标中阶段）。 */
     @PostMapping("/submit-bid")
     @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM', 'SALES')")
+    @LogOperation
     public ResponseEntity<ApiResponse<ProjectDraftingViewDto>> submitBid(
             @PathVariable Long projectId,
             @AuthenticationPrincipal UserDetails userDetails) {
