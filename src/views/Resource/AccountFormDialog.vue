@@ -57,11 +57,15 @@
         </el-col>
         <el-col :span="12">
           <el-form-item label="CA 保管人" :required="form.hasCa">
-            <el-select v-model="form.caCustodian" placeholder="请选择投标部门人员"
+            <UserPicker
+              v-model="form.caCustodian"
+              mode="candidates"
+              placeholder="请选择投标部门人员"
               :disabled="!form.hasCa"
-              style="width:100%" filterable clearable>
-              <el-option v-for="u in biddingUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
-            </el-select>
+              :load-on-mount="false"
+              :initial-options="biddingUsers"
+              style="width: 100%"
+            />
           </el-form-item>
         </el-col>
       </el-row>
@@ -77,12 +81,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authApi, resourcesApi } from '@/api'
+import UserPicker from '@/components/common/UserPicker.vue'
 import httpClient from '@/api/client'
 import { useUserStore } from '@/stores/user'
-import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },

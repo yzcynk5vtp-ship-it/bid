@@ -23,24 +23,18 @@
             <small class="option-desc">{{ rule.desc }}</small>
           </el-option>
         </el-select>
-        <el-select
+        <UserPicker
           v-else
           v-model="form.assignees"
-          multiple
-          filterable
+          mode="candidates"
+          context="tender"
+          :multiple="true"
           placeholder="选择指派人员"
           class="full-width"
-          :loading="loadingCandidates"
-        >
-          <el-option
-            v-for="candidate in candidates"
-            :key="candidate.id"
-            :label="formatAssignmentCandidateLabel(candidate)"
-            :value="candidate.id"
-          >
-            {{ formatAssignmentCandidateLabel(candidate) }} · {{ candidate.departmentName }}
-          </el-option>
-        </el-select>
+          :load-on-mount="false"
+          :initial-options="candidates"
+          show-department
+        />
         <el-input v-model="form.remark" type="textarea" :rows="3" placeholder="填写分发说明（选填）" />
       </section>
       <section>
@@ -68,7 +62,7 @@
 
 <script setup>
 import { ASSIGN_RULES } from '../constants.js'
-import { formatAssignmentCandidateLabel } from '../helpers.js'
+import UserPicker from '@/components/common/UserPicker.vue'
 
 const modelValue = defineModel({ type: Boolean, default: false })
 defineModel('form', { type: Object, required: true })
@@ -77,7 +71,6 @@ defineProps({
   candidates: { type: Array, default: () => [] },
   preview: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
-  loadingCandidates: { type: Boolean, default: false },
   assignRules: { type: Array, default: () => ASSIGN_RULES },
 })
 

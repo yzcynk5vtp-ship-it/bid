@@ -23,14 +23,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="项目负责人">
-          <el-select v-model="filters.projectManager" placeholder="选择负责人" clearable filterable style="width: 140px">
-            <el-option v-for="m in projectManagerOptions" :key="m" :label="m" :value="m" />
-          </el-select>
+          <UserPicker v-model="filters.projectManager" mode="search" value-field="name" placeholder="选择负责人" :initial-options="projectManagerOptions" clearable style="width: 180px" />
         </el-form-item>
         <el-form-item label="投标负责人">
-          <el-select v-model="filters.bidManager" placeholder="选择负责人" clearable filterable style="width: 140px">
-            <el-option v-for="m in bidManagerOptions" :key="m" :label="m" :value="m" />
-          </el-select>
+          <UserPicker v-model="filters.bidManager" mode="search" value-field="name" placeholder="选择负责人" :initial-options="bidManagerOptions" clearable style="width: 180px" />
         </el-form-item>
         <el-form-item label="上传时间">
           <el-date-picker v-model="filters.uploadDates" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" clearable style="width: 220px" />
@@ -125,6 +121,7 @@ import FileCategoryPopover from '../components/FileCategoryPopover.vue'
 import ArchiveStatsCards from './components/ArchiveStatsCards.vue'
 import ArchiveStatusTabs from './components/ArchiveStatusTabs.vue'
 import ArchiveDetailDrawer from './components/ArchiveDetailDrawer.vue'
+import UserPicker from '@/components/common/UserPicker.vue'
 import { formatDate, getStatusLabel, getStatusTagType } from './archiveLabels.js'
 
 const activeStatusTab = ref('ALL')

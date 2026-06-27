@@ -13,8 +13,7 @@ export function formatUserLabel(user) {
     user.employeeNumber,
     user.employeeId,
     user.jobNumber,
-    user.staffId,
-    user.username
+    user.staffId
   )
   return formatDisplayName(name, employeeNumber)
 }

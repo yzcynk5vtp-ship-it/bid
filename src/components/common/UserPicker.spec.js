@@ -69,6 +69,17 @@ describe('UserPicker', () => {
     expect(loadCandidates).toHaveBeenCalled()
   })
 
+  it('does not preload candidates when loadOnMount is false', async () => {
+    const loadCandidates = vi.fn()
+    mockComposable({ loadCandidates })
+    mount(UserPicker, {
+      props: { mode: 'candidates', context: 'task', loadOnMount: false },
+      global: { stubs: elementStubs },
+    })
+    await flushPromises()
+    expect(loadCandidates).not.toHaveBeenCalled()
+  })
+
   it('binds v-model with number userId', async () => {
     const wrapper = mount(UserPicker, {
       props: { modelValue: 1, mode: 'search' },
@@ -169,6 +180,18 @@ describe('UserPicker', () => {
     // 只剩 roleCode === 'bid-Team' 的赵六
     expect(select.props('options')).toHaveLength(1)
     expect(select.props('options')[0].value).toBe(4)
+  })
+
+  it('appends department to option label when showDepartment is true', () => {
+    mockComposable({ options: ref([{ ...mockUser, deptName: '交付部' }]) })
+    const wrapper = mount(UserPicker, {
+      props: { mode: 'search', showDepartment: true },
+      global: { stubs: elementStubs },
+    })
+    const select = wrapper.findComponent({ name: 'ElSelectV2' })
+    expect(select.props('options')).toEqual([
+      { value: 1, label: '张三（20260509） · 交付部' },
+    ])
   })
 
   // 回归防护：搜索态下 initialOptions（预加载的固定人员）不得混入搜索结果。

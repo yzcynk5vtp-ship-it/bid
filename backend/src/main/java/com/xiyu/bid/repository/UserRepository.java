@@ -25,6 +25,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByFullName(String fullName);
 
+    List<User> findByFullNameIn(Collection<String> fullNames);
+
     Optional<User> findByExternalOrgSourceAppAndExternalOrgUserId(String sourceApp, String externalOrgUserId);
 
     boolean existsByUsername(String username);

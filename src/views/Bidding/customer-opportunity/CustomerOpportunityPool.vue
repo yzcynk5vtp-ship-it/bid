@@ -19,10 +19,15 @@
               <el-icon><Search /></el-icon>
             </template>
           </el-input>
-          <el-select v-model="filters.sales" placeholder="销售负责人" size="default" clearable :disabled="!demoEnabled" class="filter-item">
-            <el-option label="全部销售" value="" />
-            <el-option v-for="user in salesUsers" :key="user.id" :label="formatUserLabel(user)" :value="user.name" />
-          </el-select>
+          <UserPicker
+            v-model="filters.sales"
+            mode="search"
+            value-field="name"
+            placeholder="销售负责人"
+            :initial-options="salesUsers"
+            :disabled="!demoEnabled"
+            class="filter-item"
+          />
         </div>
         <div class="filter-row">
           <el-select v-model="filters.region" placeholder="全部地区" size="default" clearable :disabled="!demoEnabled" class="filter-item">
@@ -85,8 +90,8 @@
 
 <script setup>
 import { Search, User } from '@element-plus/icons-vue'
+import UserPicker from '@/components/common/UserPicker.vue'
 import { getScoreClass, getScoreColor } from './customerOpportunityCenter.helpers.js'
-import { formatUserLabel } from '@/utils/formatUserLabel.js'
 
 defineModel('filters', {
   type: Object,

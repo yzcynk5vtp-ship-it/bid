@@ -1,4 +1,5 @@
 package com.xiyu.bid.casework.application;
+import com.xiyu.bid.casework.dto.ArchiveManagerOption;
 import com.xiyu.bid.casework.dto.ProjectArchiveQuery;
 import com.xiyu.bid.casework.dto.ProjectArchiveResponse;
 import com.xiyu.bid.casework.dto.ProjectArchiveStatsResponse;
@@ -11,11 +12,14 @@ import com.xiyu.bid.casework.infrastructure.ProjectArchive;
 import com.xiyu.bid.casework.infrastructure.ProjectArchiveRepository;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.entity.User;
 import com.xiyu.bid.repository.ProjectRepository;
+import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +32,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -39,6 +46,7 @@ public class ProjectArchiveWorkflowService {
     private final KnowledgeCaseRepository knowledgeCaseRepository;
     private final ProjectAccessScopeService projectAccessScopeService;
     private final ProjectArchiveResponseMapper responseMapper;
+    private final UserRepository userRepository;
     public Page<ProjectArchiveResponse> queryProjectArchives(ProjectArchiveQuery query, Pageable pageable) {
         List<Long> allowedProjectIds = projectAccessScopeService.getAllowedProjectIdsForCurrentUser();
         boolean isAdmin = projectAccessScopeService.currentUserHasAdminAccess();
@@ -77,8 +85,11 @@ public class ProjectArchiveWorkflowService {
             accessibleArchives = List.of();
         }
 
-        List<String> projectManagers = responseMapper.collectProjectManagers(accessibleArchives);
-        List<String> bidManagers = responseMapper.collectBidManagers(accessibleArchives);
+        List<String> projectManagerNames = responseMapper.collectProjectManagers(accessibleArchives);
+        List<String> bidManagerNames = responseMapper.collectBidManagers(accessibleArchives);
+
+        List<ArchiveManagerOption> projectManagers = toManagerOptions(projectManagerNames);
+        List<ArchiveManagerOption> bidManagers = toManagerOptions(bidManagerNames);
 
         return new ProjectArchiveStatsResponse(totalArchives, closedProjects, caseCount, reuseCount, projectManagers, bidManagers);
     }
@@ -147,6 +158,29 @@ public class ProjectArchiveWorkflowService {
 
     public void assertCurrentUserCanAccessProject(Long projectId) {
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
+    }
+
+    private List<ArchiveManagerOption> toManagerOptions(List<String> names) {
+        if (names == null || names.isEmpty()) {
+            return List.of();
+        }
+        List<User> users = userRepository.findByFullNameIn(names);
+        Map<String, User> userByName = users.stream()
+                .filter(u -> u.getFullName() != null)
+                .collect(Collectors.toMap(User::getFullName, u -> u, (a, b) -> {
+                    log.warn("档案台账负责人按姓名反查时发现同名用户，将使用首个匹配: fullName={}, keptId={}, droppedId={}",
+                            a.getFullName(), a.getId(), b.getId());
+                    return a;
+                }));
+        return names.stream()
+                .map(name -> {
+                    User user = userByName.get(name);
+                    return new ArchiveManagerOption(
+                            user != null ? user.getId() : null,
+                            name,
+                            user != null ? user.getEmployeeNumber() : null);
+                })
+                .toList();
     }
 
     private Specification<ProjectArchive> buildSpecification(ProjectArchiveQuery query, List<Long> allowedProjectIds, boolean isAdmin) {
