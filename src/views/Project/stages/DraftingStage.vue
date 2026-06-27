@@ -155,14 +155,15 @@ const reviewerName = ref('')
 const reviewState = ref(null)        // null | 'reviewing' | 'rejected' | 'approved'
 const rejectReasonText = ref('')
 
-// 审核人候选排除项：项目负责人/辅助人员/项目经理/团队成员（审核人不能选这些人，避免自己审自己）
+// 审核人候选排除项：当前用户/项目负责人/辅助人员/项目经理/团队成员（审核人不能选这些人，避免自己审自己）
 const reviewerExcludeIds = computed(() => {
   const project = ctx.project?.value || {}
+  const currentUid = ctx.userStore?.currentUser?.id
   const managerId = project.managerId ? Number(project.managerId) : null
   const teamMembers = Array.isArray(project.teamMembers) ? project.teamMembers.map(Number) : []
   const primaryLeadId = project.primaryLeadUserId ? Number(project.primaryLeadUserId) : null
   const secondaryLeadId = project.secondaryLeadUserId ? Number(project.secondaryLeadUserId) : null
-  return [managerId, primaryLeadId, secondaryLeadId, ...teamMembers].filter(Boolean)
+  return [currentUid, managerId, primaryLeadId, secondaryLeadId, ...teamMembers].filter(Boolean)
 })
 
 // 当前用户是否为该项目指定的审核人（id 必须一致，类型安全比较）
