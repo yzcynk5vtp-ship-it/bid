@@ -147,7 +147,7 @@ async function handleSubmitForReview() {
     const projectStore = useProjectStore()
     const userStore = useUserStore()
     const uploadOk = await uploadTaskFilesWithFallback(
-      { id: taskId, projectId },
+      selectedTask.value,
       { attachments: [], deliverableFiles: data.deliverableFiles || [] },
       { projectStore, projectId, userStore },
       {
