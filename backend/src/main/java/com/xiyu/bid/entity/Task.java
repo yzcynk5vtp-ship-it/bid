@@ -114,6 +114,14 @@ public class Task {
     @Column(name = "completion_notes", columnDefinition = "TEXT")
     private String completionNotes;
 
+    /**
+     * 任务创建人用户名（CO-382）。由 Controller 在 createTask 时取自
+     * {@code @AuthenticationPrincipal}，仅用于解析展示名 {@code creatorName}，
+     * 不参与权限判断（权限走现有 {@code TaskPermissionGuard}）。
+     */
+    @Column(name = "created_by", length = 255)
+    private String createdBy;
+
     /** Creation timestamp. */
     @Column(name = "created_at", nullable = false,
             updatable = false)

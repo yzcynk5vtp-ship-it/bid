@@ -3,6 +3,7 @@ package com.xiyu.bid.task.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.entity.Task;
+import com.xiyu.bid.entity.User;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
@@ -191,5 +192,41 @@ class TaskExtendedFieldsPersistenceTest {
                 .as("frontend should not need null-check; service returns empty map")
                 .isNotNull()
                 .isEmpty();
+    }
+
+    /**
+     * CO-382: createTask 必须把 Controller 传入的认证用户名写入 tasks.created_by，
+     * 并在返回的 DTO 中解析为创建人展示名（User.fullName），供看板展示。
+     *
+     * <p>前端提交的 createdByName 仅作乐观显示，后端不信任——创建人以
+     * {@code @AuthenticationPrincipal} 为唯一可信源。
+     */
+    @Test
+    @DisplayName("CO-382: createTask 记录创建人用户名并返回解析后的 creatorName")
+    void createTask_recordsCreatorAndReturnsResolvedName() {
+        when(projectRepository.existsById(10L)).thenReturn(true);
+        when(taskRepository.save(any(Task.class))).thenAnswer(invocation -> {
+            Task toSave = invocation.getArgument(0);
+            toSave.setId(99L);
+            return toSave;
+        });
+        User creator = User.builder().id(5L).username("zhangsan").fullName("张三").build();
+        when(userRepository.findByUsername("zhangsan")).thenReturn(Optional.of(creator));
+
+        TaskDTO input = TaskDTO.builder()
+                .projectId(10L)
+                .title("新任务")
+                .build();
+
+        TaskDTO created = taskService.createTask(input, "zhangsan");
+
+        ArgumentCaptor<Task> captor = ArgumentCaptor.forClass(Task.class);
+        verify(taskRepository).save(captor.capture());
+        assertThat(captor.getValue().getCreatedBy())
+                .as("Task entity must persist creator username from auth context")
+                .isEqualTo("zhangsan");
+        assertThat(created.getCreatorName())
+                .as("returned DTO must expose resolved creator display name")
+                .isEqualTo("张三");
     }
 }

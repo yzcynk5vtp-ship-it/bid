@@ -218,7 +218,9 @@ export function taskBackendToCard(dto = {}) {
     assigneeRoleCode: dto.assigneeRoleCode ?? '',
     assigneeRoleName: dto.assigneeRoleName ?? dto.roleName ?? '',
     createdById: dto.createdById ?? null,
-    createdByName: dto.createdByName ?? dto.createdBy ?? '',
+    // CO-382: 后端 TaskDTO 返回 creatorName（由 tasks.created_by 解析），
+    // 优先取它；旧字段 createdByName/createdBy 仅作回退兼容。
+    createdByName: dto.creatorName ?? dto.createdByName ?? dto.createdBy ?? '',
     completionNotes: dto.completionNotes ?? '',
     deliverableFiles: dto.deliverableFiles ?? [],
     extendedFields: dto.extendedFields || {},

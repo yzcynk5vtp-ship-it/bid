@@ -15,6 +15,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
 
+    /** CO-382: 批量按用户名查询，用于任务看板创建人姓名解析。 */
+    List<User> findAllByUsernameIn(Collection<String> usernames);
+
     Optional<User> findByEmail(String email);
 
     Optional<User> findByWecomUserId(String wecomUserId);
