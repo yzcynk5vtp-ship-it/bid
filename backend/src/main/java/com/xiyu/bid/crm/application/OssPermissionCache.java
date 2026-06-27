@@ -3,6 +3,7 @@ package com.xiyu.bid.crm.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.xiyu.bid.security.RoleCodeCachePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.Cursor;
@@ -38,7 +39,7 @@ import java.util.concurrent.ConcurrentMap;
  * - permission：原始 OSS 权限响应（备用）
  */
 @Component
-public class OssPermissionCache {
+public class OssPermissionCache implements RoleCodeCachePort {
 
     private static final Logger log = LoggerFactory.getLogger(OssPermissionCache.class);
 

@@ -21,6 +21,7 @@ import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.admin.service.ProjectGroupService;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
+import com.xiyu.bid.security.EffectiveRoleResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -52,9 +53,10 @@ public class ProjectAccessScopeService {
     private final ProjectInitiationDetailsRepository initiationDetailsRepository;
     private final TaskRepository taskRepository;
     private final BidDocumentReviewRepository bidDocumentReviewRepository;
+    private final EffectiveRoleResolver effectiveRoleResolver;
 
     public List<Long> getAllowedProjectIds(User user) {
-        if (user == null || RoleProfileCatalog.ADMIN_CODE.equalsIgnoreCase(user.getRoleCode())) {
+        if (user == null || RoleProfileCatalog.ADMIN_CODE.equalsIgnoreCase(effectiveRoleResolver.resolveRoleCode(user))) {
             return List.of();
         }
         DataScopeAccessProfile accessProfile = dataScopeConfigService.getAccessProfile(user);
@@ -80,7 +82,7 @@ public class ProjectAccessScopeService {
                 .collect(Collectors.toList()));
 
         // CO-361: Add projects where user is assigned as secondary bidding lead (副投标负责人)
-        if (RoleProfileCatalog.BID_SPECIALIST_CODE.equalsIgnoreCase(user.getRoleCode())) {
+        if (RoleProfileCatalog.BID_SPECIALIST_CODE.equalsIgnoreCase(effectiveRoleResolver.resolveRoleCode(user))) {
             allowedIds.addAll(leadAssignmentRepository.findBySecondaryLeadUserId(user.getId()).stream()
                     .map(a -> a.getProjectId())
                     .collect(Collectors.toList()));
@@ -119,7 +121,7 @@ public class ProjectAccessScopeService {
     }
 
     public List<String> getAllowedDepartmentCodes(User user) {
-        if (user == null || RoleProfileCatalog.ADMIN_CODE.equalsIgnoreCase(user.getRoleCode())) {
+        if (user == null || RoleProfileCatalog.ADMIN_CODE.equalsIgnoreCase(effectiveRoleResolver.resolveRoleCode(user))) {
             return List.of();
         }
         return dataScopeConfigService.getAccessProfile(user).getAllowedDepartmentCodes();

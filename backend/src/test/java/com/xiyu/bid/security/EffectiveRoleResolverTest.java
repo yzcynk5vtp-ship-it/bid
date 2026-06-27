@@ -1,6 +1,5 @@
 package com.xiyu.bid.security;
 
-import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.security.domain.EffectiveRoleResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,7 +38,7 @@ class EffectiveRoleResolverTest {
     private static final Logger log = LoggerFactory.getLogger(EffectiveRoleResolverTest.class);
 
     @Mock
-    private OssPermissionCache ossPermissionCache;
+    private RoleCodeCachePort roleCodeCachePort;
 
     @InjectMocks
     private EffectiveRoleResolver effectiveRoleResolver;
@@ -72,7 +71,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("缓存有正确角色码时返回缓存值（bid-Team）")
         void returnsCachedRoleForOssUser() {
-            when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.of("bid-Team"));
+            when(roleCodeCachePort.getRoleCode("00444")).thenReturn(Optional.of("bid-Team"));
 
             String roleCode = effectiveRoleResolver.resolveRoleCode(ossUser);
 
@@ -82,7 +81,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("resolve 返回 CACHE_HIT 来源")
         void returnsCacheHitSource() {
-            when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.of("bid-projectLeader"));
+            when(roleCodeCachePort.getRoleCode("00444")).thenReturn(Optional.of("bid-projectLeader"));
 
             EffectiveRoleResult result = effectiveRoleResolver.resolve(ossUser);
 
@@ -93,13 +92,13 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("缓存命中时不读实体角色码作回退")
         void doesNotFallbackToEntityWhenCacheHit() {
-            when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.of("bid-Team"));
+            when(roleCodeCachePort.getRoleCode("00444")).thenReturn(Optional.of("bid-Team"));
 
             effectiveRoleResolver.resolveRoleCode(ossUser);
 
             // 实体 getRoleCode() 不应被调用作回退（缓存命中直接返回）
             // 验证只调用了一次缓存查询
-            verify(ossPermissionCache, times(1)).getRoleCode("00444");
+            verify(roleCodeCachePort, times(1)).getRoleCode("00444");
         }
     }
 
@@ -110,7 +109,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("缓存为空时返回 null（fail-closed，不回退 manager）")
         void returnsNullWhenCacheEmptyForOssUser() {
-            when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.empty());
+            when(roleCodeCachePort.getRoleCode("00444")).thenReturn(Optional.empty());
 
             String roleCode = effectiveRoleResolver.resolveRoleCode(ossUser);
 
@@ -120,7 +119,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("resolve 返回 CACHE_MISS_FAIL_CLOSED 来源")
         void returnsFailClosedSource() {
-            when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.empty());
+            when(roleCodeCachePort.getRoleCode("00444")).thenReturn(Optional.empty());
 
             EffectiveRoleResult result = effectiveRoleResolver.resolve(ossUser);
 
@@ -131,7 +130,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("缓存值为空字符串时归一化为未命中 → fail-closed")
         void emptyStringCacheNormalizedToMiss() {
-            when(ossPermissionCache.getRoleCode("00444")).thenReturn(Optional.of(""));
+            when(roleCodeCachePort.getRoleCode("00444")).thenReturn(Optional.of(""));
 
             String roleCode = effectiveRoleResolver.resolveRoleCode(ossUser);
 
@@ -146,7 +145,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("本地用户缓存空时返回实体角色码")
         void returnsEntityRoleCodeForLocalUser() {
-            when(ossPermissionCache.getRoleCode("admin01")).thenReturn(Optional.empty());
+            when(roleCodeCachePort.getRoleCode("admin01")).thenReturn(Optional.empty());
 
             // localUser 的 roleProfile 为 null → getRoleCode() 回退 "manager"
             // 但本地用户这是合法回退（非 OSS 用户）
@@ -158,7 +157,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("本地用户 resolve 返回 LOCAL_USER 来源")
         void returnsLocalUserSource() {
-            when(ossPermissionCache.getRoleCode("admin01")).thenReturn(Optional.empty());
+            when(roleCodeCachePort.getRoleCode("admin01")).thenReturn(Optional.empty());
 
             EffectiveRoleResult result = effectiveRoleResolver.resolve(localUser);
 
@@ -168,7 +167,7 @@ class EffectiveRoleResolverTest {
         @Test
         @DisplayName("本地用户即使缓存命中也用缓存值（缓存优先于实体）")
         void localUserUsesCacheWhenHit() {
-            when(ossPermissionCache.getRoleCode("admin01")).thenReturn(Optional.of("admin"));
+            when(roleCodeCachePort.getRoleCode("admin01")).thenReturn(Optional.of("admin"));
 
             String roleCode = effectiveRoleResolver.resolveRoleCode(localUser);
 
@@ -186,7 +185,7 @@ class EffectiveRoleResolverTest {
             String roleCode = effectiveRoleResolver.resolveRoleCode(null);
 
             assertThat(roleCode).isNull();
-            verify(ossPermissionCache, never()).getRoleCode(anyString());
+            verify(roleCodeCachePort, never()).getRoleCode(anyString());
         }
 
         @Test
@@ -212,7 +211,7 @@ class EffectiveRoleResolverTest {
                 .role(com.xiyu.bid.entity.User.Role.MANAGER)
                 .externalOrgSourceApp("   ")
                 .build();
-            when(ossPermissionCache.getRoleCode("blank")).thenReturn(Optional.empty());
+            when(roleCodeCachePort.getRoleCode("blank")).thenReturn(Optional.empty());
 
             EffectiveRoleResult result = effectiveRoleResolver.resolve(blankOssUser);
 

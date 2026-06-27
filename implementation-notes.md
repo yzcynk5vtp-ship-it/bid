@@ -1354,3 +1354,81 @@ OSS 同步用户（陈梦瑶 id=7246、王占俊 id=7220）的 `users.role_id = 
 - 陈梦瑶（sys_project_member of 101，非 lead）case：`canViewAllProjectTasks` 对她返回 false 是符合策略的（非 lead 只看自己的任务）。如果她被分配了 101 的任务但仍看不到，需进一步确认 `findByProjectIdAndAssigneeId` 的查询结果——可能需 DB 核实她是否真的是 101 任务的 assignee。
 - `User.getRoleCode()` 实体方法对 role_id=NULL 返回 "manager" 是历史遗留，全量收口需评估其他调用点。
 
+---
+
+## 2026-06-27 CO-373 统一服务层角色码解析入口（T002-T015）
+
+### 问题口径
+CO-361 的单点修复暴露了系统性根因：`User.getRoleCode()`（`User.java:145-152`）在 `roleProfile==null`（OSS 用户 `role_id=NULL`）时回退返回 `"manager"`。服务层各处直调 `user.getRoleCode()` 做权限判定，绕过了登录时写入的 OSS 权限缓存（`OssPermissionCache`，Redis 8h TTL，key 前缀 `oss:perm:`），导致 OSS 用户被误判为 manager 角色码，权限判定失真。
+
+### 根因与决策
+- **根因**：服务层权限校验直接调用 `User.getRoleCode()`，未走 OSS 缓存；OSS 用户 `role_id=NULL` 时实体方法回退 `"manager"` 是历史遗留（不修改实体方法，见 FR-010）。
+- **统一入口**：新增纯核心 `EffectiveRolePolicy` + 外壳 `EffectiveRoleResolver`，三条解析路径：
+  1. `CACHE_HIT` — OSS 缓存命中（非空白）→ 返回缓存角色码
+  2. `LOCAL_USER` — 非 OSS 用户 → 返回实体 `getRoleCode()`
+  3. `CACHE_MISS_FAIL_CLOSED` — OSS 用户缓存未命中 → 返回 `null`（**绝不**回退 `"manager"`）
+- **FP-Java Profile 落实**：纯核心 `EffectiveRolePolicy`/`EffectiveRoleResult` 在 `security/domain` 包，受 `FPJavaArchitectureTest` 门禁（无 Spring/Redis/JPA 依赖）；外壳 `EffectiveRoleResolver` 负责读缓存 I/O、取实体属性、调纯核心、记日志。
+
+### 关键决策与权衡
+
+1. **Port/Adapter 打破 security ↔ crm 循环依赖**
+   - 初版 `EffectiveRoleResolver`（security）直接依赖 `OssPermissionCache`（crm），而 crm 已反向依赖 security（`LoginRoleWhitelist`）→ 触发 `ArchitectureTest.no_circular_dependencies` 失败。
+   - 解法：在 security 包新建端口接口 `RoleCodeCachePort`（单方法 `Optional<String> getRoleCode(String username)`），`OssPermissionCache implements RoleCodeCachePort` 作为适配器，`EffectiveRoleResolver` 仅依赖端口接口。依赖方向反转，循环打破，`ArchitectureTest` 25 项全绿。
+
+2. **`RoleProfileCatalog.definitionForCode(null)` 越权漏洞防护**
+   - 发现：`definitionForCode(null)`（`RoleProfileCatalog.java:182-187`）对 null 入参返回 **ADMIN 定义**。若 OSS 用户缓存未命中 → roleCode=null → 直接调 `definitionForCode(null)` 会误放行为 admin（**提权风险**）。
+   - 修复：`ProjectTaskAuthorizationGuard.effectiveRoleCode(User)` 增加 null 守卫——resolved 为 null 时直接返回 null，让 `ProjectTaskAuthorizationPolicy` 显式拒绝，**绝不**进入 `definitionForCode(null)` 路径。
+
+3. **@WebMvcTest 回归修复（T007 引入）**
+   - T007 让 `CurrentUserResolver` 注入 `EffectiveRoleResolver`，导致 `@WebMvcTest` 切片的 `TraceFilter`（`@Component` filter，构造依赖 `CurrentUserResolver`）bean 链断裂：`TraceFilter → CurrentUserResolver → EffectiveRoleResolver → RoleCodeCachePort` 全部不在切片内。
+   - 影响：`KnowledgeAccessSecurityTest`（15 errors）+ `KnowledgeResourceAccessSecurityTest`（8 errors）上下文加载失败。
+   - 修复：两测试各加 `@MockBean CurrentUserResolver currentUserResolver`，mock 整个 bean 满足 TraceFilter 注入（TraceFilter 内有 null 检查，`getCurrentUser()` 返回 null 安全）。
+   - **既有技术债（不在本次范围）**：`TenderControllerBidOtherDeptAccessTest`、`AssignmentCandidateControllerTest`、`TaskStatusDictControllerTest`/`TaskStatusDictAdminControllerTest` 在 origin/main 上即因同一 TraceFilter 依赖链失败，CI 未覆盖（CI 只跑架构/集成/质量门测试）。留独立任务处理。
+
+4. **LocalUser vs isLocalSystemAccount 语义差异（T016 待评估）**
+   - `DataScopeConfigService.getRoleCode(User)`（`admin/service`，line 158-172）有更收紧的语义：仅 `isLocalSystemAccount`（本地管理员账户）才回退 DB roleCode，其他非 OSS 用户返回 null（fail-closed）。
+   - `EffectiveRolePolicy.decide()` 当前对**所有**非 OSS 用户走 LOCAL_USER + 实体 roleCode。
+   - 差异：非 OSS、非本地管理员的用户，DataScopeConfigService 返回 null（更收紧），EffectiveRoleResolver 返回实体 roleCode（可能为 "manager"）。
+   - 未决：是否将 resolver 改得更收紧，或保持现状并在 T016 评估收敛。记录在案。
+
+5. **纯核心 BatchAssignmentPolicy.isAdmin 签名（T014 调整）**
+   - `BatchAssignmentPolicy`、`AssignmentCandidatePolicy` 是纯核心（不能注入 Spring bean）。`isAdmin(User)` 直调 `user.getRoleCode()`。
+   - 决策：保持不变。`isAdmin` 判定走实体 roleCode 对非 OSS 用户是安全的（纯核心无法访问缓存）；且 `isAdmin` 是 over-deny（更安全）方向——OSS 用户缓存命中时 roleCode 由调用方外壳已解析，纯核心只做规则判定。`AssignmentCandidatePolicy` 使用的是候选人 roleCode（非操作者），与本次 operator 角色码收敛无关。
+
+### 涉及文件
+
+**新建**（4 文件）：
+- `backend/src/main/java/com/xiyu/bid/security/domain/EffectiveRoleResult.java` — record（roleCode + source 枚举 CACHE_HIT/LOCAL_USER/CACHE_MISS_FAIL_CLOSED）
+- `backend/src/main/java/com/xiyu/bid/security/domain/EffectiveRolePolicy.java` — 纯核心 `decide(cachedRoleCode, entityRoleCode, isOssUser)`
+- `backend/src/main/java/com/xiyu/bid/security/RoleCodeCachePort.java` — 端口接口（打破循环）
+- `backend/src/test/java/com/xiyu/bid/security/domain/EffectiveRolePolicyTest.java` — 12 测试
+
+**修改·主代码**（10 文件）：
+- `security/EffectiveRoleResolver.java` — 外壳，依赖 RoleCodeCachePort（非 OssPermissionCache）
+- `security/CurrentUserResolver.java` — T007，`getCurrentRoleCode`/`resolveEffectiveRoleCode` 委托 resolver
+- `task/service/TaskPermissionGuard.java` — T007，4 处改调 `resolveRoleCode`
+- `project/service/ProjectDraftingService.java` — T008-T009，删除私有 `resolveEffectiveRoleCode`，改调 resolver
+- `tender/service/TenderCommandAccessGuard.java` — T011，2 处改调 resolver
+- `projectworkflow/service/ProjectTaskAuthorizationGuard.java` — T012，`effectiveRoleCode` 改调 resolver + null 守卫（防越权）
+- `service/ProjectAccessScopeService.java` — T013，3 处改调 resolver
+- `settings/service/SettingsService.java` — T015，`getRuntimePermissionProfile` 改调 resolver + null-safe filter
+- `platform/service/PlatformAccountService.java` — T015，`isPrivilegedViewer` 改调 resolver
+- `service/RoleProfileService.java` — T015，`hasGlobalAccess` 改调 resolver
+- `projectworkflow/service/ProjectDocumentWorkflowService.java` — T015，改调 `CurrentUserResolver.resolveEffectiveRoleCode`
+- `crm/application/OssPermissionCache.java` — `implements RoleCodeCachePort`
+
+**修改·测试**（10 文件）：
+- `EffectiveRoleResolverTest.java` — mock 改为 `RoleCodeCachePort`
+- `TaskPermissionGuardTest.java` — 9 测试
+- `ProjectDraftingServiceTest.java` — mock + 构造更新
+- `TenderCommandAccessGuardTest.java`、`ProjectAccessScopeServiceTest.java`、`SettingsServiceTest.java`、`PlatformAccountServiceTest.java`、`RoleProfileServicePersistenceTest.java`、`RoleProfileServicePersistenceContractTest.java`、`ProjectDocumentWorkflowServiceTest.java` — 各加 `@MockBean EffectiveRoleResolver` + lenient 默认 mock（模拟缓存 miss 行为）+ 构造签名同步
+- `KnowledgeAccessSecurityTest.java`、`KnowledgeResourceAccessSecurityTest.java` — @WebMvcTest 回归修复，加 `@MockBean CurrentUserResolver`
+
+### 验证证据
+- `mvn test -Dtest='EffectiveRolePolicyTest,EffectiveRoleResolverTest,KnowledgeAccessSecurityTest,KnowledgeResourceAccessSecurityTest,TaskPermissionGuardTest,ProjectDraftingServiceTest,TenderCommandAccessGuardTest,ProjectAccessScopeServiceTest,SettingsServiceTest,PlatformAccountServiceTest,RoleProfileServicePersistenceTest,RoleProfileServicePersistenceContractTest,ProjectDocumentWorkflowServiceTest,ArchitectureTest,FPJavaArchitectureTest,MaintainabilityArchitectureTest'` → **184 tests GREEN**（含 25 ArchitectureTest 循环依赖打破 + 8 FPJavaArchitectureTest 纯核心门禁 + 23 Knowledge @WebMvcTest 回归修复）
+
+### 不在本次范围（记录在案）
+- T016：`DataScopeConfigService`/`UserDetailsServiceImpl`/`AuthService` 收敛 + 纯核心 `BatchAssignmentPolicy.isAdmin` 签名——待评估 LocalUser vs isLocalSystemAccount 语义差异后处理。
+- 既有 @WebMvcTest 技术债（3 个 controller 测试 origin/main 即失败，CI 未覆盖）——留独立任务。
+- 前端 `biddingAssistantName` 回显兜底（T017-T018）——Phase 6 独立处理。
+

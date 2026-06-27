@@ -1,6 +1,5 @@
 package com.xiyu.bid.security;
 
-import com.xiyu.bid.crm.application.OssPermissionCache;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.security.domain.EffectiveRolePolicy;
 import com.xiyu.bid.security.domain.EffectiveRoleResult;
@@ -23,18 +22,22 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>本类（外壳）：读缓存 I/O、取实体属性、调纯核心、记日志（副作用）</li>
  *   <li>{@link EffectiveRolePolicy}（纯核心）：决策逻辑（无副作用，可单测）</li>
- *   <li>{@link OssPermissionCache}（Gateway）：Redis/内存缓存访问</li>
+ *   <li>{@link RoleCodeCachePort}（端口）：缓存读取抽象，由 crm 包适配器实现</li>
  * </ul>
+ *
+ * <p>依赖方向：本类仅依赖 {@link RoleCodeCachePort} 接口（位于 security 包），
+ * 不直接依赖 {@code com.xiyu.bid.crm.application.OssPermissionCache}，以打破
+ * security ↔ crm 循环依赖（crm 的登录流程已反向依赖 security 的 LoginRoleWhitelist）。
  */
 @Component
 public class EffectiveRoleResolver {
 
     private static final Logger log = LoggerFactory.getLogger(EffectiveRoleResolver.class);
 
-    private final OssPermissionCache ossPermissionCache;
+    private final RoleCodeCachePort roleCodeCachePort;
 
-    public EffectiveRoleResolver(OssPermissionCache ossPermissionCache) {
-        this.ossPermissionCache = ossPermissionCache;
+    public EffectiveRoleResolver(RoleCodeCachePort roleCodeCachePort) {
+        this.roleCodeCachePort = roleCodeCachePort;
     }
 
     /**
@@ -48,7 +51,7 @@ public class EffectiveRoleResolver {
             return new EffectiveRoleResult(null, null);
         }
         String username = user.getUsername();
-        java.util.Optional<String> cachedRoleCode = ossPermissionCache.getRoleCode(username);
+        java.util.Optional<String> cachedRoleCode = roleCodeCachePort.getRoleCode(username);
         String entityRoleCode = user.getRoleCode();
         boolean isOssUser = isOssUser(user);
         EffectiveRoleResult result = EffectiveRolePolicy.decide(cachedRoleCode, entityRoleCode, isOssUser);
