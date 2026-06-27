@@ -53,6 +53,7 @@ public class QualificationDtoMapper {
                 .reminderEnabled(dto.getReminderEnabled())
                 .reminderDays(dto.getReminderDays())
                 .fileUrl(dto.getFileUrl())
+                .fileUrlExplicitlySet(dto.getFileUrlExplicitlySet())
                 .attachments(attachments.stream().filter(item -> item.getFileUrl() != null && !item.getFileUrl().isBlank()).toList())
                 .build();
     }
