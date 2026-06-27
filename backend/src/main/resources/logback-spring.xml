@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Input: Spring profile-aware logging configuration -->
-<!-- Output: Console (dev) or JSON (prod) log output with traceId -->
+<!-- Output: Console (dev) or JSON console + file (prod) log output with traceId/userId/roleCode -->
 <!-- Pos: resources/ 日志基础设施 -->
 <configuration>
-    <!-- traceId 从 MDC 中读取，由 Filter/TraceFilter 在请求入口注入 -->
+    <!-- traceId/userId/roleCode 从 MDC 中读取，由 TraceFilter 在请求入口注入 -->
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="xiyu-bid-poc"/>
+    <springProperty scope="context" name="LOG_PATH" source="LOG_PATH" defaultValue="/var/log/xiyu-bid"/>
 
     <!-- ==================== 开发/测试环境：人类可读 ==================== -->
     <springProfile name="dev | test | mysql">
@@ -12,7 +13,7 @@
             <encoder>
                 <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId:-no-trace}] [user=%X{userId:-anon}, role=%X{roleCode:-anon}] %logger{36} - %msg%n</pattern>
                 <charset>UTF-8</charset>
-            </appender>
+            </encoder>
         </appender>
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
@@ -32,8 +33,26 @@
                 <includeMdcKeyName>roleCode</includeMdcKeyName>
             </encoder>
         </appender>
+
+        <appender name="JSON-FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_PATH}/application.json.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_PATH}/application.json.log.%d{yyyy-MM-dd}.%i.gz</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>3GB</totalSizeCap>
+            </rollingPolicy>
+            <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+                <customFields>{"application":"${APP_NAME}"}</customFields>
+                <includeMdcKeyName>traceId</includeMdcKeyName>
+                <includeMdcKeyName>userId</includeMdcKeyName>
+                <includeMdcKeyName>roleCode</includeMdcKeyName>
+            </encoder>
+        </appender>
+
         <root level="WARN">
             <appender-ref ref="JSON"/>
+            <appender-ref ref="JSON-FILE"/>
         </root>
         <logger name="com.xiyu" level="INFO"/>
     </springProfile>
