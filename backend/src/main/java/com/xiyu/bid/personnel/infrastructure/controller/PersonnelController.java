@@ -190,7 +190,7 @@ public class PersonnelController {
      * 保存后返回可下载的 attachmentUrl，详情页 "下载" 链接可直接使用。
      */
     @PostMapping("/{personnelId}/certificates/{certId}/attachment")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader', 'bid-Team')")
+    @PreAuthorize("hasAnyAuthority('admin', '/bidAdmin', 'bid-TeamLeader', 'bid-Team')")
     @Auditable(action = "UPDATE", entityType = "PersonnelCertificate", description = "上传/替换证书附件")
     public ResponseEntity<ApiResponse<String>> uploadCertAttachment(
             @PathVariable Long personnelId,
