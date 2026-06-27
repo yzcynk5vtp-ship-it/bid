@@ -323,3 +323,22 @@ case LOST -> 3;        // 不变
 - [西域CRM商机对接接口.md](../integration/西域CRM商机对接接口.md) — bidInfoSync 契约（status 枚举已修正）
 - [WebhookEventListener.java](../../backend/src/main/java/com/xiyu/bid/webhook/application/WebhookEventListener.java) — mapToCrmStatus 映射
 - [WebhookEventListenerTest.java](../../backend/src/test/java/com/xiyu/bid/webhook/application/WebhookEventListenerTest.java) — status=6 断言
+
+## 13. CRM 字段“丢失”之谜——Jackson 的 NON_NULL 剔除机制（CO-329）
+
+### 事故一句话总结
+
+前端调试时发现 `contact-persons` 接口返回的 JSON 中缺少 `ehsyProjectManager` 字段，怀疑参数名映射错误或后端漏传。排查生产环境的 `journalctl` 原始日志后发现：CRM 确实回传了 `"ehsyProjectManager": null`，但由于 Spring Boot 默认配置了 `NON_NULL`（剔除值为 null 的字段），导致前端 Network 面板完全看不到该字段。
+
+### 根因：后端 JSON 序列化抹除了 null 字段
+
+1. **CRM 真实返回**：CRM 接口正确返回了字段名，只是该对接人尚未配置项目经理，因此值为 `null`。
+2. **Spring Boot (Jackson) 处理**：我们的后端接收到 `null` 后，在将 `ContactPersonInfoVO` 序列化为 JSON 发给前端时，触发了忽略 null 值的机制。
+3. **前端视觉盲区**：前端在浏览器 Network 面板看到的已经是被后端“修剪”过的 JSON，误以为整个字段丢失了。
+
+### 核心教训与排查规范
+
+1. **不要只信浏览器的 Network 面板**：Network 面板看到的是**我们的后端**加工过的数据。排查外部接口字段问题，**必须直接看后端记录的、与外部系统交互的原始日志（Raw Response）**。
+2. **利用生产日志破案**：遇到类似问题，使用 `journalctl -u xiyu-bid-backend` 查看 `CrmHttpClient` 打印的 `CRM POST ... → 200 OK` 原始 JSON 报文，这是唯一可靠的证据。
+3. **接受“缺失等于空”的设定**：在对接规范中，前端对外部数据的读取应当做好容错（例如 `contact.ehsyProjectManager || ''`），理解字段不存在与字段值为 `null` 在业务上通常是等价的。
+
