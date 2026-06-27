@@ -1,5 +1,5 @@
-// Input: 模拟 HTTP 请求 (PATCH leads / POST advance / GET) + CO-315 方法级鉴权反射检查
-// Output: 验证路由、状态码（200/409）与审核人入口不再被 legacy role 白名单拦截
+// Input: 模拟 HTTP 请求 (PATCH leads / POST advance / GET) + CO-315 方法级鉴权反射检查 + CO-373 提交投标角色白名单反射检查
+// Output: 验证路由、状态码（200/409）与审核人入口不再被 legacy role 白名单拦截；提交投标端点允许 BID_PROJECTLEADER
 // Pos: backend test source - 单元级 MockMvc (standalone)
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.controller;
@@ -26,7 +26,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -167,5 +169,24 @@ class ProjectDraftingControllerTest {
         assertNull(ProjectDraftingController.class
                 .getMethod("reject", Long.class, Map.class, UserDetails.class)
                 .getAnnotation(PreAuthorize.class));
+    }
+
+    /** CO-373: 提交标书审核/提交投标端点必须允许 BID_PROJECTLEADER（投标项目负责人）。
+     *  服务层 BidSubmissionAuthorizationPolicy 已允许该角色匹配 primaryLeadUserId 后提交，
+     *  Controller @PreAuthorize 白名单须与服务层 SUBMIT_BID_ALLOWED_ROLES 对齐，否则 403。 */
+    @Test
+    void co373_submit_endpoints_allow_bid_project_leader() throws Exception {
+        PreAuthorize submitBid = ProjectDraftingController.class
+                .getMethod("submitBid", Long.class, UserDetails.class)
+                .getAnnotation(PreAuthorize.class);
+        PreAuthorize submitReview = ProjectDraftingController.class
+                .getMethod("submitForReview", Long.class, Map.class, UserDetails.class)
+                .getAnnotation(PreAuthorize.class);
+        assertNotNull(submitBid, "submit-bid 必须保留 @PreAuthorize（CO-373）");
+        assertNotNull(submitReview, "submit-review 必须保留 @PreAuthorize（CO-373）");
+        assertTrue(submitBid.value().contains("BID_PROJECTLEADER"),
+                "submit-bid @PreAuthorize 必须包含 BID_PROJECTLEADER（CO-373）");
+        assertTrue(submitReview.value().contains("BID_PROJECTLEADER"),
+                "submit-review @PreAuthorize 必须包含 BID_PROJECTLEADER（CO-373）");
     }
 }
