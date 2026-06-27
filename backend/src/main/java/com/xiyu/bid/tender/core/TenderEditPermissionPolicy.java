@@ -72,7 +72,8 @@ public final class TenderEditPermissionPolicy {
         return switch (normalizedRole) {
             case "admin", "/bidadmin", "bid-teamleader" ->
                     EDITABLE_STATUSES_FOR_GLOBAL_ROLES.contains(status);
-            case "bid-projectleader" -> canSalesEdit(userId, creatorId, projectManagerId, status);
+            // "sales" 为历史角色码别名（commit 5df8d16c2 之前），支持旧数据兼容
+            case "sales", "bid-projectleader" -> canSalesEdit(userId, creatorId, projectManagerId, status);
             default -> false;
         };
     }
@@ -103,7 +104,8 @@ public final class TenderEditPermissionPolicy {
         return switch (normalizedRole) {
             case "admin", "/bidadmin", "bid-teamleader" ->
                     DELETABLE_STATUSES_FOR_GLOBAL_ROLES.contains(status);
-            case "bid-projectleader" ->
+            // "sales" 为历史角色码别名（commit 5df8d16c2 之前），支持旧数据兼容
+            case "sales", "bid-projectleader" ->
                     DELETABLE_STATUSES_FOR_GLOBAL_ROLES.contains(status) && Objects.equals(creatorId, userId);
             default -> false;
         };
