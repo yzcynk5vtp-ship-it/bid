@@ -99,7 +99,19 @@ public class ProjectClosureController {
             @AuthenticationPrincipal UserDetails userDetails) {
         Long userId = currentUserId(userDetails);
         Long newProjectId = service.rebidProject(projectId, userId);
-        return ResponseEntity.ok(ApiResponse.success("二次招标项目已创建", java.util.Map.of("projectId", newProjectId)));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("二次招标项目创建成功", java.util.Map.of("newProjectId", newProjectId)));
+    }
+
+    /** 一键导出项目文档：要求项目必须已结项通过 */
+    @PostMapping("/export-documents")
+    @PreAuthorize("hasAnyRole('ADMIN', 'BID_TEAMLEADER', 'BIDADMIN', 'BID_PROJECTLEADER', 'BID_TEAM')")
+    public ResponseEntity<ApiResponse<com.xiyu.bid.documentexport.dto.DocumentExportDTO>> exportDocuments(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long userId = currentUserId(userDetails);
+        com.xiyu.bid.documentexport.dto.DocumentExportDTO dto = service.exportDocuments(projectId, userId);
+        return ResponseEntity.ok(ApiResponse.success("项目文档已成功生成并导出", dto));
     }
 
     private void validateDepositFields(ClosureSubmitRequest req) {

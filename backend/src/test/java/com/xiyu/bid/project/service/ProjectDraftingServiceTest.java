@@ -218,12 +218,13 @@ class ProjectDraftingServiceTest {
     }
 
     @Test
-    void submitBid_sales_asPrimaryLead_allowed() {
+    void submitBid_sales_asPrimaryLead_denied_403() {
         prepareSubmitBidHappyPath();
         when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
         prepareLeadAssignment(1L, 2L);  // sales 用户=1 是 primaryLead
-        var view = service.submitBid(1L, 1L);
-        assertThat(view).isNotNull();
+        assertThatThrownBy(() -> service.submitBid(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting("statusCode").isEqualTo(HttpStatus.FORBIDDEN);
     }
 
     @Test
@@ -240,7 +241,7 @@ class ProjectDraftingServiceTest {
     @Test
     void submitBid_initializesEvaluationRecord() {
         prepareSubmitBidHappyPath();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-Team")));
         prepareLeadAssignment(1L, 2L);
         service.submitBid(1L, 1L);
         verify(projectEvaluationRepository).save(argThat(e ->
@@ -255,7 +256,7 @@ class ProjectDraftingServiceTest {
         prepareSubmitBidHappyPath();
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.TODO).build()));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-Team")));
         prepareLeadAssignment(1L, 2L);
 
         assertThatThrownBy(() -> service.submitBid(1L, 1L))
@@ -272,7 +273,7 @@ class ProjectDraftingServiceTest {
         prepareSubmitBidHappyPath();
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.TODO).build()));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-Team")));
         prepareLeadAssignment(1L, 2L);
 
         assertThatThrownBy(() -> service.submitBid(1L, 1L))
@@ -289,7 +290,7 @@ class ProjectDraftingServiceTest {
         prepareSubmitBidHappyPath();
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.REVIEW).build()));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-Team")));
         prepareLeadAssignment(1L, 2L);
 
         assertThatThrownBy(() -> service.submitBid(1L, 1L))
@@ -305,7 +306,7 @@ class ProjectDraftingServiceTest {
     void submitBid_approvedReview_missingBidDocument_denied_409() {
         prepareSubmitBidHappyPath();
         prepareNoBidDocument();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-Team")));
         prepareLeadAssignment(1L, 2L);
 
         assertThatThrownBy(() -> service.submitBid(1L, 1L))
@@ -322,7 +323,7 @@ class ProjectDraftingServiceTest {
         prepareSubmitBidHappyPath();
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.TODO).build()));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-Team")));
         prepareLeadAssignment(1L, 2L);
         when(projectStageService.currentStage(1L)).thenReturn(ProjectStage.EVALUATING);
 
@@ -338,7 +339,7 @@ class ProjectDraftingServiceTest {
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.COMPLETED).build(),
                 Task.builder().id(2L).projectId(1L).title("b").status(Task.Status.COMPLETED).build()));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-projectLeader")));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "bid-Team")));
         prepareLeadAssignment(1L, 2L);
 
         var view = service.submitBid(1L, 1L);

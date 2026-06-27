@@ -88,7 +88,7 @@ public final class RoleProfileCatalog {
     public static final Set<String> SUBMIT_BID_DIRECT_ROLES = Set.of(ADMIN_CODE, BID_ADMIN_CODE, BID_LEAD_CODE);
 
     /** 需项目级负责人分配才能提交投标的角色：sales→primaryLeadUserId，bid_specialist→secondaryLeadUserId。 */
-    public static final Set<String> SUBMIT_BID_LEAD_REQUIRED_ROLES = Set.of(SALES_CODE, BID_SPECIALIST_CODE);
+    public static final Set<String> SUBMIT_BID_LEAD_REQUIRED_ROLES = Set.of(BID_SPECIALIST_CODE);
 
     /** 允许提交投标的全部角色 = {@link #SUBMIT_BID_DIRECT_ROLES} ∪ {@link #SUBMIT_BID_LEAD_REQUIRED_ROLES}。 */
     public static final Set<String> SUBMIT_BID_ALLOWED_ROLES = Stream.concat(
