@@ -68,6 +68,7 @@
         stripe
         empty-text="暂无 CA 证书数据"
         highlight-current-row
+        :header-cell-style="{ whiteSpace: 'nowrap' }"
         @row-click="handleRowClick"
       >
         <el-table-column type="index" label="序号" width="55" />
@@ -143,6 +144,7 @@
         :data="filteredData"
         stripe
         empty-text="暂无 CA 证书数据"
+        :header-cell-style="{ whiteSpace: 'nowrap' }"
       >
         <el-table-column type="index" label="序号" width="55" />
         <el-table-column label="关联平台" min-width="140" show-overflow-tooltip>
