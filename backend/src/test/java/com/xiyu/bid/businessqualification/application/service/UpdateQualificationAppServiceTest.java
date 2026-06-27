@@ -1,5 +1,7 @@
 package com.xiyu.bid.businessqualification.application.service;
 
+import com.xiyu.bid.audit.service.IAuditLogService;
+import com.xiyu.bid.audit.service.AuditLogService.AuditLogEntry;
 import com.xiyu.bid.businessqualification.application.command.QualificationUpsertCommand;
 import com.xiyu.bid.businessqualification.domain.model.BusinessQualification;
 import com.xiyu.bid.businessqualification.domain.model.QualificationAttachment;
@@ -22,6 +24,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import org.mockito.ArgumentCaptor;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +41,9 @@ class UpdateQualificationAppServiceTest {
 
     @Mock
     private BusinessQualificationRepository repository;
+
+    @Mock
+    private IAuditLogService auditLogService;
 
     @InjectMocks
     private UpdateQualificationAppService appService;
@@ -85,6 +92,113 @@ class UpdateQualificationAppServiceTest {
 
         // 关键: retire 不应调用 existsByCertificateNo（避免下架时误报重复）
         verify(repository, never()).existsByCertificateNo(any());
+    }
+
+    // ==================== CO-368: 资质附件删除 - 三元短路修复 ====================
+
+    @Test
+    @DisplayName("CO-368: 显式清空 fileUrl (fileUrlExplicitlySet=true + fileUrl=null) 应清空附件并写审计")
+    void update_WithExplicitClearFlag_ShouldClearFileUrlAndWriteAudit() {
+        BusinessQualification existing = givenExistingQualification();
+        QualificationUpsertCommand command = buildCommandFromExisting(existing, null, true);
+
+        BusinessQualification result = appService.update(1L, command);
+
+        // Then: fileUrl 被清空
+        assertThat(result.fileUrl()).isNull();
+        // 审计被调用一次，action="ATTACHMENT_CHANGE"，description="删除资质证书附件"
+        ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
+        verify(auditLogService).log(captor.capture());
+        AuditLogEntry entry = captor.getValue();
+        assertThat(entry.getAction()).isEqualTo("ATTACHMENT_CHANGE");
+        assertThat(entry.getDescription()).isEqualTo("删除资质证书附件");
+    }
+
+    @Test
+    @DisplayName("CO-368: 未传 fileUrlExplicitlySet (null) 应保留 existing.fileUrl（向后兼容）")
+    void update_WithoutExplicitFlag_ShouldKeepExistingFileUrl() {
+        BusinessQualification existing = givenExistingQualification();
+        // 老式调用：fileUrl=null 表示"未传"，fileUrlExplicitlySet=null 表示未传 flag
+        QualificationUpsertCommand command = buildCommandFromExisting(existing, null, null);
+
+        BusinessQualification result = appService.update(1L, command);
+
+        // Then: fileUrl 保留 existing 的旧值
+        assertThat(result.fileUrl()).isEqualTo("/files/cert.pdf");
+        // 审计不应被调用（因为 urlChanged=false）
+        verify(auditLogService, never()).log(any());
+    }
+
+    @Test
+    @DisplayName("CO-368: 显式替换 fileUrl (fileUrlExplicitlySet=true + fileUrl=新值) 应写入新 fileUrl（替换不回归）")
+    void update_WithExplicitFlagAndNewUrl_ShouldReplaceFileUrl() {
+        BusinessQualification existing = givenExistingQualification();
+        QualificationUpsertCommand command = buildCommandFromExisting(existing, "/files/new.pdf", true);
+
+        BusinessQualification result = appService.update(1L, command);
+
+        // Then: fileUrl 被替换为新值
+        assertThat(result.fileUrl()).isEqualTo("/files/new.pdf");
+        // 审计被调用一次，action="ATTACHMENT_CHANGE"，description="替换资质证书附件"
+        ArgumentCaptor<AuditLogEntry> captor = ArgumentCaptor.forClass(AuditLogEntry.class);
+        verify(auditLogService).log(captor.capture());
+        AuditLogEntry entry = captor.getValue();
+        assertThat(entry.getAction()).isEqualTo("ATTACHMENT_CHANGE");
+        assertThat(entry.getDescription()).isEqualTo("替换资质证书附件");
+    }
+
+    @Test
+    @DisplayName("CO-368: 显式传 fileUrlExplicitlySet=false 应等同于未传，保留 existing.fileUrl")
+    void update_WithExplicitFalseFlag_ShouldKeepExistingFileUrl() {
+        BusinessQualification existing = givenExistingQualification();
+        // 显式传 false（而非未传），应等同于 null，保留 existing
+        QualificationUpsertCommand command = buildCommandFromExisting(existing, null, false);
+
+        BusinessQualification result = appService.update(1L, command);
+
+        // Then: fileUrl 保留 existing 的旧值（Boolean.TRUE.equals(false) == false → 走保留分支）
+        assertThat(result.fileUrl()).isEqualTo("/files/cert.pdf");
+        verify(auditLogService, never()).log(any());
+    }
+
+    /**
+     * CO-368 测试公用 Given：构造 existing 资质（带附件 + fileUrl="/files/cert.pdf"），
+     * 并 stub repository.findById/save。
+     */
+    private BusinessQualification givenExistingQualification() {
+        QualificationAttachment attachment = new QualificationAttachment(
+                100L, "old.pdf", "/files/old.pdf", LocalDateTime.of(2026, 6, 25, 15, 30, 0));
+        BusinessQualification existing = sampleQualification(1L, false, null, List.of(attachment));
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.save(any(BusinessQualification.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        return existing;
+    }
+
+    /**
+     * CO-368 测试公用 When：基于 existing 构造 upsert command，仅 fileUrl 和 fileUrlExplicitlySet 变化。
+     * 其他字段全部沿用 existing，避免每个测试重复 14 行 builder。
+     */
+    private QualificationUpsertCommand buildCommandFromExisting(BusinessQualification existing,
+                                                                String fileUrl,
+                                                                Boolean fileUrlExplicitlySet) {
+        return QualificationUpsertCommand.builder()
+                .name(existing.name())
+                .subjectType(existing.subject().getType())
+                .subjectName(existing.subject().getName())
+                .category(existing.category())
+                .certificateNo(existing.certificateNo())
+                .issuer(existing.issuer())
+                .holderName(existing.holderName())
+                .issueDate(existing.validityPeriod().getIssueDate())
+                .expiryDate(existing.validityPeriod().getExpiryDate())
+                .reminderEnabled(existing.reminderPolicy().isEnabled())
+                .reminderDays(existing.reminderPolicy().getReminderDays())
+                .fileUrl(fileUrl)
+                .fileUrlExplicitlySet(fileUrlExplicitlySet)
+                .retired(false)
+                .attachments(existing.attachments())
+                .build();
     }
 
     /**

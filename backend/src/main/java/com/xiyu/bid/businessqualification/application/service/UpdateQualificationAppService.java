@@ -74,7 +74,9 @@ public class UpdateQualificationAppService {
                         command.getReminderDays() == null ? existing.reminderPolicy().getReminderDays() : command.getReminderDays(),
                         existing.reminderPolicy().getLastRemindedAt()
                 ),
-                command.getFileUrl() == null ? existing.fileUrl() : command.getFileUrl(),
+                Boolean.TRUE.equals(command.getFileUrlExplicitlySet())
+                        ? command.getFileUrl()
+                        : existing.fileUrl(),
                 command.getRetireReason() == null ? existing.retireReason() : command.getRetireReason(),
                 command.getRetired() == null ? existing.retired() : command.getRetired(),
                 newAttachments
@@ -86,13 +88,13 @@ public class UpdateQualificationAppService {
             throw new InvalidArgumentException("证书编号已存在");
         }
 
-        recordAttachmentChangeAudit(existing, updated, command.getFileUrl(), command.getAttachments());
+        recordAttachmentChangeAudit(existing, updated, command.getAttachments());
 
         return repository.save(updated);
     }
 
     private void recordAttachmentChangeAudit(BusinessQualification existing, BusinessQualification updated,
-                                            String newFileUrl, List<QualificationAttachment> newAttachments) {
+                                            List<QualificationAttachment> newAttachments) {
         String existingUrl = existing.fileUrl();
         String updatedUrl = updated.fileUrl();
         boolean urlChanged = (existingUrl == null && updatedUrl != null)

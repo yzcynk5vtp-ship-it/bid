@@ -324,10 +324,25 @@ const handleAttachmentDelete = async (att) => {
     )
     const id = detailQualification.value?.id
     if (!id) return
-    await http.put(`/api/knowledge/qualifications/${id}`, { fileUrl: null })
+    // CO-368: 显式标记 fileUrl 被设置（包括 null=清空），避免后端三元短路保留旧值
+    const res = await http.put(`/api/knowledge/qualifications/${id}`, { fileUrl: null, fileUrlExplicitlySet: true })
+    // CO-368: 兜底校验回包，防止"假成功"。
+    // 后端 application.yml 配置 default-property-inclusion: non_null，
+    // 清空成功时 fileUrl 字段会从响应中缺失（undefined），而非显式 null。
+    // 用 != null 同时排除 null 和 undefined（语义等价于 !== null && !== undefined）。
+    const updatedFileUrl = res?.data?.fileUrl
+    if (updatedFileUrl != null) {
+      ElMessage.error('附件删除失败，请刷新后重试')
+      return
+    }
     ElMessage.success('附件已删除')
     handleAttachmentActionSuccess()
-  } catch { /* cancelled */ }
+  } catch (e) {
+    // 区分"用户取消确认框"与"HTTP/网络错误"。ElMessageBox 取消时 reject 值为 'cancel'。
+    if (e !== 'cancel' && e?.toString() !== 'cancel') {
+      ElMessage.error('附件删除失败：' + (e?.message || '网络错误，请刷新后重试'))
+    }
+  }
 }
 
 const handleAttachmentUpload = () => {

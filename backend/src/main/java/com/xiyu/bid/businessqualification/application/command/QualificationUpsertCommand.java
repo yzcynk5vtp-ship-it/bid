@@ -36,4 +36,10 @@ public class QualificationUpsertCommand {
     String fileUrl;
     Boolean retired;
     List<QualificationAttachment> attachments;
+    /**
+     * CO-368: 显式标记 fileUrl 是否被调用方设置。
+     * 区分 "未传 fileUrl" (null) 与 "显式清空 fileUrl" (true + fileUrl=null)。
+     * true 时按 command.getFileUrl() 写入（包括 null=清空）；null/false 时保留 existing.fileUrl()。
+     */
+    Boolean fileUrlExplicitlySet;
 }

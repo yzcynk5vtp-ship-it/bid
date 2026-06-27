@@ -31,6 +31,11 @@ public class QualificationDTO {
     private LocalDate issueDate;
     private LocalDate expiryDate;
     private String fileUrl;
+    /**
+     * CO-368: 调用方显式声明 fileUrl 已被设置（包括显式 null=清空）。
+     * 缺省/null 表示未传 fileUrl 字段，后端保留 existing.fileUrl()。
+     */
+    private Boolean fileUrlExplicitlySet;
     private String certificateNo;
     private String issuer;
     private String agency;
