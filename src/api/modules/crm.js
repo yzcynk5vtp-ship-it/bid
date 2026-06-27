@@ -64,7 +64,7 @@ export const crmApi = {
    * @returns {Promise<{data: Array}>}
    */
   async getContactPersons(ccId) {
-    return httpClient.post('/api/xiyu/crm/chances/contact-persons', ccId)
+    return httpClient.get(`/api/xiyu/crm/chances/${ccId}/contact-persons`)
   },
 }
 
