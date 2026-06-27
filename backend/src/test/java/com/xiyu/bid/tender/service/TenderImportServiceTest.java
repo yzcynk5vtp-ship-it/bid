@@ -309,6 +309,20 @@ class TenderImportServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("字典 sheet 地区列表头描述与示例和校验提示口径一致（市-市格式）")
+    void dictionarySheetRegionHeaderMatchesExampleAndValidationHint() throws Exception {
+        byte[] bytes = service.generateTemplate();
+        try (Workbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet dict = workbook.getSheet("字典参考");
+            assertThat(dict).isNotNull();
+            String regionHeader = dict.getRow(0).getCell(0).getStringCellValue();
+            // 表头应明确直辖市为"市-市"格式，与模板示例"北京市-北京市"和校验提示口径一致
+            assertThat(regionHeader).contains("市-市");
+            assertThat(regionHeader).doesNotContain("直辖市仅市");
+        }
+    }
+
     private List<String> readColumn(Sheet sheet, int colIndex) {
         List<String> values = new ArrayList<>();
         int last = sheet.getLastRowNum();

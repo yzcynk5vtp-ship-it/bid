@@ -87,7 +87,7 @@ public class TenderImportTemplateBuilder {
         Sheet dict = workbook.createSheet("字典参考");
         CellStyle headerStyle = headerStyle(workbook, IndexedColors.GREY_25_PERCENT.getIndex());
 
-        String[] columns = {"地区（总部所在地：省+市，直辖市仅市）", "客户类型", "优先级", "项目类型"};
+        String[] columns = {"地区（总部所在地：省+市，直辖市为市-市）", "客户类型", "优先级", "项目类型"};
         Row header = dict.createRow(0);
         for (int i = 0; i < columns.length; i++) {
             Cell cell = header.createCell(i);
