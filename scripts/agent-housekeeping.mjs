@@ -235,8 +235,10 @@ function collectStashStatus(repoRoot) {
 function collectRemoteStatus(repoRoot) {
   const res = runGit(repoRoot, ['branch', '-r', '--merged', 'origin/main'])
   if (res.status !== 0) return { stale: [] }
+  // 只清理 origin remote 的分支；github/* 是镜像，禁止删除
   const branches = [...new Set(res.stdout.trim().split('\n').filter(Boolean)
-    .map(b => b.trim().replace('origin/', '')).filter(b => b !== 'main' && !b.startsWith('HEAD')))]
+    .map(b => b.trim()).filter(b => b.startsWith('origin/')).map(b => b.replace('origin/', ''))
+    .filter(b => b !== 'main' && !b.startsWith('HEAD')))]
   return { stale: branches }
 }
 
@@ -382,8 +384,10 @@ function reap(repoRoot, dryRun = false) {
   console.log(`${prefix}[housekeeping] Reap mode: cleaning stale remote branches + locks...\n`)
   const mergedRemoteRes = runGit(repoRoot, ['branch', '-r', '--merged', 'origin/main'])
   if (mergedRemoteRes.status === 0) {
+    // 只清理 origin remote 的分支；github/* 是镜像，禁止删除
     const branches = [...new Set(mergedRemoteRes.stdout.trim().split('\n').filter(Boolean)
-      .map(b => b.trim().replace('origin/', '')).filter(b => b !== 'main' && !b.startsWith('HEAD')))]
+      .map(b => b.trim()).filter(b => b.startsWith('origin/')).map(b => b.replace('origin/', ''))
+      .filter(b => b !== 'main' && !b.startsWith('HEAD')))]
     for (const b of branches) {
       if (dryRun) {
         console.log(`  ${prefix}Would delete remote: ${b}`)
