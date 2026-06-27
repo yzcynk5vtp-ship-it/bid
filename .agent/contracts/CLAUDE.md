@@ -176,43 +176,45 @@ npm run test:e2e
 ### e2e
 
 > 来源：`E2eDemoDataInitializer`，密码统一为 `123456`。
+> 注意：第一列为登录用户名，第三列为角色 code（以 `RoleProfileCatalog` 常量为准）。
 
 | 用户名 | 密码 | RoleProfile code | 角色名称 |
 |--------|------|------|------|
 | `lizong` | `123456` | `admin` | 管理员 |
-| `xiaowang` | `123456` | `staff` | 普通员工 |
-| `xiaochen` | `123456` | `bid_admin` | 投标管理员 |
-| `xiaoliu` | `123456` | `bid_lead` | 投标组长 |
-| `xiaozhang` | `123456` | `sales` | 投标项目负责人 |
-| `xiaozhou` | `123456` | `bid_specialist` | 投标专员 |
-| `xiaozheng` | `123456` | `admin_staff` | 行政人员 |
+| `xiaowang` | `123456` | `bid-Team` | 投标专员 |
+| `xiaochen` | `123456` | `/bidAdmin` | 投标管理员 |
+| `xiaoliu` | `123456` | `bid-TeamLeader` | 投标组长 |
+| `xiaozhang` | `123456` | `bid-projectLeader` | 投标项目负责人 |
+| `xiaozhou` | `123456` | `bid-Team` | 投标专员 |
+| `xiaozheng` | `123456` | `bid-administration` | 行政人员 |
 
 ### dev (本地联调，SPRING_PROFILES_ACTIVE=dev)
 
 > 来源：`LocalDevAccountInitializer`，需设置 `LOCAL_DEV_PASSWORD` 环境变量（默认密码 `Test@123`）。
+> 注意：第一列为登录用户名，第三列为角色 code（以 `RoleProfileCatalog` 常量为准）。
 
 | 用户名 | 密码 | RoleProfile code | 角色名称 |
 |--------|------|------|------|
-| `bid_admin` | `Test@123` | `bid_admin` | 投标管理员 |
-| `bid_lead` | `Test@123` | `bid_lead` | 投标组长 |
-| `sales` | `Test@123` | `sales` | 投标项目负责人 |
-| `bid_specialist` | `Test@123` | `bid_specialist` | 投标专员 |
-| `admin_staff` | `Test@123` | `admin_staff` | 行政人员 |
+| `bid_admin` | `Test@123` | `/bidAdmin` | 投标管理员 |
+| `bid_lead` | `Test@123` | `bid-TeamLeader` | 投标组长 |
+| `sales` | `Test@123` | `bid-projectLeader` | 投标项目负责人 |
+| `bid_specialist` | `Test@123` | `bid-Team` | 投标专员 |
+| `admin_staff` | `Test@123` | `bid-administration` | 行政人员 |
 
 ### 角色清单（RoleProfileCatalog）
 
-> 当前系统仅存在以下 8 个 RoleProfile，`auditor`/`manager`/`bid_senior` 等角色已不存在。
+> 当前系统仅存在以下 7 个标准 RoleProfile。`auditor`/`manager`/`bid_senior`/`task_executor`/`staff` 等角色已不存在。
+> 角色 code 以 `backend/src/main/java/com/xiyu/bid/entity/RoleProfileCatalog.java` 中的常量定义为唯一真相来源。
 
 | RoleProfile code | 角色名称 | 配置规则 |
 |---|---|---|
 | `admin` | 管理员 | 按人员 |
-| `bid_admin` | 投标管理员 | 按人员 |
-| `bid_lead` | 投标组长 | 按人员 |
-| `sales` | 投标项目负责人 | 按岗位 |
-| `bid_specialist` | 投标专员 | 按部门 |
-| `admin_staff` | 行政人员 | 按部门 |
-| `bid_other_dept` | 跨部门协同人员 | 按人员 |
-| `staff` | 普通员工 | - |
+| `/bidAdmin` | 投标管理员 | 按人员 |
+| `bid-TeamLeader` | 投标组长 | 按人员 |
+| `bid-projectLeader` | 投标项目负责人 | 按岗位 |
+| `bid-Team` | 投标专员 | 按部门 |
+| `bid-administration` | 行政人员 | 按部门 |
+| `bid-otherDept` | 跨部门协同人员 | 按人员 |
 
 生产环境通过 `ADMIN_PASSWORD` 环境变量覆盖默认密码。任何 profile 启动后数据库至少有一个可登录账户。
 
