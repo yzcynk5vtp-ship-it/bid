@@ -73,8 +73,9 @@
               <a
                 v-for="d in localValue.deliverables"
                 :key="d.id"
-                :href="getDeliverableDownloadUrl(d)"
+                href="javascript:void(0)"
                 class="deliverable-link"
+                @click.prevent="downloadDeliverable(d)"
               >{{ d.name }}</a>
             </div>
           </el-form-item>
@@ -178,7 +179,7 @@ const attachmentFileList = computed(() => localValue.attachments.map((file, i) =
   name: file?.name || `附件${i + 1}`, raw: file instanceof File ? file : file?.raw,
   url: (file?.projectId || localValue.projectId) && file?.id ? `/api/projects/${file.projectId || localValue.projectId}/documents/${file.id}/download` : file?.url,
 })))
-const { getDeliverableDownloadUrl } = useTaskDeliverableDownload(localValue)
+const { downloadDeliverable } = useTaskDeliverableDownload(localValue)
 const { deliverableFileList, handleDeliverableChange, handleDeliverableRemove } =
   useTaskDeliveryForm(localValue, readonly)
 
