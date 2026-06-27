@@ -54,9 +54,12 @@ public class TaskController {
     @PostMapping
     @PreAuthorize("isAuthenticated()")
     @Auditable(action = "CREATE", entityType = "Task", description = "创建新任务")
-    public ResponseEntity<ApiResponse<TaskDTO>> createTask(@Valid @RequestBody TaskDTO taskDTO) {
+    public ResponseEntity<ApiResponse<TaskDTO>> createTask(
+            @Valid @RequestBody TaskDTO taskDTO,
+            @AuthenticationPrincipal UserDetails userDetails) {
         sanitizeTaskDTO(taskDTO);
-        TaskDTO createdTask = taskService.createTask(taskDTO);
+        // CO-382: 取认证上下文用户名作为创建人，前端提交的 createdByName 仅作乐观显示，后端不信任
+        TaskDTO createdTask = taskService.createTask(taskDTO, currentUsername(userDetails));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Task created successfully", createdTask));
     }
 

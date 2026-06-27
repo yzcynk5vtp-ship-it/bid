@@ -31,6 +31,11 @@ public class TaskDTO {
     private String content;
     private Long assigneeId;
     private String assigneeName;
+    /**
+     * 任务创建人展示名（CO-382）。由后端根据 {@code tasks.created_by}
+     * 用户名解析为 {@code User.fullName} 返回，前端只读。
+     */
+    private String creatorName;
     private String assigneeDeptCode;
     private String assigneeDeptName;
     private String assigneeRoleCode;

@@ -50,6 +50,15 @@ public class TaskService {
 
     @Transactional
     public TaskDTO createTask(TaskDTO taskDTO) {
+        return createTask(taskDTO, null);
+    }
+
+    /**
+     * CO-382: 创建任务时记录创建人用户名（来自 Controller 的认证上下文），
+     * 用于看板展示"创建人"。权限仍走 {@link TaskPermissionGuard}，不依赖此字段。
+     */
+    @Transactional
+    public TaskDTO createTask(TaskDTO taskDTO, String creatorUsername) {
         log.info("Creating task: {}", taskDTO.getTitle());
         assertCanAccessProject(taskDTO.getProjectId());
         taskPermissionGuard.assertCanManageTask(taskDTO.getProjectId());
@@ -71,9 +80,10 @@ public class TaskService {
                 .priority(taskDTO.getPriority() != null ? taskDTO.getPriority() : Task.Priority.MEDIUM)
                 .dueDate(taskDTO.getDueDate())
                 .extendedFieldsJson(taskDtoMapper.serializeExtendedFields(taskDTO.getExtendedFields()))
+                .createdBy(creatorUsername)
                 .build());
         log.info("Task created successfully with id: {}", savedTask.getId());
-        return taskDtoMapper.toDTO(savedTask, resolveAssigneeName(savedTask.getAssigneeId()));
+        return toDTOWithNames(savedTask);
     }
     @Transactional(readOnly = true)
     public List<TaskDTO> getAllTasks() {
@@ -85,7 +95,7 @@ public class TaskService {
         log.debug("Fetching task by id: {}", id);
         Task task = findTask(id);
         assertCanAccessProject(task.getProjectId());
-        return taskDtoMapper.toDTO(task, resolveAssigneeName(task.getAssigneeId()));
+        return toDTOWithNames(task);
     }
 
     @Transactional
@@ -129,7 +139,7 @@ public class TaskService {
         }
         Task saved = taskRepository.save(task);
         taskHistoryRecorder.recordUpdate(before, saved, actorUsername);
-        return taskDtoMapper.toDTO(saved, resolveAssigneeName(saved.getAssigneeId()));
+        return toDTOWithNames(saved);
     }
 
     @Transactional
@@ -197,7 +207,7 @@ public class TaskService {
         task.setStatus(status);
         Task saved = taskRepository.save(task);
         taskHistoryRecorder.recordUpdate(before, saved, actorUsername);
-        return taskDtoMapper.toDTO(saved, resolveAssigneeName(saved.getAssigneeId()));
+        return toDTOWithNames(saved);
     }
 
     @Transactional
@@ -219,7 +229,7 @@ public class TaskService {
             notificationService.notifyTaskAssigned(task.getProjectId(), request.getAssigneeId(), currentUser.getId());
         }
 
-        return taskDtoMapper.toDTO(saved, resolveAssigneeName(saved.getAssigneeId()));
+        return toDTOWithNames(saved);
     }
 
     @Transactional(readOnly = true)
@@ -274,12 +284,15 @@ public class TaskService {
 
     private static boolean hasText(String v) { return v != null && !v.isBlank(); }
     private List<TaskDTO> toDTOsWithNames(List<Task> tasks) {
-        var names = userRepository.findAllById(tasks.stream().map(Task::getAssigneeId).filter(Objects::nonNull).collect(Collectors.toSet()))
+        var assigneeNames = userRepository.findAllById(tasks.stream().map(Task::getAssigneeId).filter(Objects::nonNull).collect(Collectors.toSet()))
                 .stream().filter(u -> u.getFullName() != null && !u.getFullName().isBlank()).collect(Collectors.toMap(User::getId, User::getFullName, (a, b) -> a));
-        return taskDtoMapper.toDTOs(tasks, names);
+        var creatorNames = userRepository.findAllByUsernameIn(tasks.stream().map(Task::getCreatedBy).filter(c -> c != null && !c.isBlank()).collect(Collectors.toSet()))
+                .stream().filter(u -> u.getFullName() != null && !u.getFullName().isBlank()).collect(Collectors.toMap(User::getUsername, User::getFullName, (a, b) -> a));
+        return taskDtoMapper.toDTOs(tasks, assigneeNames, creatorNames);
     }
-    private String resolveAssigneeName(Long userId) {
-        if (userId == null) return null;
-        return userRepository.findById(userId).map(User::getFullName).filter(n -> !n.isBlank()).orElse(null);
+    private TaskDTO toDTOWithNames(Task task) {
+        return taskDtoMapper.toDTO(task, resolveAssigneeName(task.getAssigneeId()), resolveCreatorName(task.getCreatedBy()));
     }
+    private String resolveAssigneeName(Long userId) { return userId == null ? null : userRepository.findById(userId).map(User::getFullName).filter(n -> !n.isBlank()).orElse(null); }
+    private String resolveCreatorName(String username) { return username == null || username.isBlank() ? null : userRepository.findByUsername(username).map(User::getFullName).filter(n -> n != null && !n.isBlank()).orElse(null); }
 }

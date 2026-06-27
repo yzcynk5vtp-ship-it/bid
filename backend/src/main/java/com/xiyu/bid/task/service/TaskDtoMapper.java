@@ -49,11 +49,29 @@ public class TaskDtoMapper {
         return tasks.stream().map(t -> toDTO(t, assigneeNames.get(t.getAssigneeId()))).toList();
     }
 
+    /**
+     * CO-382: 批量转换并注入执行人 + 创建人展示名，避免逐条查询（N+1）。
+     *
+     * @param assigneeNames key=assigneeId, value=fullName
+     * @param creatorNames  key=createdBy(username), value=fullName
+     */
+    public List<TaskDTO> toDTOs(List<Task> tasks, Map<Long, String> assigneeNames, Map<String, String> creatorNames) {
+        return tasks.stream()
+                .map(t -> toDTO(t,
+                        assigneeNames == null ? null : assigneeNames.get(t.getAssigneeId()),
+                        creatorNames == null ? null : creatorNames.get(t.getCreatedBy())))
+                .toList();
+    }
+
     public TaskDTO toDTO(Task task) {
-        return toDTO(task, null);
+        return toDTO(task, null, null);
     }
 
     public TaskDTO toDTO(Task task, String assigneeName) {
+        return toDTO(task, assigneeName, null);
+    }
+
+    public TaskDTO toDTO(Task task, String assigneeName, String creatorName) {
         return TaskDTO.builder()
                 .id(task.getId())
                 .projectId(task.getProjectId())
@@ -62,6 +80,7 @@ public class TaskDtoMapper {
                 .content(task.getContent())
                 .assigneeId(task.getAssigneeId())
                 .assigneeName(assigneeName)
+                .creatorName(creatorName)
                 .assigneeDeptCode(task.getAssigneeDeptCode())
                 .assigneeDeptName(task.getAssigneeDeptName())
                 .assigneeRoleCode(task.getAssigneeRoleCode())
