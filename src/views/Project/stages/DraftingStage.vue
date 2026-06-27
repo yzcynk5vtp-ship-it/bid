@@ -6,13 +6,13 @@
       <div class="bid-header">
         <span class="bid-title">投标文件</span>
         <div class="bid-header-actions">
-          <el-button v-if="perm.canAIRecommendCase" type="danger" link :icon="Search" @click="aiDrawerVisible = true">
+          <el-button v-if="perm.canAIRecommendCase" type="success" link class="header-action header-action--orange" :icon="Search" @click="aiDrawerVisible = true">
             AI智能推荐案例
           </el-button>
-          <el-button v-if="perm.canAIBidDocumentQualityCheck" type="danger" link :icon="DocumentChecked" @click="ctx.runBidDocumentQualityCheck?.()">
+          <el-button v-if="perm.canAIBidDocumentQualityCheck" type="success" link class="header-action header-action--tender" :icon="DocumentChecked" @click="ctx.runBidDocumentQualityCheck?.()">
             AI标书质量核查
           </el-button>
-          <el-button type="success" link :icon="MagicStick" @click="ctx.bidAgent?.openDrawer?.()">
+          <el-button type="success" link class="header-action header-action--tender" :icon="MagicStick" @click="ctx.bidAgent?.openDrawer?.()">
             启动AI生成初稿
           </el-button>
         </div>
@@ -284,6 +284,14 @@ defineExpose({ load })
 .upload-file-link { color: var(--el-color-primary); text-decoration: none; } .upload-file-link:hover { text-decoration: underline; }
 .bid-title { font-weight: 600; font-size: 15px; }
 .bid-header-actions { display: flex; align-items: center; gap: 4px; }
+/* CO-380: AI 按钮统一为 header-action 风格，参考 ProjectTaskBoardCard.vue */
+.header-action.el-button.is-link { min-height: 32px; padding: 0 10px; border-radius: 7px; font-weight: 600; transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease; }
+.header-action--orange.el-button.is-link { --el-button-text-color: #e6a23c; --el-button-hover-link-text-color: #cf8a2b; --el-button-active-color: #b37a1f; }
+.header-action--tender.el-button.is-link { --el-button-text-color: #23785d; --el-button-hover-link-text-color: #14684d; --el-button-active-color: #10563f; }
+.header-action--orange.el-button.is-link:hover, .header-action--orange.el-button.is-link:focus { background: #fff7e8; }
+.header-action--tender.el-button.is-link:hover, .header-action--tender.el-button.is-link:focus { background: #f4f8f6; }
+.header-action--orange.el-button.is-link:focus-visible { box-shadow: 0 0 0 3px rgba(230, 162, 60, 0.16); outline: none; }
+.header-action--tender.el-button.is-link:focus-visible { box-shadow: 0 0 0 3px rgba(35, 120, 93, 0.16); outline: none; }
 .required-mark { color: #e65100; margin-left: 2px; font-weight: normal; font-size: 13px; }
 .upload-tip { margin-top: 8px; font-size: 12px; color: #909399; text-align: center; }
 .bid-reviewer-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
