@@ -76,8 +76,8 @@ backend/src/main/java/com/xiyu/bid/
 ├── service/
 │   ├── ProjectAccessScopeService.java
 │   └── ...
-├── admin/service/DataScopeConfigService.java   # 收敛：复用 resolver
-├── auth/UserDetailsServiceImpl.java           # 收敛：复用 resolver
+├── admin/service/DataScopeConfigService.java   # 评估后保留独立收紧实现（方向C，不收敛）
+├── auth/UserDetailsServiceImpl.java           # 评估后保留（auth-sync 路径，非权限决策，R6 保留）
 ├── project/service/ProjectDraftingService.java # 收敛：删除私有 resolveEffectiveRoleCode
 └── ...
 
