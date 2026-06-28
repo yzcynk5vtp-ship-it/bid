@@ -42,6 +42,7 @@ class ProjectDocumentWorkflowServiceTest {
     private ProjectDocumentDownloadService downloadService;
     private CurrentUserResolver currentUserResolver;
     private ProjectLeadAssignmentRepository projectLeadAssignmentRepository;
+    private com.xiyu.bid.project.repository.BidDocumentReviewRepository bidDocumentReviewRepository;
 
     @BeforeEach
     void setUp() {
@@ -55,6 +56,7 @@ class ProjectDocumentWorkflowServiceTest {
         fileStorage = mock(ProjectDocumentFileStorage.class);
         projectLeadAssignmentRepository = mock(ProjectLeadAssignmentRepository.class);
         currentUserResolver = mock(CurrentUserResolver.class);
+        bidDocumentReviewRepository = mock(com.xiyu.bid.project.repository.BidDocumentReviewRepository.class);
 
         ProjectWorkflowGuardService guardService = new ProjectWorkflowGuardService(
                 projectRepository,
@@ -72,7 +74,8 @@ class ProjectDocumentWorkflowServiceTest {
                 projectLeadAssignmentRepository,
                 viewAssembler,
                 bindingGateway,
-                currentUserResolver
+                currentUserResolver,
+                bidDocumentReviewRepository
         );
         downloadService = new ProjectDocumentDownloadService(guardService, fileStorage);
 
@@ -233,6 +236,36 @@ class ProjectDocumentWorkflowServiceTest {
                 "BID_RESULT",
                 2002L
         );
+    }
+
+    @Test
+    void getProjectDocuments_asAssignedReviewer_shouldBeAllowed() {
+        Long reviewerUserId = 42L;
+        when(currentUserResolver.requireCurrentUser()).thenReturn(
+                com.xiyu.bid.entity.User.builder()
+                        .id(reviewerUserId)
+                        .roleProfile(com.xiyu.bid.entity.RoleProfile.builder().code("bid-Team").build())
+                        .build());
+        doReturn(new Long[]{null, null})
+                .when(projectLeadAssignmentRepository)
+                .resolveLeadIdsByProjectId(1001L);
+        when(bidDocumentReviewRepository.findByProjectId(1001L))
+                .thenReturn(Optional.of(com.xiyu.bid.project.entity.BidDocumentReviewEntity.builder()
+                        .projectId(1001L)
+                        .reviewerId(reviewerUserId)
+                        .build()));
+        when(projectDocumentRepository.findByProjectIdAndFiltersOrderByCreatedAtDesc(
+                1001L, null, null, null))
+                .thenReturn(List.of(ProjectDocument.builder()
+                        .id(3006L)
+                        .projectId(1001L)
+                        .name("投标文件.pdf")
+                        .build()));
+
+        List<ProjectDocumentDTO> documents = service.getProjectDocuments(1001L);
+
+        assertThat(documents).hasSize(1);
+        assertThat(documents.getFirst().getName()).isEqualTo("投标文件.pdf");
     }
 
     @Test

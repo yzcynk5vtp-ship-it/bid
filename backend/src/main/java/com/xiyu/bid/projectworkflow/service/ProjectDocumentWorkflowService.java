@@ -1,6 +1,7 @@
 package com.xiyu.bid.projectworkflow.service;
 
 import com.xiyu.bid.common.domain.AuthorizationDecision;
+import com.xiyu.bid.project.repository.BidDocumentReviewRepository;
 import com.xiyu.bid.projectworkflow.core.ProjectDocumentWorkflowPolicy;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentCreateRequest;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentDTO;
@@ -25,6 +26,7 @@ class ProjectDocumentWorkflowService {
     private final ProjectDocumentViewAssembler projectDocumentViewAssembler;
     private final ProjectDocumentBindingGateway projectDocumentBindingGateway;
     private final CurrentUserResolver currentUserResolver;
+    private final BidDocumentReviewRepository bidDocumentReviewRepository;
 
     List<ProjectDocumentDTO> getProjectDocuments(Long projectId) {
         return getProjectDocuments(projectId, null, null, null);
@@ -106,9 +108,23 @@ class ProjectDocumentWorkflowService {
                 leadIds[0],
                 leadIds[1]
         );
-        if (!decision.allowed()) {
-            throw new org.springframework.security.access.AccessDeniedException(decision.reason());
+        if (decision.allowed()) {
+            return;
         }
+        // CO-373: 被指定的标书审核人也需要查看投标文件以完成审核
+        if (isAssignedReviewer(projectId, currentUser.getId())) {
+            return;
+        }
+        throw new org.springframework.security.access.AccessDeniedException(decision.reason());
+    }
+
+    private boolean isAssignedReviewer(Long projectId, Long currentUserId) {
+        if (currentUserId == null) {
+            return false;
+        }
+        return bidDocumentReviewRepository.findByProjectId(projectId)
+                .map(review -> currentUserId.equals(review.getReviewerId()))
+                .orElse(false);
     }
 
     private void assertCanUploadProjectDocument() {

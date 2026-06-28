@@ -80,6 +80,20 @@ class LogSanitizerTest {
         assertThat(sanitizer.sanitize(null, 1024)).isEqualTo("null");
     }
 
+    @Test
+    void handlesCircularReferencesWithoutStackOverflow() {
+        NodeDto a = new NodeDto();
+        a.setName("a");
+        NodeDto b = new NodeDto();
+        b.setName("b");
+        a.setNext(b);
+        b.setNext(a);
+
+        String json = sanitizer.sanitize(a, 1024);
+        assertThat(json).contains("\"error\":\"无法序列化日志参数\"");
+        assertThat(json).contains("\"type\":\"NodeDto\"");
+    }
+
     @Data
     static class UserDto {
         private String username;
@@ -92,5 +106,11 @@ class LogSanitizerTest {
     static class ParentDto {
         private String name;
         private UserDto child;
+    }
+
+    @Data
+    static class NodeDto {
+        private String name;
+        private NodeDto next;
     }
 }

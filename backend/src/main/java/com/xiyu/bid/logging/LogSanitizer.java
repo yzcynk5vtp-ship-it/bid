@@ -6,13 +6,16 @@ package com.xiyu.bid.logging;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.xiyu.bid.annotation.Sensitive;
 
 import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -39,7 +42,8 @@ public class LogSanitizer {
     private final ObjectMapper objectMapper;
 
     public LogSanitizer(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+        this.objectMapper = objectMapper.copy()
+                .configure(SerializationFeature.FAIL_ON_SELF_REFERENCES, false);
     }
 
     /**
@@ -55,12 +59,13 @@ public class LogSanitizer {
         }
         try {
             Set<String> sensitiveKeys = new HashSet<>(DEFAULT_SENSITIVE_KEYS);
-            collectAnnotatedFieldNames(value, sensitiveKeys);
+            Set<Object> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+            collectAnnotatedFieldNames(value, sensitiveKeys, visited);
             JsonNode tree = objectMapper.valueToTree(value);
             JsonNode masked = mask(tree, sensitiveKeys);
             String json = objectMapper.writeValueAsString(masked);
             return truncate(json, maxLength);
-        } catch (JsonProcessingException | IllegalArgumentException e) {
+        } catch (Throwable e) {
             return "{\"error\":\"无法序列化日志参数\",\"type\":\"" + value.getClass().getSimpleName() + "\"}";
         }
     }
@@ -95,16 +100,19 @@ public class LogSanitizer {
         return sensitiveKeys.contains(key.toLowerCase());
     }
 
-    private void collectAnnotatedFieldNames(Object value, Set<String> sensitiveKeys) {
+    private void collectAnnotatedFieldNames(Object value, Set<String> sensitiveKeys, Set<Object> visited) {
         if (value == null) {
             return;
         }
+        if (!visited.add(value)) {
+            return;
+        }
         if (value instanceof Collection<?> collection) {
-            collection.forEach(item -> collectAnnotatedFieldNames(item, sensitiveKeys));
+            collection.forEach(item -> collectAnnotatedFieldNames(item, sensitiveKeys, visited));
             return;
         }
         if (value instanceof Map<?, ?> map) {
-            map.values().forEach(item -> collectAnnotatedFieldNames(item, sensitiveKeys));
+            map.values().forEach(item -> collectAnnotatedFieldNames(item, sensitiveKeys, visited));
             return;
         }
         Class<?> clazz = value.getClass();
@@ -127,7 +135,7 @@ public class LogSanitizer {
                 } catch (IllegalAccessException e) {
                     continue;
                 }
-                collectAnnotatedFieldNames(nested, sensitiveKeys);
+                collectAnnotatedFieldNames(nested, sensitiveKeys, visited);
                 continue;
             }
             field.setAccessible(true);
@@ -137,7 +145,7 @@ public class LogSanitizer {
             } catch (IllegalAccessException e) {
                 continue;
             }
-            collectAnnotatedFieldNames(nested, sensitiveKeys);
+            collectAnnotatedFieldNames(nested, sensitiveKeys, visited);
         }
     }
 

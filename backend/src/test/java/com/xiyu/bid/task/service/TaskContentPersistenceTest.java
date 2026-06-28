@@ -3,6 +3,7 @@ package com.xiyu.bid.task.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.entity.Task;
+import com.xiyu.bid.project.repository.BidDocumentReviewRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
@@ -77,6 +78,9 @@ class TaskContentPersistenceTest {
     private ProjectLeadAssignmentRepository leadAssignmentRepository;
 
     @Mock
+    private BidDocumentReviewRepository bidDocumentReviewRepository;
+
+    @Mock
     private DataScopeConfigService dataScopeConfigService;
 
     private TaskService taskService;
@@ -101,6 +105,7 @@ class TaskContentPersistenceTest {
                 userRepository,
                 taskPermissionGuard,
                 leadAssignmentRepository,
+                bidDocumentReviewRepository,
                 dataScopeConfigService
         );
     }

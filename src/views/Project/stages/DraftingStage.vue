@@ -120,7 +120,7 @@ import { ref, computed, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getApiUrl } from '@/api/config.js'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
-import { deleteDocument } from '@/api/modules/projectDocuments.js'
+import { deleteDocument, getDocuments } from '@/api/modules/projectDocuments.js'
 import { STAGE_TRANSITION_MAP } from '@/constants/projectStages.js'
 import { useUserStore } from '@/stores/user'
 import ProjectDocumentTable from './components/ProjectDocumentTable.vue'
@@ -233,9 +233,27 @@ async function load() {
       }
       // 恢复投标提交状态
       if (d.bidSubmitted) bidDone.value = true
+      // 恢复投标文件列表（BID_DOCUMENT），确保上传组件与后端一致
+      await loadBidFiles()
     }
   } catch (e) {
     console.warn(e)
+  }
+}
+
+async function loadBidFiles() {
+  try {
+    const res = await getDocuments(props.projectId, { documentCategory: 'BID_DOCUMENT' })
+    const docs = res?.data || []
+    bidFiles.value = docs.map(doc => ({
+      name: doc.name || '投标文件',
+      url: doc.fileUrl || '',
+      response: { data: doc },
+      status: 'success',
+    }))
+  } catch (e) {
+    console.warn('[DraftingStage] failed to load bid files', e)
+    bidFiles.value = []
   }
 }
 

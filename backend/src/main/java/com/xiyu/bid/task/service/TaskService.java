@@ -7,6 +7,7 @@ package com.xiyu.bid.task.service;
 import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.exception.ResourceNotFoundException;
+import com.xiyu.bid.project.repository.BidDocumentReviewRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TaskRepository;
@@ -46,6 +47,7 @@ public class TaskService {
     private final UserRepository userRepository;
     private final TaskPermissionGuard taskPermissionGuard;
     private final ProjectLeadAssignmentRepository leadAssignmentRepository;
+    private final BidDocumentReviewRepository bidDocumentReviewRepository;
     private final DataScopeConfigService dataScopeConfigService;
 
     @Transactional
@@ -161,8 +163,10 @@ public class TaskService {
         // CO-361: 使用 OSS-cache-aware 的 roleCode（DataScopeConfigService.getRoleCode），
         // 而非 User.getRoleCode() 实体 fallback。OSS 同步用户 DB role_id=NULL 时实体返回 "manager"，
         // 会导致投标专员（OSS bid-Team）+ 项目负责人误走"只看 assignee=自己"分支，看不到项目任务。
-        List<Task> tasks = TaskVisibilityPolicy.canViewAllProjectTasks(
+        boolean canViewAll = TaskVisibilityPolicy.canViewAllProjectTasks(
                 dataScopeConfigService.getRoleCode(currentUser), currentUser.getId(), leadIds[0], leadIds[1])
+                || isAssignedReviewer(projectId, currentUser.getId());
+        List<Task> tasks = canViewAll
                 ? taskRepository.findByProjectId(projectId)
                 : taskRepository.findByProjectIdAndAssigneeId(projectId, currentUser.getId());
         // CO-361: 三态模型下 isVisibleTask 仅做 null 过滤，与独立看板展示语义一致
@@ -283,6 +287,16 @@ public class TaskService {
     }
 
     private static boolean hasText(String v) { return v != null && !v.isBlank(); }
+
+    private boolean isAssignedReviewer(Long projectId, Long currentUserId) {
+        if (currentUserId == null) {
+            return false;
+        }
+        return bidDocumentReviewRepository.findByProjectId(projectId)
+                .map(review -> currentUserId.equals(review.getReviewerId()))
+                .orElse(false);
+    }
+
     private List<TaskDTO> toDTOsWithNames(List<Task> tasks) {
         var assigneeNames = userRepository.findAllById(tasks.stream().map(Task::getAssigneeId).filter(Objects::nonNull).collect(Collectors.toSet()))
                 .stream().filter(u -> u.getFullName() != null && !u.getFullName().isBlank()).collect(Collectors.toMap(User::getId, User::getFullName, (a, b) -> a));

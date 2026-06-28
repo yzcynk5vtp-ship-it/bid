@@ -55,7 +55,7 @@ run_contract_case() {
 
 run_contract_case \
   rich-dry-run \
-  cursor demo-task origin/main --dry-run \
+  cursor demo-task origin/main --in-place --dry-run \
   --touch scripts/agent-start-task.sh \
   --lock scripts/agent-start-task.sh \
   --force-touch-conflict \
@@ -63,6 +63,6 @@ run_contract_case \
 
 run_contract_case \
   minimal-dry-run \
-  cursor demo-task origin/main --dry-run
+  cursor demo-task origin/main --in-place --dry-run
 
 echo "All agent-start-task dry-run contract checks passed."
