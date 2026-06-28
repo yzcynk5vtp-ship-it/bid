@@ -1461,3 +1461,34 @@ T016 标记为「评估完成-不改动」。纯核心 `BatchAssignmentPolicy.is
 
 **验证**：`InitiationStage.spec.js` 11 tests passed（未破坏现有测试）。
 
+
+### 2026-06-28 Review 后 F4+F6 修复（CO-373 收尾）
+
+**背景**：CO-373 PR #1259 创建后，启动思维链设计 Review 识别 6 处可改进点。用户确认修复 F4 + F6。
+
+**F4：ProjectAccessScopeService 重复 resolveRoleCode 调用**（LOW，性能）
+- `getAllowedProjectIds(User)` 同方法内对同一 user 调用了 2 次 `effectiveRoleResolver.resolveRoleCode(user)`（line 59 判断 admin + line 85 判断 bid-Team），每次触发一次 Redis 读 + debug 日志。
+- 修复：提取局部变量 `effectiveRoleCode`，复用一次解析结果。
+- 逻辑等价，不改任何判断分支，仅省一次冗余 OSS 缓存读取。
+
+**F5：EffectiveRolePolicy.decide() null 检查**（LOW，设计偏好）
+- Review 建议移除 `cachedRoleCode != null` 冗余检查（Optional 永不 null）。
+- 复核后疑虑：decide() 是 public static，移除后传 null Optional 会从「静默走 fail-closed」变为「NPE」。
+- 用户决策：保持现状不动——防御性 null 检查保留，与 public API 边界防御风格一致。
+
+**F6：OSS 缓存 TTL 8h → 25h**（消除 fail-closed 403 窗口期）
+- 根因：JWT 有效期 24h（`JWT_EXPIRATION:86400000`），OSS 缓存 TTL 8h（`DEFAULT_TTL_SECONDS:28800`）。
+- 窗口期：用户登录后第 9~24 小时，缓存已过期但 JWT 仍有效 → `EffectiveRolePolicy.decide()` 走 `CACHE_MISS_FAIL_CLOSED` 返回 null → 权限校验 fail-closed → 403。
+- 修复：`DEFAULT_TTL_SECONDS` 从 28800（8h）提到 90000（25h），对齐 JWT 24h + 1h 余量。
+- 效果：JWT 有效期内 OSS 缓存始终命中，403 窗口期消除。角色变更通过登出 invalidate 触发。
+- 风险：角色变更生效延迟（最长 25h）。但 OSS 角色变更本就低频，且登出会主动 invalidate 缓存，可接受。
+
+**验证**：
+- `OssPermissionCacheTest` 5 tests GREEN（断言只检查 `expiresAt().isAfter(now)`，不检查具体 TTL 值）
+- `ProjectAccessScopeServiceTest` + `EffectiveRolePolicyTest` + `EffectiveRoleResolverTest` + `ProjectAccessGuardCoverageTest` 32 tests GREEN
+- 全量测试：347 测试类 / 1982 tests，除 2 个 origin/main 预存在 @WebMvcTest 失败外零回归（经 origin/main worktree 实测确认）
+
+**未做**（Review 识别但保持现状）：
+- F1：调用入口不统一（CurrentUserResolver 转发 vs EffectiveRoleResolver 直调）——两个 Guard 用户解析策略不同，统一收益有限
+- F2：EffectiveRoleResult.Source 枚举 YAGNI——仅日志消费，已实现且测试通过，重构成本 > 收益
+- F3：DataScopeConfigService 逻辑重复——用户已确认方向 C 保持独立

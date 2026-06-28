@@ -56,7 +56,12 @@ public class ProjectAccessScopeService {
     private final EffectiveRoleResolver effectiveRoleResolver;
 
     public List<Long> getAllowedProjectIds(User user) {
-        if (user == null || RoleProfileCatalog.ADMIN_CODE.equalsIgnoreCase(effectiveRoleResolver.resolveRoleCode(user))) {
+        if (user == null) {
+            return List.of();
+        }
+        // CO-373: 角色码只解析一次，避免同方法内重复读 OSS 缓存（Redis 往返 + 重复 debug 日志）。
+        String effectiveRoleCode = effectiveRoleResolver.resolveRoleCode(user);
+        if (RoleProfileCatalog.ADMIN_CODE.equalsIgnoreCase(effectiveRoleCode)) {
             return List.of();
         }
         DataScopeAccessProfile accessProfile = dataScopeConfigService.getAccessProfile(user);
@@ -82,7 +87,7 @@ public class ProjectAccessScopeService {
                 .collect(Collectors.toList()));
 
         // CO-361: Add projects where user is assigned as secondary bidding lead (副投标负责人)
-        if (RoleProfileCatalog.BID_SPECIALIST_CODE.equalsIgnoreCase(effectiveRoleResolver.resolveRoleCode(user))) {
+        if (RoleProfileCatalog.BID_SPECIALIST_CODE.equalsIgnoreCase(effectiveRoleCode)) {
             allowedIds.addAll(leadAssignmentRepository.findBySecondaryLeadUserId(user.getId()).stream()
                     .map(a -> a.getProjectId())
                     .collect(Collectors.toList()));

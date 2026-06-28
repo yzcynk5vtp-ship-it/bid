@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentMap;
  * <p>
  * 缓存策略：
  * - 按 username 缓存
- * - 默认过期时间：8 小时
+ * - 默认过期时间：25 小时（对齐 JWT 24h 有效期 + 1h 余量，避免缓存过期但 JWT 仍有效导致 fail-closed 403）
  * - 登出时主动清除
  * <p>
  * 存储后端：
@@ -44,7 +44,7 @@ public class OssPermissionCache implements RoleCodeCachePort {
     private static final Logger log = LoggerFactory.getLogger(OssPermissionCache.class);
 
     static final String REDIS_KEY_PREFIX = "oss:perm:";
-    private static final long DEFAULT_TTL_SECONDS = 28800; // 8 小时
+    private static final long DEFAULT_TTL_SECONDS = 90000; // 25 小时（对齐 JWT 24h + 1h 余量，CO-373 消除 fail-closed 403 窗口期）
     private static final Duration DEFAULT_TTL = Duration.ofSeconds(DEFAULT_TTL_SECONDS);
 
     private final Optional<StringRedisTemplate> redisTemplate;
