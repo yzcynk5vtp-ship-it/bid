@@ -254,9 +254,20 @@ function handleBeforeRemove() {
   return true
 }
 
-function handleBidDocRemove() {
+async function handleBidDocRemove() {
   if (handleBeforeRemove() === false) return
+  const documentId = form.tenderDocumentId
+  if (documentId) {
+    try {
+      await projectsApi.deleteDocument(props.projectId, documentId)
+    } catch (error) {
+      ElMessage.error(error?.message || '删除招标文件失败')
+      return
+    }
+  }
+  form.tenderDocumentId = null
   bidDocFiles.value = []
+  ElMessage.success('招标文件已删除')
 }
 
 const { handleDocBeforeUpload, onDepositChange, handleApprove, handleReject, saveDraft, submit, load } = useInitiationStageActions({

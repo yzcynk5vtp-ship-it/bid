@@ -6,6 +6,8 @@ import com.xiyu.bid.entity.RoleProfile;
 import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.entity.Task;
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.project.entity.BidDocumentReviewEntity;
+import com.xiyu.bid.project.repository.BidDocumentReviewRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
@@ -72,6 +74,9 @@ class TaskServiceProjectAccessTest {
     private ProjectLeadAssignmentRepository leadAssignmentRepository;
 
     @Mock
+    private BidDocumentReviewRepository bidDocumentReviewRepository;
+
+    @Mock
     private DataScopeConfigService dataScopeConfigService;
 
     @Mock
@@ -92,6 +97,7 @@ class TaskServiceProjectAccessTest {
                 userRepository,
                 taskPermissionGuard,
                 leadAssignmentRepository,
+                bidDocumentReviewRepository,
                 dataScopeConfigService
         );
     }
@@ -213,6 +219,47 @@ class TaskServiceProjectAccessTest {
         // 验证走的是"看所有任务"分支，而非"只看 assignee=自己"
         verify(taskRepository).findByProjectId(101L);
         verify(taskRepository, never()).findByProjectIdAndAssigneeId(eq(101L), eq(7220L));
+    }
+
+    /**
+     * CO-373: 被指定的标书审核人不是项目投标负责人，也需要查看项目全部任务以完成审核。
+     */
+    @Test
+    void getTasksByProjectIdAllowsAssignedBidDocumentReviewer() {
+        User reviewer = User.builder()
+                .id(7246L)
+                .username("chenmengyao")
+                .fullName("陈梦瑶")
+                .build();
+        when(assignmentSupport.resolveEnabledUserByUsername("chenmengyao")).thenReturn(reviewer);
+        // 审核人角色不是投标负责人/专员，canViewAllProjectTasks 原本会返回 false
+        when(dataScopeConfigService.getRoleCode(reviewer)).thenReturn("manager");
+        when(leadAssignmentRepository.resolveLeadIdsByProjectId(103L))
+                .thenReturn(new Long[]{7220L, 8556L});
+        when(projectRepository.existsById(103L)).thenReturn(true);
+        when(projectAccessScopeService.getAllowedProjectIdsForCurrentUser()).thenReturn(List.of(103L));
+        when(bidDocumentReviewRepository.findByProjectId(103L))
+                .thenReturn(Optional.of(BidDocumentReviewEntity.builder()
+                        .projectId(103L)
+                        .reviewerId(7246L)
+                        .submittedBy(7220L)
+                        .status("REVIEWING")
+                        .build()));
+
+        Task projectTask = Task.builder()
+                .id(3001L)
+                .projectId(103L)
+                .title("审核人需要看到的任务")
+                .status(Task.Status.TODO)
+                .assigneeId(9999L)
+                .build();
+        when(taskRepository.findByProjectId(103L)).thenReturn(List.of(projectTask));
+
+        List<TaskDTO> tasks = taskService.getTasksByProjectId(103L, "chenmengyao");
+
+        assertThat(tasks).extracting(TaskDTO::getId).containsExactly(3001L);
+        verify(taskRepository).findByProjectId(103L);
+        verify(taskRepository, never()).findByProjectIdAndAssigneeId(eq(103L), eq(7246L));
     }
 
     /**
