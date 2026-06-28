@@ -41,6 +41,12 @@ node "$ROOT_DIR/scripts/check-e2e-selectors.mjs"
 # Flyway 配置守卫：拦截 application*.yml 中 locations/baseline-version/baseline-on-migrate/validateOnMigrate 修改
 # 历史事故：V101 因 baseline-version=1050 静默跳过导致看板空白（2026-06-28 CO-361）
 "$ROOT_DIR/scripts/check-flyway-config-guard.sh"
+# Flyway 语法守卫：禁止 ALTER ADD/DROP COLUMN IF NOT EXISTS（MariaDB 扩展，MySQL 8.0 不支持）
+# 历史事故：V1101 使用 ADD COLUMN IF NOT EXISTS 导致 Flyway failed，后端启动失败（2026-06-26 第4次部署）
+"$ROOT_DIR/scripts/check-flyway-syntax-guard.sh"
+# Flyway 逃生阀追踪：记录 FLYWAY_ALLOW_* 绕过事件到 .runtime/flyway-bypass.log（不阻断，仅记录）
+# 用途：PR 审查时检查该日志，未说明绕过原因则要求补充
+"$ROOT_DIR/scripts/check-flyway-bypass-tracker.sh" || true
 
 # TDD 测试先行门禁：检测到 staged 业务代码变更但没有对应的测试文件时，直接阻断提交，以确保 fix/test 比例（2026-06-12 gemini/enforce-tdd-precommit）
 "$ROOT_DIR/scripts/check-tdd-coverage.sh" --ci
