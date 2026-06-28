@@ -56,8 +56,17 @@ public class CrmProperties {
      * Falls back to baseUrl if not set. */
     private String chanceBaseUrl;
 
-    /** Base URL for contact person APIs. Falls back to baseUrl if not set. */
+    /** Base URL for contact person APIs.
+     * Falls back to baseUrl if not set. */
     private String contactPersonBaseUrl;
+
+    /**
+     * Base URL for CAC (Customer Achievement Center) APIs.
+     * <p>CO-302 反查路径接口 25338（/company/getCompanyNameByLikeName）
+     * 和 25259（/customerManager/getCustomerManagerListByCompanyId）部署在 CAC 服务上，
+     * 与商机/客户接口不同 host。Falls back to baseUrl if not set.
+     */
+    private String cacBaseUrl;
 
     /** Auth API path configuration. */
     private CrmAuthPaths auth = new CrmAuthPaths();
@@ -167,6 +176,16 @@ public class CrmProperties {
     public String getEffectiveContactPersonBaseUrl() {
         return StringUtils.hasText(contactPersonBaseUrl)
             ? contactPersonBaseUrl : baseUrl;
+    }
+
+    /**
+     * Returns the effective CAC base URL.
+     * <p>CO-302 反查路径接口（25338/25259）部署在 CAC 服务上，
+     * 与商机/客户接口不同 host。Uses cacBaseUrl if set, otherwise falls back to baseUrl.
+     * @return effective CAC base URL
+     */
+    public String getEffectiveCacBaseUrl() {
+        return StringUtils.hasText(cacBaseUrl) ? cacBaseUrl : baseUrl;
     }
 
     @Data

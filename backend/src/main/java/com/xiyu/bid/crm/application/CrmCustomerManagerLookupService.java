@@ -18,6 +18,9 @@ import java.util.Optional;
  * <p>对应接口 25259 {@code POST /customerManager/getCustomerManagerListByCompanyId}：
  * 按公司 ID 查询客户负责人列表。
  *
+ * <p><b>Host 注意</b>：该接口部署在 CAC 服务（{@code cacBaseUrl}）上，
+ * 不是 {@code customerBaseUrl}。详见 {@link CrmProperties#getEffectiveCacBaseUrl()}。
+ *
  * <p>CO-302 issue 5.3 要求"取该客户负责人中的某个角色为标讯的项目负责人"。
  * 当前实现取返回列表中第一条有效（saleNo 非空）的负责人，issue 未强约束
  * 具体 saleType，未来业务明确后可加过滤。
@@ -64,7 +67,7 @@ public class CrmCustomerManagerLookupService {
 
         try {
             CrmResponseHandler.CrmApiResponse response = httpClient.post(
-                    properties.getEffectiveCustomerBaseUrl(),
+                    properties.getEffectiveCacBaseUrl(),
                     path,
                     authService.getValidToken(),
                     request

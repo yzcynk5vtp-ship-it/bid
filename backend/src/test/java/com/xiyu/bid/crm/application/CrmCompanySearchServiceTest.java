@@ -43,7 +43,7 @@ class CrmCompanySearchServiceTest {
         service = new CrmCompanySearchService(httpClient, authService, properties);
         // 用 lenient：null/blank 短路用例不会触达这些 stub
         lenient().when(authService.getValidToken()).thenReturn("fake-token");
-        lenient().when(properties.getEffectiveCustomerBaseUrl()).thenReturn("https://cac-test.ehsy.com");
+        lenient().when(properties.getEffectiveCacBaseUrl()).thenReturn("https://cac-test.ehsy.com");
         lenient().when(properties.getCustomer()).thenReturn(new CrmProperties.CrmCustomerPaths());
     }
 
