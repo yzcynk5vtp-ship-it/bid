@@ -11,6 +11,7 @@ import com.xiyu.bid.auth.JwtAuthenticationFilter;
 import com.xiyu.bid.config.RateLimitFilter;
 import com.xiyu.bid.config.SecurityConfig;
 import com.xiyu.bid.projecttenderbreakdown.application.ProjectTenderBreakdownReadinessService;
+import com.xiyu.bid.security.CurrentUserResolver;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,12 @@ class ProjectTenderBreakdownControllerTest {
 
     @MockBean
     private ProjectTenderBreakdownReadinessService readinessService;
+
+    // CO-373 回归修复：CurrentUserResolver 现依赖 EffectiveRoleResolver→RoleCodeCachePort，
+    // @WebMvcTest 切片不实例化该链；TraceFilter(@Component) 又强依赖 CurrentUserResolver。
+    // 此处 mock 整个 CurrentUserResolver 以满足 TraceFilter 注入，避免上下文加载失败。
+    @MockBean
+    private CurrentUserResolver currentUserResolver;
 
     @Test
     @WithMockUser(roles = "MANAGER")
