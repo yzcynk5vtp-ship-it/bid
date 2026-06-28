@@ -47,6 +47,7 @@ health_checked: 2026-06-27
 - [[integration-wecom]] — 系统集成中心 - 企业微信
 - [[knowledge-base]] — 4.4 知识库 PRD (产品需求文档)
 - [[lessons-learned]] — 工程经验总结
+- [[lessons-learned/CO-361-five-rounds-no-fix]] — CO-361 五次修复不彻底的教训（反复追症状不追根因的代价）
 - [[modules]] — 模块目录
 - [[multi-agent-defense-playbook]] — 多 Agent 并行开发防御工程化手册
 - [[operations/logging-bug-investigation-guide]] — 日志系统查 Bug 手册
