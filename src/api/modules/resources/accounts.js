@@ -114,6 +114,41 @@ export const accountsApi = {
     return httpClient.post(`/api/platform/accounts/${id}/return-with-password`, payload)
   },
 
+  // ── 借用申请审批流程 ──────────────────────────────────────────────────────────
+
+  async submitBorrowApplication(accountId, payload) {
+    if (!isNumericId(accountId)) return Promise.resolve(invalidIdMessage('account'))
+    return httpClient.post(`/api/platform/accounts/${accountId}/borrow-applications`, payload)
+  },
+
+  async getMyBorrowApplications() {
+    return httpClient.get('/api/borrow-applications/my-applications')
+  },
+
+  async getMyBorrowApprovals() {
+    return httpClient.get('/api/borrow-applications/my-approvals')
+  },
+
+  async approveBorrowApplication(id, payload = {}) {
+    if (!isNumericId(id)) return Promise.resolve(invalidIdMessage('application'))
+    return httpClient.post(`/api/borrow-applications/${id}/approve`, payload)
+  },
+
+  async rejectBorrowApplication(id, payload) {
+    if (!isNumericId(id)) return Promise.resolve(invalidIdMessage('application'))
+    return httpClient.post(`/api/borrow-applications/${id}/reject`, payload)
+  },
+
+  async cancelBorrowApplication(id) {
+    if (!isNumericId(id)) return Promise.resolve(invalidIdMessage('application'))
+    return httpClient.post(`/api/borrow-applications/${id}/cancel`)
+  },
+
+  async returnBorrowApplication(id, payload) {
+    if (!isNumericId(id)) return Promise.resolve(invalidIdMessage('application'))
+    return httpClient.post(`/api/borrow-applications/${id}/return`, payload)
+  },
+
   async getPassword(id) {
     if (!isNumericId(id)) return Promise.resolve(invalidIdMessage('account'))
     return httpClient.get(`/api/platform/accounts/${id}/password`)

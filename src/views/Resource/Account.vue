@@ -130,6 +130,7 @@
     <AccountReturnDialog v-model="showReturnDialog" :account="currentReturnAccount" @submitted="onAccountReturned" />
     <AccountDetailDialog v-model="showDetailDialog" :data="currentAccountDetail" @edit="editFromDetail" @return="handleReturnFromDetail" />
     <AccountFormDialog v-model="showCreateDialog" :edit-row="editRow" @saved="loadAccounts" /><AccountImportDialog v-model="showImportDialog" @imported="loadAccounts" />
+    <AccountBorrowApplications :accounts="accounts" />
   </div>
 </template>
 
@@ -143,13 +144,14 @@ import { usePasswordReveal } from './composables/usePasswordReveal.js'
 import AccountFormDialog from './AccountFormDialog.vue'
 import AccountDetailDialog from './AccountDetailDialog.vue'
 import AccountBorrowDialog from './AccountBorrowDialog.vue'
-import AccountReturnDialog from './AccountReturnDialog.vue'; import AccountImportDialog from './components/AccountImportDialog.vue'
+import AccountReturnDialog from './AccountReturnDialog.vue'
+import AccountImportDialog from './components/AccountImportDialog.vue'
+import AccountBorrowApplications from './AccountBorrowApplications.vue'
 
 const searchForm = ref({
   platform: '',
   hasCa: ''
 })
-// 选中行
 const selectedRows = ref([])
 const tableRef = ref(null)
 
@@ -158,10 +160,7 @@ const handleSelectionChange = (rows) => {
 }
 
 const userStore = useUserStore()
-const isProjectLeader = computed(() => {
-  // 蓝图：项目负责人（bid-projectLeader）使用精简视图；投标组长（bid-TeamLeader）看全量。
-  return userStore.userRole === 'bid-projectLeader'
-})
+const isProjectLeader = computed(() => userStore.userRole === 'bid-projectLeader')
 
 const password = usePasswordReveal((id) => resourcesApi.accounts.getPassword(id))
 
@@ -200,11 +199,6 @@ const onRowClick = (row) => {
   showDetailDialog.value = true
 }
 
-const handleEdit = (row) => {
-  editRow.value = row
-  showCreateDialog.value = true
-}
-
 const handleCreate = () => {
   editRow.value = null
   showCreateDialog.value = true
@@ -224,11 +218,6 @@ const handleReturnFromDetail = () => {
 const handleBorrow = (row) => {
   currentAccount.value = row
   showBorrowDialog.value = true
-}
-
-const handleReturn = (row) => {
-  currentReturnAccount.value = row?.raw || row
-  showReturnDialog.value = true
 }
 
 const onAccountReturned = () => {
@@ -287,69 +276,6 @@ const handleBatchDelete = async () => {
 
 const handleExport = () => {
   ElMessage.info('导出功能开发中')
-}
-
-const handleMoreAction = async (command, row) => {
-  switch (command) {
-    case 'view':
-      currentAccountDetail.value = row
-      showDetailDialog.value = true
-      {
-        const response = await resourcesApi.accounts.getDetail(row.id)
-        if (!response?.success) {
-          ElMessage.error(response?.msg || '账户详情加载失败')
-          return
-        }
-        currentAccountDetail.value = response.data || row
-      }
-      break
-    case 'reset':
-      try {
-        await ElMessageBox.confirm(`确定要重置账户"${row.platform}"的密码吗？`, '重置密码', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        })
-        const resetResponse = await resourcesApi.accounts.update(row.id, { resetPassword: true })
-        if (!resetResponse?.success) {
-          ElMessage.error(resetResponse?.message || '重置密码失败')
-          return
-        }
-        ElMessage.success('密码已重置')
-      } catch {
-        // 用户取消
-      }
-      break
-    case 'toggle': {
-      const newStatus = row.status === 'available' ? 'disabled' : 'available'
-      const toggleResponse = await resourcesApi.accounts.update(row.id, { status: newStatus.toUpperCase() })
-      if (!toggleResponse?.success) {
-        ElMessage.error(toggleResponse?.message || '状态更新失败')
-        return
-      }
-      await loadAccounts()
-      ElMessage.success(`已${newStatus === 'available' ? '启用' : '禁用'}账户：${row.platform}`)
-      break
-    }
-    case 'delete':
-      try {
-        await ElMessageBox.confirm(`确定要删除账户"${row.platform}"吗？`, '确认删除', {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        })
-        const response = await resourcesApi.accounts.delete(row.id)
-        if (!response?.success) {
-          ElMessage.error(response?.msg || '删除失败')
-          return
-        }
-        await loadAccounts()
-        ElMessage.success(`删除账户：${row.platform}`)
-      } catch {
-        // 用户取消
-      }
-      break
-  }
 }
 
 onMounted(() => {
