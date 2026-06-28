@@ -247,6 +247,99 @@ GET /api/auth/me (未授权) → 403
 
 ---
 
+## 事故复盘与防复发措施（2026-06-28 追加）
+
+### 事故概述
+
+本次部署后,`/api/tasks/my` 接口返回 500 错误,生产服务中断约 30 分钟。
+
+**根因**:CO-382(commit `0834deb91`)的迁移文件 `V121__add_created_by_to_tasks.sql` 误放至 `db/migration/`(历史遗留目录,Flyway 不读取),导致生产 DB 缺少 `tasks.created_by` 列。`Task.java` 实体的 `@Column(name="created_by")` 触发 Hibernate 查询该列,引发 `SQLSyntaxErrorException: Unknown column 't1_0.created_by'`。
+
+### 历史 Flyway 故障模式(6 次)
+
+| # | 时间 | 故障 | 根因 |
+|---|---|---|---|
+| 1 | 06-25 | V1096 jar 内重复 | `mvn package` 未清理 target |
+| 2 | 06-26 第3次 | V1096 checksum mismatch | 已发布迁移被改内容 |
+| 3 | 06-26 第4次 | V1101 MariaDB 语法 | `ADD COLUMN IF NOT EXISTS` MySQL 8.0 不支持 |
+| 4 | 06-26 第5次 | V1100 源码缺失 | 历史手动操作未同步源码 |
+| 5 | 06-26 第6次 | V1039 failed migration | `check-flyway-db-source-sync.sh` 误判 |
+| 6 | 06-28 | V1106 列缺失 | 迁移文件放错目录(migration/ vs migration-mysql/) |
+
+### 防复发措施(P0 + P1 + P2 三层防护)
+
+#### P0 — 立即实施(已合入 main)
+
+1. **Flyway 迁移目录守卫** `scripts/check-flyway-migration-dir.sh`
+   - pre-commit 拦截 V*.sql/B*.sql 放在 `db/migration/`(历史遗留目录)
+   - 强制使用 `db/migration-mysql/`(活跃目录)
+   - 逃生阀:`FLYWAY_ALLOW_LEGACY_DIR=1`
+
+2. **jar 内重复版本校验** 强化 `scripts/release/package-release.sh`
+   - `mvn package` → `mvn clean -DskipTests package`(强制清理 target)
+   - 打包后 `unzip -l` 校验 jar 内 `db/migration-mysql/V*.sql` 无重复版本号
+
+#### P1 — 本周内实施(已合入 main)
+
+3. **Flyway 配置守卫** `scripts/check-flyway-config-guard.sh`
+   - pre-commit 拦截 `application*.yml` 中 4 个关键配置项的修改:
+     - `locations`(迁移目录)
+     - `baseline-version`(基线版本)
+     - `baseline-on-migrate`(基线策略)
+     - `validateOnMigrate`(校验开关)
+   - 逃生阀:`FLYWAY_ALLOW_CONFIG_EDIT=1`
+
+4. **Flyway DB 同步检查** 强化 `scripts/pre-push-gate.sh` §3.6
+   - pre-push 阶段运行 `check-flyway-db-source-sync.sh`
+   - 检测"DB 已执行但源码缺失"
+   - DB 不可用时 skip,可用时 fail 阻断推送
+
+#### P2 — 中期改进(已合入 main)
+
+5. **Flyway 语法守卫** `scripts/check-flyway-syntax-guard.sh`
+   - pre-commit 拦截 5 种 MariaDB 扩展语法(MySQL 8.0 不支持):
+     - `ADD COLUMN IF NOT EXISTS`
+     - `DROP COLUMN IF EXISTS`
+     - `ADD INDEX IF NOT EXISTS` / `DROP INDEX IF EXISTS`
+     - `CREATE INDEX IF NOT EXISTS`
+   - 允许 MySQL 8.0 原生支持的 `CREATE TABLE IF NOT EXISTS`
+   - 逃生阀:`FLYWAY_ALLOW_MARIADB_SYNTAX=1`
+
+6. **逃生阀追踪机制** `scripts/check-flyway-bypass-tracker.sh`
+   - 检测 6 个 `FLYWAY_ALLOW_*` / `SKIP_FLYWAY_VALIDATE` 逃生阀的使用
+   - 记录到 `.runtime/flyway-bypass.log`(不阻断提交)
+   - PR 审查时检查该日志
+
+### 防护体系总览(15 项防护)
+
+| 防护层 | 检查项 | 数量 |
+|---|---|---|
+| **pre-commit**(提交前) | 目录守卫 / 配置守卫 / 语法守卫 / 回滚脚本 / 已发布不可变 / 版本冲突 / 逃生阀追踪 | 7 项 |
+| **pre-push**(推送前) | DB 同步检查 / 架构测试 / 锁检查 / 行预算 | 4 项 |
+| **package-release**(打包) | 强制 mvn clean / jar 内重复版本校验 | 2 项 |
+| **remote-deploy**(部署) | Flyway validate 预检 / 健康检查 | 2 项 |
+
+### 防复发效果对照表
+
+| 历史事故 | 原发现时机 | 现发现时机 | 防护机制 |
+|---|---|---|---|
+| V1106 放错目录(本次) | 部署后 500 错误,中断 30 分钟 | **pre-commit 拦截** | check-flyway-migration-dir.sh |
+| V1096 jar 内重复(06-25) | 部署时 Flyway 报错 | **package-release.sh 打包后校验** | jar 内重复版本检查 |
+| CO-361 看板空白(baseline 改动) | 用户报告看板空白 | **pre-commit 拦截** | check-flyway-config-guard.sh |
+| V1100 源码缺失(06-26 第5次) | 部署时 validate 失败 | **pre-push 拦截**(DB 可用时) | check-flyway-db-source-sync.sh |
+| V1039 failed migration(06-26 第6次) | 部署时 validate 失败 | **pre-push 拦截**(DB 可用时) | check-flyway-db-source-sync.sh |
+| V1101 MariaDB 语法(06-26 第4次) | 部署后 Flyway failed | **pre-commit 拦截** | check-flyway-syntax-guard.sh |
+| 逃生阀绕过(潜在风险) | 无追踪,靠人工自觉 | **自动记录到日志** | check-flyway-bypass-tracker.sh |
+
+### 仍未堵住的缺口(P3,长期改进)
+
+1. `db/migration/` 历史目录仍有 17 个文件 — 当前是"守卫+警告",未彻底删除
+2. 单一 source of truth:迁移文件生成器(强制使用 `new-migration.sh`)— 未实现
+3. 部署前的"Flyway 健康度"评分 — 未实现
+4. `validateOnMigrate: false` 在所有 profile 都关闭 — 风险过高暂不开启(生产 DB 有手动 INSERT 的 checksum=NULL 记录)
+
+---
+
 ## 参考文档
 
 - [生产发布流水线](./PRODUCTION_RELEASE_PIPELINE.md)
