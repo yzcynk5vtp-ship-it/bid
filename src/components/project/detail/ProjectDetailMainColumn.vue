@@ -41,6 +41,7 @@
           v-if="ctx.project?.id"
           :key="ctx.project.id"
           :project-id="ctx.project.id"
+          :current-stage="currentProjectStage"
           @advanced="handleStageUpdated"
         />
       </div>
