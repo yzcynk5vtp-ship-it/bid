@@ -206,6 +206,6 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .borrow-applications-card {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
 }
 </style>

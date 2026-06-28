@@ -57,7 +57,7 @@ watch(() => props.application, () => { form.value = empty() })
 
 const accountName = computed(() => {
   if (!props.application) return '-'
-  return `平台#${props.application.accountId}`
+  return props.application.accountName || `平台#${props.application.accountId}`
 })
 
 const formatDate = (value) => {

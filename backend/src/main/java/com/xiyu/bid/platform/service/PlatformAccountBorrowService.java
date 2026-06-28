@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,9 +55,7 @@ public class PlatformAccountBorrowService {
         account.markPendingApproval();
         accountRepository.save(account);
 
-        LocalDateTime expectedReturnAt = request.getExpectedReturnAt() != null
-                ? LocalDateTime.parse(request.getExpectedReturnAt())
-                : null;
+        LocalDateTime expectedReturnAt = parseExpectedReturnAt(request.getExpectedReturnAt());
 
         AccountBorrowApplication app = AccountBorrowApplication.builder()
                 .accountId(request.getAccountId())
@@ -172,7 +171,7 @@ public class PlatformAccountBorrowService {
     public List<BorrowApplicationDTO> getApplications(Long applicantId, Long custodianId, String status) {
         List<AccountBorrowApplication> apps;
         if (status != null) {
-            BorrowStatus bs = BorrowStatus.valueOf(status);
+            BorrowStatus bs = parseBorrowStatus(status);
             apps = applicationRepository.findByStatus(bs);
         } else if (applicantId != null) {
             apps = applicationRepository.findByApplicantId(applicantId);
@@ -250,6 +249,25 @@ public class PlatformAccountBorrowService {
     private void requireApplicant(AccountBorrowApplication app, User currentUser) {
         if (currentUser == null || !currentUser.getId().equals(app.getApplicantId())) {
             throw new BusinessException("只有申请人可以撤销该申请");
+        }
+    }
+
+    private LocalDateTime parseExpectedReturnAt(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value);
+        } catch (DateTimeParseException e) {
+            throw new BusinessException("预计归还时间格式不正确: " + value);
+        }
+    }
+
+    private BorrowStatus parseBorrowStatus(String value) {
+        try {
+            return BorrowStatus.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException("非法的申请状态: " + value);
         }
     }
 }
