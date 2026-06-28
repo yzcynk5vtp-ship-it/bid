@@ -34,13 +34,31 @@ npm run --silent check:frontend-api-base
 
 printf '\n==> Packaging backend jar\n'
 cd "$BACKEND_DIR"
-mvn -DskipTests package
+# 强制 clean：避免 target/ 残留旧迁移文件被打进 jar（2026-06-25 V1096 jar 内重复事故）
+# 教训：mvn package 增量编译不会清理已删除的 V*.sql，导致 jar 内出现两个 V1096
+mvn clean -DskipTests package
 
 JAR_PATH="$(find "$BACKEND_DIR/target" -maxdepth 1 -type f -name '*.jar' ! -name '*original*.jar' | sort | head -n 1)"
 if [[ -z "${JAR_PATH:-}" ]]; then
   printf 'No backend jar produced under %s/target\n' "$BACKEND_DIR" >&2
   exit 1
 fi
+
+# 校验 jar 内 Flyway 迁移版本无重复（2026-06-25 V1096 事故）
+# target 残留或并行开发撞号都可能导致 jar 内出现两个 V1096
+printf '\n==> 验证 jar 内 Flyway 迁移版本无重复\n'
+DUPLICATE_VERSIONS=$(unzip -l "$JAR_PATH" | grep "db/migration-mysql/V" | \
+  sed 's|.*\(V[0-9]*\)__.*/|\1|' | sort | uniq -d || true)
+if [[ -n "$DUPLICATE_VERSIONS" ]]; then
+  printf '❌ jar 内存在重复的 Flyway 迁移版本：\n' >&2
+  printf '%s\n' "$DUPLICATE_VERSIONS" | sed 's/^/  /' >&2
+  printf '\n修复方案：\n' >&2
+  printf '  1. 确认 backend/src/main/resources/db/migration-mysql/ 无重复版本号\n' >&2
+  printf '  2. 重新执行 rm -rf backend/target && mvn clean package\n' >&2
+  printf '  3. 如仍重复，检查 .agent-locks/ 是否有并行开发撞号\n' >&2
+  exit 1
+fi
+printf '✅ jar 内 Flyway 迁移版本无重复\n'
 
 rm -rf "$OUTPUT_DIR/frontend" "$OUTPUT_DIR/backend"
 mkdir -p "$OUTPUT_DIR/frontend" "$OUTPUT_DIR/backend"
