@@ -200,6 +200,10 @@ public class CrmProperties {
         private String searchPath = "/customer/search";
         /** contactsPath. */
         private String contactsPath = "/customer/contacts/batch";
+        /** companySearchPath - 接口 25338: 根据公司名称模糊查询前 20 条公司 (CO-302 反查第一步). */
+        private String companySearchPath = "/company/getCompanyNameByLikeName";
+        /** customerManagerListPath - 接口 25259: 根据公司 id 列表查询客户负责人列表 (CO-302 反查第二步). */
+        private String customerManagerListPath = "/customerManager/getCustomerManagerListByCompanyId";
     }
 
     @Data

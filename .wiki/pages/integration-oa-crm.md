@@ -12,7 +12,7 @@ backlinks:
   - integration-organization-event-sdk
   - integration-tender-api
 created: 2026-05-07
-updated: 2026-06-20
+updated: 2026-06-28
 health_checked: 2026-06-27
 ---
 # CRM 对接规范
@@ -91,15 +91,30 @@ https://域名/[服务名]/[客户端类型]/[版本号]/路径
 
 ### 1.3 接口清单
 
-| 接口名称 | BaseUrl | YAPI 地址 | 使用场景 |
-|---|---|---|---|
-| 登录鉴权接口 | `https://base-oss-test.ehsy.com` | [project/406/api/23352](https://yapi.ehsy.com/project/406/interface/api/23352) | 调用接口前获取 token，缓存到本地，设置默认缓存有效期 |
-| 登出接口 | `https://base-oss-test.ehsy.com` | [project/406/api/23370](https://yapi.ehsy.com/project/406/interface/api/23370) | 用户登出时作废 token |
-| 根据名称模糊查询存量有效客户列表 | `https://cac-test.ehsy.com` | [project/509/api/25338](https://yapi.ehsy.com/project/509/interface/api/25338) | 根据公司名称模糊查询前 20 条，按名称长度升序 |
-| 根据公司 id(支持工号)列表查询客户负责人列表 | `https://cac-test.ehsy.com` | [project/509/api/25259](https://yapi.ehsy.com/project/509/interface/api/25259) | 根据公司 id 查询客户负责人列表（支持批量公司 id、批量工号） |
-| 获取菜单树 | `https://base-oss-test.ehsy.com` | [project/406/api/35642](https://yapi.ehsy.com/project/406/interface/api/35642) | 根据系统类型获取对应系统的菜单树 |
-| 根据 token 获取员工信息 | `https://base-oss-test.ehsy.com` | [project/406/api/23358](https://yapi.ehsy.com/project/406/interface/api/23358) | 根据 token 获取员工的用户信息 |
-| 发送企微消息 | `https://crm-api-java-test6.ehsy.com` | [project/557/api/35649](https://yapi.ehsy.com/project/557/interface/api/35649) | 发送消息（企微 + 站内信） |
+| 接口名称 | BaseUrl | YAPI 地址 | 详细文档 | 使用场景 |
+|---|---|---|---|---|
+| 登录鉴权接口 | `https://base-oss-test.ehsy.com` | [project/406/api/23352](https://yapi.ehsy.com/project/406/interface/api/23352) | — | 调用接口前获取 token，缓存到本地，设置默认缓存有效期 |
+| 登出接口 | `https://base-oss-test.ehsy.com` | [project/406/api/23370](https://yapi.ehsy.com/project/406/interface/api/23370) | [23370](../../docs/references/xiyu-to-boran-permission-api-23370-logout.md) | 用户登出时作废 token |
+| 根据名称模糊查询存量有效客户列表 | `https://cac-test.ehsy.com` | [project/509/api/25338](https://yapi.ehsy.com/project/509/interface/api/25338) | [25338](../../docs/references/xiyu-crm-customer-api-25338-getCompanyNameByLikeName.md) ✅ | 根据公司名称模糊查询前 20 条，按名称长度升序；**CO-302 反查路径第一步** |
+| 根据公司 id(支持工号)列表查询客户负责人列表 | `https://cac-test.ehsy.com` | [project/509/api/25259](https://yapi.ehsy.com/project/509/interface/api/25259) | [25259](../../docs/references/xiyu-crm-customer-api-25259-getCustomerManagerListByCompanyId.md) ✅ | 根据公司 id 查询客户负责人列表（支持批量公司 id、批量工号）；**CO-302 反查路径第二步** |
+| 获取菜单树 | `https://base-oss-test.ehsy.com` | [project/406/api/35642](https://yapi.ehsy.com/project/406/interface/api/35642) | — | 根据系统类型获取对应系统的菜单树 |
+| 根据 token 获取员工信息 | `https://base-oss-test.ehsy.com` | [project/406/api/23358](https://yapi.ehsy.com/project/406/interface/api/23358) | [23358](../../docs/references/xiyu-to-boran-permission-api-23358-getUserInfo.md) | 根据 token 获取员工的用户信息 |
+| 发送企微消息 | `https://crm-api-java-test6.ehsy.com` | [project/557/api/35649](https://yapi.ehsy.com/project/557/interface/api/35649) | — | 发送消息（企微 + 站内信） |
+
+### 1.3.1 CO-302 标讯自动分配 CRM 反查路径
+
+> 来源：Linear [CO-302](https://linear.app/ericforai/issue/CO-302/批量录入及第三方平台拉取的标讯实现自动分配) §5.3
+
+针对"第三方平台拉取"和"批量导入"两条路径录入的标讯，系统在入库后异步调 CRM 接口反查客户负责人，自动完成分配。查询路径共两步：
+
+| 顺序 | 接口编号 | 接口路径                                                       | 输入                | 输出                       | 状态      |
+| ---- | -------- | -------------------------------------------------------------- | ------------------- | -------------------------- | --------- |
+| 1    | 25338    | `POST /company/getCompanyNameByLikeName`                       | 招标主体名称         | 公司 id（`dataList[0].id`）| ✅ 文档就绪 |
+| 2    | 25259    | `POST /customerManager/getCustomerManagerListByCompanyId`      | 公司 id             | 客户负责人工号（`saleNo`） | ✅ 文档就绪 |
+
+任一环节查不到 → 视为"未查到"，标讯保持"待分配"，不阻塞流程。
+
+> ⚠️ **现状提示**：CO-302 当前实现（PR !967）走的是商机接口 `/customer-chance/page-list`，未走上述两步路径。如需对齐 issue 5.3 描述，需要按 [25338 文档](../../docs/references/xiyu-crm-customer-api-25338-getCompanyNameByLikeName.md) 中的"CO-302 反查路径中的使用方式"小节进行改造。
 
 ### 1.4 配置项范围（待客户确认）
 
