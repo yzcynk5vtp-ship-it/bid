@@ -1495,3 +1495,43 @@ grep -rn "@Profile" backend/src/main/java/com/xiyu/bid/config/ | grep -i "seed\|
 
 - `docs/lessons/root-cause-analysis-task-board-blank-and-deliverable-dup.md` — 完整根因分析（两个 bug 合并）
 - 提交 6877ffe68（PR #1270）/ 1ae84f831（PR #1271）
+
+---
+
+## 23. 全链路日志排查 SOP（Agent 必读）
+
+### 问题背景
+
+为了解决定位线上缺陷难、Agent 缺少错误上下文（特别是崩溃时的入参丢失）、以及第三方系统报错盲区等问题，系统已引入全链路日志机制（PR #1295）。AI Agent 介入排查 Bug 时，必须严格遵循以下 SOP，大幅缩短定位时间。
+
+### 操作规范（Agent 排查必读）
+
+当你被要求调查 Bug 时，请按以下 4 步查找线索：
+
+1. **抓取 X-Trace-Id 溯源**
+   - **前端异常**：如果问题发生在前端，或者前端直接弹出了报错，去找 `FrontendLogController` 在后端打印的 ERROR 日志，里面会包含前端页面的路由、报错栈以及 `X-Trace-Id`。
+   - 提取出 `X-Trace-Id` 后，以此为关键字，使用 `grep_search` 或命令行 `grep` 检索所有后端日志，即可拿到整个链路的执行情况。
+
+2. **定位崩溃现场（GlobalExceptionHandler）**
+   - 传统的 Exception handler 不打印 Request Body。现在借助 `ContentCachingRequestWrapper`，发生崩溃（如 HTTP 500）时，`GlobalExceptionHandler` 会把引发崩溃的 **HTTP 请求头、请求 URL、Body 以及 Query 参数** 全部输出在 ERROR 级别日志中。
+   - **Agent 动作**：遇到后端报错，首先去看报错时间点对应的 `GlobalExceptionHandler` 输出，立刻获知“前端当时传了什么脏数据过来”。
+
+3. **排除第三方依赖问题（LoggingClientHttpRequestInterceptor）**
+   - 涉及外部系统（如企业微信、大模型接口等）调用时，一旦失败，`RestTemplate` 现在会把发出的原始请求、头部和第三方返回的原始 JSON 全部打印在日志中。
+   - **Agent 动作**：遇到诸如空指针或网络错误，去检查 `LoggingClientHttpRequestInterceptor` 打印的请求响应载荷，确认是自身参数传错，还是第三方系统宕机/返回异常。
+
+4. **禁止乱猜**
+   - 在做出“因为参数没传导致空指针”的推断前，**必须先用上述方法提取真实的请求体负载数据进行佐证**。没有日志证据前，不要盲目改代码。
+
+### 验证命令
+
+```bash
+# 1. 查找崩溃的异常请求现场（能看到入参 Body）
+grep -A 20 "GlobalExceptionHandler" backend/logs/error.log
+
+# 2. 用 Trace ID 顺藤摸瓜
+grep "你的X-Trace-Id" backend/logs/app.log
+
+# 3. 排查外部调用的出入参
+grep -A 15 "LoggingClientHttpRequestInterceptor" backend/logs/app.log
+```
