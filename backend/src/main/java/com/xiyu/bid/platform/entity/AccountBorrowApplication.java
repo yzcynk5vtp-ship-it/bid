@@ -54,6 +54,9 @@ public class AccountBorrowApplication {
     @Column(name = "project_name", length = 200)
     private String projectName;
 
+    @Column(name = "project_id")
+    private Long projectId;
+
     @Column(name = "expected_return_at")
     private LocalDateTime expectedReturnAt;
 
@@ -64,6 +67,9 @@ public class AccountBorrowApplication {
 
     @Column(name = "reject_reason", length = 500)
     private String rejectReason;
+
+    @Column(name = "approval_comment", length = 500)
+    private String approvalComment;
 
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
@@ -89,12 +95,13 @@ public class AccountBorrowApplication {
     }
 
     /** Approve the application. Only valid from PENDING_APPROVAL. */
-    public void approve() {
+    public void approve(String comment) {
         if (status != BorrowStatus.PENDING_APPROVAL) {
             throw new IllegalStateException(
                     "Only PENDING_APPROVAL applications can be approved. Current: " + status);
         }
-        this.status = BorrowStatus.APPROVED;
+        this.status = BorrowStatus.BORROWED;
+        this.approvalComment = comment;
         this.approvedAt = LocalDateTime.now();
     }
 
@@ -118,23 +125,23 @@ public class AccountBorrowApplication {
         this.status = BorrowStatus.CANCELLED;
     }
 
-    /** Mark the account as returned. Only valid from APPROVED. */
-    public void markReturned() {
-        if (status != BorrowStatus.APPROVED) {
+    /** Mark the account as returned. Only valid from BORROWED. */
+    public void markReturned(LocalDateTime actualReturnedAt) {
+        if (status != BorrowStatus.BORROWED) {
             throw new IllegalStateException(
-                    "Only APPROVED applications can be returned. Current: " + status);
+                    "Only BORROWED applications can be returned. Current: " + status);
         }
         this.status = BorrowStatus.RETURNED;
-        this.returnedAt = LocalDateTime.now();
+        this.returnedAt = actualReturnedAt != null ? actualReturnedAt : LocalDateTime.now();
     }
 
     /** Borrow application status enumeration. */
     public enum BorrowStatus {
         PENDING_APPROVAL("待审批"),
-        APPROVED("已通过"),
+        BORROWED("已借出"),
         REJECTED("已拒绝"),
         RETURNED("已归还"),
-        CANCELLED("已取消");
+        CANCELLED("已撤销");
 
         private final String description;
 

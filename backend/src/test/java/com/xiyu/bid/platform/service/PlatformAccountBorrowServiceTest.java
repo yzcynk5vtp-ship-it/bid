@@ -12,6 +12,7 @@ import com.xiyu.bid.platform.entity.PlatformAccount;
 import com.xiyu.bid.platform.entity.PlatformAccount.AccountStatus;
 import com.xiyu.bid.platform.repository.AccountBorrowApplicationRepository;
 import com.xiyu.bid.platform.repository.PlatformAccountRepository;
+import com.xiyu.bid.platform.util.PasswordEncryptionUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,25 +36,28 @@ class PlatformAccountBorrowServiceTest {
     private AccountBorrowApplicationRepository applicationRepository;
     @Mock
     private PlatformAccountRepository accountRepository;
+    @Mock
+    private PasswordEncryptionUtil passwordEncryptionUtil;
 
     private PlatformAccountBorrowService service;
 
     private static final User USER = User.builder().id(10L).build();
+    private static final User CUSTODIAN = User.builder().id(20L).build();
 
     @BeforeEach
     void setUp() {
-        service = new PlatformAccountBorrowService(applicationRepository, accountRepository);
+        service = new PlatformAccountBorrowService(applicationRepository, accountRepository, passwordEncryptionUtil);
     }
 
     @Test
-    @DisplayName("提交借用申请成功 — 账号标记审批中")
+    @DisplayName("提交借用申请成功 — 账号标记审批中并记录 projectId")
     void submitApplication_success() {
-        PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.AVAILABLE).build();
+        PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.AVAILABLE).custodian(20L).build();
         BorrowApplicationRequest req = BorrowApplicationRequest.builder()
-                .accountId(1L).custodianId(20L).purpose("投标使用").build();
+                .accountId(1L).custodianId(20L).purpose("投标使用").projectId(5L).expectedReturnAt("2026-07-10T18:00:00").build();
         AccountBorrowApplication savedApp = AccountBorrowApplication.builder()
                 .id(100L).accountId(1L).applicantId(10L).custodianId(20L).purpose("投标使用")
-                .status(BorrowStatus.PENDING_APPROVAL).build();
+                .projectId(5L).status(BorrowStatus.PENDING_APPROVAL).build();
 
         when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
         when(accountRepository.save(any())).thenReturn(account);
@@ -61,6 +66,7 @@ class PlatformAccountBorrowServiceTest {
         BorrowApplicationDTO result = service.submitApplication(req, USER);
 
         assertThat(result.getId()).isEqualTo(100L);
+        assertThat(result.getProjectId()).isEqualTo(5L);
         assertThat(result.getStatus()).isEqualTo("PENDING_APPROVAL");
         verify(accountRepository, times(1)).save(any());
     }
@@ -77,24 +83,25 @@ class PlatformAccountBorrowServiceTest {
     }
 
     @Test
-    @DisplayName("审批通过申请成功")
+    @DisplayName("审批通过申请成功 — 状态变为已借出并记录审批意见")
     void approveApplication_success() {
         AccountBorrowApplication app = AccountBorrowApplication.builder()
-                .id(100L).status(BorrowStatus.PENDING_APPROVAL).build();
+                .id(100L).custodianId(10L).status(BorrowStatus.PENDING_APPROVAL).build();
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
         when(applicationRepository.save(any())).thenReturn(app);
 
-        BorrowApplicationDTO result = service.approveApplication(100L, USER);
+        BorrowApplicationDTO result = service.approveApplication(100L, "同意", USER);
 
-        assertThat(result.getStatus()).isEqualTo("APPROVED");
+        assertThat(result.getStatus()).isEqualTo("BORROWED");
         assertThat(result.getApprovedAt()).isNotNull();
+        assertThat(result.getApprovalComment()).isEqualTo("同意");
     }
 
     @Test
     @DisplayName("审批不存在的申请抛出异常")
     void approveApplication_notFound_throws() {
         when(applicationRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.approveApplication(99L, USER))
+        assertThatThrownBy(() -> service.approveApplication(99L, null, USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("申请不存在");
     }
@@ -103,7 +110,7 @@ class PlatformAccountBorrowServiceTest {
     @DisplayName("拒绝申请成功 — 填写拒绝原因")
     void rejectApplication_withReason_success() {
         AccountBorrowApplication app = AccountBorrowApplication.builder()
-                .id(100L).accountId(1L).status(BorrowStatus.PENDING_APPROVAL).build();
+                .id(100L).accountId(1L).custodianId(10L).status(BorrowStatus.PENDING_APPROVAL).build();
         PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.PENDING_APPROVAL).build();
 
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
@@ -129,7 +136,7 @@ class PlatformAccountBorrowServiceTest {
     @DisplayName("取消申请成功 — 释放账号")
     void cancelApplication_success() {
         AccountBorrowApplication app = AccountBorrowApplication.builder()
-                .id(100L).accountId(1L).status(BorrowStatus.PENDING_APPROVAL).build();
+                .id(100L).accountId(1L).applicantId(10L).status(BorrowStatus.PENDING_APPROVAL).build();
         PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.PENDING_APPROVAL).build();
 
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
@@ -144,20 +151,25 @@ class PlatformAccountBorrowServiceTest {
     }
 
     @Test
-    @DisplayName("归还账号成功 — 账号状态恢复可用")
+    @DisplayName("归还账号成功 — 账号状态恢复可用且密码被加密更新")
     void returnAccount_success() {
         AccountBorrowApplication app = AccountBorrowApplication.builder()
-                .id(100L).accountId(1L).status(BorrowStatus.APPROVED).build();
-        PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.IN_USE).build();
+                .id(100L).accountId(1L).custodianId(10L).status(BorrowStatus.BORROWED).build();
+        PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.IN_USE).password("oldEncrypted").build();
 
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
         when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(passwordEncryptionUtil.encrypt("newSecret")).thenReturn("encryptedNewSecret");
         when(accountRepository.save(any())).thenReturn(account);
         when(applicationRepository.save(any())).thenReturn(app);
 
-        BorrowApplicationDTO result = service.returnAccount(100L, "newSecret", USER);
+        BorrowApplicationDTO result = service.returnAccount(100L, "newSecret", LocalDateTime.of(2026, 7, 5, 18, 0), USER);
 
         assertThat(result.getStatus()).isEqualTo("RETURNED");
+        assertThat(result.getReturnedAt()).isEqualTo(LocalDateTime.of(2026, 7, 5, 18, 0));
+        assertThat(account.getPassword()).isEqualTo("encryptedNewSecret");
+        verify(passwordEncryptionUtil).encrypt("newSecret");
+        verify(accountRepository).save(account);
     }
 
     @Test
@@ -198,5 +210,43 @@ class PlatformAccountBorrowServiceTest {
         assertThatThrownBy(() -> service.getApplication(99L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("申请不存在");
+    }
+
+    @Test
+    @DisplayName("非绑定联系人审批申请抛出异常")
+    void approveApplication_notCustodian_throws() {
+        AccountBorrowApplication app = AccountBorrowApplication.builder()
+                .id(100L).custodianId(20L).status(BorrowStatus.PENDING_APPROVAL).build();
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> service.approveApplication(100L, null, USER))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("只有账号绑定联系人可以操作该申请");
+    }
+
+    @Test
+    @DisplayName("非申请人撤销申请抛出异常")
+    void cancelApplication_notApplicant_throws() {
+        AccountBorrowApplication app = AccountBorrowApplication.builder()
+                .id(100L).accountId(1L).applicantId(20L).status(BorrowStatus.PENDING_APPROVAL).build();
+        when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
+
+        assertThatThrownBy(() -> service.cancelApplication(100L, USER))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("只有申请人可以撤销该申请");
+    }
+
+    @Test
+    @DisplayName("提交申请时保管员与账号不匹配抛出异常")
+    void submitApplication_custodianMismatch_throws() {
+        PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.AVAILABLE).custodian(99L).build();
+        BorrowApplicationRequest req = BorrowApplicationRequest.builder()
+                .accountId(1L).custodianId(20L).purpose("投标使用").build();
+
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+
+        assertThatThrownBy(() -> service.submitApplication(req, USER))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("保管员信息不匹配");
     }
 }

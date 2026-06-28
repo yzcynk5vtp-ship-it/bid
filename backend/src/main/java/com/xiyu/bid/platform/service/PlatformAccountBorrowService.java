@@ -8,7 +8,6 @@ package com.xiyu.bid.platform.service;
 
 import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.entity.User;
-import com.xiyu.bid.platform.dto.ApproveRequest;
 import com.xiyu.bid.platform.dto.BorrowApplicationDTO;
 import com.xiyu.bid.platform.dto.BorrowApplicationRequest;
 import com.xiyu.bid.platform.entity.AccountBorrowApplication;
@@ -16,6 +15,7 @@ import com.xiyu.bid.platform.entity.AccountBorrowApplication.BorrowStatus;
 import com.xiyu.bid.platform.entity.PlatformAccount;
 import com.xiyu.bid.platform.repository.AccountBorrowApplicationRepository;
 import com.xiyu.bid.platform.repository.PlatformAccountRepository;
+import com.xiyu.bid.platform.util.PasswordEncryptionUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,6 +33,7 @@ public class PlatformAccountBorrowService {
 
     private final AccountBorrowApplicationRepository applicationRepository;
     private final PlatformAccountRepository accountRepository;
+    private final PasswordEncryptionUtil passwordEncryptionUtil;
 
     /** Submit a new borrow application. */
     @Transactional
@@ -42,6 +43,11 @@ public class PlatformAccountBorrowService {
             BorrowApplicationRequest request, User currentUser) {
         PlatformAccount account = accountRepository.findById(request.getAccountId())
                 .orElseThrow(() -> new IllegalArgumentException("账号不存在: " + request.getAccountId()));
+
+        if (request.getCustodianId() == null
+                || !request.getCustodianId().equals(account.getCustodian())) {
+            throw new IllegalArgumentException("保管员信息不匹配");
+        }
 
         // Reserve the account by marking it PENDING_APPROVAL
         account.markPendingApproval();
@@ -57,6 +63,7 @@ public class PlatformAccountBorrowService {
                 .custodianId(request.getCustodianId())
                 .purpose(request.getPurpose())
                 .projectName(request.getProjectName())
+                .projectId(request.getProjectId())
                 .expectedReturnAt(expectedReturnAt)
                 .status(BorrowStatus.PENDING_APPROVAL)
                 .build();
@@ -71,11 +78,12 @@ public class PlatformAccountBorrowService {
     @Transactional
     @Auditable(action = "APPROVE_BORROW", entityType = "AccountBorrowApplication",
               description = "Approved borrow application")
-    public BorrowApplicationDTO approveApplication(Long applicationId, User currentUser) {
+    public BorrowApplicationDTO approveApplication(Long applicationId, String comment, User currentUser) {
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
 
-        app.approve();
+        requireCustodian(app, currentUser);
+        app.approve(comment);
         AccountBorrowApplication saved = applicationRepository.save(app);
         log.info("Borrow application {} approved by user {}", applicationId, currentUser.getId());
         return toDTO(saved);
@@ -94,6 +102,7 @@ public class PlatformAccountBorrowService {
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
 
+        requireCustodian(app, currentUser);
         app.reject(reason);
         AccountBorrowApplication saved = applicationRepository.save(app);
 
@@ -113,6 +122,7 @@ public class PlatformAccountBorrowService {
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
 
+        requireApplicant(app, currentUser);
         app.cancel();
         AccountBorrowApplication saved = applicationRepository.save(app);
 
@@ -123,27 +133,31 @@ public class PlatformAccountBorrowService {
         return toDTO(saved);
     }
 
-    /** Return account and update password (delegates password change to IJTGJK). */
+    /** Return account and update password. */
     @Transactional
     @Auditable(action = "RETURN_BORROW", entityType = "AccountBorrowApplication",
               description = "Returned borrowed account")
     public BorrowApplicationDTO returnAccount(
-            Long applicationId, String newPassword, User currentUser) {
+            Long applicationId, String newPassword, LocalDateTime actualReturnedAt, User currentUser) {
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new IllegalArgumentException("新密码长度不能少于6位");
+        }
+
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
 
-        app.markReturned();
+        requireCustodian(app, currentUser);
+        app.markReturned(actualReturnedAt);
         AccountBorrowApplication saved = applicationRepository.save(app);
 
         // Return the account to pool and update password
         PlatformAccount account = accountRepository.findById(saved.getAccountId())
                 .orElseThrow(() -> new IllegalArgumentException("账号不存在: " + saved.getAccountId()));
         account.returnToPool();
-        // XXX: IJTGJK agent will wire password change here
-        // account.setPassword(passwordEncryptionUtil.encrypt(newPassword));
+        account.setPassword(passwordEncryptionUtil.encrypt(newPassword));
         accountRepository.save(account);
 
-        log.info("Borrow application {} returned by user {}", applicationId, currentUser.getId());
+        log.info("Borrow application {} returned by user {} (password updated)", applicationId, currentUser.getId());
         return toDTO(saved);
     }
 
@@ -180,9 +194,11 @@ public class PlatformAccountBorrowService {
                 .custodianId(app.getCustodianId())
                 .purpose(app.getPurpose())
                 .projectName(app.getProjectName())
+                .projectId(app.getProjectId())
                 .expectedReturnAt(app.getExpectedReturnAt())
                 .status(app.getStatus().name())
                 .rejectReason(app.getRejectReason())
+                .approvalComment(app.getApprovalComment())
                 .approvedAt(app.getApprovedAt())
                 .returnedAt(app.getReturnedAt())
                 .createdAt(app.getCreatedAt())
@@ -195,5 +211,17 @@ public class PlatformAccountBorrowService {
             account.returnToPool();
             accountRepository.save(account);
         });
+    }
+
+    private void requireCustodian(AccountBorrowApplication app, User currentUser) {
+        if (currentUser == null || !currentUser.getId().equals(app.getCustodianId())) {
+            throw new IllegalStateException("只有账号绑定联系人可以操作该申请");
+        }
+    }
+
+    private void requireApplicant(AccountBorrowApplication app, User currentUser) {
+        if (currentUser == null || !currentUser.getId().equals(app.getApplicantId())) {
+            throw new IllegalStateException("只有申请人可以撤销该申请");
+        }
     }
 }

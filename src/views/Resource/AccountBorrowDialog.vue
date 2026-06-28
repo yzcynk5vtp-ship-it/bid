@@ -33,15 +33,12 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { projectsApi, resourcesApi } from '@/api'
-import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   account: { type: Object, default: null }
 })
 const emit = defineEmits(['update:modelValue', 'submitted'])
-
-const userStore = useUserStore()
 
 const visible = computed({
   get: () => props.modelValue,
@@ -66,18 +63,26 @@ watch(() => props.account, async (acc) => {
   }
 })
 
+const formatDate = (value) => {
+  if (!value) return undefined
+  const d = value instanceof Date ? value : new Date(value)
+  if (isNaN(d.getTime())) return undefined
+  return d.toISOString()
+}
+
 const submit = async () => {
   if (!form.value.purpose.trim()) { ElMessage.warning('请填写使用目的'); return }
   if (!form.value.returnDate) { ElMessage.warning('请选择预计归还日期'); return }
   if (!props.account) return
 
+  const custodianId = props.account.raw?.custodian ?? props.account.custodian
   const payload = {
-    borrowedBy: Number(userStore.currentUser?.id || 0),
+    custodianId: Number(custodianId) || undefined,
     purpose: form.value.purpose.trim(),
     projectId: form.value.projectId,
-    expectedReturnDate: form.value.returnDate
+    expectedReturnAt: formatDate(form.value.returnDate)
   }
-  const res = await resourcesApi.accounts.borrow(props.account.id, payload)
+  const res = await resourcesApi.accounts.submitBorrowApplication(props.account.id, payload)
   if (!res?.success) {
     ElMessage.error(res?.msg || '申请提交失败'); return
   }

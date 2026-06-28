@@ -15,7 +15,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class BorrowApplicationRequest {
 
-    @NotNull(message = "账号ID不能为空")
     private Long accountId;
 
     @NotNull(message = "保管员ID不能为空")
@@ -27,6 +26,8 @@ public class BorrowApplicationRequest {
 
     @Size(max = 200, message = "项目名称不能超过200字")
     private String projectName;
+
+    private Long projectId;
 
     private String expectedReturnAt;
 }

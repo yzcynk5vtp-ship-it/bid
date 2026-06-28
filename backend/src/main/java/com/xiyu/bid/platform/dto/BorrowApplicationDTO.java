@@ -20,9 +20,11 @@ public class BorrowApplicationDTO {
     private Long custodianId;
     private String purpose;
     private String projectName;
+    private Long projectId;
     private LocalDateTime expectedReturnAt;
     private String status;
     private String rejectReason;
+    private String approvalComment;
     private LocalDateTime approvedAt;
     private LocalDateTime returnedAt;
     private LocalDateTime createdAt;

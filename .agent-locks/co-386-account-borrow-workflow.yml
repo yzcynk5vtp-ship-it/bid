@@ -1,0 +1,15 @@
+version: 1
+task: "co-386-account-borrow-workflow"
+locks:
+  - path: "backend/src/main/resources/db/migration-mysql/V1107__account_borrow_application_project_and_comment.sql"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/kimi/co-386-account-borrow-workflow"
+    expiresAt: "2026-06-29T14:44:55.141Z"
+    reason: "CO-386 Flyway migration V1107 for account borrow workflow"
+  - path: "backend/src/main/resources/db/rollback/migration-mysql/U1107__account_borrow_application_project_and_comment.sql"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/kimi/co-386-account-borrow-workflow"
+    expiresAt: "2026-06-29T14:44:55.297Z"
+    reason: "CO-386 Flyway rollback U1107 for account borrow workflow"
