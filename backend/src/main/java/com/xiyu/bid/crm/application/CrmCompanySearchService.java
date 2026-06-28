@@ -18,6 +18,9 @@ import java.util.Optional;
  * <p>对应接口 25338 {@code POST /company/getCompanyNameByLikeName}：
  * 按公司名称模糊查询前 20 条，按名称长度升序返回。
  *
+ * <p><b>Host 注意</b>：该接口部署在 CAC 服务（{@code cacBaseUrl}）上，
+ * 不是 {@code customerBaseUrl}。详见 {@link CrmProperties#getEffectiveCacBaseUrl()}。
+ *
  * <p>CO-302 issue 5.3 要求"精确匹配优先"：取返回列表中第一条与输入名称
  * <strong>完全相等</strong>的结果；若无精确匹配则视为"未查到"。
  *
@@ -60,7 +63,7 @@ public class CrmCompanySearchService {
 
         try {
             CrmResponseHandler.CrmApiResponse response = httpClient.post(
-                    properties.getEffectiveCustomerBaseUrl(),
+                    properties.getEffectiveCacBaseUrl(),
                     path,
                     authService.getValidToken(),
                     request

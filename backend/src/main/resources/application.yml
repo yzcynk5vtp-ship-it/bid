@@ -83,6 +83,8 @@ app:
     message-base-url: ${XIYU_CRM_MESSAGE_BASE_URL:}
     chance-base-url: ${XIYU_CRM_CHANCE_BASE_URL:}
     contact-person-base-url: ${XIYU_CRM_CONTACT_PERSON_BASE_URL:}
+    # CO-302 反查路径接口 25338/25259 部署在 CAC 服务上，与商机/客户接口不同 host
+    cac-base-url: ${XIYU_CRM_CAC_BASE_URL:}
     client-id: ${XIYU_CRM_CLIENT_ID:}
     client-secret: ${XIYU_CRM_CLIENT_SECRET:}
     oauth-username: ${XIYU_CRM_OAUTH_USERNAME:}
