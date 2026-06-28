@@ -34,7 +34,7 @@
         <div class="upload-tip">支持 PDF、Word、Excel、图片等格式</div>
         <template #file="{ file }">
           <div class="bid-file-row">
-            <a href="javascript:void(0)" class="upload-file-link" @click.prevent="handleDownloadBidFile(file)">{{ file.name }}</a>
+            <a href="javascript:void(0)" class="upload-file-link" :class="{ 'is-readonly': !canDownloadBidFile }" @click.prevent="handleDownloadBidFile(file)">{{ file.name }}</a>
             <el-button
               v-if="!bidDone && perm.canManageBidFiles"
               link
@@ -144,7 +144,12 @@ const perm = reactive(useProjectDraftingPermissions({
   reviewerId: bidReviewerId,
 }))
 
-const props = defineProps({ projectId: { type: [String, Number], required: true } })
+const props = defineProps({
+  projectId: { type: [String, Number], required: true },
+  // CO-381: 项目当前阶段（来自 ProjectDetailMainColumn 的 currentProjectStage）。
+  // 用于投标文件下载守卫：仅 DRAFTING 阶段允许下载，进入下一阶段后只读。
+  currentStage: { type: String, default: '' },
+})
 const emit = defineEmits(['advanced', 'switch-tab'])
 // CO-378: 项目文档打包导出（ProjectDocumentTable 的「导出」按钮 @export 事件）
 const { exportDocumentsAsZip } = useProjectDocumentsExport(props.projectId)
@@ -184,7 +189,14 @@ const isCurrentUserReviewer = computed(() => {
 })
 const uploadUrl = computed(() => getApiUrl(`/api/projects/${props.projectId}/documents`))
 const uploadHeaders = computed(() => { const t = userStore?.token; return t ? { Authorization: 'Bearer ' + t } : {} })
-function handleDownloadBidFile(file) { const id = file.response?.data?.id; if (!id) return ElMessage.warning('文件信息缺失，无法下载'); downloadWithFilename(`/api/projects/${props.projectId}/documents/${id}/download`, file.name || '投标文件') }
+// CO-381: 投标文件下载守卫——仅当项目仍处于 DRAFTING 阶段（含 submit-review 的 REVIEWING 子状态）
+// 且当前用户有下载权限时允许下载。推进到 EVALUATING/CLOSED 等后续阶段后，文件名可见但下载禁用。
+const canDownloadBidFile = computed(() => perm.canDownloadDocument && props.currentStage === 'DRAFTING')
+function handleDownloadBidFile(file) {
+  // CO-381: 阶段守卫 + 权限守卫。前端守卫是体验层，后端 ProjectDocumentDownloadService 还有深度防御。
+  if (!canDownloadBidFile.value) return
+  const id = file.response?.data?.id; if (!id) return ElMessage.warning('文件信息缺失，无法下载'); downloadWithFilename(`/api/projects/${props.projectId}/documents/${id}/download`, file.name || '投标文件')
+}
 const qualityCheckRef = ref(null)
 
 watch(() => ctx.bidDocQualityResult?.value, (val) => {

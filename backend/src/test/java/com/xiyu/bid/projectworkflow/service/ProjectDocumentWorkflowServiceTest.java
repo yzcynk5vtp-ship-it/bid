@@ -1,8 +1,11 @@
 package com.xiyu.bid.projectworkflow.service;
 
 import com.xiyu.bid.entity.Project;
+import com.xiyu.bid.exception.BusinessException;
 import com.xiyu.bid.matrixcollaboration.repository.ProjectMemberRepository;
+import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.project.service.ProjectStageService;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentCreateRequest;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentDTO;
 import com.xiyu.bid.projectworkflow.dto.ProjectDocumentDownloadFile;
@@ -43,6 +46,7 @@ class ProjectDocumentWorkflowServiceTest {
     private CurrentUserResolver currentUserResolver;
     private ProjectLeadAssignmentRepository projectLeadAssignmentRepository;
     private com.xiyu.bid.project.repository.BidDocumentReviewRepository bidDocumentReviewRepository;
+    private ProjectStageService projectStageService;
 
     @BeforeEach
     void setUp() {
@@ -57,6 +61,7 @@ class ProjectDocumentWorkflowServiceTest {
         projectLeadAssignmentRepository = mock(ProjectLeadAssignmentRepository.class);
         currentUserResolver = mock(CurrentUserResolver.class);
         bidDocumentReviewRepository = mock(com.xiyu.bid.project.repository.BidDocumentReviewRepository.class);
+        projectStageService = mock(ProjectStageService.class);
 
         ProjectWorkflowGuardService guardService = new ProjectWorkflowGuardService(
                 projectRepository,
@@ -77,7 +82,7 @@ class ProjectDocumentWorkflowServiceTest {
                 currentUserResolver,
                 bidDocumentReviewRepository
         );
-        downloadService = new ProjectDocumentDownloadService(guardService, fileStorage);
+        downloadService = new ProjectDocumentDownloadService(guardService, fileStorage, projectStageService);
 
         when(projectRepository.findById(1001L)).thenReturn(Optional.of(Project.builder().id(1001L).status(Project.Status.BIDDING).build()));
         // CO-375：终态项目（WON）也允许上传/创建文档（复盘阶段需要）
@@ -322,6 +327,135 @@ class ProjectDocumentWorkflowServiceTest {
         verify(projectDocumentRepository, org.mockito.Mockito.never()).delete(any());
 
         org.springframework.security.core.context.SecurityContextHolder.clearContext();
+    }
+
+    // ============ CO-381: 投标文件阶段只读守卫 ============
+    // 需求：BID_DOCUMENT 类型在 DRAFTING 阶段可下载；推进到 EVALUATING/CLOSED 等后续阶段后只读不可下载。
+    // 非本任务影响的其他类型文档（如 BID_RESULT_NOTICE/RETROSPECTIVE_REPORT）不受阶段守卫影响。
+
+    @Test
+    void getProjectDocumentFile_BidDocument_inDraftingStage_succeeds() throws Exception {
+        // 场景：标书制作阶段，投标负责人/审核人下载投标文件
+        ProjectDocument doc = ProjectDocument.builder()
+                .id(3101L)
+                .projectId(1001L)
+                .name("投标文件.pdf")
+                .fileType("pdf")
+                .fileUrl("doc-insight://bid/file.pdf")
+                .documentCategory("BID_DOCUMENT")
+                .build();
+        when(projectDocumentRepository.findById(3101L)).thenReturn(Optional.of(doc));
+        when(projectStageService.currentStage(1001L)).thenReturn(ProjectStage.DRAFTING);
+        when(fileStorage.load("doc-insight://bid/file.pdf"))
+                .thenReturn(Optional.of(new LoadedProjectDocumentFile(
+                        "doc-insight://bid/file.pdf",
+                        null,
+                        "application/pdf",
+                        "投标内容".getBytes(StandardCharsets.UTF_8)
+                )));
+
+        ProjectDocumentDownloadFile file = downloadService.getProjectDocumentFile(1001L, 3101L);
+
+        assertThat(file.fileName()).isEqualTo("投标文件.pdf");
+        assertThat(file.resource().getContentAsByteArray()).isEqualTo("投标内容".getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void getProjectDocumentFile_BidDocument_inEvaluatingStage_throwsBusinessException() {
+        // 场景：项目已推进到评标阶段，回到 DRAFTING tab 想下载投标文件 → 拒绝
+        ProjectDocument doc = ProjectDocument.builder()
+                .id(3102L)
+                .projectId(1001L)
+                .name("投标文件.pdf")
+                .fileUrl("doc-insight://bid/file.pdf")
+                .documentCategory("BID_DOCUMENT")
+                .build();
+        when(projectDocumentRepository.findById(3102L)).thenReturn(Optional.of(doc));
+        when(projectStageService.currentStage(1001L)).thenReturn(ProjectStage.EVALUATING);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        downloadService.getProjectDocumentFile(1001L, 3102L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 409)
+                .hasMessageContaining("投标文件")
+                .hasMessageContaining("只读");
+
+        verify(fileStorage, org.mockito.Mockito.never()).load(any());
+    }
+
+    @Test
+    void getProjectDocumentFile_BidDocument_inClosedStage_throwsBusinessException() {
+        // 场景：项目已结项，回到 DRAFTING tab 想下载投标文件 → 拒绝
+        ProjectDocument doc = ProjectDocument.builder()
+                .id(3103L)
+                .projectId(1001L)
+                .name("投标文件.pdf")
+                .fileUrl("doc-insight://bid/file.pdf")
+                .documentCategory("BID_DOCUMENT")
+                .build();
+        when(projectDocumentRepository.findById(3103L)).thenReturn(Optional.of(doc));
+        when(projectStageService.currentStage(1001L)).thenReturn(ProjectStage.CLOSED);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                        downloadService.getProjectDocumentFile(1001L, 3103L))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("code", 409);
+
+        verify(fileStorage, org.mockito.Mockito.never()).load(any());
+    }
+
+    @Test
+    void getProjectDocumentFile_nonBidDocument_inEvaluatingStage_succeeds() throws Exception {
+        // 守卫只针对 BID_DOCUMENT，其他类型文档（如中标通知书/复盘报告）在任意阶段都能下载
+        ProjectDocument doc = ProjectDocument.builder()
+                .id(3104L)
+                .projectId(1001L)
+                .name("中标通知书.pdf")
+                .fileType("pdf")
+                .fileUrl("doc-insight://result/notice.pdf")
+                .documentCategory("BID_RESULT_NOTICE")
+                .build();
+        when(projectDocumentRepository.findById(3104L)).thenReturn(Optional.of(doc));
+        // 不需要 stub projectStageService.currentStage，因为非 BID_DOCUMENT 不会调用
+        when(fileStorage.load("doc-insight://result/notice.pdf"))
+                .thenReturn(Optional.of(new LoadedProjectDocumentFile(
+                        "doc-insight://result/notice.pdf",
+                        null,
+                        "application/pdf",
+                        "中标".getBytes(StandardCharsets.UTF_8)
+                )));
+
+        ProjectDocumentDownloadFile file = downloadService.getProjectDocumentFile(1001L, 3104L);
+
+        assertThat(file.fileName()).isEqualTo("中标通知书.pdf");
+        verify(projectStageService, org.mockito.Mockito.never()).currentStage(any());
+    }
+
+    @Test
+    void getProjectDocumentFile_BidDocument_inDraftingStage_reviewingState_succeeds() throws Exception {
+        // 场景：DRAFTING 阶段已 submit-review 进入 REVIEWING 子状态，标书审核人下载投标文件 → 允许
+        // （阶段仍是 DRAFTING，submit-review 不推进阶段）
+        ProjectDocument doc = ProjectDocument.builder()
+                .id(3105L)
+                .projectId(1001L)
+                .name("投标文件.pdf")
+                .fileType("pdf")
+                .fileUrl("doc-insight://bid/file.pdf")
+                .documentCategory("BID_DOCUMENT")
+                .build();
+        when(projectDocumentRepository.findById(3105L)).thenReturn(Optional.of(doc));
+        when(projectStageService.currentStage(1001L)).thenReturn(ProjectStage.DRAFTING);
+        when(fileStorage.load("doc-insight://bid/file.pdf"))
+                .thenReturn(Optional.of(new LoadedProjectDocumentFile(
+                        "doc-insight://bid/file.pdf",
+                        null,
+                        "application/pdf",
+                        "投标内容".getBytes(StandardCharsets.UTF_8)
+                )));
+
+        ProjectDocumentDownloadFile file = downloadService.getProjectDocumentFile(1001L, 3105L);
+
+        assertThat(file.fileName()).isEqualTo("投标文件.pdf");
     }
 
 }
