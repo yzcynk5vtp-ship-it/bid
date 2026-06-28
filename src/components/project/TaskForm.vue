@@ -28,7 +28,18 @@
               @preview="file => emit('attachment-preview', file)"
             >
               <el-button :icon="Upload">添加附件</el-button>
-              <template #file="{ file }"><a href="javascript:void(0)" class="upload-file-link" data-test="task-attachment-file-link" @click.prevent="handleDownloadAttachment(file)">{{ file.name }}</a></template>
+              <template #file="{ file }">
+                <div class="task-attachment-file-row">
+                  <a href="javascript:void(0)" class="upload-file-link" data-test="task-attachment-file-link" @click.prevent="handleDownloadAttachment(file)">{{ file.name }}</a>
+                  <el-button
+                    data-test="task-attachment-remove"
+                    link
+                    type="danger"
+                    size="small"
+                    @click.prevent="removeAttachment(file)"
+                  >删除</el-button>
+                </div>
+              </template>
             </el-upload>
             <div v-if="readonly && savedAttachments.length" class="attachment-list" data-test="task-attachment-list">
               <a
@@ -347,6 +358,12 @@ function handleAttachmentRemove(_file, fileList = []) {
   localValue.attachments = normalizeUploadFiles(fileList)
 }
 
+function removeAttachment(file) {
+  const raw = file?.raw
+  if (!raw) return
+  localValue.attachments = localValue.attachments.filter((item) => item !== raw)
+}
+
 function submit() {
   const msg = validate()
   if (msg) return { valid: false, message: msg }
@@ -375,6 +392,7 @@ defineExpose({ submit, submitForReview, validate, canDeliver })
 
 <style scoped>
 .task-form { width: 100%; }
+.task-attachment-file-row { display: flex; align-items: center; gap: 8px; }
 .deliverable-list { margin-top: 8px; }
 .deliverable-link { display: block; color: #409eff; text-decoration: none; margin-bottom: 4px; }
 .deliverable-link:hover { text-decoration: underline; }
