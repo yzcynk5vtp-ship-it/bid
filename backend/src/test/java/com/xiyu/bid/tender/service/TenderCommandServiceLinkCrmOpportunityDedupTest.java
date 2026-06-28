@@ -79,7 +79,8 @@ class TenderCommandServiceLinkCrmOpportunityDedupTest {
                 null,                  // CO-310: TenderEvaluationBackfillService（本测试不涉及回填）
                 null,                  // ProjectManagerIdResolver
                 assignmentRecordRepository, // CO-310: 写 assignee record
-                tenderAuditService);       // TenderAuditService
+                tenderAuditService,    // TenderAuditService
+                null);                 // TransactionTemplate（本测试不涉及 createTender）
     }
 
     @Test

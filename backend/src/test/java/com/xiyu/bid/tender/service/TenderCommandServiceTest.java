@@ -32,6 +32,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.springframework.transaction.support.TransactionTemplate;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -74,6 +76,8 @@ class TenderCommandServiceTest {
     private TenderAuditService tenderAuditService;
     @Mock
     private ProjectManagerIdResolver projectManagerIdResolver;
+    @Mock
+    private TransactionTemplate transactionTemplate;
 
     private TenderCommandService tenderCommandService;
     private TenderMapper tenderMapper;
@@ -95,7 +99,8 @@ class TenderCommandServiceTest {
                 null, // CO-310: TenderEvaluationBackfillService（本测试不涉及回填）
                 projectManagerIdResolver,
                 tenderAssignmentRecordRepository,
-                tenderAuditService);
+                tenderAuditService,
+                transactionTemplate);
 
         tender = Tender.builder()
                 .id(1L)
