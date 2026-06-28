@@ -1440,3 +1440,58 @@ sudo journalctl -u xiyu-bid-backend --since "10 minutes ago" --no-pager | grep "
 - `backend/src/main/java/com/xiyu/bid/integration/organization/infrastructure/sdk/OrganizationEventSdkKafkaStarter.java` — 问题代码
 - `backend/src/main/resources/application-prod.yml` — readiness 组配置（`include: readinessState,db`）
 - Spring Boot 文档：[Application Availability](https://docs.spring.io/spring-boot/docs/3.2.0/reference/htmlsingle/#features.spring-application.application-availability)
+
+---
+
+## 22. 外部诊断根因必须复核 + baseline-on-migrate 静默跳过 + UI 数据源互斥
+
+> 日期: 2026-06-28
+> 来源: CO-361 看板空白（PR #1270）/ 交付物重复渲染（PR #1271）
+> 排查者: zcode agent
+
+### 问题背景
+
+本次会话连续修了两个独立 bug，共同暴露了三个工程盲区：
+
+**Bug A — Dev 环境任务看板空白**：dev profile 启动后看板无列无卡片。根因是 `V101__task_status_dict.sql` 因版本号 101 低于 Flyway `baseline-version: 1050`（`baseline-on-migrate: true` 模式下低于 baseline 的迁移静默跳过），从未在 dev/prod 执行；表结构由 JPA ddl-auto 建出但无种子数据；唯一 seed 来源 `E2eDemoDataInitializer.seedTaskStatuses()` 又被 `@Profile("e2e")` 锁死，dev 不跑 → `task_status_dict` 永远空 → `/api/task-status-dict` 返回 `[]` → `columns=[]` → 看板空白。
+
+**Bug B — 交付物重复渲染**：只读模式下同一份已保存交付物同时出现在 `el-upload` 禁用条目（不可下载）和 `.deliverable-list` 可下载链接里。根因是 `useTaskDeliveryForm.rebuildFileList()` 把已保存 `deliverables` 也塞进了 `el-upload` 的 `file-list`，导致同一数据被两个 UI 容器同时消费。
+
+### 经验教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 外部诊断报告称根因为"V1223 三态收口"，但 V1223 不存在（迁移最大 V1105） | 任何"别人给的根因"都是假设，必须回到代码与机器真相复核 | 拿到诊断报告后，第一步是用 `grep`/文件列表验证报告中引用的迁移版本号、文件名是否真实存在 |
+| `baseline-on-migrate: true` + `baseline-version: 1050` 让 `V101` 静默跳过，无报错无告警 | "迁移文件存在" ≠ "已执行"，低于 baseline 的脚本只是历史档案 | 凡是依赖某迁移脚本灌入种子的功能，必须在 PR 中验证该脚本版本号 > baseline，或确认有 ApplicationRunner 兜底 |
+| `@Profile("e2e")` 把唯一 seed 来源锁死，dev profile 无数据 | profile 限定 + 唯一数据源 = 隐形空表 | 一个数据源被 `@Profile` 限定时，必须问"其他 profile 从哪获取这份数据"，答案为"没有"即潜在空表 |
+| 已保存交付物同时被 `el-upload` file-list 和 `.deliverable-list` 渲染 | UI 容器的数据源必须互斥，一个数据只能有一个"渲染责任人" | 已保存数据走展示容器（可下载链接），待上传数据走上传容器（el-upload），不可混用 file-list |
+
+### 操作规范（建议固化到 ARCHITECTURE.md / FRONTEND.md）
+
+1. **拿到外部诊断报告先复核**：报告中引用的迁移版本号、文件名、行号，必须用 `grep`/`ls` 自己验证一遍再动手修。
+2. **Flyway baseline 排查清单**：依赖某迁移脚本种子的功能，启动后若数据为空，先查 `flyway_schema_history` 表确认该版本是否真的执行过，而不是假设"文件在就跑过"。
+3. **@Profile 数据源审查**：新增 `@Profile` 限定的 seed/初始化逻辑时，必须在 PR 描述中列出"其他 profile 如何获取这份数据"，缺失即技术债登记。
+4. **UI 数据源互斥原则**：同一份数据只能由一个容器负责渲染。已保存数据与待上传数据必须走不同容器，禁止共用 `file-list`。
+
+### 验证命令
+
+```bash
+# 1. 验证诊断报告引用的迁移版本号是否真实存在
+ls backend/src/main/resources/db/migration-mysql/ | grep -E "V1223|V101"
+# V1223 应无输出（不存在）；V101 应存在
+
+# 2. 查 Flyway baseline 配置
+grep -n "baseline" backend/src/main/resources/application-mysql.yml
+# 确认 baseline-version，判断哪些迁移会被静默跳过
+
+# 3. 查表是否真的有种子数据
+mysql -e "SELECT COUNT(*) FROM xiyu_bid_main.task_status_dict"
+
+# 4. 检查 @Profile 限定的 seed 是否有 dev/prod 兜底
+grep -rn "@Profile" backend/src/main/java/com/xiyu/bid/config/ | grep -i "seed\|init"
+```
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-task-board-blank-and-deliverable-dup.md` — 完整根因分析（两个 bug 合并）
+- 提交 6877ffe68（PR #1270）/ 1ae84f831（PR #1271）
