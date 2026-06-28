@@ -137,7 +137,7 @@ const globalStubs = {
     name: 'ElUpload',
     props: ['fileList', 'autoUpload', 'disabled', 'accept'],
     emits: ['change', 'remove', 'preview'],
-    template: '<div class="el-upload-stub" data-test="task-attachment-upload"><slot /><slot name="tip" /><div class="el-upload-list" v-for="f in fileList" :key="f.name"><slot name="file" :file="f">{{ f.name }}</slot></div></div>',
+    template: '<div class="el-upload-stub" data-test="task-attachment-upload"><slot /><slot name="tip" /><div class="el-upload-list" v-for="(f, i) in fileList" :key="f.name"><slot name="file" :file="f" :index="i">{{ f.name }}</slot></div></div>',
   },
   TaskActivityPanel: {
     name: 'TaskActivityPanel',
@@ -217,6 +217,26 @@ describe('TaskForm', () => {
     expect(wrapper.text()).toContain('任务附件')
     expect(r.valid).toBe(true)
     expect(r.data.attachments).toEqual([file])
+  })
+
+  it('allows removing unsaved task attachments before save', async () => {
+    const wrapper = mount(TaskForm, {
+      props: { mode: 'create', modelValue: { name: 'X' } },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    const file = new File(['附件内容'], '任务附件.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+
+    await wrapper.findComponent({ name: 'ElUpload' }).vm.$emit('change', { raw: file, name: file.name }, [{ raw: file, name: file.name }])
+    expect(wrapper.text()).toContain('任务附件.docx')
+
+    const removeBtn = wrapper.find('[data-test="task-attachment-remove"]')
+    expect(removeBtn.exists()).toBe(true)
+    await removeBtn.trigger('click')
+
+    const r = wrapper.vm.submit()
+    expect(r.valid).toBe(true)
+    expect(r.data.attachments).toEqual([])
   })
 
   it('view mode does not render el-upload for task attachments, uses independent links', async () => {
