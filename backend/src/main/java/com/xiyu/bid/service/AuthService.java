@@ -187,7 +187,12 @@ public class AuthService {
 
     @Transactional
     public void logout(String accessToken, String refreshToken) {
-        invalidateOssCache(accessToken);
+        // 注意：登出不清 OSS 权限缓存。
+        // CO-362 把权限缓存迁到 Redis 持久化（解决后端重启全量 403），登出若再 invalidate
+        // 会把 Redis key 一并删除，导致用户重新登录前用未过期的 JWT 访问时 cache miss →
+        // fail-closed → 看板空。权限缓存是 OSS 实时数据快照，登出不改变用户实际权限，
+        // 下次登录时 OssLoginFlowService 会 put 覆盖刷新。登出的安全由 revokeAccessToken +
+        // 撤销 refresh session 保证（旧 token 即时失效）。
         revokeAccessToken(accessToken);
         if (refreshToken == null || refreshToken.isBlank()) return;
         refreshSessionRepository.findByTokenHash(hashToken(refreshToken))
@@ -197,14 +202,6 @@ public class AuthService {
                     refreshSessionRepository.save(session);
                     log.info("Refresh session revoked for user: {}", session.getUser().getUsername());
                 });
-    }
-
-    private void invalidateOssCache(String accessToken) {
-        if (accessToken == null || accessToken.isBlank()) return;
-        try {
-            String u = jwtUtil.extractUsername(accessToken);
-            if (u != null && !u.isBlank()) ossPermissionCache.invalidate(u);
-        } catch (RuntimeException ignored) { }
     }
 
     @Transactional

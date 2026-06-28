@@ -35,6 +35,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 
@@ -199,6 +200,36 @@ class AuthServiceTest {
         authService.logout("legacy-token", null);
 
         verify(tokenRevocationService, never()).revoke(any(), any());
+    }
+
+    /**
+     * CO-361 回归根因：logout 不应清 OSS 权限缓存。
+     * <p>
+     * 历史 bug：logout 调用 invalidateOssCache → ossPermissionCache.invalidate(username)
+     * → 删除 Redis 里的 oss:perm:&lt;username&gt;。CO-362 把缓存迁到 Redis 持久化后，
+     * 登出即丢缓存，用户重新登录前用未过期 JWT 访问会 cache miss → fail-closed → 看板空。
+     * <p>
+     * 修复：logout 只撤销 token + refresh session，不清权限缓存。下次登录时
+     * OssLoginFlowService.put() 会覆盖刷新。
+     */
+    @Test
+    void logout_ShouldNotInvalidateOssPermissionCache() {
+        RefreshSession session = RefreshSession.builder()
+                .user(buildUser())
+                .tokenHash("existing-hash")
+                .expiresAt(LocalDateTime.now().plusHours(1))
+                .build();
+        when(refreshSessionRepository.findByTokenHash(any())).thenReturn(Optional.of(session));
+        when(jwtUtil.extractJti("access-jwt-co361")).thenReturn(Optional.of("jti-co361"));
+        when(jwtUtil.extractExpirationInstant("access-jwt-co361")).thenReturn(Optional.of(Instant.now().plusSeconds(3600)));
+
+        authService.logout("access-jwt-co361", "raw-refresh-token");
+
+        // 关键断言：logout 不得清 OSS 权限缓存
+        verify(ossPermissionCache, never()).invalidate(any());
+        // 但仍应撤销 token 和 refresh session
+        verify(tokenRevocationService).revoke(eq("jti-co361"), any());
+        verify(refreshSessionRepository).save(session);
     }
 
     @Test
