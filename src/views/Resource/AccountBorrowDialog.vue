@@ -33,6 +33,7 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { projectsApi, resourcesApi } from '@/api'
+import { formatLocalDateTime } from '@/utils/formatDateTime'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -63,12 +64,7 @@ watch(() => props.account, async (acc) => {
   }
 })
 
-const formatDate = (value) => {
-  if (!value) return undefined
-  const d = value instanceof Date ? value : new Date(value)
-  if (isNaN(d.getTime())) return undefined
-  return d.toISOString()
-}
+const formatDate = formatLocalDateTime
 
 const submit = async () => {
   if (!form.value.purpose.trim()) { ElMessage.warning('请填写使用目的'); return }

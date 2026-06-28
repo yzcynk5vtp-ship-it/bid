@@ -16,6 +16,7 @@ public class BorrowApplicationDTO {
 
     private Long id;
     private Long accountId;
+    private String accountName;
     private Long applicantId;
     private Long custodianId;
     private String purpose;

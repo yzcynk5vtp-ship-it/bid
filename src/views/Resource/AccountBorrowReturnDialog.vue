@@ -25,9 +25,6 @@
       <el-form-item label="确认新密码" required>
         <el-input v-model="form.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
       </el-form-item>
-      <el-form-item label="归还备注">
-        <el-input v-model="form.remarks" type="textarea" :rows="2" maxlength="500" show-word-limit />
-      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="visible = false">取消</el-button>
@@ -40,6 +37,7 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { resourcesApi } from '@/api'
+import { formatLocalDateTime } from '@/utils/formatDateTime'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -52,7 +50,7 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v)
 })
 
-const empty = () => ({ actualReturnedAt: '', newPassword: '', confirmPassword: '', remarks: '' })
+const empty = () => ({ actualReturnedAt: '', newPassword: '', confirmPassword: '' })
 const form = ref(empty())
 
 watch(() => props.application, () => { form.value = empty() })
@@ -68,11 +66,7 @@ const formatDate = (value) => {
   return isNaN(d.getTime()) ? value : d.toLocaleString('zh-CN')
 }
 
-const formatDateTime = (value) => {
-  if (!value) return undefined
-  const d = value instanceof Date ? value : new Date(value)
-  return isNaN(d.getTime()) ? undefined : d.toISOString()
-}
+const formatDateTime = formatLocalDateTime
 
 const submit = async () => {
   if (!form.value.actualReturnedAt) { ElMessage.warning('请选择实际归还时间'); return }
@@ -81,8 +75,7 @@ const submit = async () => {
 
   const res = await resourcesApi.accounts.returnBorrowApplication(props.application.id, {
     newPassword: form.value.newPassword,
-    actualReturnedAt: formatDateTime(form.value.actualReturnedAt),
-    remarks: form.value.remarks
+    actualReturnedAt: formatDateTime(form.value.actualReturnedAt)
   })
   if (!res?.success) {
     ElMessage.error(res?.msg || '归还登记失败'); return

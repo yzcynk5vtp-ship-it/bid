@@ -8,6 +8,7 @@ package com.xiyu.bid.platform.service;
 
 import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.exception.BusinessException;
 import com.xiyu.bid.platform.dto.BorrowApplicationDTO;
 import com.xiyu.bid.platform.dto.BorrowApplicationRequest;
 import com.xiyu.bid.platform.entity.AccountBorrowApplication;
@@ -42,11 +43,11 @@ public class PlatformAccountBorrowService {
     public BorrowApplicationDTO submitApplication(
             BorrowApplicationRequest request, User currentUser) {
         PlatformAccount account = accountRepository.findById(request.getAccountId())
-                .orElseThrow(() -> new IllegalArgumentException("账号不存在: " + request.getAccountId()));
+                .orElseThrow(() -> new BusinessException("账号不存在: " + request.getAccountId()));
 
         if (request.getCustodianId() == null
                 || !request.getCustodianId().equals(account.getCustodian())) {
-            throw new IllegalArgumentException("保管员信息不匹配");
+            throw new BusinessException("保管员信息不匹配");
         }
 
         // Reserve the account by marking it PENDING_APPROVAL
@@ -80,11 +81,18 @@ public class PlatformAccountBorrowService {
               description = "Approved borrow application")
     public BorrowApplicationDTO approveApplication(Long applicationId, String comment, User currentUser) {
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
+                .orElseThrow(() -> new BusinessException("申请不存在: " + applicationId));
 
         requireCustodian(app, currentUser);
         app.approve(comment);
         AccountBorrowApplication saved = applicationRepository.save(app);
+
+        // Hand the account over to the applicant
+        PlatformAccount account = accountRepository.findById(saved.getAccountId())
+                .orElseThrow(() -> new BusinessException("账号不存在: " + saved.getAccountId()));
+        account.approveBorrow(saved.getApplicantId(), saved.getApprovedAt(), saved.getExpectedReturnAt());
+        accountRepository.save(account);
+
         log.info("Borrow application {} approved by user {}", applicationId, currentUser.getId());
         return toDTO(saved);
     }
@@ -96,11 +104,11 @@ public class PlatformAccountBorrowService {
     public BorrowApplicationDTO rejectApplication(
             Long applicationId, String reason, User currentUser) {
         if (reason == null || reason.trim().isEmpty()) {
-            throw new IllegalArgumentException("拒绝时必须填写原因");
+            throw new BusinessException("拒绝时必须填写原因");
         }
 
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
+                .orElseThrow(() -> new BusinessException("申请不存在: " + applicationId));
 
         requireCustodian(app, currentUser);
         app.reject(reason);
@@ -120,7 +128,7 @@ public class PlatformAccountBorrowService {
               description = "Cancelled borrow application")
     public BorrowApplicationDTO cancelApplication(Long applicationId, User currentUser) {
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
+                .orElseThrow(() -> new BusinessException("申请不存在: " + applicationId));
 
         requireApplicant(app, currentUser);
         app.cancel();
@@ -140,11 +148,11 @@ public class PlatformAccountBorrowService {
     public BorrowApplicationDTO returnAccount(
             Long applicationId, String newPassword, LocalDateTime actualReturnedAt, User currentUser) {
         if (newPassword == null || newPassword.length() < 6) {
-            throw new IllegalArgumentException("新密码长度不能少于6位");
+            throw new BusinessException("新密码长度不能少于6位");
         }
 
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
+                .orElseThrow(() -> new BusinessException("申请不存在: " + applicationId));
 
         requireCustodian(app, currentUser);
         app.markReturned(actualReturnedAt);
@@ -152,9 +160,8 @@ public class PlatformAccountBorrowService {
 
         // Return the account to pool and update password
         PlatformAccount account = accountRepository.findById(saved.getAccountId())
-                .orElseThrow(() -> new IllegalArgumentException("账号不存在: " + saved.getAccountId()));
-        account.returnToPool();
-        account.setPassword(passwordEncryptionUtil.encrypt(newPassword));
+                .orElseThrow(() -> new BusinessException("账号不存在: " + saved.getAccountId()));
+        account.returnWithPassword(passwordEncryptionUtil.encrypt(newPassword));
         accountRepository.save(account);
 
         log.info("Borrow application {} returned by user {} (password updated)", applicationId, currentUser.getId());
@@ -174,22 +181,43 @@ public class PlatformAccountBorrowService {
         } else {
             apps = applicationRepository.findAll();
         }
-        return apps.stream().map(this::toDTO).collect(Collectors.toList());
+        java.util.Set<Long> accountIds = apps.stream()
+                .map(AccountBorrowApplication::getAccountId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        java.util.Map<Long, String> accountNameMap = accountIds.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : accountRepository.findAllById(accountIds).stream()
+                        .collect(Collectors.toMap(PlatformAccount::getId, PlatformAccount::getAccountName));
+        return apps.stream()
+                .map(app -> toDTO(app, accountNameMap::get))
+                .collect(Collectors.toList());
     }
 
     /** Get a single application by ID. */
     public BorrowApplicationDTO getApplication(Long applicationId) {
         AccountBorrowApplication app = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new IllegalArgumentException("申请不存在: " + applicationId));
+                .orElseThrow(() -> new BusinessException("申请不存在: " + applicationId));
         return toDTO(app);
     }
 
     // ── helpers ──
 
     private BorrowApplicationDTO toDTO(AccountBorrowApplication app) {
+        return toDTO(app, id -> null);
+    }
+
+    private BorrowApplicationDTO toDTO(AccountBorrowApplication app, java.util.function.Function<Long, String> accountNameResolver) {
+        String accountName = app.getAccountId() != null ? accountNameResolver.apply(app.getAccountId()) : null;
+        if (accountName == null && app.getAccountId() != null) {
+            accountName = accountRepository.findById(app.getAccountId())
+                    .map(PlatformAccount::getAccountName)
+                    .orElse(null);
+        }
         return BorrowApplicationDTO.builder()
                 .id(app.getId())
                 .accountId(app.getAccountId())
+                .accountName(accountName)
                 .applicantId(app.getApplicantId())
                 .custodianId(app.getCustodianId())
                 .purpose(app.getPurpose())
@@ -215,13 +243,13 @@ public class PlatformAccountBorrowService {
 
     private void requireCustodian(AccountBorrowApplication app, User currentUser) {
         if (currentUser == null || !currentUser.getId().equals(app.getCustodianId())) {
-            throw new IllegalStateException("只有账号绑定联系人可以操作该申请");
+            throw new BusinessException("只有账号绑定联系人可以操作该申请");
         }
     }
 
     private void requireApplicant(AccountBorrowApplication app, User currentUser) {
         if (currentUser == null || !currentUser.getId().equals(app.getApplicantId())) {
-            throw new IllegalStateException("只有申请人可以撤销该申请");
+            throw new BusinessException("只有申请人可以撤销该申请");
         }
     }
 }

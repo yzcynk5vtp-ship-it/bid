@@ -6,6 +6,7 @@ package com.xiyu.bid.platform.controller;
 
 import com.xiyu.bid.dto.ApiResponse;
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.exception.BusinessException;
 import com.xiyu.bid.platform.dto.ApproveRequest;
 import com.xiyu.bid.platform.dto.BorrowApplicationDTO;
 import com.xiyu.bid.platform.dto.BorrowApplicationRequest;
@@ -45,7 +46,6 @@ public class PlatformAccountBorrowController {
 
     /** Submit a new borrow application for a platform account. */
     @PostMapping("/platform/accounts/{accountId}/borrow-applications")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BorrowApplicationDTO>> submitApplication(
             @PathVariable Long accountId,
             @Valid @RequestBody BorrowApplicationRequest request,
@@ -59,7 +59,6 @@ public class PlatformAccountBorrowController {
 
     /** List borrow applications submitted by the current user. */
     @GetMapping("/borrow-applications/my-applications")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BorrowApplicationDTO>>> myApplications(
             Principal principal) {
         User user = resolveUser(principal);
@@ -69,7 +68,6 @@ public class PlatformAccountBorrowController {
 
     /** List borrow applications waiting for the current user's approval (as custodian). */
     @GetMapping("/borrow-applications/my-approvals")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<BorrowApplicationDTO>>> myApprovals(
             Principal principal) {
         User user = resolveUser(principal);
@@ -79,7 +77,6 @@ public class PlatformAccountBorrowController {
 
     /** Approve a pending borrow application. */
     @PostMapping("/borrow-applications/{id}/approve")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BorrowApplicationDTO>> approveApplication(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) ApproveRequest request,
@@ -93,7 +90,6 @@ public class PlatformAccountBorrowController {
 
     /** Reject a pending borrow application. */
     @PostMapping("/borrow-applications/{id}/reject")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BorrowApplicationDTO>> rejectApplication(
             @PathVariable Long id,
             @Valid @RequestBody RejectRequest request,
@@ -106,7 +102,6 @@ public class PlatformAccountBorrowController {
 
     /** Cancel a pending borrow application (by applicant). */
     @PostMapping("/borrow-applications/{id}/cancel")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BorrowApplicationDTO>> cancelApplication(
             @PathVariable Long id,
             Principal principal) {
@@ -118,13 +113,12 @@ public class PlatformAccountBorrowController {
 
     /** Return a borrowed account with mandatory password change. */
     @PostMapping("/borrow-applications/{id}/return")
-    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<BorrowApplicationDTO>> returnAccount(
             @PathVariable Long id,
             @Valid @RequestBody ReturnBorrowApplicationRequest request,
             Principal principal) {
         User user = resolveUser(principal);
-        LocalDateTime actualReturnedAt = LocalDateTime.parse(request.getActualReturnedAt());
+        LocalDateTime actualReturnedAt = parseReturnedAt(request.getActualReturnedAt());
         BorrowApplicationDTO result = borrowService.returnAccount(
                 id, request.getNewPassword(), actualReturnedAt, user);
         notificationService.notifyReturned(result);
@@ -134,9 +128,17 @@ public class PlatformAccountBorrowController {
     /** Resolve User entity from Principal. */
     private User resolveUser(Principal principal) {
         if (principal == null || principal.getName() == null) {
-            throw new IllegalStateException("Current user not authenticated");
+            throw new BusinessException("当前用户未登录");
         }
         return userRepository.findByUsername(principal.getName())
-                .orElseThrow(() -> new IllegalStateException("Current user not found: " + principal.getName()));
+                .orElseThrow(() -> new BusinessException("当前用户不存在: " + principal.getName()));
+    }
+
+    private LocalDateTime parseReturnedAt(String value) {
+        try {
+            return LocalDateTime.parse(value);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new BusinessException("实际归还时间格式不正确: " + value);
+        }
     }
 }

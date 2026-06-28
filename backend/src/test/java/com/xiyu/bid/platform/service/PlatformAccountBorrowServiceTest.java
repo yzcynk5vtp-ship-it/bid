@@ -4,6 +4,7 @@
 package com.xiyu.bid.platform.service;
 
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.exception.BusinessException;
 import com.xiyu.bid.platform.dto.BorrowApplicationDTO;
 import com.xiyu.bid.platform.dto.BorrowApplicationRequest;
 import com.xiyu.bid.platform.entity.AccountBorrowApplication;
@@ -78,7 +79,7 @@ class PlatformAccountBorrowServiceTest {
         BorrowApplicationRequest req = BorrowApplicationRequest.builder().accountId(99L).build();
 
         assertThatThrownBy(() -> service.submitApplication(req, USER))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("账号不存在");
     }
 
@@ -86,15 +87,26 @@ class PlatformAccountBorrowServiceTest {
     @DisplayName("审批通过申请成功 — 状态变为已借出并记录审批意见")
     void approveApplication_success() {
         AccountBorrowApplication app = AccountBorrowApplication.builder()
-                .id(100L).custodianId(10L).status(BorrowStatus.PENDING_APPROVAL).build();
+                .id(100L).accountId(1L).applicantId(10L).custodianId(10L)
+                .status(BorrowStatus.PENDING_APPROVAL)
+                .expectedReturnAt(LocalDateTime.of(2026, 7, 10, 18, 0))
+                .build();
+        PlatformAccount account = PlatformAccount.builder().id(1L).status(AccountStatus.PENDING_APPROVAL).build();
+
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
         when(applicationRepository.save(any())).thenReturn(app);
+        when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
+        when(accountRepository.save(any())).thenReturn(account);
 
         BorrowApplicationDTO result = service.approveApplication(100L, "同意", USER);
 
         assertThat(result.getStatus()).isEqualTo("BORROWED");
         assertThat(result.getApprovedAt()).isNotNull();
         assertThat(result.getApprovalComment()).isEqualTo("同意");
+        assertThat(account.getStatus()).isEqualTo(AccountStatus.IN_USE);
+        assertThat(account.getBorrowedBy()).isEqualTo(10L);
+        assertThat(account.getDueAt()).isEqualTo(LocalDateTime.of(2026, 7, 10, 18, 0));
+        verify(accountRepository).save(account);
     }
 
     @Test
@@ -102,7 +114,7 @@ class PlatformAccountBorrowServiceTest {
     void approveApplication_notFound_throws() {
         when(applicationRepository.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.approveApplication(99L, null, USER))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("申请不存在");
     }
 
@@ -128,7 +140,7 @@ class PlatformAccountBorrowServiceTest {
     @DisplayName("拒绝申请时拒绝原因为空抛出异常")
     void rejectApplication_emptyReason_throws() {
         assertThatThrownBy(() -> service.rejectApplication(100L, "", USER))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("拒绝时必须填写原因");
     }
 
@@ -208,7 +220,7 @@ class PlatformAccountBorrowServiceTest {
     void getApplication_notFound_throws() {
         when(applicationRepository.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getApplication(99L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("申请不存在");
     }
 
@@ -220,7 +232,7 @@ class PlatformAccountBorrowServiceTest {
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
 
         assertThatThrownBy(() -> service.approveApplication(100L, null, USER))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("只有账号绑定联系人可以操作该申请");
     }
 
@@ -232,7 +244,7 @@ class PlatformAccountBorrowServiceTest {
         when(applicationRepository.findById(100L)).thenReturn(Optional.of(app));
 
         assertThatThrownBy(() -> service.cancelApplication(100L, USER))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("只有申请人可以撤销该申请");
     }
 
@@ -246,7 +258,7 @@ class PlatformAccountBorrowServiceTest {
         when(accountRepository.findById(1L)).thenReturn(Optional.of(account));
 
         assertThatThrownBy(() -> service.submitApplication(req, USER))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("保管员信息不匹配");
     }
 }

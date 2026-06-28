@@ -192,17 +192,29 @@ public class PlatformAccount {
     /** Mark the account as pending approval (before borrow approval workflow). */
     public void markPendingApproval() {
         if (status != AccountStatus.AVAILABLE) {
-            throw new IllegalStateException(
-                    "Account not available. Status: " + status.getDescription());
+            throw new com.xiyu.bid.exception.BusinessException(
+                    "账号不可用，当前状态：" + status.getDescription());
         }
         this.status = AccountStatus.PENDING_APPROVAL;
+    }
+
+    /** Approve a pending borrow request and hand the account to the applicant. */
+    public void approveBorrow(Long borrowerId, LocalDateTime pBorrowedAt, LocalDateTime pDueAt) {
+        if (status != AccountStatus.PENDING_APPROVAL) {
+            throw new com.xiyu.bid.exception.BusinessException(
+                    "账号不处于审批中状态，当前状态：" + status.getDescription());
+        }
+        this.status = AccountStatus.IN_USE;
+        this.borrowedBy = borrowerId;
+        this.borrowedAt = pBorrowedAt;
+        this.dueAt = pDueAt;
     }
 
     /** Borrow the account to a user. */
     public void borrow(Long borrowerId, LocalDateTime pBorrowedAt, LocalDateTime pDueAt) {
         if (status != AccountStatus.AVAILABLE) {
-            throw new IllegalStateException(
-                    "Account not available. Status: " + status.getDescription());
+            throw new com.xiyu.bid.exception.BusinessException(
+                    "账号不可用，当前状态：" + status.getDescription());
         }
         this.status = AccountStatus.IN_USE;
         this.borrowedBy = borrowerId;
@@ -213,8 +225,8 @@ public class PlatformAccount {
     /** Return the account to pool. */
     public void returnToPool() {
         if (status != AccountStatus.IN_USE && status != AccountStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException(
-                    "Account not in use. Status: " + status.getDescription());
+            throw new com.xiyu.bid.exception.BusinessException(
+                    "账号未在使用中，当前状态：" + status.getDescription());
         }
         this.status = AccountStatus.AVAILABLE;
         this.borrowedBy = null;

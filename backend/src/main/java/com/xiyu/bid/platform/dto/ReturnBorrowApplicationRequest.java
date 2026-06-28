@@ -22,6 +22,4 @@ public class ReturnBorrowApplicationRequest {
     @NotNull(message = "实际归还时间不能为空")
     private String actualReturnedAt;
 
-    @Size(max = 500, message = "归还备注不能超过500字")
-    private String remarks;
 }
