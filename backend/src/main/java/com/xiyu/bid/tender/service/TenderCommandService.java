@@ -30,6 +30,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -62,6 +63,7 @@ public class TenderCommandService {
     private final ProjectManagerIdResolver projectManagerIdResolver;
     private final TenderAssignmentRecordRepository assignmentRecordRepository;
     private final TenderAuditService tenderAuditService;
+    private final TransactionTemplate transactionTemplate;
 
     public TenderDTO createTender(TenderDTO tenderDTO) {
         return createTender(tenderDTO, null);
@@ -89,51 +91,14 @@ public class TenderCommandService {
         saveAttachments(savedTender.getId(), tenderDTO.getAttachments());
         boolean assigned = tryAutoAssign(savedTender);
         if (!assigned) {
-            String taskTitle = "【待分配】" + savedTender.getTitle();
-            String taskDesc = "标讯「" + savedTender.getTitle()
-                    + "」待分配负责人，请尽快处理。创建人："
-                    + (savedTender.getCreatorName() != null
-                        ? savedTender.getCreatorName() : "系统");
-            List<User> managers = userRepository.findEnabledByRoleProfileCodes(
-                    List.of(RoleProfileCatalog.BID_ADMIN_CODE, RoleProfileCatalog.BID_LEAD_CODE));
-            if (managers.isEmpty()) {
-                log.warn("No bidAdmin or bid-TeamLeader users found for tender {} pending assignment",
-                        savedTender.getId());
-            }
-            for (User manager : managers) {
-                try {
-                    TaskDTO task = taskService.createTask(
-                            TaskDTO.builder()
-                                    .projectId(savedTender.getId())
-                                    .title(taskTitle)
-                                    .description(taskDesc)
-                                    .status(Task.Status.TODO)
-                                    .priority(Task.Priority.HIGH)
-                                    .assigneeId(manager.getId())
-                                    .build());
-                    log.info("Tender {} pending assignment, created task {} for {}",
-                            savedTender.getId(), task.getId(), manager.getUsername());
-                    try {
-                        var result = notificationAppService.createNotification(
-                                new CreateNotificationRequest(
-                                        "APPROVAL", "TENDER",
-                                        savedTender.getId(),
-                                        taskTitle, taskDesc,
-                                        null,
-                                        List.of(manager.getId())),
-                                userId != null ? userId : 1L);
-                        if (!result.isValid()) {
-                            log.warn("Notification validation failed for tender {} to user {}: {}",
-                                    savedTender.getId(), manager.getUsername(), result.errorMessage());
-                        }
-                    } catch (Exception e) {
-                        log.warn("Failed to send notification for tender {} to user {}: {}",
-                                savedTender.getId(), manager.getUsername(), e.getMessage());
-                    }
-                } catch (Exception e) {
-                    log.warn("Failed to create task for tender {} for user {}: {}",
-                            savedTender.getId(), manager.getUsername(), e.getMessage());
-                }
+            try {
+                final Long finalUserId = userId;
+                final Tender finalSavedTender = savedTender;
+                transactionTemplate.executeWithoutResult(status ->
+                    createPendingAssignmentTasks(finalSavedTender, finalUserId));
+            } catch (RuntimeException e) {
+                log.warn("Failed to create pending assignment tasks for tender {}: {}",
+                        savedTender.getId(), e.getMessage());
             }
         }
 
@@ -165,6 +130,55 @@ public class TenderCommandService {
             log.warn("Auto-assignment failed for tender {}, keeping PENDING_ASSIGNMENT: {}", tender.getId(), e.getMessage());
         }
         return false;
+    }
+
+    private void createPendingAssignmentTasks(Tender savedTender, Long userId) {
+        String taskTitle = "【待分配】" + savedTender.getTitle();
+        String taskDesc = "标讯「" + savedTender.getTitle()
+                + "」待分配负责人，请尽快处理。创建人："
+                + (savedTender.getCreatorName() != null
+                    ? savedTender.getCreatorName() : "系统");
+        List<User> managers = userRepository.findEnabledByRoleProfileCodes(
+                List.of(RoleProfileCatalog.BID_ADMIN_CODE, RoleProfileCatalog.BID_LEAD_CODE));
+        if (managers.isEmpty()) {
+            log.warn("No bidAdmin or bid-TeamLeader users found for tender {} pending assignment",
+                    savedTender.getId());
+        }
+        for (User manager : managers) {
+            try {
+                TaskDTO task = taskService.createTask(
+                        TaskDTO.builder()
+                                .projectId(savedTender.getId())
+                                .title(taskTitle)
+                                .description(taskDesc)
+                                .status(Task.Status.TODO)
+                                .priority(Task.Priority.HIGH)
+                                .assigneeId(manager.getId())
+                                .build());
+                log.info("Tender {} pending assignment, created task {} for {}",
+                        savedTender.getId(), task.getId(), manager.getUsername());
+                try {
+                    var result = notificationAppService.createNotification(
+                            new CreateNotificationRequest(
+                                    "APPROVAL", "TENDER",
+                                    savedTender.getId(),
+                                    taskTitle, taskDesc,
+                                    null,
+                                    List.of(manager.getId())),
+                            userId != null ? userId : 1L);
+                    if (!result.isValid()) {
+                        log.warn("Notification validation failed for tender {} to user {}: {}",
+                                savedTender.getId(), manager.getUsername(), result.errorMessage());
+                    }
+                } catch (RuntimeException e) {
+                    log.warn("Failed to send notification for tender {} to user {}: {}",
+                            savedTender.getId(), manager.getUsername(), e.getMessage());
+                }
+            } catch (RuntimeException e) {
+                log.warn("Failed to create task for tender {} for user {}: {}",
+                        savedTender.getId(), manager.getUsername(), e.getMessage());
+            }
+        }
     }
 
     void applyAssignmentResult(Tender tender, AssignmentResult result) {
