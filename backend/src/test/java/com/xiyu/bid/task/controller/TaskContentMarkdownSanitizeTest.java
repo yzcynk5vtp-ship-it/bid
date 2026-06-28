@@ -4,6 +4,7 @@ import com.xiyu.bid.apikey.infrastructure.ApiKeyAuthenticationFilter;
 import com.xiyu.bid.auth.JwtAuthenticationFilter;
 import com.xiyu.bid.config.RateLimitFilter;
 import com.xiyu.bid.config.SecurityConfig;
+import com.xiyu.bid.security.CurrentUserResolver;
 import com.xiyu.bid.task.dto.TaskDTO;
 import com.xiyu.bid.task.service.TaskActivityService;
 import com.xiyu.bid.task.service.TaskService;
@@ -56,11 +57,17 @@ class TaskContentMarkdownSanitizeTest {
     @MockBean
     private AssignmentCandidateAppService assignmentCandidateAppService;
 
+    // CO-373 回归修复：CurrentUserResolver 现依赖 EffectiveRoleResolver→RoleCodeCachePort，
+    // @WebMvcTest 切片不实例化该链；TraceFilter(@Component) 又强依赖 CurrentUserResolver。
+    // 此处 mock 整个 CurrentUserResolver 以满足 TraceFilter 注入，避免上下文加载失败。
+    @MockBean
+    private CurrentUserResolver currentUserResolver;
+
     @Test
     @WithMockUser(roles = "MANAGER")
     void markdownLineBreaksSurviveSanitize() throws Exception {
         ArgumentCaptor<TaskDTO> captor = ArgumentCaptor.forClass(TaskDTO.class);
-        when(taskService.createTask(any(TaskDTO.class))).thenAnswer(inv -> {
+        when(taskService.createTask(any(TaskDTO.class), any())).thenAnswer(inv -> {
             TaskDTO dto = inv.getArgument(0);
             dto.setId(1L);
             return dto;
@@ -83,7 +90,7 @@ class TaskContentMarkdownSanitizeTest {
                         .content(body))
                 .andExpect(status().isCreated());
 
-        org.mockito.Mockito.verify(taskService).createTask(captor.capture());
+        org.mockito.Mockito.verify(taskService).createTask(captor.capture(), any());
         String captured = captor.getValue().getContent();
         assertThat(captured)
                 .as("Markdown \\n 必须在 sanitize 之后保留")
@@ -98,7 +105,7 @@ class TaskContentMarkdownSanitizeTest {
     @WithMockUser(roles = "MANAGER")
     void dangerousControlCharsStrippedButNewlinesKept() throws Exception {
         ArgumentCaptor<TaskDTO> captor = ArgumentCaptor.forClass(TaskDTO.class);
-        when(taskService.createTask(any(TaskDTO.class))).thenAnswer(inv -> {
+        when(taskService.createTask(any(TaskDTO.class), any())).thenAnswer(inv -> {
             TaskDTO dto = inv.getArgument(0);
             dto.setId(1L);
             return dto;
@@ -114,7 +121,7 @@ class TaskContentMarkdownSanitizeTest {
                         .content(body))
                 .andExpect(status().isCreated());
 
-        org.mockito.Mockito.verify(taskService).createTask(captor.capture());
+        org.mockito.Mockito.verify(taskService).createTask(captor.capture(), any());
         String captured = captor.getValue().getContent();
         // 期望：0x07 (BEL) 被剥掉、\n 保留 → "ab\nc"
         assertThat(captured).isEqualTo("ab\nc");

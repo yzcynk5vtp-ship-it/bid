@@ -8,6 +8,7 @@ import com.xiyu.bid.casework.application.service.KnowledgeCaseCommandAppService;
 import com.xiyu.bid.casework.application.service.KnowledgeCaseQueryAppService;
 import com.xiyu.bid.casework.application.service.KnowledgeCaseRecommendAppService;
 import com.xiyu.bid.casework.domain.model.CaseExportResult;
+import com.xiyu.bid.security.CurrentUserResolver;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,6 +53,12 @@ class KnowledgeCaseControllerExportTest {
     @MockBean private CaseExportAppService caseExportZipAppService;
     @MockBean private CaseExportExcelAppService caseExportExcelAppService;
     @MockBean private ProjectAccessScopeService projectAccessScopeService;
+
+    // CO-373 回归修复：CurrentUserResolver 现依赖 EffectiveRoleResolver→RoleCodeCachePort，
+    // @WebMvcTest 切片不实例化该链；TraceFilter(@Component) 又强依赖 CurrentUserResolver。
+    // 此处 mock 整个 CurrentUserResolver 以满足 TraceFilter 注入，避免上下文加载失败。
+    @MockBean
+    private CurrentUserResolver currentUserResolver;
 
     @Test
     @WithMockUser(roles = "MANAGER")

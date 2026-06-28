@@ -7,6 +7,7 @@ import com.xiyu.bid.config.SecurityConfig;
 import com.xiyu.bid.demo.service.DemoDataProvider;
 import com.xiyu.bid.demo.service.DemoFusionService;
 import com.xiyu.bid.demo.service.DemoModeService;
+import com.xiyu.bid.security.CurrentUserResolver;
 import com.xiyu.bid.service.AuthService;
 import com.xiyu.bid.tender.service.TenderAuditService;
 import com.xiyu.bid.tender.service.TenderCommandService;
@@ -83,6 +84,12 @@ class TenderControllerBidOtherDeptAccessTest {
     private TenderAuditService tenderAuditService;
     @MockBean
     private AuthService authService;
+
+    // CO-373 回归修复：CurrentUserResolver 现依赖 EffectiveRoleResolver→RoleCodeCachePort，
+    // @WebMvcTest 切片不实例化该链；TraceFilter(@Component) 又强依赖 CurrentUserResolver。
+    // 此处 mock 整个 CurrentUserResolver 以满足 TraceFilter 注入，避免上下文加载失败。
+    @MockBean
+    private CurrentUserResolver currentUserResolver;
 
     @EnableWebSecurity
     @EnableMethodSecurity(prePostEnabled = true)
