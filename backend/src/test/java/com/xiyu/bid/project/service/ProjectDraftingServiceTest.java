@@ -495,22 +495,20 @@ class ProjectDraftingServiceTest {
     }
 
     @Test
-    void submitForReview_incompleteTasks_denied_409() {
+    void submitForReview_incompleteTasks_withBidDocument_delegatesToBidReview() {
+        // CO-400 防复发：任务未完成 + 标书文件已上传 → 不再返回 409，应委托给 BidReviewAppService
+        // 业务语义：发起审核时标书可能仍在编制，任务完成与否是审核人的判断，不是闸门。
         when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "admin")));
         when(taskRepository.findByProjectId(1L)).thenReturn(List.of(
                 Task.builder().id(1L).projectId(1L).title("a").status(Task.Status.TODO).build(),
                 Task.builder().id(2L).projectId(1L).title("b").status(Task.Status.REVIEW).build()));
-
-        assertThatThrownBy(() -> service.submitForReview(1L, 99L, 1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> {
-                    ResponseStatusException rse = (ResponseStatusException) ex;
-                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-                    assertThat(rse.getReason()).contains("仍有 2 个任务未完成", "无法提交标书审核");
-                });
-
-        verify(bidReviewAppService, never())
+        prepareBidDocument();
+        org.mockito.Mockito.lenient().doNothing().when(bidReviewAppService)
                 .submitForReview(any(Long.class), any(Long.class), any(Long.class));
+
+        service.submitForReview(1L, 99L, 1L);
+
+        verify(bidReviewAppService).submitForReview(1L, 99L, 1L);
     }
 
     @Test
@@ -528,6 +526,24 @@ class ProjectDraftingServiceTest {
                     assertThat(rse.getReason()).contains("尚未上传标书文件", "无法提交标书审核");
                 });
 
+        verify(bidReviewAppService, never())
+                .submitForReview(any(Long.class), any(Long.class), any(Long.class));
+    }
+
+    @Test
+    void submitForReview_projectNotFound_returns404_not409() {
+        // CO-400 Review 修复：projectId 不存在时应返回 404（ResourceNotFoundException），
+        // 不能误报"尚未上传标书文件"导致 409（校验顺序：mustGetProject 必须在闸门校验之前）
+        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser(1L, "admin")));
+        when(projectRepository.findById(999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.submitForReview(999L, 99L, 1L))
+                .isInstanceOf(com.xiyu.bid.exception.ResourceNotFoundException.class);
+
+        // 闸门校验不应被触发（projectId 不存在时不应进入 hasBidDocument 查询）
+        verify(projectDocumentRepository, never())
+                .findByProjectIdAndFiltersOrderByCreatedAtDesc(
+                        any(Long.class), any(), any(), any());
         verify(bidReviewAppService, never())
                 .submitForReview(any(Long.class), any(Long.class), any(Long.class));
     }
