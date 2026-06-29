@@ -40,23 +40,16 @@ describe('resolveAccountActions', () => {
 
 describe('isCurrentUserContactPerson', () => {
   it('matches by user id (CO-390口径)', () => {
+    expect(isCurrentUserContactPerson({ contactPerson: 42 }, { id: 42, name: '张三' })).toBe(true)
     expect(isCurrentUserContactPerson({ contactPerson: '42' }, { id: 42, name: '张三' })).toBe(true)
   })
 
-  it('matches by plain name', () => {
-    expect(isCurrentUserContactPerson({ contactPerson: '张三' }, { id: 1, name: '张三' })).toBe(true)
-  })
-
-  it('matches by 姓名（工号） format', () => {
-    expect(isCurrentUserContactPerson({ contactPerson: '张三（20260509）' }, { id: 1, name: '张三', employeeNumber: '20260509' })).toBe(true)
-  })
-
-  it('returns false when name does not match', () => {
-    expect(isCurrentUserContactPerson({ contactPerson: '李四' }, { id: 1, name: '张三' })).toBe(false)
+  it('returns false when id does not match', () => {
+    expect(isCurrentUserContactPerson({ contactPerson: 99 }, { id: 42, name: '张三' })).toBe(false)
   })
 
   it('returns false for missing data', () => {
     expect(isCurrentUserContactPerson({}, { id: 1, name: '张三' })).toBe(false)
-    expect(isCurrentUserContactPerson({ contactPerson: '张三' }, null)).toBe(false)
+    expect(isCurrentUserContactPerson({ contactPerson: 1 }, null)).toBe(false)
   })
 })

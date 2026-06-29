@@ -197,10 +197,10 @@ class PlatformAccountServiceTest {
     @DisplayName("CO-388：投标专员作为绑定联系人时可查看完整账号信息")
     void getAccountsForViewer_bidTeamContactPerson_receivesFullDto() {
         PlatformAccount ownAccount = accountWithId(1L);
-        ownAccount.setContactPerson("投标专员");
+        ownAccount.setContactPerson(BID_TEAM_USER.getId());
         ownAccount.setStatus(AccountStatus.IN_USE);
         PlatformAccount otherAccount = accountWithId(2L);
-        otherAccount.setContactPerson("李四");
+        otherAccount.setContactPerson(99L);
         when(repository.findAll()).thenReturn(List.of(ownAccount, otherAccount));
 
         List<?> result = service.getAccountsForViewer(BID_TEAM_USER);
@@ -210,7 +210,7 @@ class PlatformAccountServiceTest {
         assertThat(result.get(1)).isInstanceOf(PlatformAccountSummaryDTO.class);
         PlatformAccountDTO own = (PlatformAccountDTO) result.get(0);
         assertThat(own.getUsername()).isEqualTo("testuser");
-        assertThat(own.getContactPerson()).isEqualTo("投标专员");
+        assertThat(own.getContactPerson()).isEqualTo(BID_TEAM_USER.getId());
         assertThat(own.getStatus()).isEqualTo(AccountStatus.IN_USE);
     }
 
@@ -218,7 +218,7 @@ class PlatformAccountServiceTest {
     @DisplayName("CO-388：投标专员非绑定联系人时收到脱敏摘要")
     void getAccountsForViewer_bidTeamNotContactPerson_receivesSummaryDto() {
         PlatformAccount account = accountWithId(1L);
-        account.setContactPerson("李四");
+        account.setContactPerson(99L);
         account.setStatus(AccountStatus.AVAILABLE);
         when(repository.findAll()).thenReturn(List.of(account));
 

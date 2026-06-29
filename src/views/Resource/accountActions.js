@@ -41,8 +41,7 @@ export function resolveAccountActions({ isManager, isBidTeam, isContactPerson, i
 /**
  * 判断当前用户是否为指定账户的绑定联系人。
  *
- * 在 CO-390 完成前，`row.contactPerson` 可能为姓名或"姓名（工号）"格式；
- * 升级后将为 userId。本函数同时兼容两种口径。
+ * <p>CO-390 完成后 `row.contactPerson` 为当前用户 userId，直接比较即可。</p>
  *
  * @param {Object} row 账户行数据
  * @param {Object} user 当前登录用户
@@ -50,21 +49,7 @@ export function resolveAccountActions({ isManager, isBidTeam, isContactPerson, i
  */
 export function isCurrentUserContactPerson(row, user) {
   if (!row || !user) return false
-  const contactPerson = String(row.contactPerson || '')
-  if (!contactPerson) return false
-
-  const userId = String(user.id || '')
-  if (userId && contactPerson === userId) return true
-
-  const userName = String(user.name || user.fullName || '')
-  if (!userName) return false
-
-  // "姓名（工号）" → 姓名
-  const normalizedContact = contactPerson.replace(/（[^）]+）$/, '')
-  if (normalizedContact === userName) return true
-
-  const employeeNumber = String(user.employeeNumber || '')
-  if (employeeNumber && contactPerson === `${userName}（${employeeNumber}）`) return true
-
-  return false
+  const contactPerson = row.contactPerson
+  if (contactPerson === null || contactPerson === undefined || contactPerson === '') return false
+  return String(contactPerson) === String(user.id || '')
 }
