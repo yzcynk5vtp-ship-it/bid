@@ -17,15 +17,18 @@
  * @param {boolean} params.isBidTeam 当前用户是否为投标专员
  * @param {boolean} params.isContactPerson 当前用户是否为该账户绑定联系人
  * @param {boolean} params.isApplicant 当前用户是否可以发起申请使用
+ * @param {string} params.status 账户状态（如 AVAILABLE / IN_USE）
  * @returns {{edit?: true, return?: true, takeDown?: true, borrow?: true, apply?: true}}
  */
-export function resolveAccountActions({ isManager, isBidTeam, isContactPerson, isApplicant }) {
+export function resolveAccountActions({ isManager, isBidTeam, isContactPerson, isApplicant, status }) {
+  const isInUse = String(status).toUpperCase() === 'IN_USE'
+
   if (isManager) {
-    return { edit: true, return: true, takeDown: true }
+    return { edit: true, return: isInUse, takeDown: true }
   }
 
   if (isBidTeam) {
-    return isContactPerson ? { edit: true, return: true, takeDown: true } : { borrow: true }
+    return isContactPerson ? { edit: true, return: isInUse, takeDown: true } : { borrow: true }
   }
 
   if (isApplicant) {
@@ -33,4 +36,35 @@ export function resolveAccountActions({ isManager, isBidTeam, isContactPerson, i
   }
 
   return {}
+}
+
+/**
+ * 判断当前用户是否为指定账户的绑定联系人。
+ *
+ * 在 CO-390 完成前，`row.contactPerson` 可能为姓名或"姓名（工号）"格式；
+ * 升级后将为 userId。本函数同时兼容两种口径。
+ *
+ * @param {Object} row 账户行数据
+ * @param {Object} user 当前登录用户
+ * @returns {boolean}
+ */
+export function isCurrentUserContactPerson(row, user) {
+  if (!row || !user) return false
+  const contactPerson = String(row.contactPerson || '')
+  if (!contactPerson) return false
+
+  const userId = String(user.id || '')
+  if (userId && contactPerson === userId) return true
+
+  const userName = String(user.name || user.fullName || '')
+  if (!userName) return false
+
+  // "姓名（工号）" → 姓名
+  const normalizedContact = contactPerson.replace(/（[^）]+）$/, '')
+  if (normalizedContact === userName) return true
+
+  const employeeNumber = String(user.employeeNumber || '')
+  if (employeeNumber && contactPerson === `${userName}（${employeeNumber}）`) return true
+
+  return false
 }
