@@ -1586,184 +1586,131 @@ grep -A 15 "LoggingClientHttpRequestInterceptor" backend/logs/app.log
 - `docs/lessons/decisions.md` §3 — Controller @PreAuthorize 放宽为 isAuthenticated() 决策
 - `backend/src/main/java/com/xiyu/bid/projectworkflow/core/ProjectDocumentWorkflowPolicy.java` — Policy 实现
 
-## 25. submitBid / submitForReview 闸门不可共用，业务语义不同（CO-400 复发）
-
-### 问题背景
-
-`BidReadinessPolicy.java` 在 2026-06-21 → 2026-06-25 → 2026-06-29 经历了三次反复，根因是设计时没有从「submitBid 和 submitForReview 是两个业务语义不同的入口」这个视角审视闸门：
-
-| 时间 | 事件 | 决策视角 | 遗留的问题 |
-|---|---|---|---|
-| 2026-06-21 | zcode 发现 `submitBid` 同类 Bug，PR !923 移除任务闸门 | 仅看 submitBid | submitForReview 未审视 |
-| 2026-06-25 | zhoufan 在 CO-346 修复中（commit `95da4695b`）同时给 `submitBid` 和 `submitForReview` 加回任务闸门，标题"补齐任务闸门" | 仅看"闸门对称" | 业务语义错配，submitForReview 不应要求任务全完成 |
-| 2026-06-29 | 用户在项目 113 触发同类 Bug，traceId=`a2f9262d77d842029712a4595481d242` | （本次修复） | 拆分 BidReadinessPolicy 为两个语义清晰的方法 |
-
-每一轮修复都解决了真实问题，但都没从「两个入口的业务语义不同」这个视角审视整个闸门设计。
-
-### 教训
-
-1. **submitBid 和 submitForReview 是业务语义不同的两个入口，不可共用闸门**：
-   - `submitForReview`（提交标书给审核人审核）：发起审核时标书可能仍在编制，任务完成与否是审核人的判断，不是闸门
-   - `submitBid`（推进到评标阶段）：推进阶段是重大阶段流转，要求所有任务终态完成
-   - 两个入口应使用语义清晰的独立方法，不得混淆
-
-2. **修改 `BidReadinessPolicy` 时必须检查 submitBid / submitForReview 两个调用点是否对称**：不能只改一个方法，必须审视两个调用点是否按对应业务语义调用对应方法。检查清单：
-   - `submitForReview` 是否调用 `checkBidDocumentUploaded`（仅标书文件）？
-   - `submitBid` 是否调用 `checkBidSubmissionReady`（任务全完成 + 标书文件）？
-   - `gateAdvanceToEvaluation` 是否调用 `checkBidSubmissionReady`（与 submitBid 语义一致）？
-
-3. **`BidReadinessPolicy` 的类注释必须明确两个方法的业务语义分工**：旧注释"两处业务入口复用闸门避免规则漂移"是误导性的，正确表述应明确两个方法各自对应的业务入口和语义。
-
-4. **修改 Policy 时必须用日志证据验证业务语义**（ lessons §23 SOP 第 4 步「禁止乱猜」）：CO-346 修复时未先用日志证据验证 submitForReview 的业务语义，仅凭"对称"直觉加回闸门，导致复发。
-
-5. **防复发测试必须覆盖两个入口的正反例**：
-   - `submitForReview_incompleteTasks_withBidDocument_delegatesToBidReview`（任务未完成 + 标书文件已上传 → 200 委托，CO-400 修复正例）
-   - `submitForReview_missingBidDocument_denied_409`（无标书文件 → 409，反例）
-   - `submitBid_approvedReview_incompleteTasks_denied_409`（审核通过 + 任务未完成 → 409，zcode 防复发反例，保留 zhoufan 修复语义不回退）
-
-6. **历史教训文档必须实际被读**：zcode 2026-06-21 留下的 `docs/lessons/root-cause-analysis-submit-bid-review-gate.md` 在 CO-346 修复时未被参考，导致同类问题复发。修改 Policy 前必须 Grep 历史根因分析文档。
-
-### 检查清单（修改 BidReadinessPolicy 时必跑）
-
-```markdown
-- [ ] submitForReview 调用的是 checkBidDocumentUploaded（仅标书文件）？___________
-- [ ] submitBid 调用的是 checkBidSubmissionReady（任务全完成 + 标书文件）？___________
-- [ ] gateAdvanceToEvaluation 调用的是 checkBidSubmissionReady（与 submitBid 一致）？___________
-- [ ] BidReadinessPolicy 类注释是否明确两个方法的业务语义分工？___________
-- [ ] 测试是否覆盖 submitForReview_incompleteTasks_withBidDocument_delegatesToBidReview 正例？___________
-- [ ] 测试是否覆盖 submitForReview_missingBidDocument_denied_409 反例？___________
-- [ ] 是否 Grep 历史根因分析文档（docs/lessons/root-cause-analysis-*.md）？___________
-```
-
-### 已识别但本次不处理的后续优化项
-
-1. **`AllTasksCompletedPolicy.TaskState` 缺 CANCELLED 枚举值**：本次临时止血时发现，将 task status 改为 `CANCELLED` 会导致 `TaskState.valueOf("CANCELLED")` 抛 IllegalArgumentException → 500。当前枚举只有 `TODO/REVIEW/COMPLETED` 三态。如果未来业务需要 CANCELLED 终态，应作为独立任务处理。
-
-2. **立项阶段种子任务残留问题**：项目 113 流转到 DRAFTING 阶段后，立项阶段自动生成的种子任务 id=5「【待立项】」残留为 TODO 未自动关闭，是本次 Bug 的直接触发原因。应作为独立任务在 `ProjectInitiationService` 中修复阶段流转时的任务自动关闭逻辑。
-
-3. **submitBid 是否也应移除任务闸门**：zcode 2026-06-21 PR !923 曾移除 `submitBid` 任务闸门，但 zhoufan 2026-06-25 commit `95da4695b` 又加回来。本次修复保留 zhoufan 修复语义不回退（避免重蹈"反复回退"覆辙）。如果产品决定 `submitBid` 也应移除任务闸门，应作为独立 PR 讨论。
-
-### 相关文档
-
-- `docs/lessons/root-cause-analysis-co-400-submit-review-gate-regression.md` — 完整根因分析（本次）
-- `docs/lessons/root-cause-analysis-submit-bid-review-gate.md` — zcode 2026-06-21 历史根因分析（同类问题）
-- `backend/src/main/java/com/xiyu/bid/project/core/BidReadinessPolicy.java` — Policy 实现（已拆分）
-- `backend/src/main/java/com/xiyu/bid/project/service/ProjectDraftingService.java` — 调用方（已修正）
-- 生产日志 traceId：`a2f9262d77d842029712a4595481d242`（2026-06-29 15:38:05）
-
 ---
 
-## 26. Flyway 版本号撞号检测缺失：sed 语法兼容 + 双层撞号守卫（V1110 撞号阻断第 18 次部署）
+## 25. 前端禁止 `catch { /* silent */ }` 吞掉 API 错误（CO-390 root cause）
 
 ### 问题背景
 
-第 18 次生产部署（2026-06-29）Flyway 预检阶段发现源码 main 同时存在两个 `V1110__*.sql` 文件：
+CO-390 修复绑定联系人字段升级 userId 后，投标组长/专员新增账户时无法搜索人员。根因是 `AccountFormDialog.vue` 调用 `/api/admin/users`（`@PreAuthorize("hasRole('ADMIN')")`）返回 403，但前端 `catch { /* silent */ }` 静默吞掉错误，`biddingUsers` 静默为空，用户看到的是"无法搜索"而非"权限不足"，严重误导排查方向。
 
-- PR !1340（CO-401 cleanup_legacy_pending_assignment_tasks）合入 main 时使用了 `V1110__cleanup_legacy_pending_assignment_tasks.sql`
-- PR !1342（CO-386 账户借用申请审批流）合入 main 时也使用了 `V1110__add_pending_approval_to_platform_accounts_status.sql`
-
-Flyway 9.22.3 启动时会报 `Found more than one migration with version 1110`，后端无法启动，部署被阻断。
-
-修复走 hotfix 分支 `agent/trae/fix-v1110-version-conflict`：按"先合入先得版本号"原则保留 !1340 为 V1110，将 !1342 重命名为 V1111（含配套回滚脚本 U1110 → U1111）。PR !1345 已合入 main，第 18 次部署随后顺利完成。
-
-### 根因（双重失效）
-
-**第一层失效：并行取号无锁**
-两个 PR 几乎同时创建迁移文件，都通过 `next-migration-version.sh` 取到了 V1110。脚本本身是 `max(已有版本) + 1` 的本地计算，无法防止并发取号。
-
-**第二层失效（关键发现）：现有 check-flyway-versions.sh 一直在"假绿"**
-
-排查 `scripts/check-flyway-versions.sh` 发现所有 sed 调用都使用了 `\+` 元字符：
-
-```bash
-# 修复前（macOS BSD sed 不支持）
-sed -n 's/.*\/V\([0-9]\+\).*/\1/p'
-
-# 修复后（macOS BSD sed 和 Linux GNU sed 都支持）
-sed -En 's/.*\/V([0-9]+).*/\1/p'
+```javascript
+// 错误模式
+const loadBiddingUsers = async () => {
+  try {
+    const res = await httpClient.get('/api/admin/users')
+    // ...
+  } catch { /* silent */ }  // ← 吞掉 403，用户看到"无法搜索"而非"权限不足"
+}
 ```
-
-macOS BSD sed 的 BRE 模式不支持 `\+` 元字符，必须用 `\{1,\}` 或 `-E` 启用 ERE 模式。结果就是 sed 模式从来没匹配成功过——版本号提取一直是空字符串，整个检查一直在"空循环"，永远不会触发冲突报警。
-
-这就是 V1110 撞号事故没被拦截的根本原因——**防护脚本本身是坏的**。
-
-### 修复（三层防护）
-
-在 `scripts/check-flyway-versions.sh` 中增加三层防护：
-
-1. **sed 语法修复**：所有 5 处 sed 调用从 `\+` 改为 `-E` + `+`（ERE 语法）
-
-2. **worktree 内部撞号检测**（`check_worktree_internal_duplicate` 函数）：
-   - pre-commit 和 pre-push 都跑
-   - 拦截同一 worktree 多个 V*.sql 共享版本号
-   - 也覆盖单 PR 内部撞号（同一 PR 同时引入两个 V<相同>__*.sql）
-   - 防护场景：main 有 V1110__cleanup.sql，worktree 新增 V1110__add_pending.sql → worktree 内出现两个 V1110 立即报警（无需对比 main）
-
-3. **origin/main 内部撞号检测**（pre-push 模式）：
-   - 拦截 main 已被污染（两个 PR 先后合入相同版本号）
-   - 防护场景：PR !1340 合入 main 后，PR !1342 也合入 main → main 同时有两个 V1110 → 下次任何 agent push 时报警（必须 hotfix）
-   - 因为 Gitee PR 合并不走本地 pre-push-gate，所以这种场景必须在 push 阶段拦截
-
-### 删除的缺陷逻辑
-
-**原 pre-push "worktree vs main 冲突检测 + auto-fix" 逻辑已删除**：
-
-原逻辑检查 worktree 中所有 V*.sql vs main，但 worktree 本来就包含 main 的所有文件（每个 agent sync-env 后 worktree 就是 main 的衍伸），所以所有 V*.sql 都会被误判为冲突并触发 auto-fix 重命名。
-
-修复 sed `\+` 后跑 pre-push 模式时，所有 V74-V1111 都被误判为冲突并触发了 auto-fix 重命名为 V1112-V1285（实际是 main 的所有迁移都被错位复制）。立即 `git reset --hard HEAD` 恢复。
-
-之前一直"假绿"是因为 sed 用了 `\+`，macOS BSD sed 不支持，导致版本号提取失败（空循环）。修复 sed 后反而暴露了原逻辑的缺陷。
-
-正确的冲突检测由 worktree 内部撞号检测 + origin/main 内部撞号检测两层覆盖。
 
 ### 教训
 
-| 问题 | 教训 | 规范 |
-|------|------|------|
-| 两个 PR 同时取 V1110 合入 main | 并行开发取号无锁，必须靠合入阶段检测兜底 | pre-push 必须检查 origin/main 内部是否已被污染 |
-| check-flyway-versions.sh 用了 `\+` | macOS BSD sed 不支持 `\+`，必须用 `-E` + `+` | 所有 sed 调用必须用 `-E` ERE 语法，禁止 `\+` |
-| 原逻辑检查 worktree 所有 V*.sql vs main | worktree 本来就包含 main 所有文件，必然误判 | 撞号检测应基于"内部唯一性"，不基于"worktree vs main diff" |
-| 防护脚本一直在"假绿" | 没有用真实撞号场景验证过防护是否实际生效 | 防护脚本必须用真实撞号构造测试用例验证检测有效 |
-| 部署阶段才发现撞号 | 预检在 push 阶段就该拦截，不应等到部署 | pre-push 阶段必须跑双层撞号检测 |
+1. **`catch { /* silent */ }` 是权限问题的隐形放大器**：后端返回 403 时前端吞错，用户看到的是"功能不可用"而非"权限不足"，导致：
+   - 用户以为是 Bug 而非权限问题，提错工单
+   - 排查者从"搜索功能"入手，而非从"权限链路"入手，浪费时间
+   - 测试环境用 admin 账号测不出问题，上线后非管理员账号才发现
 
-### 操作规范（建议固化到部署 SOP）
+2. **静默吞错违反"快速失败"原则**：错误应该尽早暴露，而不是静默处理后继续执行导致后续逻辑在错误状态下运行（空数组 → 下拉无候选 → 无法搜索）。
 
-1. **新增迁移前**：用 `bash scripts/next-migration-version.sh --reserve` 预约版本号
-2. **commit 前**：pre-commit hook 会自动跑 `check_worktree_internal_duplicate`，本地撞号立即报警
-3. **push 前**：pre-push hook 会自动跑双层检测（worktree 内部 + origin/main 内部）
-4. **部署预检**：打包前 `unzip -l app.jar 'BOOT-INF/classes/db/migration-mysql/V*.sql'` 检查 jar 内是否撞号
-5. **修复 sed 语法**：所有 sed 版本号提取必须用 `-E` ERE 语法
+3. **`try/catch` 的 catch 块必须有明确处理**：至少记录日志、上报埋点或弹出错误提示，禁止空 catch 块。
+
+### 操作规范
+
+1. **禁止 `catch { /* silent */ }` 或 `catch {}` 空块**：catch 块必须有至少一项处理：
+   - `console.error('[场景] xxx 失败', err)` 记录日志
+   - `ElMessage.error('加载xxx失败：' + err.message)` 弹出提示
+   - 降级处理 + 明确注释说明为什么降级（如 `// 403 时降级为空列表，权限由后端控制`）
+
+2. **关键业务写操作（创建/更新/删除）禁止吞错**：必须向用户反馈失败，不能静默处理。
+
+3. **数据加载类 catch 必须区分错误类型**：
+   - 403/401：明确提示"权限不足"或降级为空列表 + 注释
+   - 404：明确提示"资源不存在"
+   - 500：明确提示"服务异常，请稍后重试"
+   - 网络错误：明确提示"网络异常"
+
+4. **Code Review 时必须检查 catch 块**：reviewer 看到 `catch {}` 或 `catch { /* silent */ }` 必须质疑，要求作者明确处理或注释说明降级原因。
 
 ### 验证命令
 
 ```bash
-# 1. 正常场景（应通过，退出码 0）
-bash scripts/check-flyway-versions.sh --source=pre-commit
-echo "退出码: $?"
+# 检查前端是否有空 catch 吞掉 API 错误
+grep -rn "catch\s*{" src/views src/components | grep -v "catch.*err\|catch.*error\|catch.*e)" | head -20
+# 期望输出：无空 catch 块（或 catch 块有明确注释说明降级原因）
 
-# 2. worktree 撞号场景（构造两个 V1111 触发检测）
-cp backend/src/main/resources/db/migration-mysql/V1111__add_pending_approval_to_platform_accounts_status.sql \
-   backend/src/main/resources/db/migration-mysql/V1111__test_duplicate_detection.sql
-bash scripts/check-flyway-versions.sh --source=pre-commit
-echo "退出码: $?"  # 期望 1
-rm backend/src/main/resources/db/migration-mysql/V1111__test_duplicate_detection.sql
-
-# 3. pre-push 模式（应通过，并显示 worktree/main 版本数）
-bash scripts/check-flyway-versions.sh --source=push
-echo "退出码: $?"
-
-# 4. 检查 sed 语法兼容性（应同时支持 macOS BSD sed 和 Linux GNU sed）
-echo "test/V1111__foo.sql" | sed -En 's/.*\/V([0-9]+).*/\1/p'  # 应输出 1111
+# 检查 catch 块是否有 console.error 或 ElMessage
+grep -rn "catch.*{" src/views src/components -A 3 | grep -B 1 "silent\|/\*.*\*/" | head -20
 ```
 
 ### 相关文档
 
-- `scripts/check-flyway-versions.sh` — Flyway 版本号撞号检测脚本（已增加三层防护）
-- `scripts/next-migration-version.sh` — 版本号预约脚本（`--reserve` 防并行撞号）
-- `docs/release/deploy-report-2026-06-29-18th.md` — 第 18 次部署报告（V1110 撞号事故记录）
-- `backend/src/main/resources/db/migration-mysql/V1110__cleanup_legacy_pending_assignment_tasks.sql` — CO-401（保留 V1110）
-- `backend/src/main/resources/db/migration-mysql/V1111__add_pending_approval_to_platform_accounts_status.sql` — CO-386（从 V1110 重命名而来）
-- `backend/src/main/resources/db/rollback/migration-mysql/U1111__add_pending_approval_to_platform_accounts_status.sql` — 配套回滚（从 U1110 重命名而来）
-- PR !1345 — V1110 → V1111 hotfix（已合入 main）
-- PR !1340 — CO-401 cleanup_legacy_pending_assignment_tasks（保留 V1110）
-- PR !1342 — CO-386 账户借用申请审批流（原 V1110 撞号源）
+- `docs/lessons/root-cause-analysis-co-390-unified-picker.md` — 完整根因分析
+- `docs/lessons/lessons-learned.md` §1 — 后端接口契约变更必须同步前端所有入口（同类教训）
+
+---
+
+## 26. 联动回填链路 4 层全链路验证 SOP（CO-390 思维链 Review 归纳）
+
+### 问题背景
+
+CO-390 修复 AccountFormDialog 绑定联系人后，需要 UserPicker 选中联系人后联动回填 phone/email。后端在 `UserSearchResult` 新增 phone/email 字段后，必须验证 4 层链路全部对齐，否则任意一层断链都会导致联动失败。
+
+### 4 层链路验证 SOP
+
+| 层级 | 验证点 | 验证方式 |
+|------|--------|---------|
+| **1. 后端 DTO** | record/DTO 包含目标字段 | Read 后端 record/DTO 文件，确认字段存在 + service 填充 |
+| **2. API 层 normalize** | normalize 函数保留目标字段 | Read 前端 API module 的 normalize 函数，确认 `...user` 展开或显式映射目标字段 |
+| **3. 组件层 @select 回传** | @select 事件回传完整对象 | Read 组件源码，确认 emit 时回传原始对象（含目标字段），而非仅回传 id |
+| **4. 业务层联动** | 业务函数取目标字段联动 | Read 业务组件的事件处理函数，确认取 `user.目标字段` 并联动回填 |
+
+### 验证示例（CO-390 phone/email 联动）
+
+```
+1. 后端 DTO:
+   UserSearchResult.java record 新增 phone, email 字段 ✓
+   UserSearchService.java 填充 u.getPhone(), u.getEmail() ✓
+
+2. API 层 normalize:
+   userNormalizers.js normalizeUserOption 用 `...user` 展开保留所有字段 ✓
+   users.js usersApi.search 调 normalizeUserOption ✓
+
+3. 组件层 @select 回传:
+   UserPicker.vue handleChange 用 mergedOptions.value.find(...) 回传原始 user 对象 ✓
+   （不是只回传 id，而是完整对象，含 phone/email）
+
+4. 业务层联动:
+   AccountFormDialog.vue onContactPersonSelected(user) 取 user.phone / user.email 联动回填 ✓
+```
+
+### 教训
+
+1. **联动回填链路任何一层断链都会导致功能失败**：
+   - 后端 DTO 没字段 → API 层拿不到 → 组件回传 undefined → 业务联动失败
+   - API 层 normalize 丢字段 → 组件回传对象无字段 → 业务联动失败
+   - 组件 @select 只回传 id → 业务拿不到 user 对象 → 联动失败
+   - 业务函数不取字段 → 联动失败
+
+2. **思维链 Review 必须验证 4 层全链路**：不能只看业务层代码，必须从后端 DTO 开始逐层验证，确认字段在每一层都被正确传递。
+
+3. **normalize 函数用 `...user` 展开是最佳实践**：[userNormalizers.js](file:///Users/user/xiyu/worktrees/mimo/src/api/modules/userNormalizers.js) 用 `...user` 展开保留所有字段，后端新增字段时前端 API 层自动透传，无需修改 normalize 函数。如果 normalize 函数显式列出字段（如 `{id, name, phone}`），后端新增字段时必须同步更新 normalize 函数，容易遗漏。
+
+### 操作规范
+
+1. **后端 DTO 新增字段用于前端联动时，必须 4 层全链路验证**：
+   - 后端 record/DTO 字段存在 + service 填充
+   - 前端 API normalize 保留字段（`...user` 展开或显式映射）
+   - 组件 @select 回传完整对象
+   - 业务函数取字段联动
+
+2. **思维链 Review 时必须画出 4 层链路图**：用表格列出每一层的验证点和状态，确认全绿。
+
+3. **normalize 函数优先用 `...user` 展开保留所有字段**：避免显式列字段导致后端新增字段时遗漏同步。
+
+### 相关文档
+
+- `docs/lessons/root-cause-analysis-co-390-unified-picker.md` — 完整根因分析（含 4 层链路验证）
+- `src/api/modules/userNormalizers.js` — normalizeUserOption `...user` 展开最佳实践
+- `src/components/common/UserPicker.vue` — @select 回传完整对象
+- `docs/lessons/vue-gotchas.md` §3 — UserPicker 统一控件规范
