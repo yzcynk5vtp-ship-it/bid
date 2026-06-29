@@ -263,9 +263,15 @@ public class TenderMapper {
 
     private List<ContactDTO> buildContacts(String n1, String p1, String t1, String m1, String n2, String p2, String t2, String m2) {
         List<ContactDTO> contacts = new ArrayList<>();
-        if (n1 != null && !n1.isBlank()) contacts.add(ContactDTO.builder().name(n1).phone(p1).tel(t1).mail(m1).build());
-        if (n2 != null && !n2.isBlank()) contacts.add(ContactDTO.builder().name(n2).phone(p2).tel(t2).mail(m2).build());
+        // CO-402: name/phone/tel/mail 任一字段有值即加入列表（原仅 name 非空才加入，导致联系人2姓名为空但有电话时丢失）
+        if (hasAnyContactField(n1, p1, t1, m1)) contacts.add(ContactDTO.builder().name(n1).phone(p1).tel(t1).mail(m1).build());
+        if (hasAnyContactField(n2, p2, t2, m2)) contacts.add(ContactDTO.builder().name(n2).phone(p2).tel(t2).mail(m2).build());
         return contacts;
+    }
+
+    private static boolean hasAnyContactField(String... vals) {
+        for (String v : vals) if (v != null && !v.isBlank()) return true;
+        return false;
     }
 
     private List<String> decodeTags(String tags) {
