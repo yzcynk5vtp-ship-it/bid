@@ -103,7 +103,7 @@ public class ProjectDraftingService {
             description = "DRAFTING → EVALUATING 闸门检查")
     public ProjectDraftingViewDto gateAdvanceToEvaluation(Long projectId, Long currentUserId) {
         mustGetProject(projectId);
-        assertBidReadiness(projectId, "无法推进到评标");
+        assertBidSubmissionReady(projectId, "无法推进到评标");
         ProjectLeadAssignment lead = leadRepo.findByProjectId(projectId).orElse(null);
         return toView(projectId, lead);
     }
@@ -114,8 +114,9 @@ public class ProjectDraftingService {
         // 服务层角色 + 项目级负责人校验（与 submitBid 对齐；优先从 OSS 缓存读取角色，避免 DB role_id 为空导致误拒绝）
         ProjectLeadAssignment lead = assertCanSubmit(projectId, currentUserId);
 
-        // 闸门校验：所有任务已完成 + 标书文件已上传（与 submitBid 一致）
-        assertBidReadiness(projectId, "无法提交标书审核");
+        // 闸门校验：仅校验标书文件已上传（CO-400 修复：提交审核时不要求任务全完成，
+        // 任务完成与否是审核人的判断，不是闸门。详见 docs/lessons/lessons-learned.md §25）
+        assertBidDocumentUploaded(projectId, "无法提交标书审核");
 
         projectAccessScopeService.assertCurrentUserCanAccessProject(projectId);
         mustGetProject(projectId);
@@ -168,7 +169,7 @@ public class ProjectDraftingService {
         }
 
         // 复用 BidReadinessPolicy 闸门（任务全完成 + 标书文件已上传）
-        assertBidReadiness(projectId, "无法提交投标");
+        assertBidSubmissionReady(projectId, "无法提交投标");
 
         projectStageService.requestTransition(projectId, ProjectStage.EVALUATING,
                 ProjectStageTransitionPolicy.GateInputs.EMPTY);
@@ -223,20 +224,39 @@ public class ProjectDraftingService {
      * 共享标书编制闸门：所有任务已完成 + 标书文件已上传。
      * 失败时映射 {@link BidReadinessPolicy.Decision.Cause#STATE} → 409。
      */
-    private void assertBidReadiness(Long projectId, String action) {
+    private void assertBidSubmissionReady(Long projectId, String action) {
         List<AllTasksCompletedPolicy.TaskState> taskStates = taskRepository.findByProjectId(projectId).stream()
                 .map(t -> t.getStatus() == null
                         ? AllTasksCompletedPolicy.TaskState.TODO
                         : AllTasksCompletedPolicy.TaskState.valueOf(t.getStatus().name()))
                 .toList();
-        boolean hasBidDocument = !projectDocumentRepository
-                .findByProjectIdAndFiltersOrderByCreatedAtDesc(
-                        projectId, BidReadinessPolicy.BID_DOCUMENT_CATEGORY, null, null)
-                .isEmpty();
-        BidReadinessPolicy.Decision d = BidReadinessPolicy.check(taskStates, hasBidDocument);
+        boolean hasBidDocument = hasBidDocument(projectId);
+        BidReadinessPolicy.Decision d = BidReadinessPolicy.checkBidSubmissionReady(taskStates, hasBidDocument);
         if (!d.allowed()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, d.reason() + "，" + action);
         }
+    }
+
+    /**
+     * 仅校验标书文件已上传（CO-400：submitForReview 专用，不要求任务全完成）。
+     * 失败时映射 {@link BidReadinessPolicy.Decision.Cause#STATE} → 409。
+     */
+    private void assertBidDocumentUploaded(Long projectId, String action) {
+        boolean hasBidDocument = hasBidDocument(projectId);
+        BidReadinessPolicy.Decision d = BidReadinessPolicy.checkBidDocumentUploaded(hasBidDocument);
+        if (!d.allowed()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, d.reason() + "，" + action);
+        }
+    }
+
+    /**
+     * 查询项目是否已上传标书文件（{@code documentCategory=BID_DOCUMENT}）。
+     */
+    private boolean hasBidDocument(Long projectId) {
+        return !projectDocumentRepository
+                .findByProjectIdAndFiltersOrderByCreatedAtDesc(
+                        projectId, BidReadinessPolicy.BID_DOCUMENT_CATEGORY, null, null)
+                .isEmpty();
     }
 
     private Project mustGetProject(Long projectId) {

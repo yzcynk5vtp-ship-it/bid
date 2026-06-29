@@ -11,8 +11,19 @@ import java.util.List;
  * <p>纯核心：不依赖数据库、I/O、Spring 或日志。所有方法返回 {@link Decision} 值，
  * 编排层按 {@link Decision.Cause} 映射 HTTP 状态码（STATE→409）。</p>
  *
- * <p>本闸门同时被 {@code submitBid}（推进入评标）与 {@code submitForReview}（提交标书给审核人）
- * 两处业务入口复用，避免规则漂移。</p>
+ * <p>本类提供两个语义不同的闸门方法，避免业务入口错配闸门（CO-400 教训）：</p>
+ * <ul>
+ *   <li>{@link #checkBidDocumentUploaded(boolean)} — 仅校验标书文件已上传，
+ *       供 {@code submitForReview}（提交标书审核）使用。
+ *       业务语义：发起审核时标书可能仍在编制，任务完成与否是审核人的判断，不是闸门。</li>
+ *   <li>{@link #checkBidSubmissionReady(List, boolean)} — 校验任务全完成 + 标书文件已上传，
+ *       供 {@code submitBid}（推进到评标阶段）使用。
+ *       业务语义：推进阶段是重大阶段流转，要求所有任务终态完成。</li>
+ * </ul>
+ *
+ * <p><b>CO-400 防复发约束</b>：修改本类时必须检查 submitBid / submitForReview 两个调用点
+ * 是否仍然按上述语义分工调用对应方法，不得混淆。详见
+ * {@code docs/lessons/lessons-learned.md §25}。</p>
  */
 public final class BidReadinessPolicy {
 
@@ -23,28 +34,42 @@ public final class BidReadinessPolicy {
     }
 
     /**
-     * 检查项目是否准备好提交标书（提交审核 / 提交投标通用）。
+     * 仅校验标书文件已上传。
+     *
+     * <p>供 {@code ProjectDraftingService.submitForReview}（提交标书给审核人审核）使用。
+     * 业务语义：发起审核时，标书可能仍在编制，任务完成与否是审核人的判断，不是闸门。</p>
+     *
+     * @param hasBidDocument 是否存在标书文件（{@code documentCategory=BID_DOCUMENT}）
+     * @return 允许或拒绝决定 + 拒绝原因
+     */
+    public static Decision checkBidDocumentUploaded(boolean hasBidDocument) {
+        if (!hasBidDocument) {
+            return Decision.deny(Decision.Cause.STATE, "尚未上传标书文件");
+        }
+        return Decision.permit();
+    }
+
+    /**
+     * 校验任务全完成 + 标书文件已上传。
+     *
+     * <p>供 {@code ProjectDraftingService.submitBid}（推进到评标阶段）使用。
+     * 业务语义：推进阶段是重大阶段流转，要求所有任务终态完成。</p>
+     *
+     * <p>任务问题优先级高：先报告"任务未完成"，再检查标书文件。</p>
      *
      * @param taskStates     项目下所有任务的状态快照（来自 shell 层）
      * @param hasBidDocument 是否存在标书文件（{@code documentCategory=BID_DOCUMENT}）
      * @return 允许或拒绝决定 + 拒绝原因
      */
-    public static Decision check(List<AllTasksCompletedPolicy.TaskState> taskStates,
-                                  boolean hasBidDocument) {
-        // 1. 所有任务都已终态完成
+    public static Decision checkBidSubmissionReady(List<AllTasksCompletedPolicy.TaskState> taskStates,
+                                                   boolean hasBidDocument) {
         AllTasksCompletedPolicy.Decision taskDecision = AllTasksCompletedPolicy.decide(taskStates);
         if (!taskDecision.allowed()) {
             int incomplete = ((AllTasksCompletedPolicy.Decision.Deny) taskDecision).incompleteCount();
             return Decision.deny(Decision.Cause.STATE,
                     "仍有 " + incomplete + " 个任务未完成");
         }
-
-        // 2. 已上传标书文件
-        if (!hasBidDocument) {
-            return Decision.deny(Decision.Cause.STATE, "尚未上传标书文件");
-        }
-
-        return Decision.permit();
+        return checkBidDocumentUploaded(hasBidDocument);
     }
 
     /**
