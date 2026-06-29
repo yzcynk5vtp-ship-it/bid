@@ -78,6 +78,7 @@
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { resourcesApi } from '@/api'
+import { useUserStore } from '@/stores/user'
 import UserPicker from '@/components/common/UserPicker.vue'
 
 const props = defineProps({
@@ -85,6 +86,8 @@ const props = defineProps({
   editRow: { type: Object, default: null }
 })
 const emit = defineEmits(['update:modelValue', 'saved'])
+
+const userStore = useUserStore()
 
 const visible = computed({
   get: () => props.modelValue,
@@ -132,7 +135,7 @@ const checkAccountNameUnique = async () => {
   } catch { accountNameDup.value = false }
 }
 
-const onOpen = () => {
+const onOpen = async () => {
   const r = props.editRow?.raw || props.editRow || {}
   if (r.id) {
     form.value = {
@@ -143,6 +146,18 @@ const onOpen = () => {
       contactPhone: r.contactPhone || '', contactEmail: r.contactEmail || '',
       hasCa: r.hasCa || false,
       remarks: r.remarks || '' }
+    // CO-400 三轮：后端 DTO 故意不含 password（PlatformAccountDTO 行 13 注释 "password excluded"），
+    // 特权角色编辑时调 getPassword 拉明文填入输入框；非特权角色保持空（按"留空则不修改"逻辑）。
+    if (userStore.isBidManager) {
+      try {
+        const pwdRes = await resourcesApi.accounts.getPassword(r.id)
+        if (pwdRes?.success && pwdRes?.data?.password) {
+          form.value.password = pwdRes.data.password
+        }
+      } catch (e) {
+        console.error('Failed to load password for edit:', e)
+      }
+    }
   } else {
     form.value = emptyForm()
   }
