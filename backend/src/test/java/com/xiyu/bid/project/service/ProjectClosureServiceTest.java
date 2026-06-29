@@ -51,6 +51,7 @@ class ProjectClosureServiceTest {
     private NotificationApplicationService notificationService;
     private com.xiyu.bid.documentexport.service.DocumentExportService documentExportService;
     private ProjectAccessScopeService projectAccessScopeService;
+    private ProjectClosurePermissionGuard closurePermissionGuard;
     private ProjectClosureService service;
 
     private static final Long PID = 1L;
@@ -71,7 +72,10 @@ class ProjectClosureServiceTest {
         documentExportService = mock(com.xiyu.bid.documentexport.service.DocumentExportService.class);
         projectAccessScopeService = mock(ProjectAccessScopeService.class);
         var projectDocumentRepo = mock(com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository.class);
-        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler, userRepository, notificationService, documentExportService, projectDocumentRepo, projectAccessScopeService);
+        closurePermissionGuard = mock(ProjectClosurePermissionGuard.class);
+        // Guard 默认放行（多数用例不关心审核权）；涉及审核权阻断的用例会单独 stub 抛异常
+        lenient().doNothing().when(closurePermissionGuard).assertCanReviewClosure(eq(PID));
+        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler, userRepository, notificationService, documentExportService, projectDocumentRepo, projectAccessScopeService, closurePermissionGuard);
         Project p = new Project();
         p.setId(PID);
         when(projectRepo.findById(PID)).thenReturn(Optional.of(p));
@@ -325,5 +329,57 @@ class ProjectClosureServiceTest {
 
         assertNotNull(result);
         assertEquals(888L, result.getId());
+    }
+
+    // ---------- CO-403 纠偏：审核权编排守卫（职责分离 + 项目级投标辅助匹配）----------
+
+    /** approveClosure 必须先调用审核权守卫，再查 closure。 */
+    @Test
+    void co403_approve_invokes_review_permission_guard() {
+        ProjectClosure closure = new ProjectClosure();
+        closure.setProjectId(PID);
+        closure.setReviewStatus("PENDING");
+        when(closureRepo.findByProjectId(PID)).thenReturn(Optional.of(closure));
+
+        service.approveClosure(PID, UID);
+
+        verify(closurePermissionGuard).assertCanReviewClosure(PID);
+    }
+
+    /** 守卫拒绝（如提交人审核自己）→ approveClosure 必须 403 传播，不修改 closure。 */
+    @Test
+    void co403_approve_guardDenies_throws403_andDoesNotPersist() {
+        // 模拟 Guard 拦截：提交人(投标项目负责人)审核自己提交的结项
+        org.mockito.Mockito.doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "不可审核自己提交的结项"))
+                .when(closurePermissionGuard).assertCanReviewClosure(PID);
+
+        var ex = assertThrows(ResponseStatusException.class,
+                () -> service.approveClosure(PID, UID));
+        assertEquals(403, ex.getStatusCode().value());
+        verify(closureRepo, never()).save(any());
+    }
+
+    /** rejectClosure 同样必须先调用审核权守卫。 */
+    @Test
+    void co403_reject_invokes_review_permission_guard() {
+        ProjectClosure closure = new ProjectClosure();
+        closure.setProjectId(PID);
+        closure.setReviewStatus("PENDING");
+        when(closureRepo.findByProjectId(PID)).thenReturn(Optional.of(closure));
+
+        service.rejectClosure(PID, "内容不全", UID);
+
+        verify(closurePermissionGuard).assertCanReviewClosure(PID);
+    }
+
+    /** 守卫拒绝 → rejectClosure 必须 403 传播。 */
+    @Test
+    void co403_reject_guardDenies_throws403() {
+        org.mockito.Mockito.doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "无权审核"))
+                .when(closurePermissionGuard).assertCanReviewClosure(PID);
+
+        var ex = assertThrows(ResponseStatusException.class,
+                () -> service.rejectClosure(PID, "原因", UID));
+        assertEquals(403, ex.getStatusCode().value());
     }
 }
