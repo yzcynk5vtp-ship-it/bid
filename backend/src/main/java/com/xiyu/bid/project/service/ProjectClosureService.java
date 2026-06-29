@@ -50,6 +50,7 @@ public class ProjectClosureService {
     private final UserRepository userRepository;
     private final NotificationApplicationService notificationService;
     private final DocumentExportService documentExportService;
+    private final com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository projectDocumentRepository;
 
     @Transactional(readOnly = true)
     public ClosurePreviewDTO preview(Long projectId) {
@@ -65,11 +66,14 @@ public class ProjectClosureService {
         boolean canClose = decision.allowed() && !alreadyClosed
                 && (closure == null || !"PENDING".equals(closure.getReviewStatus()));
         String paymentMethod = depositAssembler.getPaymentMethod(projectId);
+        // CO-395: 查退回凭证文件名供前端只读展示
+        String evidenceName = resolveDocumentName(snap.evidenceDocId());
         return ClosurePreviewDTO.builder()
                 .projectId(projectId).hasDeposit(snap.hasDeposit()).depositAmount(snap.depositAmount())
                 .depositPaymentMethod(snap.hasDeposit() ? paymentMethod : null)
                 .depositReturnStatus(snap.returnStatus().name())
                 .depositReturnDate(snap.returnDate()).depositReturnEvidenceId(snap.evidenceDocId())
+                .depositReturnEvidenceName(evidenceName)
                 .transferAmount(closure != null ? closure.getTransferAmount() : null)
                 .returnedAmount(closure != null ? closure.getReturnedAmount() : null)
                 .canClose(canClose).blockingReasons(blockingReasons)
@@ -235,6 +239,18 @@ public class ProjectClosureService {
     private Project mustGetProject(Long projectId) {
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project", String.valueOf(projectId)));
+    }
+
+    /**
+     * CO-395: 根据文档 ID 查文件名，供前端只读展示。
+     * @param docId 文档 ID（可能为 null）
+     * @return 文件名，查不到时返回 null
+     */
+    private String resolveDocumentName(Long docId) {
+        if (docId == null) return null;
+        return projectDocumentRepository.findById(docId)
+                .map(com.xiyu.bid.projectworkflow.entity.ProjectDocument::getName)
+                .orElse(null);
     }
 
     private ClosureDTO toDto(ProjectClosure e) {

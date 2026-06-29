@@ -67,7 +67,8 @@ class ProjectClosureServiceTest {
         userRepository = mock(UserRepository.class);
         notificationService = mock(NotificationApplicationService.class);
         documentExportService = mock(com.xiyu.bid.documentexport.service.DocumentExportService.class);
-        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler, userRepository, notificationService, documentExportService);
+        var projectDocumentRepo = mock(com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository.class);
+        service = new ProjectClosureService(closureRepo, projectRepo, stageService, depositAssembler, userRepository, notificationService, documentExportService, projectDocumentRepo);
         Project p = new Project();
         p.setId(PID);
         when(projectRepo.findById(PID)).thenReturn(Optional.of(p));
