@@ -12,7 +12,10 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      # 与生产 (application-prod.yml) 对齐：用 validate 而非 update，
+      # 让 FlywayMysqlContainerTest 能抓出 entity 与 Flyway schema 的漂移。
+      # 之前用 update 会掩盖不一致：测试通过但生产启动失败。
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
