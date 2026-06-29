@@ -53,6 +53,8 @@ public class ProjectClosureService {
     private final DocumentExportService documentExportService;
     private final com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository projectDocumentRepository;
     private final ProjectAccessScopeService projectAccessScopeService;
+    // CO-403 纠偏：结项审核的职责分离(提交人不可审核) + 项目级投标辅助校验
+    private final ProjectClosurePermissionGuard closurePermissionGuard;
 
     @Transactional(readOnly = true)
     public ClosurePreviewDTO preview(Long projectId) {
@@ -133,6 +135,8 @@ public class ProjectClosureService {
     @Auditable(action = "PROJECT_CLOSURE_APPROVED", entityType = "ProjectClosure", description = "审核通过项目结项")
     public ClosureDTO approveClosure(Long projectId, Long userId) {
         mustGetProject(projectId);
+        // CO-403 纠偏：审核权细粒度校验（职责分离 + 项目级投标辅助匹配）
+        closurePermissionGuard.assertCanReviewClosure(projectId);
         ProjectClosure closure = closureRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到结项申请，请先提交结项"));
         if (!"PENDING".equals(closure.getReviewStatus())) {
@@ -163,6 +167,8 @@ public class ProjectClosureService {
     @Auditable(action = "PROJECT_CLOSURE_REJECTED", entityType = "ProjectClosure", description = "驳回项目结项申请")
     public ClosureDTO rejectClosure(Long projectId, String reason, Long userId) {
         mustGetProject(projectId);
+        // CO-403 纠偏：审核权细粒度校验（职责分离 + 项目级投标辅助匹配）
+        closurePermissionGuard.assertCanReviewClosure(projectId);
         ProjectClosure closure = closureRepository.findByProjectId(projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "未找到结项申请，请先提交结项"));
         if (!"PENDING".equals(closure.getReviewStatus())) {

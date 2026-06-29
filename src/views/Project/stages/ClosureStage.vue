@@ -328,10 +328,21 @@ const isProjectLeader = computed(() => {
 })
 const isBidManager = computed(() => userRole.value === '/bidAdmin' || userRole.value === 'bid-TeamLeader' || userRole.value === 'bid-Team')
 
-// CO-403: 保证金退回情况/退回日期/凭证文件/项目总结 四字段仅投标管理员/组长可编辑。
-// 投标负责人(bid-projectLeader)/投标辅助(bid-Team)即使被项目级分配为负责人/辅助人员也只读。
-// 不复用 isBidManager（其历史遗留误含 bid-Team）也不复用 isProjectLeader（CO-392 扩展后含投标辅助）。
-const isClosureEditor = computed(() => userRole.value === '/bidAdmin' || userRole.value === 'bid-TeamLeader')
+// 仅匹配"项目级投标负责人/辅助"分配(不含 bid-projectLeader 角色)。
+// 用于审核场景：区分"投标项目负责人(提交人)"与"被分配为该项目 lead 的投标辅助"。
+// isProjectLeader 把 bid-projectLeader 角色直接判 true，会导致提交人误拿审核权，故审核专用此 computed。
+const isProjectLeadAssignee = computed(() => {
+  const uid = userStore.currentUser?.id
+  if (uid == null) return false
+  const uidStr = String(uid)
+  return String(leads.value.primaryLeadUserId ?? '') === uidStr
+    || String(leads.value.secondaryLeadUserId ?? '') === uidStr
+})
+
+// 结项 4 字段（保证金退回情况/退回日期/凭证文件/项目总结）的编辑权：仅投标项目负责人(立项发起人)。
+// 纠正 CO-403 的角色错配——CO-403 把编辑权错配给了管理员/组长，导致能编辑的人提交不了、能提交的人编辑不了。
+// 新矩阵：投标项目负责人 编辑+提交；投标管理员/组长 + 该项目投标负责人/辅助 只审核(4 字段只读、凭证可下载)。
+const isClosureEditor = computed(() => userRole.value === 'bid-projectLeader')
 
 const canEditDeposit = computed(() => {
   if (!isClosureEditor.value) return false
@@ -345,16 +356,22 @@ const canEditSummary = computed(() => {
   return preview.value?.reviewStatus !== 'APPROVED'
 })
 
+// 仅投标项目负责人(bid-projectLeader)可提交结项申请；管理员/组长/投标辅助只审核不提交。
 const canSubmitClosure = computed(() => {
-  if (!isProjectLeader.value && !isBidManager.value) return false
+  if (userRole.value !== 'bid-projectLeader') return false
   if (preview.value?.alreadyClosed) return false
   if (preview.value?.reviewStatus === 'APPROVED') return false
   if (preview.value?.reviewStatus === 'PENDING') return false
   return true
 })
 
+// 审核人：系统管理员/投标管理员/投标组长 + 该项目的投标负责人/投标辅助(isProjectLeadAssignee)；
+// 用 isProjectLeadAssignee 而非 isProjectLeader——后者对 bid-projectLeader(提交人)直接 true 会破坏职责分离。
 const canApprove = computed(() => {
-  if (userRole.value !== 'admin' && !isBidManager.value) return false
+  const isAdminLead = userRole.value === 'admin'
+    || userRole.value === '/bidAdmin'
+    || userRole.value === 'bid-TeamLeader'
+  if (!isAdminLead && !isProjectLeadAssignee.value) return false
   return preview.value?.reviewStatus === 'PENDING'
 })
 
@@ -467,10 +484,17 @@ async function doReject() {
   finally { rejecting.value = false }
 }
 
-defineExpose({ canSubmit, form, preview, load: async () => {
-  await loadPreview()
-  if (props.projectId) checkPrecipitationReadiness()
-} })
+defineExpose({
+  canSubmit, form, preview,
+  // 暴露权限 computed 供单测验证（结项编辑/提交/审核矩阵）
+  isProjectLeader, isClosureEditor, canEditDeposit, canEditSummary, canSubmitClosure, canApprove,
+  // 暴露上传相关函数供单测验证
+  handleEvidenceUploadSuccess, beforeUpload,
+  load: async () => {
+    await loadPreview()
+    if (props.projectId) checkPrecipitationReadiness()
+  },
+})
 
 const rebidLoading = ref(false)
 async function handleRebid() {
