@@ -38,7 +38,7 @@ public class PersonnelImportController {
     private final PersonnelImportTemplateGenerator templateGenerator;
 
     @PostMapping("/import")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader')")
+    @PreAuthorize("hasAnyAuthority('admin', '/bidAdmin', 'bid-TeamLeader', 'ROLE_BIDADMIN', 'ROLE_BID_TEAMLEADER')")
     public ResponseEntity<ApiResponse<ImportTaskResponse>> startImport(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -63,14 +63,14 @@ public class PersonnelImportController {
     }
 
     @GetMapping("/import/{taskId}")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader')")
+    @PreAuthorize("hasAnyAuthority('admin', '/bidAdmin', 'bid-TeamLeader', 'ROLE_BIDADMIN', 'ROLE_BID_TEAMLEADER')")
     public ResponseEntity<ApiResponse<ImportProgressInfo>> getImportProgress(@PathVariable Long taskId) {
         ImportProgressInfo progress = importAppService.getProgress(taskId);
         return ResponseEntity.ok(ApiResponse.success("获取进度成功", progress));
     }
 
     @GetMapping("/import/{taskId}/report")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader')")
+    @PreAuthorize("hasAnyAuthority('admin', '/bidAdmin', 'bid-TeamLeader', 'ROLE_BIDADMIN', 'ROLE_BID_TEAMLEADER')")
     public ResponseEntity<Resource> downloadErrorReport(@PathVariable Long taskId) {
         try {
             byte[] reportBytes = importAppService.getErrorReport(taskId);
@@ -91,7 +91,7 @@ public class PersonnelImportController {
     }
 
     @GetMapping("/import/template")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader', 'bid-Team')")
+    @PreAuthorize("hasAnyAuthority('admin', '/bidAdmin', 'bid-TeamLeader', 'bid-Team', 'ROLE_BIDADMIN', 'ROLE_BID_TEAMLEADER', 'ROLE_BID_TEAM')")
     public ResponseEntity<Resource> downloadTemplate() {
         try {
             byte[] templateBytes = templateGenerator.generate();

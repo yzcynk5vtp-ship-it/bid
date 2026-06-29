@@ -143,6 +143,11 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             authorities.add(RoleProfileCatalog.WAREHOUSE_MANAGE_PERMISSION);
         }
 
+        // CO-391 诊断日志：输出最终 roleCode 与 authorities 集合，便于排查 403 鉴权失败。
+        // INFO 级别（OSS/登录频次低，不爆量）；覆盖 OSS 缓存命中与 DB 兜底两条路径。
+        log.info("UserDetails authorities built: user={} isOssUser={} roleCode={} skipLegacyCompat={} authorities={}",
+                user.getUsername(), isOssUser, roleCode, skipLegacyCompat, authorities);
+
         return authorities.stream().map(SimpleGrantedAuthority::new).toList();
     }
 }

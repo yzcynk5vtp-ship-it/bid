@@ -574,4 +574,48 @@ class UserDetailsServiceImplTest {
                 .contains("bidding.manage", "task.review", "retrospective.submit", "warehouse.manage")
                 .doesNotContain("task.view.own");
     }
+
+    @Test
+    @DisplayName("本地账号 DB roleProfile.code 漂移为 bidAdmin（无斜杠）时 authorities 应含 ROLE_BIDADMIN 但缺失 /bidAdmin 与 ROLE_ADMIN（CO-391 根因诊断）")
+    void localUserWithDriftedRoleCodeShouldLogAuthoritiesForDiagnosis() {
+        // CO-391：bid_admin 06234 郑蓉蓉 403 根因场景。
+        // 06234 为本地账号（externalOrgSourceApp 为空），OSS 缓存 miss → 走 DB 兜底分支（行 81）：
+        //   roleCode = user.getRoleCode() = roleProfile.code = "bidAdmin"（无前导斜杠，DB 漂移）
+        //   - 不走 LoginRoleWhitelist 校验（行 87 仅对 OSS 用户）
+        //   - authorities.add("bidAdmin")（原值，无斜杠）
+        //   - authorities.add("ROLE_BIDADMIN")（toAuthorityName 总是执行，行 106）
+        //   - shouldSkipLegacyRoleCompat("bidAdmin")=true（不在 DEFINITIONS case-insensitive map）
+        //     → 跳过 ROLE_MANAGER 兼容层 → authorities 不含 ROLE_MANAGER
+        //   - authorities 不含 "/bidAdmin"（规范形式）
+        // 结果：Controller 注解 hasAnyAuthority('/bidAdmin', 'bid-TeamLeader') 不匹配 → 403。
+        // 修复：Controller 注解加 'ROLE_BIDADMIN' 兜底覆盖此漂移场景。
+        RoleProfile roleProfile = RoleProfile.builder()
+                .code("bidAdmin")
+                .name("投标管理员")
+                .build();
+        User user = User.builder()
+                .username("06234")
+                .password("{noop}password")
+                .email("06234@example.com")
+                .fullName("郑蓉蓉")
+                .role(User.Role.MANAGER)
+                .roleProfile(roleProfile)
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("06234")).thenReturn(Optional.of(user));
+        when(ossPermissionCache.getEntry("06234")).thenReturn(Optional.empty());
+
+        UserDetails details = userDetailsService.loadUserByUsername("06234");
+
+        // 验证漂移场景下的 authorities 集合形态：
+        //   - 含漂移原值 "bidAdmin"
+        //   - 含 ROLE_BIDADMIN（来自 toAuthorityName，不受 skipLegacyCompat 控制）
+        //   - 不含规范形式 "/bidAdmin"（根因）
+        //   - 不含 ROLE_MANAGER（shouldSkipLegacyRoleCompat=true 跳过兼容层，根因）
+        // Controller 注解加 ROLE_BIDADMIN 兜底后，此场景可访问 /import/template 等端点。
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains("bidAdmin", "ROLE_BIDADMIN")
+                .doesNotContain("/bidAdmin", "ROLE_MANAGER", "ROLE_ADMIN");
+    }
 }
