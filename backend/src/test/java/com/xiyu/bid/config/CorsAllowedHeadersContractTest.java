@@ -33,14 +33,16 @@ class CorsAllowedHeadersContractTest {
     private static final String[] FRONTEND_CUSTOM_HEADERS = {
             "Authorization",
             "Content-Type",
-            "Idempotency-Key"
+            "Idempotency-Key",
+            // 前端 client.js 注入的 traceId，TraceFilter 读取串联日志（TraceConstants.X_TRACE_ID）
+            "X-Trace-Id"
     };
 
     @Autowired
     private MockMvc mockMvc;
 
     @ParameterizedTest
-    @ValueSource(strings = {"Authorization", "Content-Type", "Idempotency-Key"})
+    @ValueSource(strings = {"Authorization", "Content-Type", "Idempotency-Key", "X-Trace-Id"})
     void preflightAllowsFrontendCustomHeader(String requestedHeader) throws Exception {
         mockMvc.perform(options("/api/tenders")
                         .header("Origin", "http://127.0.0.1:1315")
