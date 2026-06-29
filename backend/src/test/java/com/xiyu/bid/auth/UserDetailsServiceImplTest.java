@@ -574,4 +574,54 @@ class UserDetailsServiceImplTest {
                 .contains("bidding.manage", "task.review", "retrospective.submit", "warehouse.manage")
                 .doesNotContain("task.view.own");
     }
+
+    @Test
+    @DisplayName("OSS 用户缓存 roleCode 漂移为 admin（非 DB 规范 /bidAdmin）时 authorities 含 admin 但缺失 /bidAdmin（CO-391 真实根因）")
+    void ossUserCacheHitWithDriftedAdminRoleCodeShouldLogAuthoritiesForDiagnosis() {
+        // CO-391 真实根因（production 数据已确认）：
+        // 06234 郑蓉蓉为 OSS 用户（external_org_source_app=oss），DB roleProfile.code=/bidAdmin，
+        // 但 OSS 缓存中 roleCode="admin"（来自 OSS 系统映射，与 DB 不一致）。
+        // 走 OSS 缓存命中分支（行 62-67）：
+        //   - "admin" 在 LoginRoleWhitelist 白名单内 → 不被拒绝
+        //   - shouldSkipLegacyRoleCompat("admin")=false（admin 在 DEFINITIONS case-insensitive map）
+        //   - authorities.add("ROLE_MANAGER")（DB user.role=MANAGER）
+        //   - authorities.add("admin")（原值）
+        //   - authorities.add("ROLE_ADMIN")（toAuthorityName("admin")="ADMIN"，行 106 总是执行）
+        //   - authorities.add("ROLE_ADMIN")（legacyRoleForCode("admin")=ADMIN，行 110-111）
+        //   - authorities 不含 "/bidAdmin"（规范形式）
+        // 结果：旧 Controller 注解 hasAnyAuthority('/bidAdmin', 'bid-TeamLeader') 不匹配 → 403。
+        // 修复：Controller 注解加 'admin' 字面字符串兜底覆盖此真实场景。
+        RoleProfile roleProfile = RoleProfile.builder()
+                .code(RoleProfileCatalog.BID_ADMIN_CODE)
+                .name("投标管理员")
+                .build();
+        User user = User.builder()
+                .username("06234")
+                .password("{noop}password")
+                .email("06234@example.com")
+                .fullName("郑蓉蓉")
+                .role(User.Role.MANAGER)
+                .roleProfile(roleProfile)
+                .externalOrgSourceApp("OSS")
+                .enabled(true)
+                .build();
+        when(userRepository.findByUsername("06234")).thenReturn(Optional.of(user));
+        // OSS 缓存 roleCode 漂移为 "admin"（非 DB 规范 /bidAdmin）
+        OssPermissionCache.CacheEntry entry = new OssPermissionCache.CacheEntry(
+                "admin", List.of("bidding"), null, Instant.now().plusSeconds(60));
+        when(ossPermissionCache.getEntry("06234")).thenReturn(Optional.of(entry));
+
+        UserDetails details = userDetailsService.loadUserByUsername("06234");
+
+        // 验证漂移场景下的 authorities 集合形态：
+        //   - 含 "admin" 字面字符串（命中 Controller 注解 'admin' 兜底）
+        //   - 含 ROLE_ADMIN（toAuthorityName + legacyRoleForCode 双路径生成）
+        //   - 含 ROLE_MANAGER（DB user.role=MANAGER，!skipLegacyCompat）
+        //   - 不含规范形式 "/bidAdmin"（根因）
+        // Controller 注解加 'admin' 兜底后，此场景可访问 /import/template 等端点。
+        assertThat(details.getAuthorities())
+                .extracting("authority")
+                .contains("admin", "ROLE_ADMIN", "ROLE_MANAGER")
+                .doesNotContain("/bidAdmin");
+    }
 }
