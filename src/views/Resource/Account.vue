@@ -78,27 +78,18 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <template v-if="isPrivilegedViewer">
-          <el-table-column prop="username" label="账号" width="150" />
-          <el-table-column prop="contactPersonLabel" label="联系人" width="140" />
-          <el-table-column label="密码" width="100">
-            <template #default="{ row }">
-              <div class="password-cell">
-                <div class="password-row">
-                  <span class="password-text">{{ password.displayText(row.id) }}</span>
-                </div>
-                <button
-                  class="password-toggle-btn"
-                  :disabled="password.isLoading(row.id)"
-                  @click.stop="password.toggle(row.id)">
-                  <el-icon size="14">
-                    <component :is="password.isVisible(row.id) ? Hide : View" />
-                  </el-icon>
-                </button>
-              </div>
-            </template>
-          </el-table-column>
-        </template>
+        <el-table-column prop="username" label="账号" width="150" />
+        <el-table-column label="密码" width="100">
+          <template #default="{ row }">
+            <PasswordCell :row="row" :password="password" />
+          </template>
+        </el-table-column>
+        <el-table-column prop="contactPersonLabel" label="联系人" width="140" />
+        <el-table-column prop="contactPhone" label="绑定手机" width="140" />
+        <el-table-column prop="contactEmail" label="绑定邮箱" width="180" />
+        <el-table-column prop="platformType" label="平台类型" width="120">
+          <template #default="{ row }">{{ formatPlatformType(row.platformType) }}</template>
+        </el-table-column>
         <el-table-column label="是否有 CA" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="row.hasCa ? 'success' : 'info'" size="small">{{ row.hasCa ? '是' : '否' }}</el-tag>
@@ -124,7 +115,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Platform, View, Hide, Download, Upload } from '@element-plus/icons-vue'
+import { Search, Plus, Platform, Download, Upload } from '@element-plus/icons-vue'
 import { resourcesApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { usePasswordReveal } from './composables/usePasswordReveal.js'
@@ -137,6 +128,7 @@ import AccountReturnDialog from './AccountReturnDialog.vue'
 import AccountImportDialog from './components/AccountImportDialog.vue'
 import AccountBorrowApplications from './AccountBorrowApplications.vue'
 import AccountRowActions from './AccountRowActions.vue'
+import PasswordCell from './components/PasswordCell.vue'
 
 const searchForm = ref({
   platform: '',
@@ -152,12 +144,16 @@ const handleSelectionChange = (rows) => {
 const userStore = useUserStore()
 const userRoleCode = computed(() => userStore.currentUser?.roleCode || userStore.currentUser?.role || '')
 const isProjectLeader = computed(() => userRoleCode.value === 'bid-projectLeader')
-// CO-400 二轮：与后端 PlatformAccountService.isPrivilegedViewer 对齐，
-// 管理员 / 投标管理员 / 投标组长 始终能看到敏感列。
-// 投标专员对自身为绑定联系人的账户，后端会返回完整 DTO，因此也需要渲染这些列；
-// 非绑定联系人的行后端返回脱敏 SummaryDTO，字段不存在，自然显示为空。
-const isPrivilegedViewer = computed(() => userStore.isBidManager || userRoleCode.value === 'bid-Team')
 const accounts = ref([])
+
+// CO-400 三轮：列表需显示编辑页所有字段（除备注），platformType 格式化为中文 label。
+const PLATFORM_TYPE_LABELS = {
+  BIDDING_PLATFORM: '投标平台',
+  CONSTRUCTION_PLATFORM: '采购平台',
+  GOV_PROCUREMENT: '政府平台',
+  OTHER: '其他平台'
+}
+const formatPlatformType = (type) => PLATFORM_TYPE_LABELS[type] || type || '-'
 
 const rowActionsFor = (row) => resolveAccountActions({
   isManager: userStore.isBidManager,
@@ -187,6 +183,18 @@ const currentAccountDetail = ref(null)
 const editRow = ref(null)
 const showImportDialog = ref(false)
 
+// CO-400 二轮：列表 row 对非特权角色是脱敏 SummaryDTO，
+// 详情/编辑前都需调详情接口拉完整 PlatformAccountDTO，失败时 fallback 到列表 row。
+const loadAccountDetail = async (row) => {
+  try {
+    const res = await resourcesApi.accounts.getDetail(row.id)
+    if (res?.data) return res.data
+  } catch (e) {
+    console.error('Failed to load account detail:', e)
+  }
+  return row
+}
+
 const loadAccounts = async () => {
   try {
     const res = await resourcesApi.accounts.getList(searchForm.value)
@@ -198,24 +206,16 @@ const loadAccounts = async () => {
     let list = Array.isArray(res.data) ? res.data : []
     if (searchForm.value.hasCa === 'yes') list = list.filter(a => a.hasCa)
     if (searchForm.value.hasCa === 'no') list = list.filter(a => !a.hasCa)
-    accounts.value = list
+    // CO-400 三轮：后端对非特权角色返回脱敏 SummaryDTO（缺 username/contactPerson/...），
+    // 列表需显示编辑页所有字段（除备注），所以对每行调 getDetail 拉完整 DTO。
+    // 用户已确认接受 N+1（账户数量通常 < 100，可接受）。
+    const detailed = await Promise.all(list.map(row => loadAccountDetail(row)))
+    accounts.value = detailed
   } catch (e) {
     console.error('Failed to load accounts:', e)
     accounts.value = []
     ElMessage.error('账户数据加载失败')
   }
-}
-
-// CO-400 二轮：列表 row 对非特权角色是脱敏 SummaryDTO，
-// 详情/编辑前都需调详情接口拉完整 PlatformAccountDTO，失败时 fallback 到列表 row。
-const loadAccountDetail = async (row) => {
-  try {
-    const res = await resourcesApi.accounts.getDetail(row.id)
-    if (res?.data) return res.data
-  } catch (e) {
-    console.error('Failed to load account detail:', e)
-  }
-  return row
 }
 
 const onRowClick = async (row) => {
