@@ -1650,3 +1650,120 @@ grep -A 15 "LoggingClientHttpRequestInterceptor" backend/logs/app.log
 - `backend/src/main/java/com/xiyu/bid/project/core/BidReadinessPolicy.java` — Policy 实现（已拆分）
 - `backend/src/main/java/com/xiyu/bid/project/service/ProjectDraftingService.java` — 调用方（已修正）
 - 生产日志 traceId：`a2f9262d77d842029712a4595481d242`（2026-06-29 15:38:05）
+
+---
+
+## 26. Flyway 版本号撞号检测缺失：sed 语法兼容 + 双层撞号守卫（V1110 撞号阻断第 18 次部署）
+
+### 问题背景
+
+第 18 次生产部署（2026-06-29）Flyway 预检阶段发现源码 main 同时存在两个 `V1110__*.sql` 文件：
+
+- PR !1340（CO-401 cleanup_legacy_pending_assignment_tasks）合入 main 时使用了 `V1110__cleanup_legacy_pending_assignment_tasks.sql`
+- PR !1342（CO-386 账户借用申请审批流）合入 main 时也使用了 `V1110__add_pending_approval_to_platform_accounts_status.sql`
+
+Flyway 9.22.3 启动时会报 `Found more than one migration with version 1110`，后端无法启动，部署被阻断。
+
+修复走 hotfix 分支 `agent/trae/fix-v1110-version-conflict`：按"先合入先得版本号"原则保留 !1340 为 V1110，将 !1342 重命名为 V1111（含配套回滚脚本 U1110 → U1111）。PR !1345 已合入 main，第 18 次部署随后顺利完成。
+
+### 根因（双重失效）
+
+**第一层失效：并行取号无锁**
+两个 PR 几乎同时创建迁移文件，都通过 `next-migration-version.sh` 取到了 V1110。脚本本身是 `max(已有版本) + 1` 的本地计算，无法防止并发取号。
+
+**第二层失效（关键发现）：现有 check-flyway-versions.sh 一直在"假绿"**
+
+排查 `scripts/check-flyway-versions.sh` 发现所有 sed 调用都使用了 `\+` 元字符：
+
+```bash
+# 修复前（macOS BSD sed 不支持）
+sed -n 's/.*\/V\([0-9]\+\).*/\1/p'
+
+# 修复后（macOS BSD sed 和 Linux GNU sed 都支持）
+sed -En 's/.*\/V([0-9]+).*/\1/p'
+```
+
+macOS BSD sed 的 BRE 模式不支持 `\+` 元字符，必须用 `\{1,\}` 或 `-E` 启用 ERE 模式。结果就是 sed 模式从来没匹配成功过——版本号提取一直是空字符串，整个检查一直在"空循环"，永远不会触发冲突报警。
+
+这就是 V1110 撞号事故没被拦截的根本原因——**防护脚本本身是坏的**。
+
+### 修复（三层防护）
+
+在 `scripts/check-flyway-versions.sh` 中增加三层防护：
+
+1. **sed 语法修复**：所有 5 处 sed 调用从 `\+` 改为 `-E` + `+`（ERE 语法）
+
+2. **worktree 内部撞号检测**（`check_worktree_internal_duplicate` 函数）：
+   - pre-commit 和 pre-push 都跑
+   - 拦截同一 worktree 多个 V*.sql 共享版本号
+   - 也覆盖单 PR 内部撞号（同一 PR 同时引入两个 V<相同>__*.sql）
+   - 防护场景：main 有 V1110__cleanup.sql，worktree 新增 V1110__add_pending.sql → worktree 内出现两个 V1110 立即报警（无需对比 main）
+
+3. **origin/main 内部撞号检测**（pre-push 模式）：
+   - 拦截 main 已被污染（两个 PR 先后合入相同版本号）
+   - 防护场景：PR !1340 合入 main 后，PR !1342 也合入 main → main 同时有两个 V1110 → 下次任何 agent push 时报警（必须 hotfix）
+   - 因为 Gitee PR 合并不走本地 pre-push-gate，所以这种场景必须在 push 阶段拦截
+
+### 删除的缺陷逻辑
+
+**原 pre-push "worktree vs main 冲突检测 + auto-fix" 逻辑已删除**：
+
+原逻辑检查 worktree 中所有 V*.sql vs main，但 worktree 本来就包含 main 的所有文件（每个 agent sync-env 后 worktree 就是 main 的衍伸），所以所有 V*.sql 都会被误判为冲突并触发 auto-fix 重命名。
+
+修复 sed `\+` 后跑 pre-push 模式时，所有 V74-V1111 都被误判为冲突并触发了 auto-fix 重命名为 V1112-V1285（实际是 main 的所有迁移都被错位复制）。立即 `git reset --hard HEAD` 恢复。
+
+之前一直"假绿"是因为 sed 用了 `\+`，macOS BSD sed 不支持，导致版本号提取失败（空循环）。修复 sed 后反而暴露了原逻辑的缺陷。
+
+正确的冲突检测由 worktree 内部撞号检测 + origin/main 内部撞号检测两层覆盖。
+
+### 教训
+
+| 问题 | 教训 | 规范 |
+|------|------|------|
+| 两个 PR 同时取 V1110 合入 main | 并行开发取号无锁，必须靠合入阶段检测兜底 | pre-push 必须检查 origin/main 内部是否已被污染 |
+| check-flyway-versions.sh 用了 `\+` | macOS BSD sed 不支持 `\+`，必须用 `-E` + `+` | 所有 sed 调用必须用 `-E` ERE 语法，禁止 `\+` |
+| 原逻辑检查 worktree 所有 V*.sql vs main | worktree 本来就包含 main 所有文件，必然误判 | 撞号检测应基于"内部唯一性"，不基于"worktree vs main diff" |
+| 防护脚本一直在"假绿" | 没有用真实撞号场景验证过防护是否实际生效 | 防护脚本必须用真实撞号构造测试用例验证检测有效 |
+| 部署阶段才发现撞号 | 预检在 push 阶段就该拦截，不应等到部署 | pre-push 阶段必须跑双层撞号检测 |
+
+### 操作规范（建议固化到部署 SOP）
+
+1. **新增迁移前**：用 `bash scripts/next-migration-version.sh --reserve` 预约版本号
+2. **commit 前**：pre-commit hook 会自动跑 `check_worktree_internal_duplicate`，本地撞号立即报警
+3. **push 前**：pre-push hook 会自动跑双层检测（worktree 内部 + origin/main 内部）
+4. **部署预检**：打包前 `unzip -l app.jar 'BOOT-INF/classes/db/migration-mysql/V*.sql'` 检查 jar 内是否撞号
+5. **修复 sed 语法**：所有 sed 版本号提取必须用 `-E` ERE 语法
+
+### 验证命令
+
+```bash
+# 1. 正常场景（应通过，退出码 0）
+bash scripts/check-flyway-versions.sh --source=pre-commit
+echo "退出码: $?"
+
+# 2. worktree 撞号场景（构造两个 V1111 触发检测）
+cp backend/src/main/resources/db/migration-mysql/V1111__add_pending_approval_to_platform_accounts_status.sql \
+   backend/src/main/resources/db/migration-mysql/V1111__test_duplicate_detection.sql
+bash scripts/check-flyway-versions.sh --source=pre-commit
+echo "退出码: $?"  # 期望 1
+rm backend/src/main/resources/db/migration-mysql/V1111__test_duplicate_detection.sql
+
+# 3. pre-push 模式（应通过，并显示 worktree/main 版本数）
+bash scripts/check-flyway-versions.sh --source=push
+echo "退出码: $?"
+
+# 4. 检查 sed 语法兼容性（应同时支持 macOS BSD sed 和 Linux GNU sed）
+echo "test/V1111__foo.sql" | sed -En 's/.*\/V([0-9]+).*/\1/p'  # 应输出 1111
+```
+
+### 相关文档
+
+- `scripts/check-flyway-versions.sh` — Flyway 版本号撞号检测脚本（已增加三层防护）
+- `scripts/next-migration-version.sh` — 版本号预约脚本（`--reserve` 防并行撞号）
+- `docs/release/deploy-report-2026-06-29-18th.md` — 第 18 次部署报告（V1110 撞号事故记录）
+- `backend/src/main/resources/db/migration-mysql/V1110__cleanup_legacy_pending_assignment_tasks.sql` — CO-401（保留 V1110）
+- `backend/src/main/resources/db/migration-mysql/V1111__add_pending_approval_to_platform_accounts_status.sql` — CO-386（从 V1110 重命名而来）
+- `backend/src/main/resources/db/rollback/migration-mysql/U1111__add_pending_approval_to_platform_accounts_status.sql` — 配套回滚（从 U1110 重命名而来）
+- PR !1345 — V1110 → V1111 hotfix（已合入 main）
+- PR !1340 — CO-401 cleanup_legacy_pending_assignment_tasks（保留 V1110）
+- PR !1342 — CO-386 账户借用申请审批流（原 V1110 撞号源）
