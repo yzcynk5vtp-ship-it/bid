@@ -3,7 +3,7 @@
     <el-tabs v-model="activeTab" v-if="data">
       <el-tab-pane label="基本信息" name="info">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="平台名称" :span="2">{{ data.accountName || data.platform }}</el-descriptions-item>
+          <el-descriptions-item label="平台名称" :span="2">{{ data.accountName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="网址">{{ data.url || '-' }}</el-descriptions-item>
           <el-descriptions-item label="平台类型">{{ platformTypeLabel || '-' }}</el-descriptions-item>
           <el-descriptions-item label="平台账号">{{ data.username || '-' }}</el-descriptions-item>
@@ -95,6 +95,15 @@ const borrowRecords = ref([])
 
 // CO-389：详情新增"平台密码"行，沿用列表的 usePasswordReveal composable
 const password = usePasswordReveal((id) => resourcesApi.accounts.getPassword(id))
+
+// P1 安全：dialog 关闭时清理密码揭示状态，防止明文驻留内存 + 避免下次打开误显示
+watch(() => props.modelValue, (open) => {
+  if (!open) {
+    password.visible.value = {}
+    password.revealed.value = {}
+    password.loading.value = {}
+  }
+})
 
 const PLATFORM_TYPE_MAP = {
   GOV_PROCUREMENT: '政府采购',
