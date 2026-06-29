@@ -114,7 +114,7 @@
         </template>
         <el-table-column label="操作" width="160" fixed="right" align="center">
           <template #default="{ row }">
-            <AccountRowActions :row="row" @edit="handleEdit" @return="handleReturn" @borrow="handleBorrow" @taken-down="loadAccounts" />
+            <AccountRowActions :row="row" :actions="rowActions(row)" @edit="handleEdit" @return="handleReturn" @borrow="handleBorrow" @take-down="handleTakeDown" />
           </template>
         </el-table-column>
       </el-table>
@@ -131,10 +131,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus, Platform, View, Edit, Delete, Key, Hide, CircleCheck, Download, Upload } from '@element-plus/icons-vue'
+import { Search, Plus, Platform, View, Hide, Download, Upload } from '@element-plus/icons-vue'
 import { resourcesApi } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { usePasswordReveal } from './composables/usePasswordReveal.js'
+import { resolveAccountActions } from './accountActions.js'
 import AccountFormDialog from './AccountFormDialog.vue'
 import AccountDetailDialog from './AccountDetailDialog.vue'
 import AccountBorrowDialog from './AccountBorrowDialog.vue'
@@ -155,7 +156,15 @@ const handleSelectionChange = (rows) => {
 }
 
 const userStore = useUserStore()
-const isProjectLeader = computed(() => userStore.userRole === 'bid-projectLeader')
+const userRoleCode = computed(() => userStore.currentUser?.roleCode || userStore.currentUser?.role || '')
+const currentUserId = computed(() => userStore.currentUser?.id)
+const isProjectLeader = computed(() => userRoleCode.value === 'bid-projectLeader')
+const rowActions = (row) => resolveAccountActions({
+  isManager: userStore.isBidManager,
+  isBidTeam: userRoleCode.value === 'bid-Team',
+  isContactPerson: String(row.contactPerson || '') === String(currentUserId.value || ''),
+  isApplicant: userRoleCode.value === 'bid-projectLeader' || userRoleCode.value === 'sales'
+})
 
 const password = usePasswordReveal((id) => resourcesApi.accounts.getPassword(id))
 
@@ -210,19 +219,17 @@ const handleReturnFromDetail = () => {
   showReturnDialog.value = true
 }
 
-const handleBorrow = (row) => {
-  currentAccount.value = row
-  showBorrowDialog.value = true
-}
-
-const handleEdit = (row) => {
-  editRow.value = row.raw || row
-  showCreateDialog.value = true
-}
-
-const handleReturn = (row) => {
-  currentReturnAccount.value = row
-  showReturnDialog.value = true
+const handleBorrow = (row) => { currentAccount.value = row; showBorrowDialog.value = true }
+const handleEdit = (row) => { editRow.value = row.raw || row; showCreateDialog.value = true }
+const handleReturn = (row) => { currentReturnAccount.value = row; showReturnDialog.value = true }
+const handleTakeDown = async (row) => {
+  try { await ElMessageBox.confirm(`确定下架平台「${row.platform}」吗？`, '确认下架', { type: 'warning' }) } catch { return }
+  try {
+    const res = await resourcesApi.accounts.delete(row.id)
+    if (!res?.success) { ElMessage.error(res?.msg || '下架失败'); return }
+    ElMessage.success('下架成功')
+    loadAccounts()
+  } catch (e) { console.error('Failed to take down account:', e); ElMessage.error('下架失败') }
 }
 
 const onAccountReturned = () => {
