@@ -229,6 +229,9 @@ public class SecurityConfig {
             "Accept",
             "X-Requested-With",
             "Idempotency-Key",
+            // 入站 traceId：前端 client.js 注入，TraceFilter 读取串联日志（TraceConstants.X_TRACE_ID）
+            "X-Trace-Id",
+            // 出站 traceId：后端调 EHSY SDK 时由 TraceHeaderInjector 注入（TraceConstants.EHSY_TRACE_ID）
             "EHSY-TraceID",
             "EHSY-SRCAPP",
             "EHSY-Signature"
