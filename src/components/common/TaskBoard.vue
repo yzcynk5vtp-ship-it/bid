@@ -193,6 +193,17 @@ const canChangeStatus = (task) => {
   )
 }
 
+const canReviewTask = (task) => {
+  if (userStore.isBidManager) return true
+  const project = projectStore.currentProject
+  if (!project) return false
+  const uid = userStore?.currentUser?.id
+  if (uid == null) return false
+  if (task.assigneeId != null && String(uid) === String(task.assigneeId)) return false
+  return (project.primaryLeadUserId != null && String(uid) === String(project.primaryLeadUserId)) ||
+    (project.secondaryLeadUserId != null && String(uid) === String(project.secondaryLeadUserId))
+}
+
 const canTransitionToStatus = (task, targetStatus) => {
   const currentStatus = normalizeStatus(task.status)
   const target = normalizeStatus(targetStatus)
@@ -210,17 +221,6 @@ const canTransitionToStatus = (task, targetStatus) => {
     return false
   }
   return false
-}
-
-const canReviewTask = (task) => {
-  if (userStore.isBidManager) return true
-  const project = projectStore.currentProject
-  if (!project) return false
-  const uid = userStore?.currentUser?.id
-  if (uid == null) return false
-  if (task.assigneeId != null && String(uid) === String(task.assigneeId)) return false
-  return (project.primaryLeadUserId != null && String(uid) === String(project.primaryLeadUserId)) ||
-    (project.secondaryLeadUserId != null && String(uid) === String(project.secondaryLeadUserId))
 }
 
 // CO-387: 删除任务权限 — 仅 TODO 状态 + (管理员/组长 或 项目主/副负责人)
