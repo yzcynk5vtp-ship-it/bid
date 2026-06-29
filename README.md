@@ -237,7 +237,7 @@ npm run test:e2e
 ```bash
 cd backend
 mvn test -Dtest=<相关测试类>
-mvn test -Dtest=FlywayBaselineContextTest,FlywayMysqlContainerTest
+mvn test -Dtest=FlywayMysqlContainerTest
 mvn test -Dtest=ArchitectureTest
 mvn test
 ```

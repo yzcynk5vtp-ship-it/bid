@@ -1,0 +1,9 @@
+version: 1
+task: "fix-flyway-test-gates"
+locks:
+  - path: ".github/workflows/ci.yml"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/claude/fix-flyway-test-gates"
+    expiresAt: "2026-06-30T22:55:17.046Z"
+    reason: "fix(test-infra): 删除 ci.yml 对不存在的 FlywayBaselineContextTest 的引用 + 同步 README.md; application-flyway-mysql.yml ddl-auto update->validate"

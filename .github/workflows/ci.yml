@@ -182,7 +182,7 @@ jobs:
 
       - name: Run baseline and resource integration tests
         if: needs.quality-scope.outputs.backend_changed == 'true'
-        run: mvn -Dtest=FlywayBaselineContextTest,ExpenseControllerIntegrationTest,BarCertificateControllerIntegrationTest test
+        run: mvn -Dtest=ExpenseControllerIntegrationTest,BarCertificateControllerIntegrationTest test
         env:
           PLATFORM_ENCRYPTION_KEY: ci-test-key-2026
 
