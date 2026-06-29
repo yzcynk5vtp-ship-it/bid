@@ -111,16 +111,12 @@
               <el-tag :type="row.hasCa ? 'success' : 'info'" size="small">{{ row.hasCa ? '是' : '否' }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="100" fixed="right" align="center">
-            <template #default="{ row }">
-              <el-tooltip content="申请使用" placement="top">
-                <el-button :icon="Key" circle size="small" type="primary"
-                  :disabled="row.status !== 'available'"
-                  @click.stop="handleBorrow(row)" />
-              </el-tooltip>
-            </template>
-          </el-table-column>
         </template>
+        <el-table-column label="操作" width="160" fixed="right" align="center">
+          <template #default="{ row }">
+            <AccountRowActions :row="row" @edit="handleEdit" @return="handleReturn" @borrow="handleBorrow" @taken-down="loadAccounts" />
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
 
@@ -145,6 +141,7 @@ import AccountBorrowDialog from './AccountBorrowDialog.vue'
 import AccountReturnDialog from './AccountReturnDialog.vue'
 import AccountImportDialog from './components/AccountImportDialog.vue'
 import AccountBorrowApplications from './AccountBorrowApplications.vue'
+import AccountRowActions from './AccountRowActions.vue'
 
 const searchForm = ref({
   platform: '',
@@ -218,6 +215,16 @@ const handleBorrow = (row) => {
   showBorrowDialog.value = true
 }
 
+const handleEdit = (row) => {
+  editRow.value = row.raw || row
+  showCreateDialog.value = true
+}
+
+const handleReturn = (row) => {
+  currentReturnAccount.value = row
+  showReturnDialog.value = true
+}
+
 const onAccountReturned = () => {
   showReturnDialog.value = false
   showDetailDialog.value = false
@@ -281,213 +288,4 @@ onMounted(() => {
 })
 </script>
 
-<style scoped lang="scss">
-.account-page {
-  padding: 20px;
-}
-
-.search-card {
-  margin-bottom: 20px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.platform-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.platform-icon {
-  color: #409eff;
-}
-
-/* 工具栏 */
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  margin-bottom: 16px;
-}
-
-.toolbar-left,
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolbar-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 150ms ease;
-  background: var(--bg-card);
-  color: var(--text-secondary);
-}
-
-.toolbar-btn:hover {
-  background: var(--surface-hover);
-  border-color: var(--gray-300);
-}
-
-.toolbar-btn--primary {
-  background: var(--brand-xiyu-logo);
-  color: white;
-  border-color: var(--brand-xiyu-logo);
-}
-
-.toolbar-btn--primary:hover {
-  background: #256a4d;
-  border-color: #256a4d;
-}
-
-/* 工具栏按钮禁用状态 */
-.toolbar-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.toolbar-btn:disabled:hover {
-  background: var(--bg-card);
-  border-color: var(--border-light);
-}
-
-/* 密码单元格样式 */
-.password-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0;
-}
-
-.password-row {
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-.password-text {
-  font-family: 'Courier New', monospace;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.password-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 150ms ease;
-}
-
-.password-toggle-btn:hover {
-  background: var(--surface-hover);
-  color: var(--brand-xiyu-logo);
-}
-
-/* 移动端响应式样式 */
-@media (max-width: 768px) {
-  .account-page {
-    padding: 12px;
-  }
-
-  .search-card {
-    margin-bottom: 12px;
-  }
-
-  .search-card :deep(.el-form) {
-    display: block;
-  }
-
-  .search-card :deep(.el-form-item) {
-    display: block;
-    margin-right: 0;
-    margin-bottom: 12px;
-  }
-
-  .search-card :deep(.el-input),
-  .search-card :deep(.el-select) {
-    width: 100% !important;
-  }
-
-  /* 表格移动端优化 */
-  .table-card :deep(.el-table) {
-    font-size: 12px;
-  }
-
-  .table-card :deep(.el-table__body-wrapper) {
-    overflow-x: auto;
-  }
-
-  .table-card :deep(.el-table__cell) {
-    padding: 8px 4px;
-  }
-
-  /* 头部按钮移动端优化 */
-  .card-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .card-header .el-button {
-    width: 100%;
-  }
-
-  /* 对话框移动端优化 */
-  :deep(.el-dialog) {
-    width: 95% !important;
-    margin: 0 auto;
-  }
-
-  :deep(.el-dialog__body) {
-    padding: 16px;
-  }
-
-  /* 分页移动端优化 */
-  .pagination-wrapper {
-    justify-content: center;
-  }
-
-  .pagination-wrapper :deep(.el-pagination) {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .pagination-wrapper :deep(.el-pagination__sizes),
-  .pagination-wrapper :deep(.el-pagination__jump) {
-    display: none;
-  }
-}
-
-/* 触摸设备优化 */
-@media (hover: none) and (pointer: coarse) {
-  .el-button {
-    min-height: 44px;
-  }
-}
-.row-link { color: var(--el-color-primary); cursor: pointer; }
-.row-link:hover { text-decoration: underline; }
-</style>
+<style scoped src="./Account.scss" lang="scss"></style>
