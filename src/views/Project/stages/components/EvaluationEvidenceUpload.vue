@@ -36,13 +36,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user.js'
 import { getApiUrl } from '@/api/config.js'
 import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 import { downloadWithFilename } from '@/utils/download.js'
+import { getDocuments } from '@/api/modules/projectDocuments.js'
 
 const props = defineProps({
   projectId: { type: [String, Number], required: true },
@@ -55,6 +56,20 @@ const emit = defineEmits(['attached'])
 const userStore = useUserStore()
 const fileList = ref([])
 const fileIds = ref([])
+
+// CO-408: existingDocIds 变化时根据 ids 拉取项目文档并回填 fileList，避免再次进入页面时文件名丢失
+watch(() => props.existingDocIds, async (ids) => {
+  if (!ids?.length) { fileList.value = []; return }
+  try {
+    const r = await getDocuments(props.projectId)
+    const docs = r?.data || r || []
+    const docMap = new Map(docs.map(d => [Number(d.id), d]))
+    fileList.value = ids
+      .map(id => docMap.get(Number(id)))
+      .filter(Boolean)
+      .map(doc => ({ name: doc.name, response: { data: { id: doc.id } } }))
+  } catch (e) { console.error('回填评标文件失败:', e) }
+}, { immediate: true })
 const uploadUrl = computed(() => getApiUrl(`/api/projects/${props.projectId}/documents`))
 const acceptedTypes = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png'
 const MAX_FILE_SIZE_MB = 10
