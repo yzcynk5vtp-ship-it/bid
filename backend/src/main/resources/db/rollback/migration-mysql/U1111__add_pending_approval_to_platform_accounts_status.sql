@@ -1,6 +1,7 @@
--- Input: V1110__add_pending_approval_to_platform_accounts_status.sql
--- U1110: Rollback - 恢复 platform_accounts.status enum 为 4 个值
+-- Input: V1111__add_pending_approval_to_platform_accounts_status.sql
+-- U1111: Rollback - 恢复 platform_accounts.status enum 为 4 个值
 -- 关联: CO-386
+-- 注意: 原 U1110 已重命名为 U1111（与 V1111 配套，因 V1110 与 !1340 撞号修复）
 -- 注意:
 --   1. 回滚前必须先把所有 status='PENDING_APPROVAL' 的行 UPDATE 回 'AVAILABLE'，
 --      否则 MODIFY COLUMN 会因数据被截断而失败
