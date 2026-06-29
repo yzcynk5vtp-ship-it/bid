@@ -111,6 +111,7 @@ import { getResultConfirmNextTab } from '@/constants/projectStages.js'
 import { getApiUrl } from '@/api/config.js'
 import { useUserStore } from '@/stores/user.js'
 import { downloadWithFilename } from '@/utils/download.js'
+import { getDocuments } from '@/api/modules/projectDocuments.js'
 
 const props = defineProps({ projectId: { type: [String, Number], required: true } })
 const emit = defineEmits(['registered', 'switch-tab'])
@@ -220,12 +221,29 @@ async function load() {
       if (data.resultType) form.resultType = data.resultType
       if (data.notes != null) form.notes = data.notes
       if (data.summary != null) form.summary = data.summary
-      if (data.evidenceFileIds?.length) form.evidenceFileIds = [...data.evidenceFileIds]
+      if (data.evidenceFileIds?.length) {
+        form.evidenceFileIds = [...data.evidenceFileIds]
+        // CO-408: 根据 evidenceFileIds 回填 evidenceFiles（el-upload file-list），避免再次进入页面时文件名丢失
+        await backfillEvidenceFiles(data.evidenceFileIds)
+      }
       if (data.competitors?.length) form.competitors = data.competitors.map(c => ({ ...c }))
       // 已登记的结果不可再编辑
       if (data.registeredAt) resultDone.value = true
     }
   } catch (e) { if (e?.response?.status !== 404) console.warn(e) }
+}
+
+// CO-408: 按 ids 拉取项目文档并回填 evidenceFiles
+async function backfillEvidenceFiles(ids) {
+  try {
+    const r = await getDocuments(props.projectId)
+    const docs = r?.data || r || []
+    const docMap = new Map(docs.map(d => [Number(d.id), d]))
+    evidenceFiles.value = ids
+      .map(id => docMap.get(Number(id)))
+      .filter(Boolean)
+      .map(doc => ({ name: doc.name, response: { data: { id: doc.id } } }))
+  } catch (e) { console.error('回填凭证文件失败:', e) }
 }
 
 async function submit() {

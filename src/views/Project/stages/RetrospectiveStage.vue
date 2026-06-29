@@ -121,6 +121,7 @@ import { isBidManager } from '@/utils/permission'
 import { lossReasonOptions } from './retrospectiveLossReasons.js'
 import { getApiUrl } from '@/api/config.js'
 import { downloadWithFilename } from '@/utils/download.js'
+import { getDocuments } from '@/api/modules/projectDocuments.js'
 const props = defineProps({
   projectId: { type: [String, Number], required: true },
   resultType: { type: String, default: '' },
@@ -193,11 +194,26 @@ async function load() {
       form.processProblems = view.value.processProblems || ''
       form.postLossMeasures = view.value.postLossMeasures || ''
       form.reportFileIds = view.value.reportFileIds || []
+      // CO-408: 根据 reportFileIds 回填 reportFiles（el-upload file-list），避免再次进入页面时文件名丢失
+      if (form.reportFileIds.length) await backfillReportFiles(form.reportFileIds)
       locked.value = view.value.reviewStatus === 'APPROVED' || view.value.reviewStatus === 'PENDING_REVIEW'
     }
   } catch (e) {
     console.warn('[RetrospectiveStage] load failed', e)
   }
+}
+
+// CO-408: 按 ids 拉取项目文档并回填 reportFiles
+async function backfillReportFiles(ids) {
+  try {
+    const r = await getDocuments(props.projectId)
+    const docs = r?.data || r || []
+    const docMap = new Map(docs.map(d => [Number(d.id), d]))
+    reportFiles.value = ids
+      .map(id => docMap.get(Number(id)))
+      .filter(Boolean)
+      .map(doc => ({ name: doc.name, response: { data: { id: doc.id } } }))
+  } catch (e) { console.error('回填复盘报告失败:', e) }
 }
 async function submit() {
   if (!isApplicable.value) return
