@@ -182,17 +182,6 @@ onMounted(() => {
 
 const normalizeStatus = (status) => String(status || '').toUpperCase()
 
-const canChangeStatus = (task) => {
-  if (isTaskAssignee(task) || userStore.isBidManager) return true
-  const project = projectStore.currentProject
-  if (!project) return false
-  const uid = userStore?.currentUser?.id
-  return uid != null && (
-    (project.primaryLeadUserId != null && String(uid) === String(project.primaryLeadUserId)) ||
-    (project.secondaryLeadUserId != null && String(uid) === String(project.secondaryLeadUserId))
-  )
-}
-
 const canReviewTask = (task) => {
   if (userStore.isBidManager) return true
   const project = projectStore.currentProject
@@ -224,7 +213,7 @@ const canTransitionToStatus = (task, targetStatus) => {
 }
 
 // CO-387: 删除任务权限 — 仅 TODO 状态 + (管理员/组长 或 项目主/副负责人)
-// 注意：与 canChangeStatus 不同，任务执行人本身无权删除（避免执行人误删分配给自己的任务）
+// 注意：任务执行人本身无权删除（避免执行人误删分配给自己的任务）
 const canDeleteTask = (task) => {
   if (normalizeStatus(task.status) !== 'TODO') return false
   if (userStore.isBidManager) return true
