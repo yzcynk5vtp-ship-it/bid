@@ -19,7 +19,7 @@
 }
 
 .platform-icon {
-  color: #409eff;
+  color: var(--color-info);
 }
 
 /* 工具栏 */
@@ -68,8 +68,8 @@
 }
 
 .toolbar-btn--primary:hover {
-  background: #256a4d;
-  border-color: #256a4d;
+  background: var(--brand-xiyu-logo-hover);
+  border-color: var(--brand-xiyu-logo-hover);
 }
 
 /* 工具栏按钮禁用状态 */
