@@ -3,6 +3,8 @@
  * 验证权限矩阵与 roleGroup 映射
  */
 
+import { canDeleteDocumentAs } from './useProjectDraftingPermissions'
+
 /**
  * ⚠️ 重要：useProjectDraftingPermissions 引用了 useUserStore。
  * 为避免全量 Pinia setup，直接内联权限解析逻辑进行单元测试。
@@ -55,10 +57,8 @@ function computeCanSubmitBidForReview(role, opts = {}) {
   return computeCanSubmitBid(role, opts)
 }
 
-// 对齐 canDeleteDocument：仅 admin_lead 可删除文档
-function computeCanDeleteDocument(role) {
-  return resolveDraftingRoleGroup(role) === 'admin_lead'
-}
+// CO-383: canDeleteDocument 改为纯函数 canDeleteDocumentAs（从 composable import）
+// 测试用例直接调用 canDeleteDocumentAs，无需内联副本
 
 // 对齐 canManageTaskBoardTopActions：admin_lead ∪ lead_assist 可操作任务看板顶部按钮
 function computeCanManageTaskBoardTopActions(role) {
@@ -182,7 +182,7 @@ describe('canSubmitBidForReview — 提交投标审核权限（CO-355：对齐 c
   })
 })
 
-describe('canDeleteDocument — 删除文档权限（仅 admin_lead）', () => {
+describe('canDeleteDocumentAs — 删除文档权限纯函数（admin_lead + 上传者本人，CO-383）', () => {
   it.each([
     ['admin', true],
     ['/bidAdmin', true],
@@ -191,8 +191,39 @@ describe('canDeleteDocument — 删除文档权限（仅 admin_lead）', () => {
     ['bid-Team', false],
     ['bid-administration', false],
     ['bid-otherDept', false],
-  ])('角色 %s → canDeleteDocument=%s', (role, expected) => {
-    expect(computeCanDeleteDocument(role)).toBe(expected)
+  ])('角色 %s 无 uploader context → canDeleteDocumentAs=%s', (role, expected) => {
+    expect(canDeleteDocumentAs({ role })).toBe(expected)
+  })
+
+  it('bid-projectLeader 作为上传者本人 → true', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-projectLeader', uploaderId: 10, currentUserId: 10 })).toBe(true)
+  })
+  it('bid-Team 作为上传者本人 → true', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-Team', uploaderId: 10, currentUserId: 10 })).toBe(true)
+  })
+  it('bid-projectLeader 非上传者 → false', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-projectLeader', uploaderId: 99, currentUserId: 10 })).toBe(false)
+  })
+  it('bid-Team 非上传者 → false', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-Team', uploaderId: 99, currentUserId: 10 })).toBe(false)
+  })
+  it('uploaderId 为 null → false（即使角色是 lead_assist）', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-projectLeader', currentUserId: 10 })).toBe(false)
+  })
+  it('currentUserId 为 null → false（即使 uploaderId 有值）', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-projectLeader', uploaderId: 10 })).toBe(false)
+  })
+  it('类型安全：数字 10 与字符串 "10" 应匹配（前端 id 字段类型不稳定）', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-Team', uploaderId: 10, currentUserId: '10' })).toBe(true)
+  })
+  it('admin 即使不是上传者 → true（admin_lead 直通）', () => {
+    expect(canDeleteDocumentAs({ role: 'admin', uploaderId: 99, currentUserId: 10 })).toBe(true)
+  })
+  it('bid-administration 作为上传者本人 → true（用户要求：不管什么角色，上传者本人可删）', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-administration', uploaderId: 10, currentUserId: 10 })).toBe(true)
+  })
+  it('bid-administration 非上传者 → false', () => {
+    expect(canDeleteDocumentAs({ role: 'bid-administration', uploaderId: 99, currentUserId: 10 })).toBe(false)
   })
 })
 

@@ -36,7 +36,7 @@
           <div class="bid-file-row">
             <a href="javascript:void(0)" class="upload-file-link" :class="{ 'is-readonly': !canDownloadBidFile }" @click.prevent="handleDownloadBidFile(file)">{{ file.name }}</a>
             <el-button
-              v-if="!bidDone && perm.canDeleteDocument && canDeleteBidFile"
+              v-if="!bidDone && canDeleteThisFile(file) && canDeleteBidFile"
               link
               type="danger"
               size="small"
@@ -127,7 +127,7 @@ import ProjectDocumentTable from './components/ProjectDocumentTable.vue'
 import AiRecommendDrawer from './components/AiRecommendDrawer.vue'
 import QualityCheckDialog from './components/QualityCheckDialog.vue'
 import { useProjectDetailContext } from '@/composables/projectDetail/context.js'
-import { useProjectDraftingPermissions } from '@/composables/projectDetail/useProjectDraftingPermissions.js'
+import { useProjectDraftingPermissions, canDeleteDocumentAs } from '@/composables/projectDetail/useProjectDraftingPermissions.js'
 import { useProjectDocumentsExport } from '@/composables/projectDetail/useProjectDocumentsExport.js'
 import UserPicker from '@/components/common/UserPicker.vue'
 import { downloadWithFilename } from '@/utils/download.js'; const userStore = useUserStore()
@@ -197,6 +197,15 @@ const canDownloadBidFile = computed(() => perm.canDownloadDocument && props.curr
 // 禁止删除：'reviewing'（审核中）/ 'approved'（已通过，bidDone 会接管）/ bidDone（已投标）。
 // 前端守卫是体验层，后端 ProjectDocumentWorkflowPolicy.canDeleteProjectDocument 是真权限闸门。
 const canDeleteBidFile = computed(() => reviewState.value === null || reviewState.value === 'rejected')
+// CO-383: 删除按钮权限——admin_lead 直通 + 上传者本人可删（不管角色，对齐后端 Policy）。
+// perm 是组件级 reactive，无法表达 file 级 uploaderId，所以用纯函数 canDeleteDocumentAs 按 file 调用。
+function canDeleteThisFile(file) {
+  return canDeleteDocumentAs({
+    role: userStore.userRole,
+    currentUserId: ctx.userStore?.currentUser?.id,
+    uploaderId: file.response?.data?.uploaderId,
+  })
+}
 function handleDownloadBidFile(file) {
   // CO-381: 阶段守卫 + 权限守卫。前端守卫是体验层，后端 ProjectDocumentDownloadService 还有深度防御。
   if (!canDownloadBidFile.value) return

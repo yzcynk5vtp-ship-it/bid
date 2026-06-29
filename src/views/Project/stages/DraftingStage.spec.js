@@ -305,9 +305,53 @@ describe('DraftingStage 删除按钮提交前守卫 - CO-382', () => {
     expect(deleteBtn?.exists()).toBe(true)
   })
 
-  it('lead_assist 角色（bid-projectLeader）：删除按钮隐藏（无删除权限，防止 403 UX 不一致）', async () => {
-    // CO-382 review: canManageBidFiles 范围比 canDeleteDocument 宽，删除按钮应使用 canDeleteDocument
+  it('bid-projectLeader + file 无 uploaderId → 删除按钮隐藏（CO-383：非 admin_lead 且非上传者本人）', async () => {
+    // CO-383: canDeleteDocumentAs 在 uploaderId 缺失时只允许 admin_lead；
+    // bid-projectLeader 非 admin_lead，且 file 无 uploaderId 无法证明是上传者本人 → 隐藏。
+    // beforeEach 的 getDocumentsMock 返回的 file 不含 uploaderId，复用此 mock。
     mockCurrentUser.role = 'bid-projectLeader'
+    getDraftingMock.mockImplementation(() => Promise.resolve({
+      data: { reviewStatus: null }
+    }))
+
+    const wrapper = await mountDraftingStage({ currentStage: 'DRAFTING' })
+    await flushPromises()
+
+    const deleteBtns = wrapper.findAll('button')
+    const deleteBtn = deleteBtns.find(b => b.text() === '删除')
+    expect(deleteBtn).toBeUndefined()
+
+    // 还原角色
+    mockCurrentUser.role = '/bidAdmin'
+  })
+
+  it('bid-projectLeader + file.uploaderId=42（上传者本人）→ 删除按钮可见（CO-383：不管角色，上传者本人可删）', async () => {
+    // CO-383: 用户需求"应该不管什么角色 都可以在没有保存的时候 删除"。
+    // bid-projectLeader 非 admin_lead，但 file.response.data.uploaderId == 当前用户 id (42) → 允许删除。
+    mockCurrentUser.role = 'bid-projectLeader'
+    getDocumentsMock.mockImplementation(() => Promise.resolve({
+      data: [{ id: 3001, name: '投标文件.pdf', documentCategory: 'BID_DOCUMENT', uploaderId: 42 }],
+    }))
+    getDraftingMock.mockImplementation(() => Promise.resolve({
+      data: { reviewStatus: null }
+    }))
+
+    const wrapper = await mountDraftingStage({ currentStage: 'DRAFTING' })
+    await flushPromises()
+
+    const deleteBtns = wrapper.findAll('button')
+    const deleteBtn = deleteBtns.find(b => b.text() === '删除')
+    expect(deleteBtn?.exists()).toBe(true)
+
+    // 还原角色
+    mockCurrentUser.role = '/bidAdmin'
+  })
+
+  it('bid-projectLeader + file.uploaderId=99（非上传者）→ 删除按钮隐藏（CO-383：仅上传者本人可删）', async () => {
+    mockCurrentUser.role = 'bid-projectLeader'
+    getDocumentsMock.mockImplementation(() => Promise.resolve({
+      data: [{ id: 3001, name: '投标文件.pdf', documentCategory: 'BID_DOCUMENT', uploaderId: 99 }],
+    }))
     getDraftingMock.mockImplementation(() => Promise.resolve({
       data: { reviewStatus: null }
     }))

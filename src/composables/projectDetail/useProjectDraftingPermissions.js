@@ -44,6 +44,28 @@ function resolveDraftingRoleGroup(role) {
   return null
 }
 
+/**
+ * CO-383：删除文档权限纯函数（与后端 ProjectDocumentWorkflowPolicy.canDeleteProjectDocument 对齐）。
+ *
+ * 规则：
+ *   1. admin_lead（admin/bidAdmin/bid-TeamLeader）直通 → permit
+ *   2. 上传者本人（currentUserId == uploaderId）→ permit（不管角色，对齐用户需求
+ *      "应该不管什么角色 都可以在没有保存的时候 删除"）
+ *   3. 其他 → deny
+ *
+ * 设计为纯函数（非 computed）是因为 uploaderId 是 file 级数据，每个 file 不同，
+ * 不能放进组件级 perm。DraftingStage.vue 在 v-if 中按 file 调用本函数。
+ *
+ * @param {{role: string, currentUserId: *, uploaderId: *}} ctx
+ * @returns {boolean}
+ */
+export function canDeleteDocumentAs({ role, currentUserId, uploaderId }) {
+  if (resolveDraftingRoleGroup(role) === 'admin_lead') return true
+  const uid = currentUserId != null ? String(currentUserId) : null
+  const upid = uploaderId != null ? String(uploaderId) : null
+  return !!(uid && upid && uid === upid)
+}
+
 export function useProjectDraftingPermissions(opts = {}) {
   // opts 支持传入 { primaryLeadId, secondaryLeadId, currentUserId, reviewerId }
   // 用于在组件中二次约束：
@@ -139,8 +161,7 @@ export function useProjectDraftingPermissions(opts = {}) {
     roleGroup.value === 'admin_lead' || roleGroup.value === 'lead_assist'
   )
 
-  /** 删除文档 */
-  const canDeleteDocument = computed(() => roleGroup.value === 'admin_lead')
+  /** 删除文档：CO-383 起改为纯函数 canDeleteDocumentAs（file 级 uploaderId 维度），见文件顶部导出。 */
 
   /** 归档文档 */
   const canArchiveDocument = computed(() => roleGroup.value === 'admin_lead')
@@ -211,7 +232,6 @@ export function useProjectDraftingPermissions(opts = {}) {
     // 文档
     canUploadDocument,
     canDownloadDocument,
-    canDeleteDocument,
     canArchiveDocument,
     // 投标
     canManageBidFiles,
