@@ -173,16 +173,16 @@
             <div class="readonly-row"><span class="readonly-label">保证金退回情况</span><span class="readonly-value">{{ depositStatusLabel(preview?.depositReturnStatus) }}</span></div>
             <template v-if="preview?.depositReturnStatus === 'FULLY_RETURNED'">
               <div class="readonly-row"><span class="readonly-label">退回日期</span><span class="readonly-value">{{ preview?.depositReturnDate || '-' }}</span></div>
-              <div class="readonly-row"><span class="readonly-label">退回凭证</span><span class="readonly-value" v-if="preview?.depositReturnEvidenceId">已上传</span><span class="readonly-value" v-else>-</span></div>
+              <div class="readonly-row"><span class="readonly-label">退回凭证</span><a v-if="preview?.depositReturnEvidenceId" href="javascript:void(0)" class="upload-file-link" @click.prevent="handleDownloadEvidenceById(preview.depositReturnEvidenceId)">{{ preview?.depositReturnEvidenceName || '退回凭证' }}</a><span class="readonly-value" v-else>-</span></div>
             </template>
             <template v-if="preview?.depositReturnStatus === 'TRANSFERRED_TO_FEE'">
               <div class="readonly-row"><span class="readonly-label">转服务费金额</span><span class="readonly-value">{{ formatAmount(preview?.transferAmount) }} 元</span></div>
-              <div class="readonly-row"><span class="readonly-label">证明文件</span><span class="readonly-value" v-if="preview?.depositReturnEvidenceId">已上传</span><span class="readonly-value" v-else>-</span></div>
+              <div class="readonly-row"><span class="readonly-label">证明文件</span><a v-if="preview?.depositReturnEvidenceId" href="javascript:void(0)" class="upload-file-link" @click.prevent="handleDownloadEvidenceById(preview.depositReturnEvidenceId)">{{ preview?.depositReturnEvidenceName || '退回凭证' }}</a><span class="readonly-value" v-else>-</span></div>
             </template>
             <template v-if="preview?.depositReturnStatus === 'PARTIAL_RETURN_PARTIAL_TRANSFER'">
               <div class="readonly-row"><span class="readonly-label">退回金额</span><span class="readonly-value">{{ formatAmount(preview?.returnedAmount) }} 元</span></div>
               <div class="readonly-row"><span class="readonly-label">转服务费金额</span><span class="readonly-value">{{ formatAmount(preview?.transferAmount) }} 元</span></div>
-              <div class="readonly-row"><span class="readonly-label">证明文件</span><span class="readonly-value" v-if="preview?.depositReturnEvidenceId">已上传</span><span class="readonly-value" v-else>-</span></div>
+              <div class="readonly-row"><span class="readonly-label">证明文件</span><a v-if="preview?.depositReturnEvidenceId" href="javascript:void(0)" class="upload-file-link" @click.prevent="handleDownloadEvidenceById(preview.depositReturnEvidenceId)">{{ preview?.depositReturnEvidenceName || '退回凭证' }}</a><span class="readonly-value" v-else>-</span></div>
             </template>
           </div>
         </template>
@@ -397,6 +397,13 @@ function handleDownloadEvidenceFile(file) {
   if (!documentId) { ElMessage.warning('文件信息缺失，无法下载'); return }
   const url = `/api/projects/${props.projectId}/documents/${documentId}/download`
   downloadWithFilename(url, file.name || '退回凭证')
+}
+
+// CO-395: 只读区域按 documentId 下载退回凭证
+function handleDownloadEvidenceById(documentId) {
+  if (!documentId) { ElMessage.warning('文件信息缺失，无法下载'); return }
+  const url = `/api/projects/${props.projectId}/documents/${documentId}/download`
+  downloadWithFilename(url, preview.value?.depositReturnEvidenceName || '退回凭证')
 }
 
 async function loadPreview() {

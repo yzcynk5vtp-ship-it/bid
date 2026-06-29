@@ -25,6 +25,8 @@ public class ClosurePreviewDTO {
     private String depositReturnStatus;   // NOT_RETURNED | FULLY_RETURNED | TRANSFERRED_TO_FEE | PARTIAL_RETURN_PARTIAL_TRANSFER | NA
     private LocalDateTime depositReturnDate;
     private Long depositReturnEvidenceId;
+    /** 退回凭证文件名（来自 ProjectDocument.name，供前端只读展示） */
+    private String depositReturnEvidenceName;
     private BigDecimal transferAmount;
     private BigDecimal returnedAmount;
     private boolean canClose;
