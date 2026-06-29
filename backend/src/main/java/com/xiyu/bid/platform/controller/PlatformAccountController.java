@@ -144,7 +144,7 @@ public class PlatformAccountController {
      * The endpoint is restricted to {@code ADMIN} via {@code @PreAuthorize}.
      */
     @GetMapping("/{id}/password")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('admin', '/bidAdmin', 'bid-TeamLeader', 'ROLE_ADMIN')")
     public ResponseEntity<ApiResponse<PasswordRevealResponse>> getPassword(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails currentUser) {
