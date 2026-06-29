@@ -1,5 +1,8 @@
--- V1110: 扩展 platform_accounts.status enum 新增 PENDING_APPROVAL 值
+-- V1111: 扩展 platform_accounts.status enum 新增 PENDING_APPROVAL 值
 -- 关联: CO-386 [资源-账户管理] 账户借用申请全流程功能
+-- 注意: 原 PR !1342 误用 V1110 与 !1340 (CO-401 cleanup_legacy_pending_assignment_tasks) 撞号，
+--       后端启动时 Flyway 9.22.3 报 "Found more than one migration with version 1110"。
+--       按"先合入先得版本号"原则保留 !1340 为 V1110，本迁移重命名为 V1111。
 -- 背景: B73 baseline 中 platform_accounts.status 定义为
 --       enum('AVAILABLE','IN_USE','MAINTENANCE','DISABLED')（仅 4 个值）
 --       CO-386 在 Java 实体 AccountStatus 中新增了 PENDING_APPROVAL（审批中），
