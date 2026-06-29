@@ -188,7 +188,16 @@ jobs:
 
       - name: Run migration and architecture gates
         if: needs.quality-scope.outputs.backend_changed == 'true'
-        run: mvn -Dtest=FlywayMysqlContainerTest,ArchitectureTest test
+        run: |
+          set -o pipefail
+          mvn -Dtest=FlywayMysqlContainerTest,ArchitectureTest test 2>&1 | tee /tmp/migration-test.log
+          # 防止测试被静默跳过（PR #1367 根因之一：@Testcontainers(disabledWithoutDocker=true)
+          # + Docker 不可用 → Skipped: 4, BUILD SUCCESS 给人虚假安全感）
+          if grep -qE "Tests run:.*Skipped: [1-9]" /tmp/migration-test.log; then
+            echo "::error::有测试被 Skipped，这通常意味着 Docker 不可用或测试配置错误。测试跳过 ≠ 测试通过。"
+            grep -E "Tests run:" /tmp/migration-test.log || true
+            exit 1
+          fi
         env:
           PLATFORM_ENCRYPTION_KEY: ci-test-key-2026
 

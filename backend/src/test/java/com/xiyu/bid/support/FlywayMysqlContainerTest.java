@@ -26,7 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest(properties = "spring.main.allow-bean-definition-overriding=true")
 @ActiveProfiles("flyway-mysql")
-@Testcontainers(disabledWithoutDocker = true)
+// 不使用 disabledWithoutDocker=true：Docker 不可用时必须 fail-fast，
+// 而非静默跳过。否则 BUILD SUCCESS 会给人虚假安全感（PR #1367 的根因之一）。
+@Testcontainers
 @Import(NoOpPasswordEncryptionTestConfig.class)
 class FlywayMysqlContainerTest {
 
@@ -42,6 +44,11 @@ class FlywayMysqlContainerTest {
     @Autowired
     private EntityManager entityManager;
 
+    // TODO(sql-mode-alignment): 待确认生产 SELECT @@sql_mode 后再对齐。
+    // V1077 已部署且生产成功执行，说明生产 sql_mode 当前不含 NO_ZERO_DATE；
+    // 若测试侧强制 strict mode，V1077 的 '0000-00-00 00:00:00' 字面量会触发
+    // Error 1292，但 V1077 已合入不能改（Flyway checksum 保护）。
+    // 独立任务：确认生产 sql_mode → 决定测试对齐策略 → 必要时新增 V1113+ 修正迁移。
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withDatabaseName("xiyu_bid_test")
