@@ -270,7 +270,7 @@ onMounted(loadData)
 
 <style scoped lang="scss">
 .page-header { margin-bottom: 16px; h2 { font-weight: 600; color: #1f2937; margin: 0; } }
-.tab-toolbar { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; }
+.tab-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin: 12px 0; }
 .filter-card, .table-card { border-radius: 8px; border: 1px solid var(--el-border-color-lighter); box-shadow: 0 2px 8px rgba(0,0,0,.05); margin-bottom: 12px; }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
 .revoked-tag { text-decoration: line-through; opacity: 0.6; }
