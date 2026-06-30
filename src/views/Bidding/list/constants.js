@@ -270,8 +270,8 @@ export const MANUAL_FORM_RULES = {
   description: [
     { max: 5000, message: '标讯描述不能超过5000字符', trigger: 'blur' },
   ],
-  // 标讯信息 max 5000
+  // 标讯信息 max 20000（支持完整招标公告原文）
   tenderInfo: [
-    { max: 5000, message: '标讯信息不能超过5000字符', trigger: 'blur' },
+    { max: 20000, message: '标讯信息不能超过20000字符', trigger: 'blur' },
   ],
 }
