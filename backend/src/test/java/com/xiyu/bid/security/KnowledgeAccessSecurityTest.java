@@ -287,6 +287,24 @@ class KnowledgeAccessSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    @DisplayName("CO-403: 投标项目负责人(bid-projectLeader) GET /api/knowledge/personnel → 200")
+    @WithMockUser(authorities = {"bid-projectLeader"})
+    void listPersonnel_shouldSucceed_forBidProjectLeader() throws Exception {
+        when(listService.list(any())).thenReturn(List.<PersonnelDTO>of());
+        mockMvc.perform(get("/api/knowledge/personnel"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("CO-403: 投标项目负责人(bid-projectLeader) GET /api/knowledge/personnel/{id} → 200")
+    @WithMockUser(authorities = {"bid-projectLeader"})
+    void getPersonnel_shouldSucceed_forBidProjectLeader() throws Exception {
+        when(listService.get(any())).thenReturn(null);
+        mockMvc.perform(get("/api/knowledge/personnel/1"))
+                .andExpect(status().isOk());
+    }
+
     // ==================== GET /api/knowledge/brand-auth ====================
 
     @Test
