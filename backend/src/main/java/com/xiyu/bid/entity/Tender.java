@@ -166,8 +166,8 @@ public class Tender {
     @Column(name = "project_type", length = 20)
     private String projectType;
 
-    /* 标讯信息 */
-    @Column(name = "tender_info", length = 5000)
+    /* 标讯信息（完整招标公告原文，最长 20000 字） */
+    @Column(name = "tender_info", columnDefinition = "TEXT")
     private String tenderInfo;
 
     /* 来源平台 */
