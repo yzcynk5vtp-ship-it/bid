@@ -214,7 +214,7 @@ const handleDownloadArchive = async (row) => {
     const projectId = row?.projectId
     if (!projectId) { ElMessage.warning('缺少项目 ID'); return }
     const res = await httpClient.get(`/api/archive/export-zip/${projectId}`, { responseType: 'blob' })
-    downloadBlob(res, `方案管理-项目档案文件包-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12)}.zip`, 'application/zip')
+    downloadBlob(res.data, `方案管理-项目档案文件包-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 12)}.zip`, 'application/zip')
     ElMessage.success('导出文件包成功')
   } catch { ElMessage.error('导出文件包失败') }
 }
