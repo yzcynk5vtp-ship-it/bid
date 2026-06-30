@@ -11,7 +11,6 @@ import java.util.Map;
 /** SQL builders and row mapping for margin ledger queries. */
 final class MarginQuerySupport {
 
-    /** Column index constants for list query result mapping. */
     private static final int C_FEE_ID = 0;
     private static final int C_PROJ_ID = 1;
     private static final int C_PROJ_NAME = 2;
@@ -29,60 +28,106 @@ final class MarginQuerySupport {
     private static final int C_ACT_RETURN = 14;
     private static final int C_STATUS = 15;
 
+    private static final String INIT_ONLY_WHERE =
+            "pid.need_deposit = 'YES'"
+          + " AND pid.deposit_amount IS NOT NULL"
+          + " AND pid.deposit_amount > 0"
+          + " AND NOT EXISTS ("
+          + "   SELECT 1 FROM fees f2"
+          + "   WHERE f2.project_id = pid.project_id"
+          + "     AND f2.fee_type = 'BID_BOND'"
+          + "     AND f2.status != 'CANCELLED'"
+          + " )";
+
+    private static final String FEES_JOIN =
+            " FROM fees f"
+          + " JOIN projects p ON p.id = f.project_id"
+          + " LEFT JOIN project_initiation_details pid"
+          + "   ON pid.project_id = f.project_id"
+          + " WHERE f.fee_type = 'BID_BOND'";
+
+    private static final String INIT_JOIN =
+            " FROM project_initiation_details pid"
+          + " JOIN projects p ON p.id = pid.project_id"
+          + " WHERE ";
+
     private MarginQuerySupport() {
     }
 
-    /** Build summary statistics SQL. */
-    static StringBuilder summaryBase() {
-        return new StringBuilder(
-                "SELECT"
-                + "  COALESCE(SUM(f.amount), 0),"
-                + "  COALESCE(SUM(CASE WHEN f.status"
-                + "    NOT IN ('RETURNED','CANCELLED')"
-                + "    THEN f.amount ELSE 0 END), 0),"
-                + "  COUNT(CASE WHEN f.status"
-                + "    NOT IN ('RETURNED','CANCELLED') THEN 1 END),"
-                + "  COALESCE(SUM(CASE WHEN f.status"
-                + "    NOT IN ('RETURNED','CANCELLED')"
-                + "    AND f.fee_date < NOW()"
-                + "    THEN f.amount ELSE 0 END), 0),"
-                + "  COUNT(CASE WHEN f.status"
-                + "    NOT IN ('RETURNED','CANCELLED')"
-                + "    AND f.fee_date < NOW() THEN 1 END)"
-                + " FROM fees f"
-                + " JOIN projects p ON p.id = f.project_id"
-                + " LEFT JOIN project_initiation_details pid"
-                + " ON pid.project_id = f.project_id"
-                + " WHERE f.fee_type = 'BID_BOND'");
+    private static String initOnlyFragment(final String roleFragment) {
+        return INIT_JOIN + INIT_ONLY_WHERE + roleFragment;
     }
 
-    /** Build list query SQL. */
-    static StringBuilder listBase() {
+    static StringBuilder summaryBase(final MarginQueryRole policy) {
+        String rf = policy.apply("p", "pid");
         return new StringBuilder(
                 "SELECT"
-                + " f.id, f.project_id, p.name, pid.owner_unit,"
-                + " pid.project_leader_name, pid.bidding_leader_name,"
-                + " f.amount, f.payment_date, pid.deposit_payment_method,"
-                + " f.return_to, NULL,"
-                + " f.fee_date,"
-                + " CASE WHEN f.status='RETURNED'"
-                + "   THEN f.amount ELSE NULL END,"
-                + " NULL, f.return_date, f.status"
-                + " FROM fees f"
-                + " JOIN projects p ON p.id = f.project_id"
-                + " LEFT JOIN project_initiation_details pid"
-                + " ON pid.project_id = f.project_id"
-                + " WHERE f.fee_type = 'BID_BOND'");
+              + "  COALESCE(SUM(m.amount), 0),"
+              + "  COALESCE(SUM(CASE WHEN m.status"
+              + "    NOT IN ('RETURNED','CANCELLED')"
+              + "    THEN m.amount ELSE 0 END), 0),"
+              + "  COUNT(CASE WHEN m.status"
+              + "    NOT IN ('RETURNED','CANCELLED') THEN 1 END),"
+              + "  COALESCE(SUM(CASE WHEN m.status"
+              + "    NOT IN ('RETURNED','CANCELLED')"
+              + "    AND m.exp_return_date < NOW()"
+              + "    THEN m.amount ELSE 0 END), 0),"
+              + "  COUNT(CASE WHEN m.status"
+              + "    NOT IN ('RETURNED','CANCELLED')"
+              + "    AND m.exp_return_date < NOW() THEN 1 END)"
+              + " FROM ("
+              + "   SELECT f.amount as amount, f.status as status,"
+              + "     f.fee_date as exp_return_date"
+              + FEES_JOIN + rf
+              + "   UNION ALL"
+              + "   SELECT pid.deposit_amount as amount, 'PENDING' as status,"
+              + "     NULL as exp_return_date"
+              + initOnlyFragment(rf)
+              + " ) m WHERE 1=1");
     }
 
-    /** Build count query SQL. */
-    static StringBuilder countBase() {
+    static StringBuilder listBase(final MarginQueryRole policy) {
+        String rf = policy.apply("p", "pid");
         return new StringBuilder(
-                "SELECT COUNT(*) FROM fees f"
-                + " JOIN projects p ON p.id = f.project_id"
-                + " LEFT JOIN project_initiation_details pid"
-                + " ON pid.project_id = f.project_id"
-                + " WHERE f.fee_type = 'BID_BOND'");
+                "SELECT m.fee_id, m.project_id, m.project_name, m.owner_unit,"
+              + " m.project_leader_name, m.bidding_leader_name,"
+              + " m.amount, m.payment_date, m.deposit_payment_method,"
+              + " m.payee_name, m.payee_account,"
+              + " m.exp_return_date, m.returned_amount,"
+              + " m.service_fee_amount, m.actual_return_date, m.status"
+              + " FROM ("
+              + "   SELECT f.id as fee_id, f.project_id, p.name as project_name,"
+              + "     pid.owner_unit, pid.project_leader_name,"
+              + "     pid.bidding_leader_name, f.amount, f.payment_date,"
+              + "     pid.deposit_payment_method, f.return_to as payee_name,"
+              + "     NULL as payee_account, f.fee_date as exp_return_date,"
+              + "     CASE WHEN f.status='RETURNED' THEN f.amount ELSE NULL END"
+              + "       as returned_amount,"
+              + "     NULL as service_fee_amount, f.return_date as actual_return_date,"
+              + "     f.status, f.created_at"
+              + FEES_JOIN + rf
+              + "   UNION ALL"
+              + "   SELECT -pid.project_id as fee_id, pid.project_id,"
+              + "     p.name as project_name, pid.owner_unit,"
+              + "     pid.project_leader_name, pid.bidding_leader_name,"
+              + "     pid.deposit_amount, NULL as payment_date,"
+              + "     pid.deposit_payment_method, NULL as payee_name,"
+              + "     NULL as payee_account, NULL as exp_return_date,"
+              + "     NULL as returned_amount, NULL as service_fee_amount,"
+              + "     NULL as actual_return_date, 'PENDING' as status,"
+              + "     COALESCE(pid.created_at, p.created_at) as created_at"
+              + initOnlyFragment(rf)
+              + " ) m WHERE 1=1");
+    }
+
+    static StringBuilder countBase(final MarginQueryRole policy) {
+        String rf = policy.apply("p", "pid");
+        return new StringBuilder(
+                "SELECT COUNT(*) FROM ("
+              + "   SELECT f.id" + FEES_JOIN + rf
+              + "   UNION ALL"
+              + "   SELECT pid.project_id" + initOnlyFragment(rf)
+              + " ) m WHERE 1=1");
     }
 
     /** Append role-based data visibility filter. */
@@ -102,43 +147,43 @@ final class MarginQuerySupport {
             return;
         }
         if (has(f, "projectName")) {
-            sql.append(" AND p.name LIKE :pName");
+            sql.append(" AND m.project_name LIKE :pName");
         }
         if (has(f, "ownerUnit")) {
-            sql.append(" AND pid.owner_unit LIKE :oUnit");
+            sql.append(" AND m.owner_unit LIKE :oUnit");
         }
         if (has(f, "projectLeaderName")) {
-            sql.append(" AND pid.project_leader_name = :pLead");
+            sql.append(" AND m.project_leader_name = :pLead");
         }
         if (has(f, "biddingLeaderName")) {
-            sql.append(" AND pid.bidding_leader_name = :bLead");
+            sql.append(" AND m.bidding_leader_name = :bLead");
         }
         if (f.get("paymentDateStart") != null) {
-            sql.append(" AND f.payment_date >= :pdS");
+            sql.append(" AND m.payment_date >= :pdS");
         }
         if (f.get("paymentDateEnd") != null) {
-            sql.append(" AND f.payment_date <= :pdE");
+            sql.append(" AND m.payment_date <= :pdE");
         }
         if (f.get("expectedReturnDateStart") != null) {
-            sql.append(" AND f.fee_date >= :edS");
+            sql.append(" AND m.exp_return_date >= :edS");
         }
         if (f.get("expectedReturnDateEnd") != null) {
-            sql.append(" AND f.fee_date <= :edE");
+            sql.append(" AND m.exp_return_date <= :edE");
         }
         if (has(f, "status")) {
             switch (f.get("status")) {
                 case "RETURNED":
-                    sql.append(" AND f.status = 'RETURNED'");
+                    sql.append(" AND m.status = 'RETURNED'");
                     break;
                 case "OVERDUE":
-                    sql.append(" AND f.status"
+                    sql.append(" AND m.status"
                             + " NOT IN ('RETURNED','CANCELLED')"
-                            + " AND f.fee_date < NOW()");
+                            + " AND m.exp_return_date < NOW()");
                     break;
                 case "PENDING":
-                    sql.append(" AND f.status"
+                    sql.append(" AND m.status"
                             + " NOT IN ('RETURNED','CANCELLED')"
-                            + " AND f.fee_date >= NOW()");
+                            + " AND m.exp_return_date >= NOW()");
                     break;
                 default:
                     break;
