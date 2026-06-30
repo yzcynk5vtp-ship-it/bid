@@ -6,7 +6,7 @@
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { crmApi } from '@/api/modules/crm.js'
-import { CUSTOMER_INFO_ROWS, CRM_POSITION_TO_ROLE } from './customerInfoMatrixConfig.js'
+import { CRM_POSITION_TO_ROLE } from './customerInfoMatrixConfig.js'
 
 /**
  * 解析 CRM 商机 gapFile 字段为评估表 projectPlanGapFiles。
@@ -186,14 +186,21 @@ export function useCrmOpportunitySelector(props, emit) {
       try {
         const contactRes = await crmApi.getContactPersons(chance.id)
         const contacts = Array.isArray(contactRes) ? contactRes : (contactRes?.data || [])
-        customerInfos = contacts.map((c, idx) => {
-          const roleKey = CUSTOMER_INFO_ROWS[idx % 14].roleKey
-          if (!roleKey) return null
+        // CO-431: CRM 对接人 position 是数字字符串（生产日志实锤，见 CO-329 PR #1124 评论
+        // 与 docs/references/crm-integration-lessons.md §13），必须按 position 字段映射到对应角色行，
+        // 不能按数组下标 idx % 14 强行分配（否则 position=8 招标文件制作人会被错配到第 1 行项目最高决策人）。
+        // position 缺失或超出字典范围时落到 EXTERNAL_ROLE_N（外部对接人），不抢占 14 个固定坑位，
+        // 避免与按 position 映射的对接人撞车丢人。EXTERNAL_ROLE_N 是后端
+        // TenderEvaluationCustomerInfoPolicy.isValidRoleKey 认可的合法 roleKey，前端
+        // getCustomerInfoRoleLabel 也支持渲染为"外部对接人N"。
+        let externalRoleSeq = 0
+        customerInfos = contacts.map((c) => {
+          const roleKey = CRM_POSITION_TO_ROLE[c.position] || `EXTERNAL_ROLE_${++externalRoleSeq}`
           return {
             roleKey,
             NAME: c.name || '',
             CONTACT_INFO: c.phone || c.email || '',
-            POSITION: String((idx % 14) + 1),
+            POSITION: CRM_POSITION_TO_ROLE[c.position] ? c.position : null,
           XIYU_CONTACT: c.ehsyProjectManager || '',
           CONTACT_METHOD: c.contactMethod || '',
           INFO_TENDENCY_BASIS: c.preferenceBasis || '',
@@ -206,7 +213,7 @@ export function useCrmOpportunitySelector(props, emit) {
           INFO_CLEAR_WINNER_BID: c.guaranteeWin || false,
           INFO_WIN_RATE_IMPACT: c.impactRate || null,
         }
-      }).filter(Boolean)
+        })
       } catch {
         ElMessage.warning('CRM对接人查询失败，已继续关联商机，客户信息未自动带入')
       }
