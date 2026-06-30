@@ -358,8 +358,11 @@ describe('useCrmOpportunitySelector', () => {
     }))
   })
 
-  // CO-431: position 为空/未知时按数组下标兜底，保证对接人仍能落位（不丢失）。
-  it('CO-431 position 缺失时按数组下标兜底落位', async () => {
+  // CO-431: position 缺失/超范围时落到 EXTERNAL_ROLE_N（外部对接人），不抢占 14 个固定坑位，
+  // 避免与按 position 映射的对接人撞车丢人。EXTERNAL_ROLE_N 是后端 TenderEvaluationCustomerInfoPolicy
+  // 认可的合法 roleKey（isValidRoleKey 接受 EXTERNAL_ROLE_\d+），前端 getCustomerInfoRoleLabel
+  // 也支持渲染为"外部对接人N"。
+  it('CO-431 position 缺失/超范围时落到 EXTERNAL_ROLE_N，不抢占固定坑位', async () => {
     const chance = { id: 285003, name: '无职位商机', code: 'CC20260630102' }
     searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })
     getContactPersons.mockResolvedValue({
@@ -385,19 +388,70 @@ describe('useCrmOpportunitySelector', () => {
     const emitted = emitFn.mock.calls[emitFn.mock.calls.length - 1][1]
     const infos = emitted.evaluationData.customerInfos
     expect(infos).toHaveLength(2)
-    // 无 position → 兜底到第 1 行（idx=0），职位 1
+    // 无 position → EXTERNAL_ROLE_1（外部对接人1），POSITION 留空让用户手选
     expect(infos[0]).toEqual(expect.objectContaining({
-      roleKey: 'PROJECT_HIGHEST_DECISION_MAKER',
+      roleKey: 'EXTERNAL_ROLE_1',
       NAME: '赵六',
-      POSITION: '1',
+      POSITION: null,
     }))
-    // position='99' 超出字典 → 兜底到第 2 行（idx=1），职位 2
+    // position='99' 超出字典 → EXTERNAL_ROLE_2，不抢占固定坑位
     expect(infos[1]).toEqual(expect.objectContaining({
-      roleKey: 'MATERIALS_COMPANY_CHAIRMAN',
+      roleKey: 'EXTERNAL_ROLE_2',
       NAME: '钱七',
-      POSITION: '2',
+      POSITION: null,
     }))
   })
+
+  // CO-431 P0: 撞车场景——兜底到固定坑位会与按 position 映射的对接人冲突丢人。
+  // position='8'(招标文件制作人) + 无position + position='2'(物资公司董事长) 三人同时存在时，
+  // 无position的人必须落到 EXTERNAL_ROLE_N，不能抢占第2行物资公司董事长，否则 position='2' 的人被覆盖丢失。
+  it('CO-431 兜底不与 position 映射的对接人撞车（不丢失任何人）', async () => {
+    const chance = { id: 285004, name: '撞车商机', code: 'CC20260630103' }
+    searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })
+    getContactPersons.mockResolvedValue({
+      data: [
+        { position: '8', name: '李四', phone: '13700000000' }, // 招标文件制作人 → 第8行
+        { name: '赵六', phone: '13900000000' }, // 无 position → 不能占第2行
+        { position: '2', name: '王五', phone: '13800000000' }, // 物资公司董事长 → 第2行
+      ],
+    })
+
+    const props = { tenderer: '', registrationDeadline: '', bidOpeningTime: '', alreadyLinkedName: '' }
+    const emitFn = vi.fn()
+    const wrapper = mount(defineComponent({
+      template: '<div />',
+      setup() { return useCrmOpportunitySelector(props, emitFn) },
+    }))
+    await wrapper.vm.openSearch()
+    await flushPromises()
+
+    wrapper.vm.onSelect(chance)
+    await wrapper.vm.confirmLink()
+    await flushPromises()
+
+    const emitted = emitFn.mock.calls[emitFn.mock.calls.length - 1][1]
+    const infos = emitted.evaluationData.customerInfos
+    // 三人都在，无一人丢失
+    expect(infos).toHaveLength(3)
+    const roleKeys = infos.map(i => i.roleKey)
+    // 三个 roleKey 互不重复（无撞车）
+    expect(new Set(roleKeys).size).toBe(3)
+    // position='8' 和 position='2' 各落到位
+    expect(infos.find(i => i.NAME === '李四')).toEqual(expect.objectContaining({
+      roleKey: 'BID_DOCUMENT_PREPARER',
+      POSITION: '8',
+    }))
+    expect(infos.find(i => i.NAME === '王五')).toEqual(expect.objectContaining({
+      roleKey: 'MATERIALS_COMPANY_CHAIRMAN',
+      POSITION: '2',
+    }))
+    // 无 position 的赵六落到 EXTERNAL_ROLE_1，不抢占第2行
+    expect(infos.find(i => i.NAME === '赵六')).toEqual(expect.objectContaining({
+      roleKey: 'EXTERNAL_ROLE_1',
+      POSITION: null,
+    }))
+  })
+
 
   it('CRM 对接人查询失败时仍应继续关联商机并提交空客户信息', async () => {
     const chance = { id: 285001, name: '最新标讯商机', code: 'CC20260619001' }

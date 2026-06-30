@@ -178,3 +178,69 @@ customerInfos = contacts.map((c, idx) => {
 - ❌ 不动 `non_null` 全局配置（影响面太大，与本任务无关）
 - ❌ 不删 PR #1419 诊断日志（保留，便于后续核对 position 实际值）
 - ❌ 不改 `CrmHttpClient.java:198` 的 200 字符截断（与本任务无关，单独 issue 处理）
+
+---
+
+## 第三阶段：思维链 Review — 设计弯路识别与修复
+
+### Review 发现的设计弯路
+
+对第二阶段修复代码做系统性设计评估（sequentialthinking 8 步推理），识别出 4 类弯路：
+
+#### P0 撞车 bug（潜在丢人，已修）
+
+**问题**：第二阶段的 `|| CUSTOMER_INFO_ROWS[idx % 14].roleKey` 兜底会与按 position 映射的对接人撞车。场景：
+```
+CRM 返回 3 人：position='8'(第8行) + 无position(兜底idx=1→第2行) + position='2'(第2行)
+                                              ↑ 与 position='2' 撞车，后者被覆盖丢失
+```
+红测试实锤：`expected 3 to be 2`——3 人只剩 2 个。
+
+**根因**：三代方案都在"把 N 人塞进 14 固定坑位"模型里打转：
+- v1 `245fc816c`：命中不到 return null + filter → 过滤丢人
+- v2 `41f02ccc1`：idx%14 → 错位
+- v3 第二阶段：position 有效按 position + 无效 idx 兜底 → 撞车丢人
+
+**修复**：兜底改用 `EXTERNAL_ROLE_N`（外部对接人），不抢占固定坑位。
+- `EXTERNAL_ROLE_N` 是后端 `TenderEvaluationCustomerInfoPolicy.isValidRoleKey`（line 251-253）认可的合法 roleKey
+- 前端 `getCustomerInfoRoleLabel`（config.js:39）已支持渲染为"外部对接人N"
+- 后端 `TenderEvaluationIntegrationService`（line 117/140）本身也用这个机制兜底
+
+注意：`TenderEvaluationCustomerInfoPolicy.java:18` 注释说"EXTERNAL_ROLE_N → INVALID_ROLE"是**过时错误注释**，实际 `isValidRoleKey` 接受它。这是既有文档债，不在本次范围。
+
+#### P1 死代码弯路（已清理）
+
+1. **findIndex 反查死代码**：第二阶段 196-197 行 `findIndex(r => r.roleKey === roleKey)` 把 position 转一圈变回 position（position='8' → roleKey → findIndex=7 → '8'）。三张表（CRM_POSITION_TO_ROLE/CUSTOMER_INFO_ROWS/POSITION_OPTIONS）同构，position 有效时直接用 `c.position` 作 POSITION 值。删除。
+
+2. **.filter(c => c.roleKey) 永真死守卫**：idx 兜底保证 roleKey 恒非空，filter 永远保留全部，是从 v1 `.filter(Boolean)` 残留的死代码。删除。
+
+3. **CUSTOMER_INFO_ROWS import 未用**：兜底改用 EXTERNAL_ROLE_N 后不再读数组，清理 import。
+
+#### P2 设计债（记录，本次不改）
+
+- **14 固定坑位模型 vs CRM 数据现实**：真正的品类问题是模型假设（≤14人 + 职位一一对应）不成立。本次用 EXTERNAL_ROLE_N 缓解撞车，但三张表冗余定义同一枚举（CRM_POSITION_TO_ROLE/CUSTOMER_INFO_ROWS/POSITION_OPTIONS）易漂移的问题仍在。
+- **TenderEvaluationCustomerInfoPolicy.java:18 注释过时**：说 EXTERNAL_ROLE_N → INVALID_ROLE，与实际代码矛盾。
+
+#### P3 可读性（已顺手修）
+
+- `posNum` 命名误导（实为字符串）→ 删除该变量，直接用 `c.position`。
+
+### 第三阶段改动（在第二阶段基础上）
+
+| 文件 | 改动 |
+|---|---|
+| `useCrmOpportunitySelector.js` | 兜底 idx%14 → EXTERNAL_ROLE_N；删 findIndex/.filter/posNum 死代码；清理 import |
+| `useCrmOpportunitySelector.spec.js` | 测试2 改期望为 EXTERNAL_ROLE_N；+1 撞车红测试（3人不丢） |
+
+### 第三阶段 TDD 验证
+
+- **Red**：撞车测试 `expected 3 to be 2`（3 人撞车剩 2 人）+ 测试2 期望 EXTERNAL_ROLE_N 失败
+- **Green**：13 测试全绿（10 原有 + position映射 + EXTERNAL_ROLE兜底 + 撞车不丢人）
+- **回归**：`detail/components/` 6 文件 40 测试全绿
+
+### 第三阶段验证成功的标准（更新）
+
+1. position=8 → 「招标文件制作人」行，POSITION='8'
+2. position=5 → 「电商公司总经理」行，POSITION='5'
+3. 无 position / position 超范围 → 「外部对接人N」行，POSITION 留空让用户手选
+4. **position='8' + 无position + position='2' 三人同存 → 三人各落各位，无撞车丢人**
