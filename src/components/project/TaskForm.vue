@@ -14,11 +14,11 @@
             :description="localValue.extendedFields.lastRejectReason"
             data-test="reject-reason-alert"
           />
-          <el-form-item label="任务名称" required>
+          <el-form-item label="任务名称" required :error="errors.name">
             <el-input v-model="localValue.name" placeholder="请输入任务名称" />
           </el-form-item>
 
-          <el-form-item label="详细描述" required>
+          <el-form-item label="详细描述" required :error="errors.content">
             <el-input
               v-model="localValue.content"
               type="textarea"
@@ -73,7 +73,7 @@
             />
           </el-form-item>
 
-          <el-form-item label="任务执行人" required>
+          <el-form-item label="任务执行人" required :error="errors.assigneeId">
             <UserPicker
               v-model="localValue.assigneeId"
               data-test="task-owner-select"
@@ -85,7 +85,7 @@
             />
           </el-form-item>
 
-          <el-form-item label="截止日期" required>
+          <el-form-item label="截止日期" required :error="errors.deadline">
             <el-date-picker v-model="localValue.deadline" type="date" value-format="YYYY-MM-DD" style="width: 100%" placeholder="请选择截止日期" />
           </el-form-item>
 
@@ -136,8 +136,6 @@
               <el-option v-for="s in statuses" :key="s.code" :label="s.name" :value="s.code" />
             </el-select>
           </el-form-item>
-
-          <el-alert v-if="validationMessage" type="warning" :closable="false" :title="validationMessage" />
         </el-form>
 
         <template v-if="extendedFieldSchema.length > 0">
@@ -186,6 +184,8 @@ if (!Array.isArray(localValue.attachments)) localValue.attachments = []
 const statuses = ref([])
 const loadingStatuses = ref(false)
 const validationMessage = ref('')
+// CO-419: 字段级错误，跟着字段走，而不是堆在底部单一 alert
+const errors = reactive({ name: '', content: '', assigneeId: '', deadline: '' })
 const extFormRef = ref(null)
 const activeTab = ref('detail')
 const readonly = computed(() => props.mode === 'view')
@@ -309,11 +309,28 @@ watch(() => props.modelValue, (v) => {
   Object.assign(localValue, v || {})
   if (!localValue.extendedFields) localValue.extendedFields = {}
   if (!Array.isArray(localValue.attachments)) localValue.attachments = []
+  // 切换任务时清空所有字段错误，避免上一条任务的错误残留
+  errors.name = ''
+  errors.content = ''
+  errors.assigneeId = ''
+  errors.deadline = ''
+  validationMessage.value = ''
   ensureSelectedAssignee()
   nextTick(() => {
     syncingFromModel = false
   })
 })
+
+// CO-419: 用户修改字段后立即清掉对应字段的错误提示，避免错误一直挂着
+watch(
+  () => [localValue.name, localValue.content, localValue.assigneeId, localValue.deadline],
+  ([name, content, assigneeId, deadline]) => {
+    if (errors.name && name && String(name).trim()) errors.name = ''
+    if (errors.content && content && String(content).trim()) errors.content = ''
+    if (errors.assigneeId && assigneeId) errors.assigneeId = ''
+    if (errors.deadline && deadline) errors.deadline = ''
+  }
+)
 
 watch(localValue, () => {
   if (!syncingFromModel) {
@@ -350,24 +367,19 @@ async function loadStatuses() {
   }
 }
 function validate() {
-  if (!localValue.name || !String(localValue.name).trim()) {
-    validationMessage.value = '请填写任务名称'
-    return validationMessage.value
-  }
-  if (!localValue.content || !String(localValue.content).trim()) {
-    validationMessage.value = '请填写详细描述'
-    return validationMessage.value
-  }
-  if (!localValue.assigneeId) {
-    validationMessage.value = '请选择任务执行人'
-    return validationMessage.value
-  }
-  if (!localValue.deadline) {
-    validationMessage.value = '请选择截止日期'
-    return validationMessage.value
-  }
-  validationMessage.value = ''
-  return ''
+  // CO-419: 一次性收集所有字段错误，跟着字段显示在对应 form-item 下
+  errors.name = ''
+  errors.content = ''
+  errors.assigneeId = ''
+  errors.deadline = ''
+  if (!localValue.name || !String(localValue.name).trim()) errors.name = '请填写任务名称'
+  if (!localValue.content || !String(localValue.content).trim()) errors.content = '请填写详细描述'
+  if (!localValue.assigneeId) errors.assigneeId = '请选择任务执行人'
+  if (!localValue.deadline) errors.deadline = '请选择截止日期'
+  // 兼容旧契约：返回第一条错误信息（空串代表通过）；父组件 handleSaveTask 只看返回值的 valid 字段
+  const firstMsg = errors.name || errors.content || errors.assigneeId || errors.deadline
+  validationMessage.value = firstMsg
+  return firstMsg
 }
 function normalizeUploadFiles(fileList = []) {
   return (Array.isArray(fileList) ? fileList : [fileList])
