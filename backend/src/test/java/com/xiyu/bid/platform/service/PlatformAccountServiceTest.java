@@ -347,6 +347,78 @@ class PlatformAccountServiceTest {
         assertThat(result.getStatus()).isEqualTo(AccountStatus.AVAILABLE);
     }
 
+    // ── CO-415: returnAccount 联系人豁免（对称于 getPassword 范式） ──
+
+    @Test
+    @DisplayName("CO-415：bid-Team 作为绑定联系人可归还账号（无密码变更）")
+    void returnAccount_bidTeamAsContactPerson_succeeds() {
+        PlatformAccount ownAccount = PlatformAccount.builder()
+                .id(1L).username("testuser").password(ENCRYPTED_PWD)
+                .accountName("我的平台").platformType(PlatformType.BIDDING_PLATFORM)
+                .contactPerson(BID_TEAM_USER.getId())  // 绑定联系人 = bidTeam 用户
+                .build();
+        ownAccount.borrow(BID_TEAM_USER.getId(), LocalDateTime.now(), LocalDateTime.now().plusDays(3));
+        when(repository.findById(1L)).thenReturn(Optional.of(ownAccount));
+        when(repository.save(any())).thenReturn(ownAccount);
+
+        PlatformAccountDTO result = service.returnAccount(1L, BID_TEAM_USER);
+
+        assertThat(result.getStatus()).isEqualTo(AccountStatus.AVAILABLE);
+        verify(repository).save(any());
+    }
+
+    @Test
+    @DisplayName("CO-415：bid-Team 非绑定联系人归还账号抛出异常（无密码变更）")
+    void returnAccount_bidTeamNotContactPerson_throws() {
+        PlatformAccount othersAccount = PlatformAccount.builder()
+                .id(1L).username("testuser").password(ENCRYPTED_PWD)
+                .accountName("其他平台").platformType(PlatformType.BIDDING_PLATFORM)
+                .contactPerson(999L)  // NOT BID_TEAM_USER.id (5)
+                .build();
+        othersAccount.borrow(10L, LocalDateTime.now(), LocalDateTime.now().plusDays(3));
+        when(repository.findById(1L)).thenReturn(Optional.of(othersAccount));
+
+        assertThatThrownBy(() -> service.returnAccount(1L, BID_TEAM_USER))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("contact person");
+    }
+
+    @Test
+    @DisplayName("CO-415：bid-Team 作为绑定联系人可归还账号（带密码变更）")
+    void returnAccount_withPassword_bidTeamAsContactPerson_succeeds() {
+        PlatformAccount ownAccount = PlatformAccount.builder()
+                .id(1L).username("testuser").password(ENCRYPTED_PWD)
+                .accountName("我的平台").platformType(PlatformType.BIDDING_PLATFORM)
+                .contactPerson(BID_TEAM_USER.getId())
+                .build();
+        ownAccount.borrow(BID_TEAM_USER.getId(), LocalDateTime.now(), LocalDateTime.now().plusDays(3));
+        ReturnAccountRequest req = ReturnAccountRequest.builder().newPassword("newSecret").build();
+        when(repository.findById(1L)).thenReturn(Optional.of(ownAccount));
+        when(passwordEncryptionUtil.encrypt("newSecret")).thenReturn("encrypted:newSecret");
+        when(repository.save(any())).thenReturn(ownAccount);
+
+        PlatformAccountDTO result = service.returnAccount(1L, req, BID_TEAM_USER);
+
+        assertThat(result.getStatus()).isEqualTo(AccountStatus.AVAILABLE);
+    }
+
+    @Test
+    @DisplayName("CO-415：bid-Team 非绑定联系人归还账号抛出异常（带密码变更）")
+    void returnAccount_withPassword_bidTeamNotContactPerson_throws() {
+        PlatformAccount othersAccount = PlatformAccount.builder()
+                .id(1L).username("testuser").password(ENCRYPTED_PWD)
+                .accountName("其他平台").platformType(PlatformType.BIDDING_PLATFORM)
+                .contactPerson(999L)
+                .build();
+        othersAccount.borrow(10L, LocalDateTime.now(), LocalDateTime.now().plusDays(3));
+        ReturnAccountRequest req = ReturnAccountRequest.builder().newPassword("newSecret").build();
+        when(repository.findById(1L)).thenReturn(Optional.of(othersAccount));
+
+        assertThatThrownBy(() -> service.returnAccount(1L, req, BID_TEAM_USER))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("contact person");
+    }
+
     // ── 统计 ──
 
     @Test
