@@ -118,9 +118,44 @@ class UserEnabledDetectorTest {
     }
 
     @Test
-    @DisplayName("employeeStatus=3 优先级高于 status=0")
-    void isEnabled_employeeStatus3_overridesStatus0() {
+    @DisplayName("status=0 优先级高于 employeeStatus=3（status 最高优先级）")
+    void isEnabled_status0_overridesEmployeeStatus3() {
         JsonNode node = parseJson("{\"employeeStatus\": 3, \"status\": 0}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isFalse();
+    }
+
+    @Test
+    @DisplayName("status=1 优先级高于 employeeStatus=8（status 最高优先级）")
+    void isEnabled_status1_overridesEmployeeStatus8() {
+        JsonNode node = parseJson("{\"employeeStatus\": 8, \"status\": 1}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isTrue();
+    }
+
+    @Test
+    @DisplayName("del=1 优先级高于 status=1（del 仍为最高优先级）")
+    void isEnabled_del1_overridesStatus1() {
+        JsonNode node = parseJson("{\"del\": 1, \"status\": 1}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isFalse();
+    }
+
+    @Test
+    @DisplayName("del=1 优先级高于 status=0")
+    void isEnabled_del1_overridesStatus0() {
+        JsonNode node = parseJson("{\"del\": 1, \"status\": 0}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isFalse();
+    }
+
+    @Test
+    @DisplayName("status 字段缺失时 fallback 到 employeeStatus")
+    void isEnabled_statusMissing_fallsBackToEmployeeStatus() {
+        JsonNode node = parseJson("{\"employeeStatus\": 3}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isTrue();
+    }
+
+    @Test
+    @DisplayName("status 字段缺失时 fallback 到 activationState")
+    void isEnabled_statusMissing_fallsBackToActivationState() {
+        JsonNode node = parseJson("{\"activationState\": 1}");
         assertThat(UserEnabledDetector.isEnabled(node)).isTrue();
     }
 
@@ -128,13 +163,6 @@ class UserEnabledDetectorTest {
     @DisplayName("del=1 优先级高于 employeeStatus=3")
     void isEnabled_del1_overridesEmployeeStatus3() {
         JsonNode node = parseJson("{\"del\": 1, \"employeeStatus\": 3}");
-        assertThat(UserEnabledDetector.isEnabled(node)).isFalse();
-    }
-
-    @Test
-    @DisplayName("employeeStatus=8 优先级高于 status=1")
-    void isEnabled_employeeStatus8_overridesStatus1() {
-        JsonNode node = parseJson("{\"employeeStatus\": 8, \"status\": 1}");
         assertThat(UserEnabledDetector.isEnabled(node)).isFalse();
     }
 
