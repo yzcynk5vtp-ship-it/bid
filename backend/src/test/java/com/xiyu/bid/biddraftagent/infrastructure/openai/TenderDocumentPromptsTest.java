@@ -5,6 +5,7 @@
 package com.xiyu.bid.biddraftagent.infrastructure.openai;
 
 import com.xiyu.bid.docinsight.application.DocumentAnalysisInput;
+import com.xiyu.bid.docinsight.domain.DocInsightProfiles;
 import com.xiyu.bid.docinsight.domain.DocumentChunk;
 import java.util.List;
 import java.util.Map;
@@ -69,5 +70,31 @@ class TenderDocumentPromptsTest {
         assertThat(prompt).contains("仓储运输");
         assertThat(prompt).contains("仓库资料");
         assertThat(prompt).contains("仓储运输方案");
+    }
+
+    @Test
+    void buildTenderIntakePrompt_shouldIncludeTenderInfoFieldInstruction() {
+        DocumentAnalysisInput input = new DocumentAnalysisInput(
+                "doc-insight://intake",
+                "tender-notice.docx",
+                "招标公告正文示例",
+                "",
+                List.of(new DocumentChunk("招标公告正文示例", List.of())),
+                DocInsightProfiles.TENDER_INTAKE,
+                Map.of()
+        );
+        DocumentChunk chunk = new DocumentChunk("招标公告正文示例", List.of());
+
+        String prompt = TenderDocumentPrompts.buildTenderIntakePrompt(input, chunk);
+
+        // tenderInfo 字段指令存在
+        assertThat(prompt).contains("tenderInfo");
+        // 明确要求 AI 输出完整原文，不摘要不改写
+        assertThat(prompt).contains("完整原文");
+        assertThat(prompt).contains("不要摘要");
+        assertThat(prompt).contains("不要改写");
+        // 与 tenderScope（≤120 字摘要）有明确语义区分
+        assertThat(prompt).contains("tenderScope");
+        assertThat(prompt).contains("120 字");
     }
 }

@@ -4,6 +4,8 @@ space: engineering
 category: spec
 tags: [CO-373, 角色解析, EffectiveRoleResolver, DataScopeConfigService, FP-Java, fail-closed, OSS cache]
 sources:
+  - backend/src/main/java/com/xiyu/bid/security/EffectiveRoleResolver.java
+  - CLAUDE.md
 backlinks:
   - _index
   - architecture

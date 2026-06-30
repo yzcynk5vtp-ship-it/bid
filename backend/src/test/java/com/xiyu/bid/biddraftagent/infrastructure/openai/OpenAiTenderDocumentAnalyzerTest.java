@@ -276,6 +276,7 @@ class OpenAiTenderDocumentAnalyzerTest {
         output.contactLandline = "010-87654321";
         output.customerType = "KA 客户";
         output.priority = "A";
+        output.tenderInfo = "第一章 招标公告\n项目名称：西域MRO测试项目\n最高限价：1200000元\n采购单位：西域采购中心\n资格要求：供应商须具备资质";
         when(structuredOutputService.request(anyString(), eq(TenderRequirementOutput.class), any(), anyString()))
                 .thenReturn(output);
 
@@ -294,7 +295,8 @@ class OpenAiTenderDocumentAnalyzerTest {
                 .containsEntry("contactPhone", "13800138000")
                 .containsEntry("contactLandline", "010-87654321")
                 .containsEntry("customerType", "KA 客户")
-                .containsEntry("priority", "A");
+                .containsEntry("priority", "A")
+                .containsEntry("tenderInfo", "第一章 招标公告\n项目名称：西域MRO测试项目\n最高限价：1200000元\n采购单位：西域采购中心\n资格要求：供应商须具备资质");
         assertThat(prompt).doesNotContain("requirementItems 必须逐条列出");
         // With expanded context radius, "评分办法" may be included if near a keyword line;
         // the assertion is relaxed to verify the prompt is intake-focused, not chunk-indexed.
