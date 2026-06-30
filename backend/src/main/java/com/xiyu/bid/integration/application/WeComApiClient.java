@@ -11,12 +11,12 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -49,15 +49,26 @@ public class WeComApiClient {
     private final RestTemplate restTemplate;
     private final String baseUrl;
 
+    /**
+     * 显式使用 {@link SimpleClientHttpRequestFactory}，避开 OkHttp3 限制.
+     *
+     * <p>背景：项目通过 openai-java-client-okhttp 传递依赖引入了 okhttp3,
+     * RestTemplateBuilder 默认会自动检测到 OkHttp3 并使用 OkHttp3ClientHttpRequestFactory.
+     * 但 OkHttp3 对 GET/HEAD 严格要求 body 为 null，而 LoggingClientHttpRequestInterceptor
+     * 传空 byte[] 会抛 IllegalArgumentException。本类通过 GET 调用企业微信 API
+     * （requestUserInfo / requestAccessToken），必须显式指定 SimpleClientHttpRequestFactory。</p>
+     */
     public WeComApiClient(
             RestTemplateBuilder restTemplateBuilder,
             @Value("${wecom.api.base-url:https://qyapi.weixin.qq.com}") String baseUrl,
             @Value("${wecom.http.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${wecom.http.read-timeout-ms:5000}") int readTimeoutMs) {
         this.baseUrl = baseUrl;
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(connectTimeoutMs);
+        factory.setReadTimeout(readTimeoutMs);
         this.restTemplate = restTemplateBuilder
-                .setConnectTimeout(Duration.ofMillis(connectTimeoutMs))
-                .setReadTimeout(Duration.ofMillis(readTimeoutMs))
+                .requestFactory(() -> factory)
                 .build();
     }
 
