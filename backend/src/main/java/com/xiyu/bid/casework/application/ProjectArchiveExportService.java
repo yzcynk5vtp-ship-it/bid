@@ -8,8 +8,12 @@ import com.xiyu.bid.casework.infrastructure.ProjectArchiveRepository;
 import com.xiyu.bid.config.ExportConfig;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.entity.User;
+import com.xiyu.bid.project.entity.ProjectLeadAssignment;
+import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
+import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
@@ -43,6 +47,8 @@ public class ProjectArchiveExportService {
     private final ProjectRepository projectRepository;
     private final TenderRepository tenderRepository;
     private final ExportConfig exportConfig;
+    private final ProjectLeadAssignmentRepository leadAssignmentRepository;
+    private final UserRepository userRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DEFAULT_PAGE_SIZE = 1000;
@@ -132,11 +138,12 @@ public class ProjectArchiveExportService {
                                 Tender t = tOpt.get();
                                 projectType = safeString(t.getProjectType());
                                 projectManager = safeString(t.getProjectManagerName());
-                                bidManager = safeString(t.getBiddingPersonName());
                                 tenderAgency = safeString(t.getPurchaserName());
                                 if (t.getCreatedAt() != null) initiatedAtStr = t.getCreatedAt().format(DATE_FORMATTER);
                                 if (t.getBidOpeningTime() != null) bidOpeningAtStr = t.getBidOpeningTime().format(DATE_FORMATTER);
                             }
+                            // CO-421: 投标负责人从 ProjectLeadAssignment.primaryLeadUserId 解析，不再取 Tender.biddingPersonName
+                            bidManager = resolveBidManagerNameForExport(p.getId());
                         }
                     } catch (Exception ignored) { log.debug("Export failed", ignored); }
 
@@ -185,6 +192,16 @@ public class ProjectArchiveExportService {
     private boolean canExportArchive(ProjectArchive archive, Set<Long> exportableProjectIds) {
         return exportableProjectIds == null
                 || archive != null && archive.getProjectId() != null && exportableProjectIds.contains(archive.getProjectId());
+    }
+
+    /** CO-421: 解析投标负责人姓名（ProjectLeadAssignment.primaryLeadUserId → User.fullName），无则返回空串 */
+    private String resolveBidManagerNameForExport(Long projectId) {
+        return leadAssignmentRepository.findByProjectId(projectId)
+                .map(ProjectLeadAssignment::getPrimaryLeadUserId)
+                .filter(leadUserId -> leadUserId != null)
+                .flatMap(userRepository::findById)
+                .map(User::getFullName)
+                .orElse("");
     }
 
     private CellStyle createHeaderStyle(Workbook workbook) {
