@@ -306,6 +306,99 @@ describe('useCrmOpportunitySelector', () => {
     }))
   })
 
+  // CO-431: CRM 对接人 position 是数字字符串（生产日志实锤，见 CO-329 PR #1124 评论），
+  // 必须 CRM_POSITION_TO_ROLE[c.position] 按 position 映射到对应角色行；
+  // 之前 revert 后改成 idx % 14 按数组下标强行分配，导致 position=8（招标文件制作人）
+  // 被错配到第 1 行（项目最高决策人）。
+  it('CO-431 按 CRM position 字段映射角色，不按数组下标强行分配', async () => {
+    const chance = { id: 285002, name: 'CO431商机', code: 'CC20260630101' }
+    searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })
+    getContactPersons.mockResolvedValue({
+      data: [
+        {
+          position: '8', // 招标文件制作人
+          name: '李四',
+          phone: '13700000000',
+        },
+        {
+          position: '5', // 电商公司总经理
+          name: '王五',
+          phone: '13800000000',
+        },
+      ],
+    })
+
+    const props = { tenderer: '', registrationDeadline: '', bidOpeningTime: '', alreadyLinkedName: '' }
+    const emitFn = vi.fn()
+    const wrapper = mount(defineComponent({
+      template: '<div />',
+      setup() { return useCrmOpportunitySelector(props, emitFn) },
+    }))
+    await wrapper.vm.openSearch()
+    await flushPromises()
+
+    wrapper.vm.onSelect(chance)
+    await wrapper.vm.confirmLink()
+    await flushPromises()
+
+    const emitted = emitFn.mock.calls[emitFn.mock.calls.length - 1][1]
+    const infos = emitted.evaluationData.customerInfos
+    expect(infos).toHaveLength(2)
+    // position=8 → 招标文件制作人，不是 idx=0 的项目最高决策人
+    expect(infos[0]).toEqual(expect.objectContaining({
+      roleKey: 'BID_DOCUMENT_PREPARER',
+      NAME: '李四',
+      POSITION: '8',
+    }))
+    // position=5 → 电商公司总经理，不是 idx=1 的物资公司董事长
+    expect(infos[1]).toEqual(expect.objectContaining({
+      roleKey: 'ELECTRONICS_COMPANY_GENERAL_MANAGER',
+      NAME: '王五',
+      POSITION: '5',
+    }))
+  })
+
+  // CO-431: position 为空/未知时按数组下标兜底，保证对接人仍能落位（不丢失）。
+  it('CO-431 position 缺失时按数组下标兜底落位', async () => {
+    const chance = { id: 285003, name: '无职位商机', code: 'CC20260630102' }
+    searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })
+    getContactPersons.mockResolvedValue({
+      data: [
+        { name: '赵六', phone: '13900000000' }, // 无 position
+        { position: '99', name: '钱七', phone: '14000000000' }, // 超出字典范围
+      ],
+    })
+
+    const props = { tenderer: '', registrationDeadline: '', bidOpeningTime: '', alreadyLinkedName: '' }
+    const emitFn = vi.fn()
+    const wrapper = mount(defineComponent({
+      template: '<div />',
+      setup() { return useCrmOpportunitySelector(props, emitFn) },
+    }))
+    await wrapper.vm.openSearch()
+    await flushPromises()
+
+    wrapper.vm.onSelect(chance)
+    await wrapper.vm.confirmLink()
+    await flushPromises()
+
+    const emitted = emitFn.mock.calls[emitFn.mock.calls.length - 1][1]
+    const infos = emitted.evaluationData.customerInfos
+    expect(infos).toHaveLength(2)
+    // 无 position → 兜底到第 1 行（idx=0），职位 1
+    expect(infos[0]).toEqual(expect.objectContaining({
+      roleKey: 'PROJECT_HIGHEST_DECISION_MAKER',
+      NAME: '赵六',
+      POSITION: '1',
+    }))
+    // position='99' 超出字典 → 兜底到第 2 行（idx=1），职位 2
+    expect(infos[1]).toEqual(expect.objectContaining({
+      roleKey: 'MATERIALS_COMPANY_CHAIRMAN',
+      NAME: '钱七',
+      POSITION: '2',
+    }))
+  })
+
   it('CRM 对接人查询失败时仍应继续关联商机并提交空客户信息', async () => {
     const chance = { id: 285001, name: '最新标讯商机', code: 'CC20260619001' }
     searchOpportunities.mockResolvedValue({ data: { list: [chance], totalCount: 1 } })

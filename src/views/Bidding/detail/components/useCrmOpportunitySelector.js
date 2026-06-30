@@ -186,14 +186,20 @@ export function useCrmOpportunitySelector(props, emit) {
       try {
         const contactRes = await crmApi.getContactPersons(chance.id)
         const contacts = Array.isArray(contactRes) ? contactRes : (contactRes?.data || [])
+        // CO-431: CRM 对接人 position 是数字字符串（生产日志实锤，见 CO-329 PR #1124 评论
+        // 与 docs/references/crm-integration-lessons.md §13），必须按 position 字段映射到对应角色行，
+        // 不能按数组下标 idx % 14 强行分配（否则 position=8 招标文件制作人会被错配到第 1 行项目最高决策人）。
+        // position 缺失或超出字典范围时按 idx 兜底落位，保证对接人不丢失。
         customerInfos = contacts.map((c, idx) => {
-          const roleKey = CUSTOMER_INFO_ROWS[idx % 14].roleKey
-          if (!roleKey) return null
+          const posNum = c.position != null && c.position !== '' ? c.position : null
+          const roleKey = (posNum != null && CRM_POSITION_TO_ROLE[posNum]) || CUSTOMER_INFO_ROWS[idx % 14].roleKey
+          const posIdx = roleKey ? CUSTOMER_INFO_ROWS.findIndex(r => r.roleKey === roleKey) : -1
+          const positionValue = posIdx >= 0 ? String(posIdx + 1) : String((idx % 14) + 1)
           return {
             roleKey,
             NAME: c.name || '',
             CONTACT_INFO: c.phone || c.email || '',
-            POSITION: String((idx % 14) + 1),
+            POSITION: positionValue,
           XIYU_CONTACT: c.ehsyProjectManager || '',
           CONTACT_METHOD: c.contactMethod || '',
           INFO_TENDENCY_BASIS: c.preferenceBasis || '',
@@ -206,7 +212,7 @@ export function useCrmOpportunitySelector(props, emit) {
           INFO_CLEAR_WINNER_BID: c.guaranteeWin || false,
           INFO_WIN_RATE_IMPACT: c.impactRate || null,
         }
-      }).filter(Boolean)
+        }).filter(c => c.roleKey)
       } catch {
         ElMessage.warning('CRM对接人查询失败，已继续关联商机，客户信息未自动带入')
       }
