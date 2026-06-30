@@ -9,6 +9,8 @@ import com.xiyu.bid.casework.infrastructure.ProjectArchive;
 import com.xiyu.bid.casework.infrastructure.ProjectArchiveRepository;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class ProjectArchiveDetailService {
     private final ArchiveLogRepository logRepository;
     private final ProjectRepository projectRepository;
     private final TenderRepository tenderRepository;
+    private final ProjectInitiationDetailsRepository initiationDetailsRepository;
 
     public ProjectArchiveDetailResponse getArchiveDetail(Long archiveId) {
         ProjectArchive archive = archiveRepository.findById(archiveId)
@@ -38,7 +41,7 @@ public class ProjectArchiveDetailService {
         String projectStatus = "PENDING_INITIATION";
         String bidResult = "OTHER";
         String projectManager = "未知";
-        String bidManager = "未知";
+        String bidManager = null;
         String tenderAgency = null;
         LocalDateTime initiatedAt = null;
         LocalDateTime bidSubmissionAt = null;
@@ -62,7 +65,6 @@ public class ProjectArchiveDetailService {
                 Tender tender = tenderOpt.get();
                 projectType = tender.getProjectType();
                 projectManager = tender.getProjectManagerName();
-                bidManager = tender.getBiddingPersonName();
                 tenderAgency = tender.getPurchaserName();
                 bidOpeningAt = tender.getBidOpeningTime();
             }
@@ -72,6 +74,13 @@ public class ProjectArchiveDetailService {
             bidSubmissionAt = p.getEvaluatingAt();
             closedAt = p.getClosedAt();
         }
+
+        // CO-421: 投标负责人姓名读 ProjectInitiationDetails.biddingLeaderName
+        // （立项审核通过时已同步，详见 ProjectInitiationApprovalService.approve）
+        bidManager = initiationDetailsRepository.findByProjectId(archive.getProjectId())
+                .map(ProjectInitiationDetails::getBiddingLeaderName)
+                .filter(name -> name != null && !name.isBlank())
+                .orElse(null);
 
         List<ArchiveFile> files = fileRepository.findByArchiveIdOrderByCreatedAtDesc(archiveId);
         List<ProjectArchiveDetailResponse.ArchiveFileDTO> fileDTOs = files.stream()

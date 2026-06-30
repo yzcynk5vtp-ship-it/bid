@@ -6,6 +6,8 @@ import com.xiyu.bid.casework.infrastructure.ArchiveFileRepository;
 import com.xiyu.bid.casework.infrastructure.ProjectArchive;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
 import org.springframework.stereotype.Component;
@@ -25,13 +27,16 @@ class ProjectArchiveResponseMapper {
     private final ProjectRepository projectRepository;
     private final TenderRepository tenderRepository;
     private final ArchiveFileRepository fileRepository;
+    private final ProjectInitiationDetailsRepository initiationDetailsRepository;
 
     ProjectArchiveResponseMapper(ProjectRepository projectRepository,
                                  TenderRepository tenderRepository,
-                                 ArchiveFileRepository fileRepository) {
+                                 ArchiveFileRepository fileRepository,
+                                 ProjectInitiationDetailsRepository initiationDetailsRepository) {
         this.projectRepository = projectRepository;
         this.tenderRepository = tenderRepository;
         this.fileRepository = fileRepository;
+        this.initiationDetailsRepository = initiationDetailsRepository;
     }
 
     List<ProjectArchiveResponse> toResponseList(List<ProjectArchive> archives) {
@@ -46,18 +51,29 @@ class ProjectArchiveResponseMapper {
         Map<Long, Tender> tenderMap = tenderRepository.findAllById(tenderIds).stream()
                 .collect(toMap(Tender::getId, t -> t));
 
+        // CO-421: 投标负责人姓名直接读 ProjectInitiationDetails.biddingLeaderName
+        // （立项审核通过时已同步，详见 ProjectInitiationApprovalService.approve）
+        Map<Long, String> bidManagerNameByProjectId = initiationDetailsRepository
+                .findByProjectIdIn(projectIds).stream()
+                .filter(d -> d.getBiddingLeaderName() != null && !d.getBiddingLeaderName().isBlank())
+                .collect(toMap(ProjectInitiationDetails::getProjectId,
+                        ProjectInitiationDetails::getBiddingLeaderName, (a, b) -> a));
+
         List<Long> archiveIds = archives.stream().map(ProjectArchive::getId).toList();
         Map<Long, List<ArchiveFile>> filesByArchive = fileRepository
                 .findByArchiveIdInOrderByCreatedAtDesc(archiveIds)
                 .stream().collect(groupingBy(ArchiveFile::getArchiveId));
 
-        return archives.stream().map(a -> toResponse(a, projectMap, tenderMap, filesByArchive)).toList();
+        return archives.stream()
+                .map(a -> toResponse(a, projectMap, tenderMap, filesByArchive, bidManagerNameByProjectId))
+                .toList();
     }
 
     private ProjectArchiveResponse toResponse(ProjectArchive archive,
                                                Map<Long, Project> projectMap,
                                                Map<Long, Tender> tenderMap,
-                                               Map<Long, List<ArchiveFile>> filesByArchive) {
+                                               Map<Long, List<ArchiveFile>> filesByArchive,
+                                               Map<Long, String> bidManagerNameByProjectId) {
         Project project = projectMap.get(archive.getProjectId());
         Tender tender = project != null ? tenderMap.get(project.getTenderId()) : null;
 
@@ -65,7 +81,8 @@ class ProjectArchiveResponseMapper {
         String projectType = tender != null && tender.getProjectType() != null ? tender.getProjectType() : "综合";
         String purchaserName = tender != null ? tender.getPurchaserName() : null;
         String projectManager = tender != null ? tender.getProjectManagerName() : null;
-        String bidManager = tender != null ? tender.getBiddingPersonName() : null;
+        // CO-421: 投标负责人取自 ProjectInitiationDetails.biddingLeaderName，而非 Tender.biddingPersonName
+        String bidManager = bidManagerNameByProjectId.get(archive.getProjectId());
 
         String bidResult = "OTHER";
         if (project != null) {
@@ -108,12 +125,15 @@ class ProjectArchiveResponseMapper {
     }
 
     List<String> collectBidManagers(List<ProjectArchive> archives) {
-        return archives.stream()
-                .flatMap(a -> {
-                    Tender t = resolveTender(a);
-                    return t != null && t.getBiddingPersonName() != null
-                            ? Stream.of(t.getBiddingPersonName()) : Stream.empty();
-                }).distinct().sorted().toList();
+        if (archives.isEmpty()) return List.of();
+        List<Long> projectIds = archives.stream().map(ProjectArchive::getProjectId).distinct().toList();
+        // CO-421: 投标负责人姓名读 ProjectInitiationDetails.biddingLeaderName（批量查询）
+        return initiationDetailsRepository.findByProjectIdIn(projectIds).stream()
+                .map(ProjectInitiationDetails::getBiddingLeaderName)
+                .filter(name -> name != null && !name.isBlank())
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     private Tender resolveTender(ProjectArchive archive) {
