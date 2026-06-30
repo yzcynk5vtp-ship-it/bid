@@ -104,9 +104,11 @@ public class TenderImportService {
             try {
                 tenderCommandService.createTender(tenderMapper.toDTO(req), userId);
             } catch (TenderDuplicateException e) {
+                var existing = (e.getDuplicates() == null || e.getDuplicates().isEmpty())
+                        ? null : e.getDuplicates().get(0);
                 importErrors.add(new RowError(displayRow, "duplicate",
                         TenderDeduplicationPolicy.formatImportDuplicateMessage(
-                                e.getDuplicates().isEmpty() ? null : e.getDuplicates().get(0).getTitle(),
+                                existing,
                                 req.getPurchaserName())));
             } catch (IllegalArgumentException e) {
                 importErrors.add(new RowError(displayRow, "row", e.getMessage()));
