@@ -169,7 +169,7 @@
         type="warning"
         @click="$emit('return', ca)"
       >
-        <el-icon><Share /></el-icon>归还
+        <el-icon><Share /></el-icon>登记归还
       </el-button>
       <el-button
         v-if="isManager"

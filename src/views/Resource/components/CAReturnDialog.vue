@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    title="归还 CA 证书"
+    title="登记归还"
     width="500px"
     destroy-on-close
     top="10vh"
