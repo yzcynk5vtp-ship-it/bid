@@ -125,3 +125,82 @@ describe('CAFormDialog.vue — CO-405 关联平台字段改为非必填', () => 
     expect(submitEvents[0][0].platformIds).toEqual([1, 2])
   })
 })
+
+describe('CAFormDialog.vue — CO-436 编辑时密码不应回填脱敏值', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    validateMock.mockReset()
+    validateMock.mockResolvedValue(true)
+    searchPlatformsMock.mockReset()
+    searchPlatformsMock.mockResolvedValue()
+  })
+
+  afterEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('编辑时 ca.caPassword 为脱敏值，form.caPassword 应为空字符串', async () => {
+    const wrapper = await mountDialog({
+      ca: {
+        id: 1,
+        caType: 'ENTITY_CA',
+        sealType: 'OFFICIAL_SEAL',
+        caPassword: '******',
+        expiryDate: '2027-01-01',
+        custodianId: 1,
+        custodianName: '张三',
+        platformIds: []
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.vm.form.caPassword).toBe('')
+  })
+
+  it('编辑时未修改密码，提交数据中 caPassword 应为空字符串', async () => {
+    const wrapper = await mountDialog({
+      ca: {
+        id: 1,
+        caType: 'ENTITY_CA',
+        sealType: 'OFFICIAL_SEAL',
+        caPassword: '******',
+        expiryDate: '2027-01-01',
+        custodianId: 1,
+        custodianName: '张三',
+        platformIds: []
+      }
+    })
+    await flushPromises()
+
+    await wrapper.vm.handleSubmit()
+    await flushPromises()
+
+    const submitEvents = wrapper.emitted('submit')
+    expect(submitEvents).toBeTruthy()
+    expect(submitEvents[0][0].caPassword).toBe('')
+  })
+
+  it('编辑时修改了密码，提交数据中 caPassword 应为新值', async () => {
+    const wrapper = await mountDialog({
+      ca: {
+        id: 1,
+        caType: 'ENTITY_CA',
+        sealType: 'OFFICIAL_SEAL',
+        caPassword: '******',
+        expiryDate: '2027-01-01',
+        custodianId: 1,
+        custodianName: '张三',
+        platformIds: []
+      }
+    })
+    await flushPromises()
+
+    wrapper.vm.form.caPassword = 'newPassword123'
+    await wrapper.vm.handleSubmit()
+    await flushPromises()
+
+    const submitEvents = wrapper.emitted('submit')
+    expect(submitEvents).toBeTruthy()
+    expect(submitEvents[0][0].caPassword).toBe('newPassword123')
+  })
+})
