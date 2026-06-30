@@ -131,7 +131,7 @@ const startPolling = () => {
 const downloadTemplate = async () => {
   try {
     const res = await http.get('/api/ca-certificates/template', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([res]))
+    const url = window.URL.createObjectURL(new Blob([res.data]))
     const a = document.createElement('a')
     a.href = url
     a.download = 'CA证书导入模板.xlsx'
