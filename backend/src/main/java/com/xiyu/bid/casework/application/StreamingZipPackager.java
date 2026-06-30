@@ -13,7 +13,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -68,6 +70,8 @@ public class StreamingZipPackager {
             }
 
             // 2. 遍历归档，打包其关联的文件
+            // CO-428: 同一 archive 下可能存在同名同分类文件，需要去重避免 ZipException: duplicate entry
+            Set<String> usedZipPaths = new HashSet<>();
             for (ProjectArchive archive : archives) {
                 List<ArchiveFile> files = archiveFileRepository.findByArchiveId(archive.getId());
                 String projectFolder = safeFileName(archive.getProjectName());
@@ -76,6 +80,10 @@ public class StreamingZipPackager {
                     String category = getCategoryDirLabel(file.getDocumentCategory());
                     String fileName = safeFileName(file.getFileName());
                     String zipPath = projectFolder + "/" + category + "/" + fileName;
+                    // 路径冲突时追加文件 ID 保证唯一性，保留原文件名作为主路径
+                    if (!usedZipPaths.add(zipPath)) {
+                        zipPath = projectFolder + "/" + category + "/" + file.getId() + "-" + fileName;
+                    }
 
                     ZipEntry fileEntry = new ZipEntry(zipPath);
                     zipOut.putNextEntry(fileEntry);
