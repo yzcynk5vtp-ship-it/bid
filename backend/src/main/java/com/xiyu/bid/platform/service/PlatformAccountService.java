@@ -79,18 +79,15 @@ public class PlatformAccountService {
         return contactLabelEnricher.enrich(PlatformAccountMapper.toDTO(savedAccount));
     }
 
-    /**
-     * Return a borrowed account with mandatory password change.
-     * CO-403: 委托 BorrowService 同步更新借用申请表状态。
-     */
+    /** Return a borrowed account with mandatory password change. CO-403/CO-415. */
     @Transactional
     @Auditable(action = "RETURN", entityType = "PlatformAccount",
               description = "Returned platform account with password change")
     public PlatformAccountDTO returnAccount(Long id, ReturnAccountRequest request, User currentUser) {
         PlatformAccount account = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Account not found with id: " + id));
-
-        // CO-403: 委托 BorrowService 同步更新借用申请表状态
+        PlatformAccountViewerPolicy.checkCanReturnAccount(
+            effectiveRoleResolver.resolveRoleCode(currentUser), account, currentUser);
         borrowService.syncReturnedApplication(id);
 
         String encryptedPassword = passwordEncryptionUtil.encrypt(request.getNewPassword());
@@ -220,18 +217,15 @@ public class PlatformAccountService {
         return borrowedAt.plusDays(7);
     }
 
-    /**
-     * Return a borrowed account (without password change).
-     * CO-403: 委托 BorrowService 同步更新借用申请表状态。
-     */
+    /** Return a borrowed account without password change. CO-403/CO-415. */
     @Transactional
     @Auditable(action = "RETURN", entityType = "PlatformAccount",
               description = "Returned platform account")
     public PlatformAccountDTO returnAccount(Long id, User currentUser) {
         PlatformAccount account = repository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Account not found with id: " + id));
-
-        // CO-403: 委托 BorrowService 同步更新借用申请表状态
+        PlatformAccountViewerPolicy.checkCanReturnAccount(
+            effectiveRoleResolver.resolveRoleCode(currentUser), account, currentUser);
         borrowService.syncReturnedApplication(id);
 
         account.returnToPool();

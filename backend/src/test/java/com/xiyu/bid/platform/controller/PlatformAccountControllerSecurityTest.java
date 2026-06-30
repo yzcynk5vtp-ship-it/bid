@@ -5,6 +5,7 @@ import com.xiyu.bid.auth.JwtAuthenticationFilter;
 import com.xiyu.bid.config.RateLimitFilter;
 import com.xiyu.bid.config.SecurityConfig;
 import com.xiyu.bid.entity.User;
+import com.xiyu.bid.platform.dto.PlatformAccountDTO;
 import com.xiyu.bid.platform.service.PlatformAccountImportAppService;
 import com.xiyu.bid.platform.service.PlatformAccountService;
 import com.xiyu.bid.repository.UserRepository;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -164,6 +166,46 @@ class PlatformAccountControllerSecurityTest {
     @WithMockUser(authorities = {"bid-Team", "ROLE_BID_TEAM"})
     void noResourceAuthority_GET_password_shouldReturn403() throws Exception {
         mockMvc.perform(get("/api/platform/accounts/1/password"))
+                .andExpect(status().isForbidden());
+    }
+
+    // ── CO-415: return 端点 Controller 层权限边界（对称于 password 端点） ──
+    // Controller 类级 @PreAuthorize("hasAuthority('resource')") 是唯一防线；
+    // 带 resource 权限的已登录用户通过 Controller 层，真权限（管理员 OR 账户
+    // 绑定联系人）交给 Service 层 assertCanReturnAccount 决定。
+
+    @Test
+    @DisplayName("CO-415：admin 可以通过 Controller 层调用 return（Service 层放行）")
+    @WithMockUser(authorities = {"admin", "ROLE_ADMIN", "resource"})
+    void admin_POST_return_shouldReturn200() throws Exception {
+        when(userRepository.findByUsername(any())).thenReturn(Optional.of(
+                User.builder().id(1L).username("admin").role(User.Role.ADMIN).build()));
+        when(platformAccountService.returnAccount(eq(1L), any()))
+                .thenReturn(PlatformAccountDTO.builder().id(1L).build());
+
+        mockMvc.perform(post("/api/platform/accounts/1/return"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("CO-415：bid-Team（带 resource 权限）通过 Controller 层（Service 层决定是否放行）")
+    @WithMockUser(authorities = {"bid-Team", "ROLE_BID_TEAM", "resource"})
+    void bidTeam_POST_return_shouldPassControllerLayer() throws Exception {
+        when(userRepository.findByUsername(any())).thenReturn(Optional.of(
+                User.builder().id(5L).username("bid_specialist").role(User.Role.MANAGER).build()));
+        // Service 层会做联系人校验；此处 mock 放行，只验证 Controller 层不拦截 bid-Team
+        when(platformAccountService.returnAccount(eq(1L), any()))
+                .thenReturn(PlatformAccountDTO.builder().id(1L).build());
+
+        mockMvc.perform(post("/api/platform/accounts/1/return"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("CO-415：已登录但无 resource 权限的用户调用 return 被类级 @PreAuthorize 拦截（403）")
+    @WithMockUser(authorities = {"bid-Team", "ROLE_BID_TEAM"})
+    void noResourceAuthority_POST_return_shouldReturn403() throws Exception {
+        mockMvc.perform(post("/api/platform/accounts/1/return"))
                 .andExpect(status().isForbidden());
     }
 }

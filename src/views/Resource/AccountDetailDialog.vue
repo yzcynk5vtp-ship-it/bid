@@ -55,7 +55,7 @@
     </el-tabs>
     <template #footer>
       <el-button @click="visible = false">关闭</el-button>
-      <el-button v-if="data?.status === 'in_use'" type="success" @click="$emit('return')">登记归还</el-button>
+      <el-button v-if="actions.return" type="success" @click="$emit('return')">登记归还</el-button>
      <el-button v-if="actions.edit" type="primary" @click="$emit('edit')">编辑</el-button>
     </template>
   </el-dialog>

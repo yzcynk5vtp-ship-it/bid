@@ -119,7 +119,6 @@ public class PlatformAccountController {
     }
 
     @PostMapping("/{id}/return")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> returnAccount(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails currentUser) {
@@ -181,7 +180,6 @@ public class PlatformAccountController {
     }
 
     @PostMapping("/{id}/return-with-password")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> returnAccountWithPassword(
             @PathVariable Long id,
             @Valid @RequestBody ReturnAccountRequest request,
