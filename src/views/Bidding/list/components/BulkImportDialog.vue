@@ -32,6 +32,8 @@
         type="error"
         :closable="false"
         :title="`共 ${result.totalRows} 行，失败 ${result.failureCount} 行（已整批回滚，未写入任何数据）`"
+        description="请按下方表格逐行修正 Excel 后重新上传；如反复失败建议重新下载模板对照字段格式。"
+        show-icon
       />
       <el-alert
         v-else
@@ -47,8 +49,8 @@
         max-height="320"
       >
         <el-table-column prop="row" label="行号" width="80" />
-        <el-table-column prop="field" label="字段" width="160" />
-        <el-table-column prop="message" label="错误说明" />
+        <el-table-column prop="field" label="错误类型" width="140" :formatter="formatField" />
+        <el-table-column prop="message" label="错误说明" show-overflow-tooltip />
       </el-table>
     </div>
 
@@ -86,6 +88,14 @@ defineProps({
 const emit = defineEmits(['reset', 'download-template', 'submit', 'file-change'])
 
 const onFileChange = (file) => emit('file-change', file)
+
+// 后端 RowError.field 英文标识 → 中文标签（标讯导入仅这三种）
+const FIELD_LABELS = {
+  duplicate: '标讯重复(三字段一致)',
+  row: '行数据错误',
+  file: '文件错误',
+}
+const formatField = (_row, _column, cellValue) => FIELD_LABELS[cellValue] || cellValue || '-'
 </script>
 
 <style scoped>

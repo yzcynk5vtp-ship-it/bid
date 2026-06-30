@@ -5,7 +5,6 @@
 
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { crmApi } from '@/api/modules/crm.js'
 import { triggerBlobDownload } from '@/utils/download.js'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
@@ -99,42 +98,14 @@ export function useTenderBulkImport({ tendersApi, refreshTenderList, canCreateTe
       const data = response?.data || null
       importResult.value = data
       if (data && data.failureCount > 0) {
-        ElMessage.warning(`导入未通过：共 ${data.totalRows} 行，失败 ${data.failureCount} 行，请按错误列表修正后重试`)
+        ElMessage.warning(`导入未通过：共 ${data.totalRows} 行，失败 ${data.failureCount} 行（已整批回滚，未写入数据），请查看下方错误明细逐行修正后重新上传`)
         return false
       }
       const successCount = data?.successCount ?? 0
       ElMessage.success(`成功导入 ${successCount} 条标讯`)
 
-      // 批量导入成功后，按招标主体查询 CRM 项目负责人并自动分配
-      // 从导入结果中提取招标主体名称列表
-      const purchaserNames = data?.purchaserNames || []
-      if (purchaserNames.length > 0) {
-        try {
-          const uniqueNames = [...new Set(purchaserNames)]
-          for (const name of uniqueNames) {
-            const res = await crmApi.searchOpportunities({
-              pageIndex: 1,
-              pageSize: 5,
-              body: { name },
-            })
-            const list = res?.data?.list || []
-            if (list.length > 0) {
-              const matched = list.find((c) =>
-                c.name?.includes(name) || name?.includes(c.name || '')
-              )
-              if (matched?.projectLeaderName) {
-                console.log(`[CRM自动分配] 招标主体「${name}」匹配到项目负责人：${matched.projectLeaderName}`)
-                // TODO: 后端实现 autoAssign API 后替换为实际调用
-              }
-            }
-          }
-          if (uniqueNames.length > 0) {
-            ElMessage.info('已查询 CRM 项目负责人信息，请查看标讯列表确认分配结果')
-          }
-        } catch (e) {
-          console.warn('[CRM自动分配] 查询失败：', e)
-        }
-      }
+      // CRM 自动分配功能未实现（后端 autoAssign API 未提供），
+      // 待后端就绪后再在此处或独立 composable 中接入。
       await refreshTenderList()
       closeDialog()
       return true
