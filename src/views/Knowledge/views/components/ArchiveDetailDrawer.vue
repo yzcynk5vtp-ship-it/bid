@@ -11,9 +11,6 @@
         <el-descriptions-item label="项目状态">
           <el-tag :type="getStatusTagType(archive.projectStatus)">{{ getStatusLabel(archive.projectStatus) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="中标结果">
-          <el-tag :type="getBidResultTagType(archive.bidResult)">{{ getBidResultLabel(archive.bidResult) }}</el-tag>
-        </el-descriptions-item>
         <el-descriptions-item label="项目负责人">{{ archive.projectManager || '-' }}</el-descriptions-item>
         <el-descriptions-item label="投标负责人">{{ archive.bidManager || '-' }}</el-descriptions-item>
         <el-descriptions-item label="立项日期">{{ formatDateTime(fullDetail?.initiatedAt) }}</el-descriptions-item>
@@ -88,18 +85,6 @@ defineExpose({ fetchDetail })
 const getProjectTypeLabel = (type) => {
   const map = { OFFICE: '办公', COMPREHENSIVE: '综合', CENTRALIZED: '集采', INDUSTRIAL: '工业品', OTHER: '其他' }
   return map[type] || type || '-'
-}
-
-const getBidResultLabel = (result) => {
-  const map = { WON: '已中标', LOST: '未中标', FAILED: '流标', ABANDONED: '弃标', IN_PROGRESS: '进行中', OTHER: '其他' }
-  return map[result] || result || '-'
-}
-
-const getBidResultTagType = (result) => {
-  if (result === 'WON') return 'success'
-  if (result === 'LOST') return 'danger'
-  if (result === 'FAILED') return 'warning'
-  return 'info'
 }
 
 const handleDownloadPackage = async () => {
