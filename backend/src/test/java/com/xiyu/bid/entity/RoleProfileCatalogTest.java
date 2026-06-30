@@ -95,4 +95,42 @@ class RoleProfileCatalogTest {
                 .as("bid-Team 必须持有 resource-ca 才能访问 CA 信息管理菜单与路由")
                 .contains("resource-ca");
     }
+
+    // ── CO-394-A：品牌授权权限点对齐（三角色一致性） ──
+
+    @Test
+    @DisplayName("CO-394: 投标组长/管理员/专员三角色 menuPermissions 含 brand-auth.view/create/edit")
+    void knowledgeRolesShouldIncludeBrandAuthViewCreateEditPermissions() {
+        String[] targetRoles = {
+                RoleProfileCatalog.BID_LEAD_CODE,
+                RoleProfileCatalog.BID_ADMIN_CODE,
+                RoleProfileCatalog.BID_SPECIALIST_CODE
+        };
+        for (String code : targetRoles) {
+            RoleProfileCatalog.SeedDefinition def = RoleProfileCatalog.definitionForCode(code);
+            assertThat(def.menuPermissions())
+                    .as("%s 必须持有 brand-auth.view/create/edit 才能访问品牌授权模块",
+                            RoleProfileCatalog.canonicalCode(code))
+                    .contains(
+                            RoleProfileCatalog.BRAND_AUTH_VIEW_PERMISSION,
+                            RoleProfileCatalog.BRAND_AUTH_CREATE_PERMISSION,
+                            RoleProfileCatalog.BRAND_AUTH_EDIT_PERMISSION);
+        }
+    }
+
+    @Test
+    @DisplayName("CO-394: 投标组长/管理员两角色含 brand-auth.revoke，投标专员不含（撤销权限收窄）")
+    void revokePermissionShouldBeGrantedToLeadAndAdminOnly() {
+        // 投标组长、投标管理员可撤销
+        assertThat(RoleProfileCatalog.definitionForCode(RoleProfileCatalog.BID_LEAD_CODE)
+                .menuPermissions())
+                .contains(RoleProfileCatalog.BRAND_AUTH_REVOKE_PERMISSION);
+        assertThat(RoleProfileCatalog.definitionForCode(RoleProfileCatalog.BID_ADMIN_CODE)
+                .menuPermissions())
+                .contains(RoleProfileCatalog.BRAND_AUTH_REVOKE_PERMISSION);
+        // 投标专员不可撤销（仅 view/create/edit）
+        assertThat(RoleProfileCatalog.definitionForCode(RoleProfileCatalog.BID_SPECIALIST_CODE)
+                .menuPermissions())
+                .doesNotContain(RoleProfileCatalog.BRAND_AUTH_REVOKE_PERMISSION);
+    }
 }
