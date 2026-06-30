@@ -131,7 +131,7 @@ const startPolling = () => {
 const downloadTemplate = async () => {
   try {
     const res = await http.get('/api/platform/accounts/template', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([res]))
+    const url = window.URL.createObjectURL(new Blob([res.data]))
     const a = document.createElement('a')
     a.href = url
     a.download = '平台账户导入模板.xlsx'
