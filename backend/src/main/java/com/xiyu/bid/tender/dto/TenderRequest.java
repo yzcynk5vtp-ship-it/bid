@@ -147,8 +147,8 @@ public class TenderRequest {
     @Size(max = 100, message = "外部标识长度不能超过100个字符")
     private String externalId;
 
-    /* 标讯信息 */
-    @Size(max = 5000, message = "标讯信息长度不能超过5000个字符")
+    /* 标讯信息（完整招标公告原文，最长 20000 字） */
+    @Size(max = 20000, message = "标讯信息长度不能超过20000个字符")
     private String tenderInfo;
 
     /* 来源平台 */

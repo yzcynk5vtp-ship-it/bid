@@ -75,7 +75,7 @@
           <el-col :span="7"><el-form-item label="邮箱" prop="mail2" label-width="56px"><el-input v-model="form.mail2" placeholder="邮箱" /></el-form-item></el-col>
           <!-- 描述 -->
           <el-col :span="24"><el-form-item label="标讯描述"><el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入标讯描述" maxlength="5000" show-word-limit /></el-form-item></el-col>
-          <el-col :span="24"><el-form-item label="标讯信息"><el-input v-model="form.tenderInfo" type="textarea" :rows="3" placeholder="请输入标讯信息（选填）" maxlength="5000" show-word-limit /></el-form-item></el-col>
+          <el-col :span="24"><el-form-item label="标讯信息"><el-input v-model="form.tenderInfo" type="textarea" :rows="3" placeholder="请输入标讯信息（选填）" maxlength="20000" show-word-limit /></el-form-item></el-col>
           <!-- AI 粘贴识别 -->
           <el-col :span="24">
             <el-form-item label="粘贴识别">
