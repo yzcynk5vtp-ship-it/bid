@@ -27,8 +27,7 @@ public class MarginService {
      */
     public Map<String, Object> getSummary(final Long uid, final String role) {
         MarginQueryRole policy = MarginQueryRole.from(role);
-        StringBuilder sql = MarginQuerySupport.summaryBase();
-        sql.append(policy.apply("p", "pid"));
+        StringBuilder sql = MarginQuerySupport.summaryBase(policy);
         Query query = em.createNativeQuery(sql.toString());
         if (policy.needsUidParam() && uid != null) {
             query.setParameter("muid", uid);
@@ -49,10 +48,9 @@ public class MarginService {
             final Map<String, String> f,
             final int page, final int size) {
         MarginQueryRole policy = MarginQueryRole.from(role);
-        StringBuilder sql = MarginQuerySupport.listBase();
-        sql.append(policy.apply("p", "pid"));
+        StringBuilder sql = MarginQuerySupport.listBase(policy);
         MarginQuerySupport.appendFilters(sql, f);
-        sql.append(" ORDER BY f.created_at DESC");
+        sql.append(" ORDER BY m.created_at DESC");
         Query query = em.createNativeQuery(sql.toString());
         if (policy.needsUidParam() && uid != null) {
             query.setParameter("muid", uid);
@@ -70,8 +68,7 @@ public class MarginService {
             final Long uid, final String role,
             final Map<String, String> f) {
         MarginQueryRole policy = MarginQueryRole.from(role);
-        StringBuilder sql = MarginQuerySupport.countBase();
-        sql.append(policy.apply("p", "pid"));
+        StringBuilder sql = MarginQuerySupport.countBase(policy);
         MarginQuerySupport.appendFilters(sql, f);
         Query query = em.createNativeQuery(sql.toString());
         if (policy.needsUidParam() && uid != null) {
