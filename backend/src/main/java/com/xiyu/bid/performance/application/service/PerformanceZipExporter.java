@@ -18,7 +18,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -90,6 +92,7 @@ public final class PerformanceZipExporter {
             zipOut.closeEntry();
 
             // 2. 遍历记录，按合同名称分文件夹打包附件
+            Set<String> usedPaths = new HashSet<>();
             for (int i = 0; i < records.size(); i++) {
                 PerformanceDTO record = records.get(i);
                 String folderName = safeFileName(
@@ -109,6 +112,20 @@ public final class PerformanceZipExporter {
                         fileName = "attachment_" + att.id();
                     }
                     String zipPath = folderName + "/" + fileName;
+                    int suffix = 1;
+                    String baseName = fileName;
+                    int dotIdx = baseName.lastIndexOf('.');
+                    while (!usedPaths.add(zipPath)) {
+                        String suffixName;
+                        if (dotIdx > 0) {
+                            suffixName = baseName.substring(0, dotIdx)
+                                    + "_" + suffix + baseName.substring(dotIdx);
+                        } else {
+                            suffixName = baseName + "_" + suffix;
+                        }
+                        zipPath = folderName + "/" + suffixName;
+                        suffix++;
+                    }
 
                     ZipEntry entry = new ZipEntry(zipPath);
                     zipOut.putNextEntry(entry);

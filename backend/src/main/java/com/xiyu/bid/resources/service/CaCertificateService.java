@@ -161,6 +161,7 @@ public class CaCertificateService {
     private List<Long> persistPlatformLinks(Long caId, List<Long> platformIds) {
         if (platformIds == null) return loadPlatformIds(caId);
         platformLinkRepository.deleteByCaCertificateId(caId);
+        platformLinkRepository.flush();
         List<Long> normalized = platformIds.stream()
                 .filter(Objects::nonNull)
                 .distinct()
