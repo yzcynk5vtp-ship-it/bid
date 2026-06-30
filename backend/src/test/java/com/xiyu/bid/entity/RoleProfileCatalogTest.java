@@ -185,4 +185,33 @@ class RoleProfileCatalogTest {
                     .contains(RoleProfileCatalog.PERFORMANCE_MANAGE_PERMISSION);
         }
     }
+
+    // ── CO-394-D：资质证书管理权限点对齐（三角色一致性） ──
+
+    @Test
+    @DisplayName("CO-394: 投标组长/管理员/专员三角色 menuPermissions 含 qualification.manage")
+    void knowledgeRolesShouldIncludeQualificationManagePermission() {
+        String[] targetRoles = {
+                RoleProfileCatalog.BID_LEAD_CODE,
+                RoleProfileCatalog.BID_ADMIN_CODE,
+                RoleProfileCatalog.BID_SPECIALIST_CODE
+        };
+        for (String code : targetRoles) {
+            assertThat(RoleProfileCatalog.definitionForCode(code).menuPermissions())
+                    .as("%s 必须持有 qualification.manage 才能管理资质证书",
+                            RoleProfileCatalog.canonicalCode(code))
+                    .contains(RoleProfileCatalog.QUALIFICATION_MANAGE_PERMISSION);
+        }
+    }
+
+    @Test
+    @DisplayName("CO-394: 行政人员(bid-administration) 仅含 qualification.view 只读，不含 qualification.manage")
+    void adminStaffShouldHaveQualificationViewOnlyWithoutManage() {
+        RoleProfileCatalog.SeedDefinition def =
+                RoleProfileCatalog.definitionForCode(RoleProfileCatalog.ADMIN_STAFF_CODE);
+        assertThat(def.menuPermissions())
+                .as("行政人员仅有资质只读权限")
+                .contains("qualification.view")
+                .doesNotContain(RoleProfileCatalog.QUALIFICATION_MANAGE_PERMISSION);
+    }
 }
