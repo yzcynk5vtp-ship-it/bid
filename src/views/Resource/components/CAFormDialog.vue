@@ -200,7 +200,7 @@ watch(() => props.ca, (ca) => {
     form.caType = ca.caType || 'ENTITY_CA'
     form.sealType = ca.sealType || 'OFFICIAL_SEAL'
     form.electronicAccount = ca.electronicAccount || ''
-    form.caPassword = ca.caPassword || ''
+    form.caPassword = ''
     form.expiryDate = ca.expiryDate || ''
     form.issuer = ca.issuer || ''
     form.holderName = ca.holderName || ''
