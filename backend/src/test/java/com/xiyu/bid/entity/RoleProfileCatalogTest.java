@@ -167,4 +167,22 @@ class RoleProfileCatalogTest {
                     .contains(RoleProfileCatalog.PERSONNEL_VIEW_PERMISSION);
         }
     }
+
+    // ── CO-394-C：业绩管理权限点对齐（三角色一致性） ──
+
+    @Test
+    @DisplayName("CO-394: 投标组长/管理员/专员三角色 menuPermissions 含 performance.manage")
+    void knowledgeRolesShouldIncludePerformanceManagePermission() {
+        String[] targetRoles = {
+                RoleProfileCatalog.BID_LEAD_CODE,
+                RoleProfileCatalog.BID_ADMIN_CODE,
+                RoleProfileCatalog.BID_SPECIALIST_CODE
+        };
+        for (String code : targetRoles) {
+            assertThat(RoleProfileCatalog.definitionForCode(code).menuPermissions())
+                    .as("%s 必须持有 performance.manage 才能访问业绩管理模块",
+                            RoleProfileCatalog.canonicalCode(code))
+                    .contains(RoleProfileCatalog.PERFORMANCE_MANAGE_PERMISSION);
+        }
+    }
 }
