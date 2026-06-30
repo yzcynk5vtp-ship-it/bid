@@ -1,9 +1,5 @@
 <template>
   <div class="project-archive-container">
-    <ArchiveStatsCards :total-archives="stats.totalArchives" :closed-projects="stats.closedProjects" :case-count="stats.caseCount" :reuse-count="stats.reuseCount" />
-
-    <ArchiveStatusTabs v-model="activeStatusTab" @change="handleStatusTabChange" />
-
     <el-card class="filter-card">
       <template #header>
         <div class="card-header-title"><el-icon><Files /></el-icon><span>项目档案台账</span></div>
@@ -118,13 +114,9 @@ import { Files, Search, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import httpClient from '@/api/client.js'
 import FileCategoryPopover from '../components/FileCategoryPopover.vue'
-import ArchiveStatsCards from './components/ArchiveStatsCards.vue'
-import ArchiveStatusTabs from './components/ArchiveStatusTabs.vue'
 import ArchiveDetailDrawer from './components/ArchiveDetailDrawer.vue'
 import UserPicker from '@/components/common/UserPicker.vue'
 import { formatDate, getStatusLabel, getStatusTagType } from './archiveLabels.js'
-
-const activeStatusTab = ref('ALL')
 
 const filters = reactive({
   projectName: '',
@@ -137,7 +129,6 @@ const filters = reactive({
   projectType: []
 })
 
-const stats = reactive({ totalArchives: 0, closedProjects: 0, caseCount: 0, reuseCount: 0 })
 const loading = ref(false)
 const tableData = ref([])
 const totalElements = ref(0)
@@ -184,13 +175,12 @@ const buildQueryParams = () => {
   return params
 }
 
-const loadStats = async () => {
+const loadManagerOptions = async () => {
   try {
     const res = await httpClient.get('/api/archive/stats')
-    Object.assign(stats, { totalArchives: res.totalArchives || 0, closedProjects: res.closedProjects || 0, caseCount: res.caseCount || 0, reuseCount: res.reuseCount || 0 })
     if (Array.isArray(res.projectManagers)) projectManagerOptions.value = res.projectManagers
     if (Array.isArray(res.bidManagers)) bidManagerOptions.value = res.bidManagers
-  } catch (e) { console.error('Failed to load stats:', e) }
+  } catch (e) { console.error('Failed to load manager options:', e) }
 }
 
 const loadData = async () => {
@@ -203,15 +193,8 @@ const loadData = async () => {
   finally { loading.value = false }
 }
 
-const handleStatusTabChange = (status) => {
-  filters.projectStatus = status === 'ALL' ? [] : [status]
-  page.value = 1
-  loadData()
-}
-
 const handleSearch = () => { page.value = 1; loadData() }
 const handleReset = () => {
-  activeStatusTab.value = 'ALL'
   Object.assign(filters, { projectName: '', categories: [], projectManager: '', bidManager: '', uploadDates: null, endDates: null, projectStatus: [], projectType: [] })
   page.value = 1; loadData()
 }
@@ -283,7 +266,7 @@ const handleDownloadFile = async (file) => {
   } catch { ElMessage.warning('文件下载失败') }
 }
 
-onMounted(() => { loadStats(); loadData() })
+onMounted(() => { loadManagerOptions(); loadData() })
 </script>
 
 <style scoped lang="scss">

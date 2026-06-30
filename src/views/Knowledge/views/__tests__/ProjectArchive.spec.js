@@ -85,11 +85,7 @@ describe('ProjectArchive', () => {
     expect(httpClient.get).toHaveBeenCalledWith('/api/archive/stats')
     expect(httpClient.get).toHaveBeenCalledWith('/api/archive', expect.any(Object))
 
-    // Verify stats data
-    expect(wrapper.vm.stats.totalArchives).toBe(10)
-    expect(wrapper.vm.stats.caseCount).toBe(3)
-
-    // Verify table data
+    // CO-422: stats 卡片已移除，仅校验列表数据
     expect(wrapper.vm.tableData).toHaveLength(2)
     expect(wrapper.vm.tableData[0].projectName).toBe('项目A')
 
