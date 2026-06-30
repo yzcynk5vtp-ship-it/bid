@@ -8,12 +8,10 @@ import com.xiyu.bid.casework.infrastructure.ProjectArchiveRepository;
 import com.xiyu.bid.config.ExportConfig;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
-import com.xiyu.bid.entity.User;
-import com.xiyu.bid.project.entity.ProjectLeadAssignment;
-import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
-import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.service.ProjectAccessScopeService;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
@@ -27,9 +25,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,8 +46,7 @@ public class ProjectArchiveExportService {
     private final ProjectRepository projectRepository;
     private final TenderRepository tenderRepository;
     private final ExportConfig exportConfig;
-    private final ProjectLeadAssignmentRepository leadAssignmentRepository;
-    private final UserRepository userRepository;
+    private final ProjectInitiationDetailsRepository initiationDetailsRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final int DEFAULT_PAGE_SIZE = 1000;
@@ -100,68 +98,38 @@ public class ProjectArchiveExportService {
             while (hasMoreData && recordCount < exportConfig.getMaxRecords()) {
                 Pageable pageable = PageRequest.of(pageNumber, DEFAULT_PAGE_SIZE);
                 Page<ProjectArchive> page = projectArchiveRepository.findAll(pageable);
+                List<ProjectArchive> pageContent = page.getContent();
 
-                for (ProjectArchive archive : page.getContent()) {
+                // CO-421: 按页批量预加载，消除 N+1 查询
+                // 改造前：每条 archive 调 4~6 次 findById（project/tender/lead/user/files）
+                // 改造后：每页 4 次批量查询，循环内只做内存 Map 查找
+                List<ProjectArchive> exportableArchives = pageContent.stream()
+                        .filter(a -> canExportArchive(a, exportableProjectIds))
+                        .toList();
+                PagePrefetch prefetch = prefetchPageData(exportableArchives);
+
+                for (ProjectArchive archive : exportableArchives) {
                     if (recordCount >= exportConfig.getMaxRecords()) {
                         break;
                     }
-                    if (!canExportArchive(archive, exportableProjectIds)) {
-                        continue;
-                    }
 
-                    // Enrich from Project/Tender for blueprint "基本信息" fields (similar to detail)
-                    String projectType = "综合";
-                    String projectStatus = "PENDING_INITIATION";
-                    String bidResult = "其他";
-                    String projectManager = "-";
-                    String bidManager = "-";
-                    String tenderAgency = "-";
-                    String initiatedAtStr = "";
-                    String bidSubmissionAtStr = "";
-                    String bidOpeningAtStr = "";
-                    String closedAtStr = "";
-                    try {
-                        Optional<Project> pOpt = projectRepository.findById(archive.getProjectId());
-                        if (pOpt.isPresent()) {
-                            Project p = pOpt.get();
-                            projectStatus = p.getStatus().name();
-                            // bidResult 从 Project.Status 终态推导（Excel 直接输出中文）
-                            bidResult = switch (p.getStatus()) {
-                                case WON -> "已中标";
-                                case LOST -> "未中标";
-                                case FAILED -> "已流标";
-                                case ABANDONED -> "已放弃";
-                                default -> "进行中";
-                            };
-                            Optional<Tender> tOpt = tenderRepository.findById(p.getTenderId());
-                            if (tOpt.isPresent()) {
-                                Tender t = tOpt.get();
-                                projectType = safeString(t.getProjectType());
-                                projectManager = safeString(t.getProjectManagerName());
-                                tenderAgency = safeString(t.getPurchaserName());
-                                if (t.getCreatedAt() != null) initiatedAtStr = t.getCreatedAt().format(DATE_FORMATTER);
-                                if (t.getBidOpeningTime() != null) bidOpeningAtStr = t.getBidOpeningTime().format(DATE_FORMATTER);
-                            }
-                            // CO-421: 投标负责人从 ProjectLeadAssignment.primaryLeadUserId 解析，不再取 Tender.biddingPersonName
-                            bidManager = resolveBidManagerNameForExport(p.getId());
-                        }
-                    } catch (Exception ignored) { log.debug("Export failed", ignored); }
+                    EnrichedFields fields = enrichArchive(archive, prefetch);
 
                     List<ArchiveFile> files = archiveFileRepository.findByArchiveId(archive.getId());
                     int fileCount = files.size();
 
                     Row row = mainSheet.createRow(mainRowNum++);
                     row.createCell(0).setCellValue(safeString(archive.getProjectName()));
-                    row.createCell(1).setCellValue(tenderAgency);
-                    row.createCell(2).setCellValue(projectType);
-                    row.createCell(3).setCellValue(safeString(projectStatus));
-                    row.createCell(4).setCellValue(bidResult);
-                    row.createCell(5).setCellValue(projectManager);
-                    row.createCell(6).setCellValue(bidManager);
-                    row.createCell(7).setCellValue(initiatedAtStr);
-                    row.createCell(8).setCellValue(bidSubmissionAtStr);
-                    row.createCell(9).setCellValue(bidOpeningAtStr);
-                    row.createCell(10).setCellValue(closedAtStr);
+                    row.createCell(1).setCellValue(fields.tenderAgency);
+                    row.createCell(2).setCellValue(fields.projectType);
+                    row.createCell(3).setCellValue(safeString(fields.projectStatus));
+                    row.createCell(4).setCellValue(fields.bidResult);
+                    row.createCell(5).setCellValue(fields.projectManager);
+                    row.createCell(6).setCellValue(fields.bidManager);
+                    row.createCell(7).setCellValue(fields.initiatedAtStr);
+                    row.createCell(8).setCellValue(fields.bidSubmissionAtStr);
+                    row.createCell(9).setCellValue(fields.bidOpeningAtStr);
+                    row.createCell(10).setCellValue(fields.closedAtStr);
                     row.createCell(11).setCellValue(fileCount);
 
                     for (ArchiveFile file : files) {
@@ -194,14 +162,94 @@ public class ProjectArchiveExportService {
                 || archive != null && archive.getProjectId() != null && exportableProjectIds.contains(archive.getProjectId());
     }
 
-    /** CO-421: 解析投标负责人姓名（ProjectLeadAssignment.primaryLeadUserId → User.fullName），无则返回空串 */
-    private String resolveBidManagerNameForExport(Long projectId) {
-        return leadAssignmentRepository.findByProjectId(projectId)
-                .map(ProjectLeadAssignment::getPrimaryLeadUserId)
-                .filter(leadUserId -> leadUserId != null)
-                .flatMap(userRepository::findById)
-                .map(User::getFullName)
-                .orElse("");
+    /** 按页批量预加载 Project / Tender / ProjectInitiationDetails，避免循环内 N+1 */
+    private PagePrefetch prefetchPageData(List<ProjectArchive> exportableArchives) {
+        if (exportableArchives.isEmpty()) {
+            return PagePrefetch.empty();
+        }
+        List<Long> projectIds = exportableArchives.stream()
+                .map(ProjectArchive::getProjectId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, Project> projectMap = projectRepository.findAllById(projectIds).stream()
+                .collect(Collectors.toMap(Project::getId, p -> p));
+
+        List<Long> tenderIds = projectMap.values().stream()
+                .map(Project::getTenderId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, Tender> tenderMap = tenderIds.isEmpty()
+                ? Collections.emptyMap()
+                : tenderRepository.findAllById(tenderIds).stream()
+                        .collect(Collectors.toMap(Tender::getId, t -> t));
+
+        // CO-421: 投标负责人姓名读 ProjectInitiationDetails.biddingLeaderName（批量查询）
+        Map<Long, String> bidManagerNameByProjectId = initiationDetailsRepository
+                .findByProjectIdIn(projectIds).stream()
+                .filter(d -> d.getBiddingLeaderName() != null && !d.getBiddingLeaderName().isBlank())
+                .collect(Collectors.toMap(ProjectInitiationDetails::getProjectId,
+                        ProjectInitiationDetails::getBiddingLeaderName, (a, b) -> a));
+
+        return new PagePrefetch(projectMap, tenderMap, bidManagerNameByProjectId);
+    }
+
+    private EnrichedFields enrichArchive(ProjectArchive archive, PagePrefetch prefetch) {
+        EnrichedFields f = new EnrichedFields();
+        Project p = prefetch.projectMap.get(archive.getProjectId());
+        if (p == null) {
+            return f;
+        }
+        try {
+            f.projectStatus = p.getStatus().name();
+            f.bidResult = switch (p.getStatus()) {
+                case WON -> "已中标";
+                case LOST -> "未中标";
+                case FAILED -> "已流标";
+                case ABANDONED -> "已放弃";
+                default -> "进行中";
+            };
+            Tender t = prefetch.tenderMap.get(p.getTenderId());
+            if (t != null) {
+                f.projectType = safeString(t.getProjectType());
+                f.projectManager = safeString(t.getProjectManagerName());
+                f.tenderAgency = safeString(t.getPurchaserName());
+                if (t.getCreatedAt() != null) f.initiatedAtStr = t.getCreatedAt().format(DATE_FORMATTER);
+                if (t.getBidOpeningTime() != null) f.bidOpeningAtStr = t.getBidOpeningTime().format(DATE_FORMATTER);
+            }
+            // CO-421: 投标负责人从 ProjectInitiationDetails.biddingLeaderName 取（批量预加载）
+            String name = prefetch.bidManagerNameByProjectId.get(p.getId());
+            f.bidManager = name != null ? name : "";
+        } catch (RuntimeException ignored) {
+            log.debug("Export enrich failed for archive {}", archive.getId(), ignored);
+        }
+        return f;
+    }
+
+    /** 单页预加载数据容器 */
+    private record PagePrefetch(
+            Map<Long, Project> projectMap,
+            Map<Long, Tender> tenderMap,
+            Map<Long, String> bidManagerNameByProjectId
+    ) {
+        static PagePrefetch empty() {
+            return new PagePrefetch(Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap());
+        }
+    }
+
+    /** 单条 archive enrich 后的字段容器，避免多参数传递 */
+    private static class EnrichedFields {
+        String projectType = "综合";
+        String projectStatus = "PENDING_INITIATION";
+        String bidResult = "其他";
+        String projectManager = "-";
+        String bidManager = "-";
+        String tenderAgency = "-";
+        String initiatedAtStr = "";
+        String bidSubmissionAtStr = "";
+        String bidOpeningAtStr = "";
+        String closedAtStr = "";
     }
 
     private CellStyle createHeaderStyle(Workbook workbook) {

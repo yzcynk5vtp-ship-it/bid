@@ -1,5 +1,5 @@
 // Input: ProjectArchiveResponseMapper 列表/Stats 选项取值行为
-// Output: Mockito 单元测试 — 验证「投标负责人」从 ProjectLeadAssignment.primaryLeadUserId 解析，不再取 Tender.biddingPersonName
+// Output: Mockito 单元测试 — 验证「投标负责人」从 ProjectInitiationDetails.biddingLeaderName 解析
 // Pos: backend test source - CO-421 回归
 package com.xiyu.bid.casework.application;
 
@@ -8,12 +8,10 @@ import com.xiyu.bid.casework.infrastructure.ArchiveFileRepository;
 import com.xiyu.bid.casework.infrastructure.ProjectArchive;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
-import com.xiyu.bid.entity.User;
-import com.xiyu.bid.project.entity.ProjectLeadAssignment;
-import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
-import com.xiyu.bid.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,8 +32,7 @@ class ProjectArchiveResponseMapperTest {
     @Mock private ProjectRepository projectRepository;
     @Mock private TenderRepository tenderRepository;
     @Mock private ArchiveFileRepository fileRepository;
-    @Mock private ProjectLeadAssignmentRepository leadAssignmentRepository;
-    @Mock private UserRepository userRepository;
+    @Mock private ProjectInitiationDetailsRepository initiationDetailsRepository;
 
     private ProjectArchiveResponseMapper mapper;
 
@@ -43,13 +40,13 @@ class ProjectArchiveResponseMapperTest {
     void setUp() {
         mapper = new ProjectArchiveResponseMapper(
                 projectRepository, tenderRepository, fileRepository,
-                leadAssignmentRepository, userRepository);
+                initiationDetailsRepository);
     }
 
     @Test
-    void toResponseList_resolvesBidManagerFromPrimaryLeadUserId_notTenderBiddingPerson() {
+    void toResponseList_resolvesBidManagerFromBiddingLeaderName_notTenderBiddingPerson() {
         // 已立项项目：tender.biddingPersonName="招标平台联系人"（不应被采用）
-        //              ProjectLeadAssignment.primaryLeadUserId=99 → User.fullName="张三"（应被采用）
+        //              ProjectInitiationDetails.biddingLeaderName="张三"（应被采用）
         ProjectArchive archive = new ProjectArchive();
         archive.setProjectId(100L);
         archive.setProjectName("测试项目");
@@ -63,16 +60,14 @@ class ProjectArchiveResponseMapperTest {
                 .biddingPersonName("招标平台联系人")
                 .purchaserName("招标主体")
                 .build();
-        ProjectLeadAssignment lead = ProjectLeadAssignment.builder()
+        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
                 .projectId(100L)
-                .primaryLeadUserId(99L)
+                .biddingLeaderName("张三")
                 .build();
-        User leadUser = User.builder().id(99L).fullName("张三").build();
 
         when(projectRepository.findAllById(List.of(100L))).thenReturn(List.of(project));
         when(tenderRepository.findAllById(List.of(10L))).thenReturn(List.of(tender));
-        when(leadAssignmentRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of(lead));
-        when(userRepository.findByIdIn(List.of(99L))).thenReturn(List.of(leadUser));
+        when(initiationDetailsRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of(details));
         lenient().when(fileRepository.findByArchiveIdInOrderByCreatedAtDesc(anyList()))
                 .thenReturn(List.of());
 
@@ -84,8 +79,8 @@ class ProjectArchiveResponseMapperTest {
     }
 
     @Test
-    void toResponseList_returnsNullBidManager_whenNoLeadAssignment() {
-        // 无 ProjectLeadAssignment → bidManager=null（降级策略，不回退 tender）
+    void toResponseList_returnsNullBidManager_whenNoInitiationDetails() {
+        // 无 ProjectInitiationDetails → bidManager=null（降级策略，不回退 tender）
         ProjectArchive archive = new ProjectArchive();
         archive.setProjectId(100L);
         archive.setProjectName("测试项目");
@@ -99,8 +94,7 @@ class ProjectArchiveResponseMapperTest {
 
         when(projectRepository.findAllById(List.of(100L))).thenReturn(List.of(project));
         when(tenderRepository.findAllById(List.of(10L))).thenReturn(List.of(tender));
-        when(leadAssignmentRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of());
-        lenient().when(userRepository.findByIdIn(anyList())).thenReturn(List.of());
+        when(initiationDetailsRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of());
         lenient().when(fileRepository.findByArchiveIdInOrderByCreatedAtDesc(anyList()))
                 .thenReturn(List.of());
 
@@ -111,23 +105,22 @@ class ProjectArchiveResponseMapperTest {
     }
 
     @Test
-    void toResponseList_returnsNullBidManager_whenPrimaryLeadUserIdIsNull() {
-        // ProjectLeadAssignment 存在但 primaryLeadUserId=null → bidManager=null
+    void toResponseList_returnsNullBidManager_whenBiddingLeaderNameIsBlank() {
+        // ProjectInitiationDetails 存在但 biddingLeaderName 为空 → bidManager=null
         ProjectArchive archive = new ProjectArchive();
         archive.setProjectId(100L);
         archive.setProjectName("测试项目");
         archive.setArchiveStatus("ACTIVE");
 
         Project project = Project.builder().id(100L).tenderId(10L).status(Project.Status.BIDDING).build();
-        ProjectLeadAssignment lead = ProjectLeadAssignment.builder()
+        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
                 .projectId(100L)
-                .primaryLeadUserId(null)
+                .biddingLeaderName("")  // 空白字符串
                 .build();
 
         when(projectRepository.findAllById(List.of(100L))).thenReturn(List.of(project));
         lenient().when(tenderRepository.findAllById(anyList())).thenReturn(List.of());
-        when(leadAssignmentRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of(lead));
-        lenient().when(userRepository.findByIdIn(anyList())).thenReturn(List.of());
+        when(initiationDetailsRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of(details));
         lenient().when(fileRepository.findByArchiveIdInOrderByCreatedAtDesc(anyList()))
                 .thenReturn(List.of());
 
@@ -138,20 +131,18 @@ class ProjectArchiveResponseMapperTest {
     }
 
     @Test
-    void collectBidManagers_returnsPrimaryLeadUserNames() {
+    void collectBidManagers_returnsBiddingLeaderNames() {
         ProjectArchive archive = new ProjectArchive();
         archive.setProjectId(100L);
         archive.setProjectName("测试项目");
         archive.setArchiveStatus("ACTIVE");
 
-        ProjectLeadAssignment lead = ProjectLeadAssignment.builder()
+        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
                 .projectId(100L)
-                .primaryLeadUserId(99L)
+                .biddingLeaderName("张三")
                 .build();
-        User leadUser = User.builder().id(99L).fullName("张三").build();
 
-        when(leadAssignmentRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of(lead));
-        when(userRepository.findByIdIn(List.of(99L))).thenReturn(List.of(leadUser));
+        when(initiationDetailsRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of(details));
 
         List<String> names = mapper.collectBidManagers(List.of(archive));
 
@@ -159,13 +150,13 @@ class ProjectArchiveResponseMapperTest {
     }
 
     @Test
-    void collectBidManagers_emptyWhenNoLeadAssignment() {
+    void collectBidManagers_emptyWhenNoInitiationDetails() {
         ProjectArchive archive = new ProjectArchive();
         archive.setProjectId(100L);
         archive.setProjectName("测试项目");
         archive.setArchiveStatus("ACTIVE");
 
-        when(leadAssignmentRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of());
+        when(initiationDetailsRepository.findByProjectIdIn(List.of(100L))).thenReturn(List.of());
 
         List<String> names = mapper.collectBidManagers(List.of(archive));
 

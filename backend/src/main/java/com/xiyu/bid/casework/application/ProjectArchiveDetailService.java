@@ -9,12 +9,10 @@ import com.xiyu.bid.casework.infrastructure.ProjectArchive;
 import com.xiyu.bid.casework.infrastructure.ProjectArchiveRepository;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
-import com.xiyu.bid.entity.User;
-import com.xiyu.bid.project.entity.ProjectLeadAssignment;
-import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
-import com.xiyu.bid.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +31,7 @@ public class ProjectArchiveDetailService {
     private final ArchiveLogRepository logRepository;
     private final ProjectRepository projectRepository;
     private final TenderRepository tenderRepository;
-    private final ProjectLeadAssignmentRepository leadAssignmentRepository;
-    private final UserRepository userRepository;
+    private final ProjectInitiationDetailsRepository initiationDetailsRepository;
 
     public ProjectArchiveDetailResponse getArchiveDetail(Long archiveId) {
         ProjectArchive archive = archiveRepository.findById(archiveId)
@@ -78,8 +75,12 @@ public class ProjectArchiveDetailService {
             closedAt = p.getClosedAt();
         }
 
-        // CO-421: 投标负责人从 ProjectLeadAssignment.primaryLeadUserId 解析，不再取 Tender.biddingPersonName
-        bidManager = resolveBidManagerName(archive.getProjectId());
+        // CO-421: 投标负责人姓名读 ProjectInitiationDetails.biddingLeaderName
+        // （立项审核通过时已同步，详见 ProjectInitiationApprovalService.approve）
+        bidManager = initiationDetailsRepository.findByProjectId(archive.getProjectId())
+                .map(ProjectInitiationDetails::getBiddingLeaderName)
+                .filter(name -> name != null && !name.isBlank())
+                .orElse(null);
 
         List<ArchiveFile> files = fileRepository.findByArchiveIdOrderByCreatedAtDesc(archiveId);
         List<ProjectArchiveDetailResponse.ArchiveFileDTO> fileDTOs = files.stream()
@@ -121,14 +122,5 @@ public class ProjectArchiveDetailService {
                 fileDTOs,
                 logDTOs
         );
-    }
-
-    private String resolveBidManagerName(Long projectId) {
-        return leadAssignmentRepository.findByProjectId(projectId)
-                .map(ProjectLeadAssignment::getPrimaryLeadUserId)
-                .filter(leadUserId -> leadUserId != null)
-                .flatMap(userRepository::findById)
-                .map(User::getFullName)
-                .orElse(null);
     }
 }

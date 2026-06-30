@@ -6,12 +6,10 @@ import com.xiyu.bid.casework.infrastructure.ArchiveFileRepository;
 import com.xiyu.bid.casework.infrastructure.ProjectArchive;
 import com.xiyu.bid.entity.Project;
 import com.xiyu.bid.entity.Tender;
-import com.xiyu.bid.entity.User;
-import com.xiyu.bid.project.entity.ProjectLeadAssignment;
-import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.project.entity.ProjectInitiationDetails;
+import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.TenderRepository;
-import com.xiyu.bid.repository.UserRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -29,19 +27,16 @@ class ProjectArchiveResponseMapper {
     private final ProjectRepository projectRepository;
     private final TenderRepository tenderRepository;
     private final ArchiveFileRepository fileRepository;
-    private final ProjectLeadAssignmentRepository leadAssignmentRepository;
-    private final UserRepository userRepository;
+    private final ProjectInitiationDetailsRepository initiationDetailsRepository;
 
     ProjectArchiveResponseMapper(ProjectRepository projectRepository,
                                  TenderRepository tenderRepository,
                                  ArchiveFileRepository fileRepository,
-                                 ProjectLeadAssignmentRepository leadAssignmentRepository,
-                                 UserRepository userRepository) {
+                                 ProjectInitiationDetailsRepository initiationDetailsRepository) {
         this.projectRepository = projectRepository;
         this.tenderRepository = tenderRepository;
         this.fileRepository = fileRepository;
-        this.leadAssignmentRepository = leadAssignmentRepository;
-        this.userRepository = userRepository;
+        this.initiationDetailsRepository = initiationDetailsRepository;
     }
 
     List<ProjectArchiveResponse> toResponseList(List<ProjectArchive> archives) {
@@ -56,21 +51,13 @@ class ProjectArchiveResponseMapper {
         Map<Long, Tender> tenderMap = tenderRepository.findAllById(tenderIds).stream()
                 .collect(toMap(Tender::getId, t -> t));
 
-        // CO-421: 投标负责人从 ProjectLeadAssignment.primaryLeadUserId 解析，不再取 Tender.biddingPersonName
-        Map<Long, Long> primaryLeadUserIdByProjectId = resolvePrimaryLeadUserIdByProjectId(projectIds);
-        List<Long> leadUserIds = primaryLeadUserIdByProjectId.values().stream()
-                .filter(Objects::nonNull).distinct().toList();
-        Map<Long, User> leadUserMap = leadUserIds.isEmpty()
-                ? Collections.emptyMap()
-                : userRepository.findByIdIn(leadUserIds).stream()
-                        .collect(toMap(User::getId, u -> u));
-        Map<Long, String> bidManagerNameByProjectId = new HashMap<>();
-        primaryLeadUserIdByProjectId.forEach((projectId, leadUserId) -> {
-            if (leadUserId != null) {
-                User u = leadUserMap.get(leadUserId);
-                if (u != null) bidManagerNameByProjectId.put(projectId, u.getFullName());
-            }
-        });
+        // CO-421: 投标负责人姓名直接读 ProjectInitiationDetails.biddingLeaderName
+        // （立项审核通过时已同步，详见 ProjectInitiationApprovalService.approve）
+        Map<Long, String> bidManagerNameByProjectId = initiationDetailsRepository
+                .findByProjectIdIn(projectIds).stream()
+                .filter(d -> d.getBiddingLeaderName() != null && !d.getBiddingLeaderName().isBlank())
+                .collect(toMap(ProjectInitiationDetails::getProjectId,
+                        ProjectInitiationDetails::getBiddingLeaderName, (a, b) -> a));
 
         List<Long> archiveIds = archives.stream().map(ProjectArchive::getId).toList();
         Map<Long, List<ArchiveFile>> filesByArchive = fileRepository
@@ -94,7 +81,7 @@ class ProjectArchiveResponseMapper {
         String projectType = tender != null && tender.getProjectType() != null ? tender.getProjectType() : "综合";
         String purchaserName = tender != null ? tender.getPurchaserName() : null;
         String projectManager = tender != null ? tender.getProjectManagerName() : null;
-        // CO-421: 投标负责人取自主投标负责人 user name，而非 Tender.biddingPersonName
+        // CO-421: 投标负责人取自 ProjectInitiationDetails.biddingLeaderName，而非 Tender.biddingPersonName
         String bidManager = bidManagerNameByProjectId.get(archive.getProjectId());
 
         String bidResult = "OTHER";
@@ -140,31 +127,13 @@ class ProjectArchiveResponseMapper {
     List<String> collectBidManagers(List<ProjectArchive> archives) {
         if (archives.isEmpty()) return List.of();
         List<Long> projectIds = archives.stream().map(ProjectArchive::getProjectId).distinct().toList();
-        // CO-421: 复用列表批量解析逻辑，从 primaryLeadUserId → User.fullName 收集
-        Map<Long, Long> primaryLeadUserIdByProjectId = resolvePrimaryLeadUserIdByProjectId(projectIds);
-        List<Long> leadUserIds = primaryLeadUserIdByProjectId.values().stream()
-                .filter(Objects::nonNull).distinct().toList();
-        if (leadUserIds.isEmpty()) return List.of();
-        Map<Long, User> leadUserMap = userRepository.findByIdIn(leadUserIds).stream()
-                .collect(toMap(User::getId, u -> u));
-        return primaryLeadUserIdByProjectId.values().stream()
-                .filter(Objects::nonNull)
-                .map(leadUserMap::get)
-                .filter(Objects::nonNull)
-                .map(User::getFullName)
+        // CO-421: 投标负责人姓名读 ProjectInitiationDetails.biddingLeaderName（批量查询）
+        return initiationDetailsRepository.findByProjectIdIn(projectIds).stream()
+                .map(ProjectInitiationDetails::getBiddingLeaderName)
                 .filter(name -> name != null && !name.isBlank())
                 .distinct()
                 .sorted()
                 .toList();
-    }
-
-    private Map<Long, Long> resolvePrimaryLeadUserIdByProjectId(List<Long> projectIds) {
-        if (projectIds.isEmpty()) return Collections.emptyMap();
-        // 注意：toMap 不允许 null value，这里手动 put 以支持 primaryLeadUserId=null 的边界
-        Map<Long, Long> result = new HashMap<>();
-        leadAssignmentRepository.findByProjectIdIn(projectIds).forEach(lead ->
-                result.putIfAbsent(lead.getProjectId(), lead.getPrimaryLeadUserId()));
-        return result;
     }
 
     private Tender resolveTender(ProjectArchive archive) {
