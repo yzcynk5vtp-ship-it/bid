@@ -1,10 +1,9 @@
 <template>
-  <el-drawer
+  <el-dialog
     v-model="visible"
     :title="ca ? 'CA 证书详情' : ''"
-    size="520px"
+    width="680px"
     destroy-on-close
-    direction="rtl"
   >
     <template v-if="ca">
       <el-tabs v-model="activeTab" class="detail-tabs">
@@ -172,7 +171,7 @@
         <el-icon><Edit /></el-icon>编辑
       </el-button>
     </div>
-  </el-drawer>
+  </el-dialog>
 </template>
 
 <script setup>
