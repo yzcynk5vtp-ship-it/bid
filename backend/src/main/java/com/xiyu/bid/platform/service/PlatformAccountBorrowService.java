@@ -200,6 +200,21 @@ public class PlatformAccountBorrowService {
     }
 
     /**
+     * CO-403: 我的审批 Tab —— 返回当前用户有权限审批的全部申请（不限状态）。
+     * 管理员：返回全部申请；绑定联系人：返回自己作为 custodian 的全部申请。
+     * 按 createdAt 倒序排列。
+     */
+    public List<BorrowApplicationDTO> findAllApprovals(Long custodianId) {
+        List<AccountBorrowApplication> apps;
+        if (custodianId == null) {
+            apps = applicationRepository.findAllByOrderByCreatedAtDesc();
+        } else {
+            apps = applicationRepository.findByCustodianIdOrderByCreatedAtDesc(custodianId);
+        }
+        return applicationMapper.toDTOList(apps);
+    }
+
+    /**
      * CO-403: 同步更新账号对应的借用申请状态为 RETURNED。
      * 供 PlatformAccountService.returnAccount 委托调用，避免跨边界直接操作 Repository。
      */
