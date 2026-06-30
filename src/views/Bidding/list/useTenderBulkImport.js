@@ -99,7 +99,7 @@ export function useTenderBulkImport({ tendersApi, refreshTenderList, canCreateTe
       const data = response?.data || null
       importResult.value = data
       if (data && data.failureCount > 0) {
-        ElMessage.warning(`导入未通过：共 ${data.totalRows} 行，失败 ${data.failureCount} 行，请按错误列表修正后重试`)
+        ElMessage.warning(`导入未通过：共 ${data.totalRows} 行，失败 ${data.failureCount} 行（已整批回滚，未写入数据），请查看下方错误明细逐行修正后重新上传`)
         return false
       }
       const successCount = data?.successCount ?? 0

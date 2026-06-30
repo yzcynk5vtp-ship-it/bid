@@ -56,6 +56,17 @@ public final class TenderDeduplicationPolicy {
                 purchaser, regDeadline, bidOpenTime);
     }
 
+    /**
+     * 批量导入场景的去重提示：包含已有标讯标题和三字段判定依据。
+     */
+    public static String formatImportDuplicateMessage(String existingTitle, String purchaserName) {
+        var title = existingTitle != null && !existingTitle.isBlank() ? existingTitle : "(无标题)";
+        var purchaser = purchaserName != null ? purchaserName : "";
+        return String.format(
+                "标讯重复：与已有标讯「%s」的招标主体「%s」、报名截止时间、开标时间均一致，系统判定为同一条标讯。如确为不同标讯，请修改报名截止或开标时间后重试",
+                title, purchaser);
+    }
+
     private static boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
     }

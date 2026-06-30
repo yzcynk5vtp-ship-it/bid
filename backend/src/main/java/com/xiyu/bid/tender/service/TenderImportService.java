@@ -9,6 +9,7 @@ import com.xiyu.bid.exception.TenderDuplicateException;
 import com.xiyu.bid.tender.dto.TenderImportResultDTO;
 import com.xiyu.bid.tender.dto.TenderImportResultDTO.RowError;
 import com.xiyu.bid.tender.dto.TenderRequest;
+import com.xiyu.bid.tender.core.TenderDeduplicationPolicy;
 import com.xiyu.bid.tender.core.TenderRegionCatalog;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -103,7 +104,10 @@ public class TenderImportService {
             try {
                 tenderCommandService.createTender(tenderMapper.toDTO(req), userId);
             } catch (TenderDuplicateException e) {
-                importErrors.add(new RowError(displayRow, "duplicate", e.getMessage()));
+                importErrors.add(new RowError(displayRow, "duplicate",
+                        TenderDeduplicationPolicy.formatImportDuplicateMessage(
+                                e.getDuplicates().isEmpty() ? null : e.getDuplicates().get(0).getTitle(),
+                                req.getPurchaserName())));
             } catch (IllegalArgumentException e) {
                 importErrors.add(new RowError(displayRow, "row", e.getMessage()));
             } catch (RuntimeException e) {
