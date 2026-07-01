@@ -78,8 +78,7 @@
         "src/views/Resource/CAManagement.vue",
         "src/views/System/Settings.vue",
         "src/views/System/WorkflowFormDesigner.vue",
-        "src/views/System/workflow-form-designer/useWorkflowFormDesigner.js",
-        "src/views/System/organization/OrganizationManagement.vue"
+        "src/views/System/workflow-form-designer/useWorkflowFormDesigner.js"
     ],
     "excludeSuffixes": [
         ".spec.js",

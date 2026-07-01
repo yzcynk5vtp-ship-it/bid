@@ -165,21 +165,19 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { Search, Edit } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
 import { organizationApi } from '@/api/modules/organization.js'
 import { useUserCrmEdit } from './useUserCrmEdit.js'
+import { useDeptEdit } from './useDeptEdit.js'
 
 const loading = ref(false)
-const statusLoading = ref(null)
 const userList = ref([])
 const departments = ref([])
 const totalCount = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 
-const editingDeptId = ref(null)
-const editDeptCode = ref('')
-
+// CO-152 Review D2-2: 部门行内编辑 + 状态切换（抽到 composable 控制文件行数）
+const { editingDeptId, editDeptCode, statusLoading, startEditDept, onDeptSelectChange, onStatusChange } = useDeptEdit(departments, userList)
 // CO-152: CRM 工号行内编辑（抽到 composable 控制文件行数）
 const { editingCrmId, editCrmValue, crmLoading, startEditCrm, cancelEditCrm, saveCrmSalesNo } = useUserCrmEdit()
 
@@ -262,39 +260,6 @@ async function loadDepartments() {
   } catch {
     departments.value = []
   }
-}
-
-async function onStatusChange(row, val) {
-  statusLoading.value = row.id
-  try {
-    await organizationApi.updateUserStatus(row.id, val)
-    ElMessage.success(val ? '已启用' : '已停用')
-  } catch {
-    row.enabled = !val
-  } finally {
-    statusLoading.value = null
-  }
-}
-
-function startEditDept(row) {
-  editingDeptId.value = row.id
-  editDeptCode.value = row.departmentCode || ''
-}
-
-function onDeptSelectChange(value) {
-  const dept = departments.value.find(d => d.departmentCode === value)
-  const user = userList.value.find(u => u.id === editingDeptId.value)
-  if (!user || !dept) return
-
-  organizationApi.updateUserOrganization(user.id, dept.departmentCode, dept.departmentName)
-    .then(() => {
-      user.departmentCode = dept.departmentCode
-      user.departmentName = dept.departmentName
-      editingDeptId.value = null
-      ElMessage.success('部门已更新')
-    })
-    .catch(() => {
-    })
 }
 
 onMounted(async () => {
