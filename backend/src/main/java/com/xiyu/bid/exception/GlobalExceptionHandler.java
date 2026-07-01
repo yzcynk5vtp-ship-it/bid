@@ -233,14 +233,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(
-            BusinessException ex,
-            HttpServletRequest request) {
+        BusinessException ex,
+        HttpServletRequest request) {
         String payload = getRequestPayload(request);
-        log.warn("业务异常 - URI: {}, Code: {}, Message: {} \nPayload: {}",
-            request.getRequestURI(), ex.getCode(), ex.getMessage(), payload);
+        log.warn("业务异常 - URI: {}, Code: {}, HttpStatus: {}, Message: {} \nPayload: {}",
+            request.getRequestURI(), ex.getCode(), ex.getHttpStatus(), ex.getMessage(), payload);
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+                .status(ex.getHttpStatus())
                 .body(ApiResponse.error(ex.getCode(), ex.getMessage()));
     }
 
@@ -251,12 +251,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAppFailureException(
             AppFailureException ex,
             HttpServletRequest request) {
-        log.warn("应用层异常 - URI: {}, Message: {}",
-            request.getRequestURI(), ex.getMessage());
+        log.warn("应用层异常 - URI: {}, Code: {}, HttpStatus: {}, Message: {}",
+            request.getRequestURI(), ex.getCode(), ex.getHttpStatus(), ex.getMessage());
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(400, ex.getMessage()));
+                .status(ex.getHttpStatus())
+                .body(ApiResponse.error(ex.getCode(), ex.getMessage()));
     }
 
     /**
