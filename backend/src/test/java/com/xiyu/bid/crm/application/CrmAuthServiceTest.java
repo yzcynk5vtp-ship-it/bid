@@ -241,6 +241,46 @@ class CrmAuthServiceTest {
         assertThat(token).isEqualTo("crm-jwt-shared");
     }
 
+    // ===== CO-152 Review D4-1: profile 缓存 =====
+
+    @Test
+    @DisplayName("D4-1: 多次调用 getValidTokenForUser 只查一次 DB（profile 缓存命中）")
+    void getValidTokenForUser_cachesUserProfile_avoidsRepeatedDbQuery() {
+        User user = User.builder()
+                .id(1L).username("userA").fullName("用户A").crmSalesNo("10001").build();
+        when(userRepository.findByUsername("userA")).thenReturn(Optional.of(user));
+        mockOssLoginSuccess("oss-token");
+        mockGenerateTokenSuccess("crm-jwt-cached");
+
+        // 第一次调用：DB 查询 + generateToken
+        authService.getValidTokenForUser("userA");
+        // 第二次调用：token 已缓存，不应再查 DB
+        authService.getValidTokenForUser("userA");
+
+        // 关键断言：userRepository.findByUsername 只被调用 1 次（profile 缓存命中）
+        verify(userRepository, times(1)).findByUsername("userA");
+        // generateToken 也只调 1 次（token 缓存命中）
+        verify(httpClient, times(1)).postWithAuth(
+                anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("D4-1: logoutUser 后再次调用会重新查 DB（profile 缓存被清除）")
+    void getValidTokenForUser_afterLogoutUser_requeriesDb() {
+        User user = User.builder()
+                .id(1L).username("userA").fullName("用户A").crmSalesNo("10001").build();
+        when(userRepository.findByUsername("userA")).thenReturn(Optional.of(user));
+        mockOssLoginSuccess("oss-token");
+        mockGenerateTokenSequential("crm-jwt-before", "crm-jwt-after");
+
+        authService.getValidTokenForUser("userA");
+        authService.logoutUser("userA"); // 清除 profile + token 缓存
+        authService.getValidTokenForUser("userA");
+
+        // 关键断言：logoutUser 后 profile 缓存被清，应重新查 DB
+        verify(userRepository, times(2)).findByUsername("userA");
+    }
+
     // ===== Helper methods =====
 
     private void mockOssLoginSuccess(String accessToken) {
