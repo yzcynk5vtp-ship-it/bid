@@ -50,14 +50,20 @@ const activeIndex = computed(() => {
 function stepStatus(stage) {
   const idx = stages.findIndex((s) => s.code === stage.code)
   if (idx < activeIndex.value) return 'success'
-  if (idx === activeIndex.value) return 'process'
+  if (idx === activeIndex.value) {
+    // CO-443: 终态阶段（CLOSED）当前步骤显示 success 样式，与"已完成"文本一致
+    return snapshot.value?.terminal ? 'success' : 'process'
+  }
   return 'wait'
 }
 
 function describe(stage) {
   const completed = snapshot.value?.completedStages || []
   if (completed.includes(stage.code)) return '已完成'
-  if (stage.code === currentCode.value) return '进行中'
+  if (stage.code === currentCode.value) {
+    // CO-443: 终态阶段（CLOSED）当前步骤显示"已完成"，而非"进行中"
+    return snapshot.value?.terminal ? '已完成' : '进行中'
+  }
   const accessible = snapshot.value?.accessibleStages
   if (Array.isArray(accessible) && accessible.includes(stage.code) && stage.code !== currentCode.value) {
     return '可进入'
