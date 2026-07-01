@@ -5,6 +5,8 @@ import com.openai.errors.UnauthorizedException;
 import com.openai.models.ErrorObject;
 import com.xiyu.bid.entity.Tender;
 import com.xiyu.bid.dto.ApiResponse;
+import com.xiyu.bid.exception.BusinessUnavailableException;
+import com.xiyu.bid.exception.RetryableOperationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -163,5 +165,36 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getCode()).isEqualTo(400);
+    }
+
+    // ============ CO-442: AppFailureException HttpStatus 透传（同类修复） ============
+    // 修复前：handleAppFailureException 硬编码 HttpStatus.BAD_REQUEST，忽略 ex.getHttpStatus()
+    // 修复后：使用 ex.getHttpStatus()，确保 RetryableOperationException(429) 等子类返回正确状态码
+
+    @Test
+    void handleAppFailureException_shouldReturnHttpStatusFromException_429() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/example");
+        RetryableOperationException exception = new RetryableOperationException(
+                429, HttpStatus.TOO_MANY_REQUESTS, "请求过于频繁，请稍后重试");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleAppFailureException(exception, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode()).isEqualTo(429);
+        assertThat(response.getBody().getMessage()).contains("请求过于频繁");
+    }
+
+    @Test
+    void handleAppFailureException_shouldReturnHttpStatusFromException_503() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/example");
+        BusinessUnavailableException exception = new BusinessUnavailableException(
+                503, HttpStatus.SERVICE_UNAVAILABLE, "业务暂不可用");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleAppFailureException(exception, request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode()).isEqualTo(503);
     }
 }

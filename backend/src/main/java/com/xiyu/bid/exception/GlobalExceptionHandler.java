@@ -251,12 +251,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleAppFailureException(
             AppFailureException ex,
             HttpServletRequest request) {
-        log.warn("应用层异常 - URI: {}, Message: {}",
-            request.getRequestURI(), ex.getMessage());
+        log.warn("应用层异常 - URI: {}, Code: {}, HttpStatus: {}, Message: {}",
+            request.getRequestURI(), ex.getCode(), ex.getHttpStatus(), ex.getMessage());
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(400, ex.getMessage()));
+                .status(ex.getHttpStatus())
+                .body(ApiResponse.error(ex.getCode(), ex.getMessage()));
     }
 
     /**
