@@ -657,4 +657,152 @@ describe('TaskForm', () => {
     expect(r.valid).toBe(false)
     expect(r.message).toContain('招标章节号')
   })
+
+  // CO-448: 仅「缴纳投标保证金」任务（_taskType=deposit-payment）渲染保证金字段，其他任务不渲染
+  it('renders deposit fields when extendedFields._taskType is "deposit-payment"', async () => {
+    const wrapper = mount(TaskForm, {
+      props: {
+        mode: 'view',
+        modelValue: {
+          id: 50,
+          name: '缴纳投标保证金',
+          content: '描述',
+          assigneeId: 9,
+          deadline: '2026-12-31',
+          status: 'TODO',
+          extendedFields: { _taskType: 'deposit-payment', depositAmount: 100, depositDeadline: '2026-08-15' },
+        },
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).toContain('保证金金额（万）')
+    expect(text).toContain('保证金缴纳截止日期')
+    expect(text).toContain('收款方')
+    expect(text).toContain('收款账号')
+    expect(text).toContain('实际缴纳日期')
+    expect(text).toContain('预计归还日期')
+  })
+
+  it('does not render deposit fields when _taskType is not "deposit-payment"', async () => {
+    const wrapper = mount(TaskForm, {
+      props: {
+        mode: 'view',
+        modelValue: {
+          id: 51,
+          name: '其他任务',
+          content: '描述',
+          assigneeId: 9,
+          deadline: '2026-12-31',
+          status: 'TODO',
+          extendedFields: { depositAmount: 100, depositDeadline: '2026-08-15' },
+        },
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).not.toContain('保证金金额（万）')
+    expect(text).not.toContain('收款方')
+  })
+
+  // CO-448: 即使标题被改了，只要 _taskType 存在就应渲染（验证 _taskType 优先于标题）
+  it('renders deposit fields even when task name differs, as long as _taskType matches', async () => {
+    const wrapper = mount(TaskForm, {
+      props: {
+        mode: 'view',
+        modelValue: {
+          id: 510,
+          name: '自定义标题的保证金任务',
+          content: '描述',
+          assigneeId: 9,
+          deadline: '2026-12-31',
+          status: 'TODO',
+          extendedFields: { _taskType: 'deposit-payment', depositAmount: 80, depositDeadline: '2026-09-01' },
+        },
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).toContain('保证金金额（万）')
+    expect(text).toContain('收款方')
+  })
+
+  // CO-448: 执行人提交场景下，4 个字段为空时 submit 应失败并显示保证金字段错误
+  it('submit() returns invalid when deposit task assignee submits without filling 4 required fields', async () => {
+    const wrapper = mount(TaskForm, {
+      props: {
+        mode: 'view',
+        modelValue: {
+          id: 52,
+          name: '缴纳投标保证金',
+          content: '描述',
+          assigneeId: 9,
+          deadline: '2026-12-31',
+          status: 'TODO',
+          extendedFields: { _taskType: 'deposit-payment', depositAmount: 100, depositDeadline: '2026-08-15', payee: '', payeeAccount: '', actualPaymentDate: '', expectedRefundDate: '' },
+        },
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    const r = wrapper.vm.submit()
+    expect(r.valid).toBe(false)
+    // 错误信息应包含 4 个字段中至少一个的提示
+    expect(r.message).toMatch(/收款方|收款账号|实际缴纳日期|预计归还日期/)
+  })
+
+  // CO-448: 执行人提交场景下，4 个字段都填好后 submit 应成功
+  it('submit() returns valid when deposit task assignee submits with 4 fields filled', async () => {
+    const wrapper = mount(TaskForm, {
+      props: {
+        mode: 'view',
+        modelValue: {
+          id: 53,
+          name: '缴纳投标保证金',
+          content: '描述',
+          assigneeId: 9,
+          deadline: '2026-12-31',
+          status: 'TODO',
+          extendedFields: {
+            _taskType: 'deposit-payment',
+            depositAmount: 100,
+            depositDeadline: '2026-08-15',
+            payee: 'XX公司',
+            payeeAccount: '1234',
+            actualPaymentDate: '2026-07-15',
+            expectedRefundDate: '2026-09-15',
+          },
+        },
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    const r = wrapper.vm.submit()
+    expect(r.valid).toBe(true)
+  })
+
+  // CO-448: 非执行人查看时，submit 不应触发 4 字段必填校验
+  it('submit() does not validate deposit 4 fields when non-assignee views', async () => {
+    const wrapper = mount(TaskForm, {
+      props: {
+        mode: 'view',
+        modelValue: {
+          id: 54,
+          name: '缴纳投标保证金',
+          content: '描述',
+          assigneeId: 999, // 不是当前用户
+          deadline: '2026-12-31',
+          status: 'TODO',
+          extendedFields: { _taskType: 'deposit-payment', depositAmount: 100, depositDeadline: '2026-08-15', payee: '', payeeAccount: '', actualPaymentDate: '', expectedRefundDate: '' },
+        },
+      },
+      global: { stubs: globalStubs },
+    })
+    await flushPromises()
+    const r = wrapper.vm.submit()
+    expect(r.valid).toBe(true)
+  })
 })

@@ -89,6 +89,16 @@
             <el-date-picker v-model="localValue.deadline" type="date" value-format="YYYY-MM-DD" style="width: 100%" placeholder="请选择截止日期" />
           </el-form-item>
 
+          <!-- CO-448: 缴纳投标保证金任务专属字段（仅在任务标题为「缴纳投标保证金」时显示） -->
+          <TaskDepositFields
+            v-if="isDepositTask"
+            ref="depositFieldsRef"
+            :extended-fields="localValue.extendedFields"
+            :is-assignee-submitting="isAssigneeSubmitting"
+            :readonly="readonly"
+            @update:extended-fields="onDepositFieldsUpdate"
+          />
+
           <el-form-item label="交付物上传">
             <el-upload
               v-if="!readonly || canDeliver"
@@ -166,6 +176,7 @@ import { useUserStore } from '@/stores/user'
 import DynamicFormRenderer from '@/components/common/DynamicFormRenderer.vue'
 import UserPicker from '@/components/common/UserPicker.vue'
 import TaskActivityPanel from '@/components/project/TaskActivityPanel.vue'
+import TaskDepositFields from '@/components/project/TaskDepositFields.vue'
 import { useTaskAssigneePicker } from './useTaskAssigneePicker.js'
 import { ElMessage } from 'element-plus'
 import { getTaskDeliverableDownloadUrl } from '@/api/modules/taskDeliverables.js'
@@ -204,6 +215,7 @@ function clearFieldErrorIfDirty(field) {
   if (errors[field] && v != null && String(v).trim() !== '') errors[field] = ''
 }
 const extFormRef = ref(null)
+const depositFieldsRef = ref(null)
 const activeTab = ref('detail')
 const readonly = computed(() => props.mode === 'view')
 // 状态仅分配人可改
@@ -226,6 +238,15 @@ const canDeliver = computed(() => {
   const taskStatus = String(localValue.status || '').toLowerCase()
   return String(taskAssigneeId) === String(currentUserId) && taskStatus === 'todo'
 })
+// CO-448: 通过 extendedFields._taskType 识别保证金缴纳任务（替代标题字符串匹配，避免标题改动导致字段消失）
+const isDepositTask = computed(() => localValue.extendedFields?._taskType === 'deposit-payment')
+// 执行人提交场景：与 canDeliver 同口径（view 模式 + 当前用户是执行人 + TODO 状态），
+// 此场景下 4 个字段可编辑且必填；非此场景下 4 字段 disabled 且不显示必填
+const isAssigneeSubmitting = computed(() => canDeliver.value)
+// 子组件回传 extendedFields 更新时合并到 localValue.extendedFields，触发 update:modelValue
+function onDepositFieldsUpdate(patch) {
+  localValue.extendedFields = { ...localValue.extendedFields, ...patch }
+}
 // 只读模式下已保存的附件（含 id），交给模板渲染为独立可下载链接。
 // 历史问题：把已保存附件塞进 el-upload 的 file-list 后，el-upload 的 :disabled 会
 // 把整个 #file 插槽（含 <a> 链接）置为 aria-disabled，点击不触发下载。
@@ -383,6 +404,11 @@ function validate() {
   let firstError = ''
   for (const k of REQUIRED_FIELDS) {
     if (errors[k]) { firstError = errors[k]; break }
+  }
+  // CO-448: 缴纳投标保证金任务在执行人提交场景下校验 4 个必填字段
+  if (!firstError && isDepositTask.value) {
+    const res = depositFieldsRef.value?.validate?.()
+    if (res && res.valid === false) return res.message
   }
   return firstError
 }
