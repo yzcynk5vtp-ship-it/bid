@@ -152,7 +152,9 @@ const load = async () => {
     const { data } = await http.get('/api/knowledge/warehouses', { params })
     records.value = data.content || []
     total.value = data.totalElements || 0
-  } catch {} finally { loading.value = false }
+  } catch (e) {
+    ElMessage.error('加载仓库列表失败，请重试')
+  } finally { loading.value = false }
 }
 
 const resetPageAndLoad = () => { page.value = 1; load() }
@@ -202,7 +204,9 @@ const handleClose = async (row) => {
     })
     await http.post(`/api/knowledge/warehouses/${row.id}/close`, { reason })
     ElMessage.success('已关仓'); load()
-  } catch {}
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('关仓失败，请重试')
+  }
 }
 
 const handleRestore = async (row) => {
@@ -210,7 +214,9 @@ const handleRestore = async (row) => {
     await ElMessageBox.confirm('确认恢复该仓库？', '恢复确认')
     await http.post(`/api/knowledge/warehouses/${row.id}/restore`)
     ElMessage.success('已恢复'); load()
-  } catch {}
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('恢复失败，请重试')
+  }
 }
 
 const handleSubmitted = async (newId) => {

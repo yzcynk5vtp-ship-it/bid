@@ -130,11 +130,11 @@
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right" align="center">
           <template #default="{row}">
-            <el-button type="primary" link size="small" @click.stop="openForm(row)">编辑</el-button>
-            <template v-if="row.status === 'INACTIVE'">
+            <el-button v-if="canEdit" type="primary" link size="small" @click.stop="openForm(row)">编辑</el-button>
+            <template v-if="canEdit && row.status === 'INACTIVE'">
               <el-button type="success" link size="small" @click.stop="handleRestore(row)">恢复</el-button>
             </template>
-            <template v-else>
+            <template v-else-if="canEdit">
               <el-button type="danger" link size="small" @click.stop="openDeleteDialog(row)">删除</el-button>
             </template>
           </template>
@@ -176,12 +176,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useUserStore } from '@/stores/user.js'
-import { isBidManager } from '@/utils/permission'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Warning, Download, Upload, Link } from '@element-plus/icons-vue'
 import personnelApi from '@/api/modules/personnel.js'
+import { useKnowledgePermission } from '@/composables/useKnowledgePermission'
 
 
 import {
@@ -195,8 +194,6 @@ import PersonnelDeleteDialog from './components/personnel/PersonnelDeleteDialog.
 import PersonnelImportDialog from './components/personnel/PersonnelImportDialog.vue'
 import PersonnelExportDialog from './components/personnel/PersonnelExportDialog.vue'
 import PersonnelBatchAttachDialog from './components/personnel/PersonnelBatchAttachDialog.vue'
-
-const userStore = useUserStore()
 
 const {
   records, loading, filters, entryDateRange,
@@ -213,11 +210,12 @@ const importDialogVisible = ref(false)
 const exportDialogVisible = ref(false)
 const attachDialogVisible = ref(false)
 
-const userRole = computed(() => userStore.userRole || (userStore.currentUser && userStore.currentUser.role) || '')
-const canAdd = computed(() => isBidManager(userRole.value) || userRole.value === 'bid-Team')
-const canImportExport = computed(() => isBidManager(userRole.value))
-const canBatch = computed(() => isBidManager(userRole.value) || userRole.value === 'bid-Team')
-const canEdit = computed(() => isBidManager(userRole.value) || userRole.value === 'bid-Team')
+// CO-438: 统一基于 personnel.manage 权限点判断，对齐后端 @PreAuthorize
+const { canManagePersonnel: canManage } = useKnowledgePermission()
+const canAdd = canManage
+const canImportExport = canManage
+const canBatch = canManage
+const canEdit = canManage
 
 function openDetail(row, targetTab = 'basic') {
   if (!row?.id) return

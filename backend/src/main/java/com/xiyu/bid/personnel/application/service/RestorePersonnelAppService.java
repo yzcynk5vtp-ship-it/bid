@@ -5,6 +5,7 @@ import com.xiyu.bid.personnel.domain.model.PersonnelOperationLog;
 import com.xiyu.bid.personnel.domain.model.PersonnelOperationLog.ChangeDetail;
 import com.xiyu.bid.personnel.domain.port.PersonnelRepository;
 import com.xiyu.bid.personnel.domain.valueobject.PersonnelStatus;
+import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +30,7 @@ public class RestorePersonnelAppService {
      * 恢复已停用人员
      */
     @Transactional
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.PERSONNEL_MANAGE_PERMISSION + "')")
     public void restore(Long id, Long currentUserId, String operatorName) {
         Personnel person = personnelRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Personnel", String.valueOf(id)));

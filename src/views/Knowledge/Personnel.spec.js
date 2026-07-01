@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { nextTick, ref } from 'vue'
+import { mount } from '@vue/test-utils'
+import { ref } from 'vue'
 import Personnel from './Personnel.vue'
 import { certStatusLabel, certStatusTagType } from './components/personnel/personnelConstants.js'
 
@@ -37,7 +37,11 @@ vi.mock('@/api/modules/personnelBatchApi.js', () => ({
 
 // Mock user store
 vi.mock('@/stores/user.js', () => ({
-  useUserStore: () => ({ userRole: '/bidAdmin', currentUser: { role: '/bidAdmin' } })
+  useUserStore: () => ({
+    userRole: '/bidAdmin',
+    currentUser: { role: '/bidAdmin' },
+    menuPermissions: ['all']
+  })
 }))
 
 // Mock qualification store

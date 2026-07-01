@@ -5,6 +5,7 @@ import com.xiyu.bid.personnel.domain.model.PersonnelOperationLog;
 import com.xiyu.bid.personnel.domain.model.PersonnelOperationLog.ChangeDetail;
 import com.xiyu.bid.personnel.domain.port.PersonnelRepository;
 import com.xiyu.bid.personnel.domain.valueobject.PersonnelStatus;
+import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,7 @@ public class DeletePersonnelAppService {
      * @param operatorName  操作人姓名
      */
     @Transactional
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.PERSONNEL_MANAGE_PERMISSION + "')")
     public void delete(Long id, String reason, Long currentUserId, String operatorName) {
         if (reason == null || reason.isBlank()) {
             throw new IllegalArgumentException("删除原因不能为空");
