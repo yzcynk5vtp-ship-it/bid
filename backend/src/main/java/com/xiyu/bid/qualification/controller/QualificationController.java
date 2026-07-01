@@ -107,7 +107,7 @@ public class QualificationController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('" + PERM + "')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION + "')")
     @Auditable(action = "READ", entityType = "Qualification", description = "获取资质列表")
     public ResponseEntity<ApiResponse<Page<QualificationDTO>>> getAllQualifications(
             @RequestParam(required = false) String subjectType,
@@ -136,7 +136,7 @@ public class QualificationController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION + "')")
     @Auditable(action = "READ", entityType = "Qualification", description = "获取资质详情")
     public ResponseEntity<ApiResponse<QualificationDTO>> getQualificationById(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success("Qualification retrieved successfully",
@@ -166,7 +166,7 @@ public class QualificationController {
 
 
     @GetMapping("/overview")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION + "')")
     @Auditable(action = "READ", entityType = "Qualification", description = "资质概览")
     public ResponseEntity<ApiResponse<QualificationOverviewDTO>> getOverview() {
         return ResponseEntity.ok(ApiResponse.success("Qualification overview retrieved successfully",
@@ -181,14 +181,14 @@ public class QualificationController {
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION + "')")
     public ResponseEntity<ApiResponse<List<QualificationDTO>>> getQualificationsByType(@PathVariable com.xiyu.bid.entity.Qualification.Type type) {
         return ResponseEntity.ok(ApiResponse.success("Qualifications retrieved successfully",
                 qualificationQueryService.getQualificationsByType(type)));
     }
 
     @GetMapping("/valid")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION + "')")
     public ResponseEntity<ApiResponse<List<QualificationDTO>>> getValidQualifications() {
         return ResponseEntity.ok(ApiResponse.success("Valid qualifications retrieved successfully",
                 qualificationQueryService.getValidQualifications()));
@@ -231,14 +231,14 @@ public class QualificationController {
     }
 
     @GetMapping("/levels")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION + "')")
     @Auditable(action = "READ", entityType = "Qualification", description = "获取资质等级列表")
     public ResponseEntity<ApiResponse<List<String>>> getAllLevels() {
         return ResponseEntity.ok(ApiResponse.success("Levels retrieved successfully", qualificationQueryService.getAllLevels()));
     }
 
     @GetMapping("/{id}/attachments/{attachmentId}")
-    @PreAuthorize("hasAuthority('" + PERM + "')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION + "')")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable Long id,
             @PathVariable Long attachmentId,
