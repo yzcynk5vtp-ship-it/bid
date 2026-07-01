@@ -11,7 +11,7 @@
 JDK版本:       Java 17 (LTS)
 持久层:        MyBatis-Plus 3.5
 数据库:        MySQL 8.0
-缓存:          Redis 7
+缓存:          Redis 6.2（生产实际 6.2.19）
 搜索:          Elasticsearch 8
 消息队列:      RabbitMQ / RocketMQ
 安全认证:      Spring Security + JWT

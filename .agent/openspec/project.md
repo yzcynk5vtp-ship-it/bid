@@ -9,7 +9,7 @@
 
 ## Tech Stack
 - **Frontend**: Vue 3 + Vite 5 + Element Plus + Pinia + Vue Router 4 + Axios + ECharts + Sass
-- **Backend**: Java 21 + Spring Boot 3.3 + JPA (Hibernate) + MySQL 8.0 + Redis 7 + Flyway + ArchUnit
+- **Backend**: Java 21 + Spring Boot 3.3 + JPA (Hibernate) + MySQL 8.0 + Redis 6.2 + Flyway + ArchUnit
 - **Document Sidecar**: Python 3.12 + FastAPI + MarkItDown (Sidecar mode)
 - **E2E Testing**: Playwright + Node.js
 - **Deployment**: Docker + Docker Compose + Nginx

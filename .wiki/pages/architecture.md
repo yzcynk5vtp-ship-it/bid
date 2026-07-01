@@ -137,7 +137,7 @@ import Something from '@/components/...'
 | JWT | - | 无状态令牌认证 |
 | Spring Data JPA | - | 持久层框架 |
 | MySQL | 8.0+ | 主数据库 |
-| Redis | 7 | 缓存与会话 |
+| Redis | 6.2.19（生产）/ 6.2-alpine（本地镜像） | 缓存与会话 |
 | Flyway | - | 数据库迁移管理 |
 | Lombok | - | 代码简化 |
 | Actuator + Prometheus | - | 可观测性与监控 |

@@ -201,7 +201,7 @@ services:
       - "${DB_PORT:-3306}:3306"
 
   redis:
-    image: redis:7
+    image: redis:6.2  # 与生产 6.2.19 保持一致
     command: ["redis-server", "--save", ""]
     # Redis DB index 在应用层通过 spring.data.redis.database 设置
 ```

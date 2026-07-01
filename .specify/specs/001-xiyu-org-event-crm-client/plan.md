@@ -12,7 +12,7 @@
 
 **Language/Version**: Java 21 (backend, Spring Boot 3.3)
 
-**Primary Dependencies**: Spring Boot 3.3, Spring Data JPA (Hibernate), Flyway (MySQL 8.0 migrations), Redis 7 (event dedup cache), Micrometer (metrics), ClientSDK (com.ehsy.eventlibrary — pending customer delivery), Spring Web (RestTemplate / WebClient for HTTP outbound to CRM)
+**Primary Dependencies**: Spring Boot 3.3, Spring Data JPA (Hibernate), Flyway (MySQL 8.0 migrations), Redis 6.2 (event dedup cache), Micrometer (metrics), ClientSDK (com.ehsy.eventlibrary — pending customer delivery), Spring Web (RestTemplate / WebClient for HTTP outbound to CRM)
 
 **Storage**: MySQL 8.0 — new tables: `organization_event_inbox`, `local_department`, `local_user`; Flyway migration scripts under `backend/src/main/resources/db/migration-mysql/`
 
