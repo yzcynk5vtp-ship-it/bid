@@ -32,8 +32,8 @@
       </el-select>
     </el-form-item>
   </div>
-  <el-form-item label="保证金缴纳截止日期">
-    <el-date-picker v-model="form.depositDueDate" type="datetime" placeholder="选择截止日期时间（选填，将作为自动创建任务的截止时间）" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
+  <el-form-item label="保证金缴纳截止日期" required>
+    <el-date-picker v-model="form.depositDueDate" type="datetime" placeholder="选择截止日期时间（必填，将作为自动创建任务的截止时间）" value-format="YYYY-MM-DDTHH:mm:ss" format="YYYY-MM-DD HH:mm:ss" style="width: 100%" />
   </el-form-item>
 </template>
 <!-- 以下字段与标讯评估表「一、基础信息」完全对齐 -->

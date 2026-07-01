@@ -107,9 +107,11 @@ public final class InitiationFieldPolicy {
         requirePositive("ownerUserId", input.ownerUserId(), missing);
         requireText("departmentSnapshot", input.departmentSnapshot(), missing);
         // 蓝图 §3.3.1.1: 保证金逻辑 — 选择 YES 时金额+方式必填
+        // CO-457: 选择 YES 时缴纳截止日期必填
         if ("YES".equals(input.needDeposit())) {
             requirePositiveAmount("depositAmount", input.depositAmount(), missing);
             requireText("depositPaymentMethod", input.depositPaymentMethod(), missing);
+            requireNotNull("depositDueDate", input.depositDueDate(), missing);
         }
 
         return missing.isEmpty()
@@ -166,7 +168,7 @@ public final class InitiationFieldPolicy {
         if (value == null || value.signum() <= 0) missing.add(name);
     }
 
-    /** 立项字段输入（不可变 record）。可空字段由 validate 决定是否必填。蓝图 §3.3.1.1 扩展至 29 字段。 */
+    /** 立项字段输入（不可变 record）。可空字段由 validate 决定是否必填。蓝图 §3.3.1.1 扩展至 30 字段（CO-457 新增 depositDueDate）。 */
     public record InitiationInput(
             String ownerUnit,
             Integer expectedBidders,
@@ -181,6 +183,7 @@ public final class InitiationFieldPolicy {
             java.math.BigDecimal depositAmount,
             String depositPaymentMethod,
             String needDeposit,
+            java.time.LocalDateTime depositDueDate,
             String competitors,
             String tenderAdverseItems,
             String riskAssessment,
