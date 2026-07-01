@@ -70,9 +70,12 @@ const HEADER_MATRIX = {
         : [],
   },
   TRACKING: {
-    // CO-441 回归修复：TRACKING 状态总是显示「转派」「删除」
-    // 无论 projectManagerId 是否为 null，都允许管理员手动分配/重新分配负责人
-    admin_lead: ['transfer', 'delete'],
+    // CO-441 回归修复 v2：根据 projectManagerId 区分「分配」与「转派」
+    // - projectManagerId != null（已有负责人）→ 显示「转派」「删除」
+    // - projectManagerId == null（遗留脏数据 / 自动分配失败）→ 显示「分配」「删除」
+    //   避免后端 TenderTransferService 因 projectManagerId=null 抛 400
+    admin_lead: ({ projectManagerId }) =>
+      projectManagerId != null ? ['transfer', 'delete'] : ['assign', 'delete'],
     sales: [],
     bid_team: [],
   },

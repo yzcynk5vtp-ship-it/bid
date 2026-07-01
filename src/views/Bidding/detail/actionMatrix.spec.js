@@ -112,26 +112,26 @@ describe('getHeaderActions', () => {
       ])
     })
 
-    it('CO-441 回归修复：bid_admin without projectManagerId sees transfer + delete', () => {
-      // TRACKING 状态总是显示「转派」「删除」（无论 projectManagerId 是否为 null）
+    it('CO-441 回归修复 v2：bid_admin without projectManagerId sees assign + delete', () => {
+      // TRACKING + projectManagerId=null → 显示「分配」「删除」
+      // 避免后端 TenderTransferService 因 projectManagerId=null 抛 400
       expectActions(getHeaderActions(TRACKING, '/bidAdmin', false, null, null, null), [
-        ACTIONS.TRANSFER,
+        ACTIONS.ASSIGN,
         ACTIONS.DELETE,
       ])
     })
 
-    it('CO-441 回归修复：bid_lead with projectManagerId sees transfer (delete filtered for bid-TeamLeader)', () => {
+    it('CO-441 回归修复 v2：bid_lead with projectManagerId sees transfer (delete filtered for bid-TeamLeader)', () => {
       // bid-TeamLeader 不能有 delete 操作（line 169-172）
       expectActions(getHeaderActions(TRACKING, 'bid-TeamLeader', false, null, null, 1), [
         ACTIONS.TRANSFER,
       ])
     })
 
-    it('CO-441 回归修复：bid_lead without projectManagerId sees transfer (delete filtered for bid-TeamLeader)', () => {
-      // TRACKING 状态总是显示「转派」（无论 projectManagerId 是否为 null）
-      // bid-TeamLeader 不能有 delete 操作（line 169-172）
+    it('CO-441 回归修复 v2：bid_lead without projectManagerId sees assign (delete filtered for bid-TeamLeader)', () => {
+      // TRACKING + projectManagerId=null → 显示「分配」（bid-TeamLeader 过滤 delete）
       expectActions(getHeaderActions(TRACKING, 'bid-TeamLeader', false, null, null, null), [
-        ACTIONS.TRANSFER,
+        ACTIONS.ASSIGN,
       ])
     })
 
