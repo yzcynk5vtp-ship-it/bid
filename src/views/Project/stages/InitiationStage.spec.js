@@ -98,6 +98,7 @@ describe('InitiationStage — PRD §4.3 4-section layout', () => {
     const wrapper = createWrapper()
     await flushPromises()
     wrapper.vm.form.needDeposit = 'NO'
+    wrapper.vm.form.tenderDocumentId = 1  // CO-455: 招标文件必传
     await wrapper.vm.submit()
     await flushPromises()
     expect(projectLifecycleApi.submitInitiation).toHaveBeenCalledWith(1, expect.any(Object))
@@ -119,6 +120,18 @@ describe('InitiationStage — PRD §4.3 4-section layout', () => {
     await flushPromises()
     wrapper.vm.form.needDeposit = 'YES'
     wrapper.vm.form.depositPaymentMethod = ''
+    wrapper.vm.submit()
+    await flushPromises()
+    expect(projectLifecycleApi.submitInitiation).not.toHaveBeenCalled()
+  })
+
+  // CO-455: 招标文件必传校验
+  it('blocks submit when tender document not uploaded', async () => {
+    projectLifecycleApi.getInitiation.mockRejectedValue({ response: { status: 404 } })
+    const wrapper = createWrapper()
+    await flushPromises()
+    wrapper.vm.form.needDeposit = 'NO'
+    wrapper.vm.form.tenderDocumentId = null  // 缺少招标文件
     wrapper.vm.submit()
     await flushPromises()
     expect(projectLifecycleApi.submitInitiation).not.toHaveBeenCalled()
