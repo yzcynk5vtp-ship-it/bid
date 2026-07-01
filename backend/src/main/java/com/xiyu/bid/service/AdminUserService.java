@@ -95,10 +95,14 @@ public class AdminUserService {
         String employeeNumber = sanitize(request.getEmployeeNumber(), 32);
         String crmSalesNo = sanitize(request.getCrmSalesNo(), 64);
         boolean enabled = Boolean.TRUE.equals(request.getEnabled());
-        RoleProfile nextRoleProfile = roleProfileService.requireRoleProfile(request.getRoleId());
+        RoleProfile nextRoleProfile = request.getRoleId() != null
+                ? roleProfileService.requireRoleProfile(request.getRoleId())
+                : user.getRoleProfile();
 
         validateExistingUser(userId, username, email, phone);
-        ensureActiveAdminRetained(user, nextRoleProfile, enabled, operatorUsername);
+        if (request.getRoleId() != null) {
+            ensureActiveAdminRetained(user, nextRoleProfile, enabled, operatorUsername);
+        }
 
         // CO-152: crmSalesNo 变更时清除旧 CRM token 缓存（issue 测试要点 #3）
         boolean crmSalesNoChanged = !java.util.Objects.equals(user.getCrmSalesNo(), crmSalesNo);
