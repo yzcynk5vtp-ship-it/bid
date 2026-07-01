@@ -91,7 +91,7 @@ docker rm -f "$REDIS_CONTAINER_NAME" >/dev/null 2>&1 || true
 docker run -d \
   --name "$REDIS_CONTAINER_NAME" \
   -p "${REDIS_PORT}:6379" \
-  redis:7-alpine >/dev/null
+  redis:6.2-alpine >/dev/null  # 与生产 6.2.19 保持一致
 
 wait_for_database
 

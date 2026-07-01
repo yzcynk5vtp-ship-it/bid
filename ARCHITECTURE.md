@@ -5,7 +5,7 @@
 ## 技术栈
 
 - **前端**：Vue 3 + Vite 5 + Element Plus + Pinia + Vue Router 4 + Axios + ECharts + Sass
-- **后端**：Java 21 + Spring Boot 3.2 + JPA (Hibernate) + MySQL 8.0 + Redis 7 + Flyway + ArchUnit（以 `backend/pom.xml` 为唯一源）
+- **后端**：Java 21 + Spring Boot 3.2 + JPA (Hibernate) + MySQL 8.0 + Redis 6.2 + Flyway + ArchUnit（以 `backend/pom.xml` 为唯一源；生产实际 6.2.19）
 - **E2E 测试**：Playwright + Node.js (VITE_API_MODE=api)
 - **文档转换**：Python 3.12 + FastAPI + MarkItDown (sidecar 模式)
 - **部署**：Docker + Docker Compose + nginx

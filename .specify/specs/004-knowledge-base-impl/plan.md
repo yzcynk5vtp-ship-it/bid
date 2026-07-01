@@ -18,7 +18,7 @@
 
 **Primary Dependencies**: Spring Boot 3.3, JPA (Hibernate), Element Plus, Pinia, Axios, ArchUnit (Architecture Tests)
 
-**Storage**: MySQL 8.0 (via Flyway migrations), Redis 7 (token metadata/locks)
+**Storage**: MySQL 8.0 (via Flyway migrations), Redis 6.2 (token metadata/locks)
 
 **Testing**: JUnit 5 (Unit Tests), ArchUnit (Architecture rules check), Playwright (E2E testing)
 

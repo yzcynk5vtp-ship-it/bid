@@ -6,7 +6,7 @@
 
 - Java 21 + Maven 3.9+
 - MySQL 8.0 本地实例
-- Redis 7 本地实例
+- Redis 6.2 本地实例
 - 西域 ClientSDK jar (customer delivery, pending — see §0 below)
 
 ## §0: Customer Deliverables (Blocking)
