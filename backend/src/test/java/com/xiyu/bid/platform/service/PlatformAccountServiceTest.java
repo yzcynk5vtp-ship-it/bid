@@ -51,6 +51,9 @@ class PlatformAccountServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AccountCreationWhitelistStore whitelistStore;
+
     private PlatformAccountService service;
 
     private static final String ENCRYPTED_PWD = "encrypted:secret123";
@@ -59,6 +62,7 @@ class PlatformAccountServiceTest {
     private static final User BID_ADMIN_USER = User.builder().id(3L).role(User.Role.MANAGER).build();
     private static final User BID_LEADER_USER = User.builder().id(4L).role(User.Role.MANAGER).build();
     private static final User BID_TEAM_USER = User.builder().id(5L).fullName("投标专员").employeeNumber("E005").role(User.Role.MANAGER).build();
+    private static final User WHITELISTED_BID_TEAM_USER = User.builder().id(6L).username("00444").role(User.Role.MANAGER).build();
 
     @BeforeEach
     void setUp() {
@@ -67,7 +71,7 @@ class PlatformAccountServiceTest {
         // CO-403: 改为委托 BorrowService 同步申请表状态，不再直接操作 AccountBorrowApplicationRepository
         service = new PlatformAccountService(
                 repository, borrowService, passwordEncryptionUtil, effectiveRoleResolver,
-                new PlatformAccountContactLabelEnricher(userRepository));
+                new PlatformAccountContactLabelEnricher(userRepository), whitelistStore);
         // CO-373：默认模拟 LOCAL_USER 解析路径——回退到实体 roleCode
         lenient().when(effectiveRoleResolver.resolveRoleCode(any(User.class)))
                 .thenAnswer(inv -> inv.<User>getArgument(0).getRoleCode());
@@ -76,9 +80,12 @@ class PlatformAccountServiceTest {
         lenient().when(effectiveRoleResolver.resolveRoleCode(BID_ADMIN_USER)).thenReturn("/bidAdmin");
         lenient().when(effectiveRoleResolver.resolveRoleCode(BID_LEADER_USER)).thenReturn("bid-TeamLeader");
         lenient().when(effectiveRoleResolver.resolveRoleCode(BID_TEAM_USER)).thenReturn("bid-Team");
+        lenient().when(effectiveRoleResolver.resolveRoleCode(WHITELISTED_BID_TEAM_USER)).thenReturn("bid-Team");
         lenient().when(effectiveRoleResolver.resolveRoleCode(STAFF_USER)).thenReturn("manager");
         // CO-390：默认模拟 UserRepository.findAllById 返回空（contactPerson 无 userId 时不会调用）
         lenient().when(userRepository.findAllById(any())).thenReturn(List.of());
+        // 默认白名单校验放行，具体测试按需覆盖
+        lenient().doNothing().when(whitelistStore).checkCreatePermission(any(), any());
     }
 
     // ── 创建 ──
@@ -168,6 +175,34 @@ class PlatformAccountServiceTest {
         assertThatThrownBy(() -> service.createAccount(req, ADMIN_USER))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Account name cannot be null");
+    }
+
+    // ── 创建权限 ──
+
+    @Test
+    @DisplayName("白名单内投标专员可创建平台账户")
+    void createAccount_whitelistedBidTeamUser_succeeds() {
+        // checkCreatePermission 默认放行（doNothing），无需额外 stub
+        when(passwordEncryptionUtil.encrypt("secret123")).thenReturn(ENCRYPTED_PWD);
+        when(repository.findByUsername("testuser")).thenReturn(Optional.empty());
+        when(repository.save(any())).thenReturn(accountWithId(1L));
+
+        PlatformAccountDTO result = service.createAccount(validRequest(), WHITELISTED_BID_TEAM_USER);
+
+        assertThat(result.getId()).isEqualTo(1L);
+        verify(repository).save(any());
+    }
+
+    @Test
+    @DisplayName("白名单外投标专员不可创建平台账户（403）")
+    void createAccount_nonWhitelistedBidTeamUser_denied() {
+        doThrow(new org.springframework.security.access.AccessDeniedException("仅管理员或白名单用户可创建平台账户"))
+                .when(whitelistStore).checkCreatePermission("bid-Team", BID_TEAM_USER);
+
+        assertThatThrownBy(() -> service.createAccount(validRequest(), BID_TEAM_USER))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class)
+                .hasMessageContaining("白名单用户");
+        verify(repository, never()).save(any());
     }
 
     // ── 查询 ──

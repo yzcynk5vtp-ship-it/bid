@@ -3,6 +3,7 @@ package com.xiyu.bid.platform.service;
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.platform.entity.PlatformAccount;
 import com.xiyu.bid.platform.util.PlatformAccountContactMatcher;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -82,6 +83,35 @@ public final class PlatformAccountViewerPolicy {
         if (!canManageAccount(roleCode, account, currentUser)) {
             throw new org.springframework.security.access.AccessDeniedException(
                 "仅管理员或账户绑定联系人可编辑账户");
+        }
+    }
+
+    /**
+     * 是否可创建平台账户。
+     *
+     * <p>授权矩阵：
+     * <ul>
+     *   <li>特权角色（admin/bid-teamleader/bidadmin）→ 放行</li>
+     *   <li>白名单用户（由 system_settings 配置）→ 放行</li>
+     *   <li>其他 → 拒绝</li>
+     * </ul>
+     *
+     * @param roleCode 当前用户角色码（由 EffectiveRoleResolver 解析）
+     * @param currentUser 当前登录用户
+     * @param whitelistUsernames 白名单用户名列表（由 AccountCreationWhitelistStore 加载）
+     */
+    public static boolean canCreateAccount(String roleCode, User currentUser, List<String> whitelistUsernames) {
+        if (currentUser == null) return false;
+        if (isPrivilegedRole(roleCode)) return true;
+        String username = currentUser.getUsername();
+        return username != null && whitelistUsernames != null && whitelistUsernames.contains(username);
+    }
+
+    /** 校验创建账户权限，不放行则抛 AccessDeniedException。 */
+    public static void checkCanCreateAccount(String roleCode, User currentUser, List<String> whitelistUsernames) {
+        if (!canCreateAccount(roleCode, currentUser, whitelistUsernames)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                "仅管理员或白名单用户可创建平台账户");
         }
     }
 }
