@@ -124,8 +124,9 @@ public class MarketPredictionService {
         String content = buildPushContent(result);
 
         try {
+            // 后台预测任务无登录用户上下文，传 null 回退全局共享 token（CO-152 兼容行为）
             CrmResponseHandler.CrmApiResponse response = crmMessageService.sendMessage(
-                    recipientNos, title, content, 1);
+                    recipientNos, title, content, 1, null);
             if (response.success()) {
                 log.info("CRM push succeeded for purchaser hash: {}", purchaserHash);
                 return true;

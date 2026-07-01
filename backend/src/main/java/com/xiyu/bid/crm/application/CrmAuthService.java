@@ -5,21 +5,25 @@ import com.xiyu.bid.crm.domain.CrmToken;
 import com.xiyu.bid.crm.domain.CrmTokenCache;
 import com.xiyu.bid.crm.infrastructure.CrmHttpClient;
 import com.xiyu.bid.crm.infrastructure.CrmResponseHandler;
-import com.xiyu.bid.crm.application.OssPermissionCache;
+import com.xiyu.bid.entity.User;
+import com.xiyu.bid.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 
 import java.time.Instant;
+import java.util.Optional;
 
 /**
  * CRM 认证服务。
  * <p>支持双 token 体系：
  * <ol>
- *   <li><b>OSS token</b> — 从 base-oss-test 获取，用于组织架构等 OSS 接口</li>
+ *   <li><b>OSS token</b> — 从 base-oss-test 获取，用于组织架构等 OSS 接口（全局共享）</li>
  *   <li><b>CRM JWT token</b> — 通过 generateToken 接口用 OSS token 换取，用于商机/客户/消息等接口</li>
  * </ol>
+ * <p>自 CO-152 起，CRM JWT token 支持按用户维度隔离：
+ * 配置了 {@code crm_sales_no} 的用户使用专属 token，未配置的用户回退到全局共享 token（兼容存量行为）。
  */
 @Service
 public class CrmAuthService {
@@ -29,20 +33,25 @@ public class CrmAuthService {
     private final CrmHttpClient httpClient;
     private final CrmProperties properties;
     private final OssPermissionCache permissionCache;
+    private final CrmUserTokenCache userTokenCache;
+    private final UserRepository userRepository;
 
     /** OSS token 缓存（用于 OSS 组织架构接口） */
     private final CrmTokenCache ossTokenCache = new CrmTokenCache();
-    /** CRM JWT token 缓存（用于商机/客户/消息接口） */
+    /** CRM JWT token 缓存（用于商机/客户/消息接口，全局共享，fallback） */
     private final CrmTokenCache crmTokenCache = new CrmTokenCache();
 
     private volatile int consecutiveFailures = 0;
     private volatile Instant coolDownUntil = null;
 
     public CrmAuthService(CrmHttpClient httpClient, CrmProperties properties,
-                          OssPermissionCache permissionCache) {
+                          OssPermissionCache permissionCache,
+                          CrmUserTokenCache userTokenCache, UserRepository userRepository) {
         this.httpClient = httpClient;
         this.properties = properties;
         this.permissionCache = permissionCache;
+        this.userTokenCache = userTokenCache;
+        this.userRepository = userRepository;
     }
 
     /**
@@ -102,6 +111,85 @@ public class CrmAuthService {
     public void handleUnauthorized() {
         crmTokenCache.clear();
         log.info("CRM JWT token cache cleared due to 401, will re-apply on next request");
+    }
+
+    // ===== CO-152: 按用户维度 CRM token 管理 =====
+
+    /**
+     * 获取当前用户的 CRM JWT token（CO-152）。
+     * <p>规则：
+     * <ul>
+     *   <li>用户配置了 {@code crm_sales_no} → 使用专属 token（按 username 缓存，lazy load）</li>
+     *   <li>用户未配置或不存在 → 回退到 {@link #getValidToken()} 全局共享 token（兼容存量行为）</li>
+     * </ul>
+     *
+     * @param username 当前登录用户名
+     * @return CRM JWT token
+     */
+    public String getValidTokenForUser(String username) {
+        if (username == null || username.isBlank()) {
+            return getValidToken();
+        }
+        return userRepository.findByUsername(username)
+                .filter(u -> u.getCrmSalesNo() != null && !u.getCrmSalesNo().isBlank())
+                .map(user -> userTokenCache.get(username).orElseGet(() -> {
+                    String token = applyCrmTokenForUser(user.getFullName(), user.getCrmSalesNo());
+                    userTokenCache.put(username, token, 86400L);
+                    return token;
+                }))
+                .orElseGet(() -> {
+                    log.debug("User {} has no crm_sales_no or not found, falling back to shared token", username);
+                    return getValidToken();
+                });
+    }
+
+    /**
+     * 用户 CRM 接口 401 时，清除该用户的 token 缓存（CO-152）。
+     * <p>只清当前用户缓存，不影响其他用户。
+     */
+    public void handleUnauthorizedForUser(String username) {
+        if (username != null && !username.isBlank()) {
+            userTokenCache.invalidate(username);
+            log.info("CRM JWT token cache cleared for user={} due to 401", username);
+        }
+    }
+
+    /**
+     * 用户登出时，清除该用户的 CRM token 缓存（CO-152）。
+     */
+    public void logoutUser(String username) {
+        if (username != null && !username.isBlank()) {
+            userTokenCache.invalidate(username);
+            log.info("CRM JWT token cache cleared for user={} (logout)", username);
+        }
+    }
+
+    /**
+     * 用指定用户的 nickName + salesNo 调 generateToken 获取专属 CRM JWT token。
+     */
+    private String applyCrmTokenForUser(String nickName, String salesNo) {
+        CrmToken ossToken;
+        try {
+            ossToken = ossTokenCache.getOrFetch(this::applyOssToken,
+                    properties.getTokenRenewBeforeExpiryRatio());
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("Cannot acquire CRM token: OSS token acquisition failed", e);
+        }
+        String baseUrl = properties.getEffectiveChanceBaseUrl();
+        String path = properties.getAuth().getGenerateTokenPath();
+        log.info("CRM generateToken for user: baseUrl={}, path={}, nickName={}, salesNo={}",
+                baseUrl, path, nickName, salesNo);
+        String body = String.format(
+                "{\"nickName\":\"%s\",\"salesNo\":\"%s\"}",
+                escapeJson(nickName), escapeJson(salesNo));
+        CrmResponseHandler.CrmApiResponse response = httpClient.postWithAuth(
+                baseUrl, path, ossToken.accessToken(), body);
+        if (response.success() && response.data() != null && response.data().isTextual()) {
+            log.info("CRM JWT token acquired for salesNo={}", salesNo);
+            return response.data().asText();
+        }
+        throw new IllegalStateException(
+                "CRM generateToken failed for user: code=" + response.code() + " msg=" + response.msg());
     }
 
     /**

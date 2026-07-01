@@ -3,6 +3,7 @@ package com.xiyu.bid.service;
 import com.xiyu.bid.admin.service.DataScopeConfigService;
 import com.xiyu.bid.service.AdminUserQueryService;
 import com.xiyu.bid.admin.settings.core.DepartmentGraphPolicy;
+import com.xiyu.bid.crm.application.CrmAuthService;
 import com.xiyu.bid.dto.UserOrganizationUpdateRequest;
 import com.xiyu.bid.dto.AdminUserDTO;
 import com.xiyu.bid.entity.RoleProfile;
@@ -40,11 +41,14 @@ class AdminUserServiceTest {
     @Mock
     private AdminUserQueryService adminUserQueryService;
 
+    @Mock
+    private CrmAuthService crmAuthService;
+
     private AdminUserService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminUserService(userRepository, passwordEncoder, roleProfileService, dataScopeConfigService, adminUserQueryService);
+        service = new AdminUserService(userRepository, passwordEncoder, roleProfileService, dataScopeConfigService, adminUserQueryService, crmAuthService);
         org.mockito.Mockito.lenient().when(adminUserQueryService.toDto(any())).thenAnswer(invocation -> {
             User u = invocation.getArgument(0);
             return AdminUserDTO.builder()

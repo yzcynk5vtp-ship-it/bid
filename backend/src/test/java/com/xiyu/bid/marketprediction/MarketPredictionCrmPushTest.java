@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -60,7 +61,7 @@ class MarketPredictionCrmPushTest {
         MarketPredictionResult result = new MarketPredictionResult(
                 LocalDate.of(2027, 6, 1), 0.85, "基于 3 条历史数据预测", 3, 180.0);
         when(predictionPolicy.predict(tenders)).thenReturn(result);
-        when(crmMessageService.sendMessage(eq(recipients), anyString(), anyString(), anyInt()))
+        when(crmMessageService.sendMessage(eq(recipients), anyString(), anyString(), anyInt(), any()))
                 .thenReturn(new CrmResponseHandler.CrmApiResponse(0, "ok", null, true));
 
         boolean pushed = predictionService.pushPredictionToCrm(hash, recipients);
@@ -70,7 +71,8 @@ class MarketPredictionCrmPushTest {
                 eq(recipients),
                 contains("AI"),
                 contains("2027-06-01"),
-                anyInt());
+                anyInt(),
+                any());
     }
 
     @Test
@@ -83,7 +85,7 @@ class MarketPredictionCrmPushTest {
 
         assertThat(pushed).isFalse();
         verify(crmMessageService, never()).sendMessage(
-                anyList(), anyString(), anyString(), anyInt());
+                anyList(), anyString(), anyString(), anyInt(), any());
     }
 
     @Test
@@ -97,7 +99,7 @@ class MarketPredictionCrmPushTest {
         MarketPredictionResult result = new MarketPredictionResult(
                 LocalDate.of(2027, 1, 1), 0.7, "基于 2 条历史数据预测", 2, 180.0);
         when(predictionPolicy.predict(tenders)).thenReturn(result);
-        when(crmMessageService.sendMessage(anyList(), anyString(), anyString(), anyInt()))
+        when(crmMessageService.sendMessage(anyList(), anyString(), anyString(), anyInt(), any()))
                 .thenThrow(new RuntimeException("CRM service unavailable"));
 
         boolean pushed = predictionService.pushPredictionToCrm(hash, List.of("admin001"));
@@ -116,7 +118,7 @@ class MarketPredictionCrmPushTest {
         MarketPredictionResult result = new MarketPredictionResult(
                 LocalDate.of(2027, 1, 1), 0.7, "基于 2 条历史数据预测", 2, 180.0);
         when(predictionPolicy.predict(tenders)).thenReturn(result);
-        when(crmMessageService.sendMessage(anyList(), anyString(), anyString(), anyInt()))
+        when(crmMessageService.sendMessage(anyList(), anyString(), anyString(), anyInt(), any()))
                 .thenReturn(new CrmResponseHandler.CrmApiResponse(500, "internal error", null, false));
 
         boolean pushed = predictionService.pushPredictionToCrm(hash, List.of("admin001"));
@@ -130,7 +132,7 @@ class MarketPredictionCrmPushTest {
 
         assertThat(pushed).isFalse();
         verify(crmMessageService, never()).sendMessage(
-                anyList(), anyString(), anyString(), anyInt());
+                anyList(), anyString(), anyString(), anyInt(), any());
     }
 
     private static Tender buildTender(LocalDate publishDate) {

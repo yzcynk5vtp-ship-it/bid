@@ -103,6 +103,29 @@
               </template>
             </el-table-column>
             <el-table-column prop="roleName" label="角色" width="100" />
+            <el-table-column label="CRM 工号" width="170">
+              <template #default="{ row }">
+                <div v-if="editingCrmId === row.id" class="crm-edit-cell">
+                  <el-input
+                    v-model="editCrmValue"
+                    size="small"
+                    placeholder="CRM 工号"
+                    maxlength="64"
+                    style="width: 110px"
+                    @keyup.enter="saveCrmSalesNo(row)"
+                    @keyup.esc="cancelEditCrm"
+                  />
+                  <el-button text type="primary" size="small" :loading="crmLoading === row.id" @click="saveCrmSalesNo(row)">保存</el-button>
+                  <el-button text size="small" @click="cancelEditCrm">取消</el-button>
+                </div>
+                <span v-else>
+                  {{ row.crmSalesNo || '-' }}
+                  <el-button text type="primary" size="small" @click="startEditCrm(row)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                </span>
+              </template>
+            </el-table-column>
             <el-table-column label="状态" width="80" align="center">
               <template #default="{ row }">
                 <el-switch
@@ -144,6 +167,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Search, Edit } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { organizationApi } from '@/api/modules/organization.js'
+import { useUserCrmEdit } from './useUserCrmEdit.js'
 
 const loading = ref(false)
 const statusLoading = ref(null)
@@ -155,6 +179,9 @@ const pageSize = ref(10)
 
 const editingDeptId = ref(null)
 const editDeptCode = ref('')
+
+// CO-152: CRM 工号行内编辑（抽到 composable 控制文件行数）
+const { editingCrmId, editCrmValue, crmLoading, startEditCrm, cancelEditCrm, saveCrmSalesNo } = useUserCrmEdit()
 
 const searchForm = ref({ keyword: '', enabled: null })
 const selectedDeptCode = ref('')
@@ -294,4 +321,5 @@ onMounted(async () => {
 .toolbar-left { display: flex; gap: 8px; align-items: center; }
 .pagination-row { display: flex; justify-content: flex-end; margin-top: 16px; }
 :deep(.el-switch) { --el-switch-on-color: var(--el-color-success); }
+.crm-edit-cell { display: flex; align-items: center; gap: 4px; }
 </style>
