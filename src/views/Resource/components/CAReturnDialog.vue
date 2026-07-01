@@ -109,11 +109,9 @@ const caLabel = computed(() => {
   return [platforms, seal].filter(Boolean).join(' - ')
 })
 
-// Only show active (APPROVED / borrowed) applications
+// Only show APPROVED borrow applications (PENDING/RETURNED excluded)
 const activeApplications = computed(() => {
-  return props.borrowApplications.filter(
-    a => a.status === 'APPROVED' || a.status === 'PENDING'
-  )
+  return props.borrowApplications.filter(a => a.status === 'APPROVED')
 })
 
 function createDefaultForm() {
