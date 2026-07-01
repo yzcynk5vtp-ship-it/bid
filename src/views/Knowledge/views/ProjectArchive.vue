@@ -239,14 +239,14 @@ const handlePreviewFile = async (file) => {
   if (!name.endsWith('.pdf')) { ElMessage.info('该格式不支持在线预览，请下载查看'); return }
   try {
     const res = await httpClient.get(`/api/archive/files/${file.fileId}/preview`, { responseType: 'blob' })
-    window.open(window.URL.createObjectURL(res), '_blank')
+    window.open(window.URL.createObjectURL(res.data), '_blank')
     drawerRef.value?.fetchDetail()
   } catch { ElMessage.warning('文件预览失败') }
 }
 const handleDownloadFile = async (file) => {
   try {
     const res = await httpClient.get(`/api/archive/files/${file.fileId}/download`, { responseType: 'blob' })
-    downloadBlob(res, file.fileName || '下载文件', res.type || 'application/octet-stream')
+    downloadBlob(res.data, file.fileName || '下载文件', res.data.type || 'application/octet-stream')
     drawerRef.value?.fetchDetail()
   } catch { ElMessage.warning('文件下载失败') }
 }
