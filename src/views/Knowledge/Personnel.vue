@@ -15,7 +15,7 @@
           <el-button v-if="canImportExport" @click="exportDialogVisible = true">
             <el-icon><Download /></el-icon> 批量导出
           </el-button>
-          <el-button @click="attachDialogVisible = true">
+          <el-button v-if="canImportExport" @click="attachDialogVisible = true">
             <el-icon><Link /></el-icon> 批量关联附件
           </el-button>
         </div>

@@ -95,7 +95,7 @@ import WarehouseExportDialog from '@/components/warehouse/WarehouseExportDialog.
 import WarehouseImportDialog from '@/components/warehouse/WarehouseImportDialog.vue'
 import WarehouseLedgerExportDialog from '@/components/warehouse/WarehouseLedgerExportDialog.vue'
 
-const { canManage } = useKnowledgePermission()
+const { canManageWarehouse: canManage } = useKnowledgePermission()
 
 const records = ref([]); const loading = ref(false)
 const page = ref(1); const size = ref(15); const total = ref(0)
