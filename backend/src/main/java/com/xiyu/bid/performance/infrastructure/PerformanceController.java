@@ -11,6 +11,7 @@ import com.xiyu.bid.performance.application.service.UpdatePerformanceAppService;
 import com.xiyu.bid.performance.application.service.DeletePerformanceAppService;
 import com.xiyu.bid.performance.application.service.ListPerformanceAppService;
 import com.xiyu.bid.performance.application.service.PerformanceImportExportService;
+import com.xiyu.bid.performance.application.service.PerformanceImportAttachmentProcessor;
 import com.xiyu.bid.performance.application.service.PerformanceImportResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -123,8 +124,26 @@ public class PerformanceController {
     @PreAuthorize("hasAuthority('" + PERM + "')")
     @Auditable(action = "IMPORT", entityType = "Performance", description = "批量导入业绩")
     public ResponseEntity<ApiResponse<PerformanceImportResult>> batchImport(
-            @RequestParam("file") MultipartFile file) throws IOException {
-        return ResponseEntity.ok(ApiResponse.success("导入完成", importExportService.batchImport(file)));
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "attachments", required = false) MultipartFile[] attachments) throws IOException {
+        var inputs = toAttachmentInputs(attachments);
+        return ResponseEntity.ok(ApiResponse.success("导入完成", importExportService.batchImport(file, inputs)));
+    }
+
+    private static java.util.List<PerformanceImportAttachmentProcessor.AttachmentInput> toAttachmentInputs(
+            MultipartFile[] files) {
+        if (files == null) return java.util.List.of();
+        java.util.List<PerformanceImportAttachmentProcessor.AttachmentInput> result = new java.util.ArrayList<>(files.length);
+        for (MultipartFile mf : files) {
+            if (mf == null || mf.isEmpty()) continue;
+            try {
+                result.add(new PerformanceImportAttachmentProcessor.AttachmentInput(
+                        mf.getOriginalFilename(), mf.getBytes()));
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException("读取附件失败: " + mf.getOriginalFilename(), e);
+            }
+        }
+        return result;
     }
 
     @GetMapping("/export")

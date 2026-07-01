@@ -11,6 +11,8 @@ public class PerformanceImportResult {
     public int successCount;
     public int failureCount;
     public List<ImportFailure> failures = new ArrayList<>();
+    public int attachedCount;
+    public List<String> unmatchedFiles = new ArrayList<>();
 
     public record ImportFailure(int rowNum, String contractName, String reason) {}
 }

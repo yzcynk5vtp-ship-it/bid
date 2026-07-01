@@ -137,35 +137,7 @@
 
     <PerformanceSimilarDrawer v-model="similarVisible" :records="similarRecords" :loading="similarLoading" />
 
-    <el-dialog v-model="importVisible" title="批量导入业绩" width="500px">
-      <el-steps :active="importStep" finish-status="success" simple>
-        <el-step title="下载模板" /><el-step title="上传文件" /><el-step title="完成" />
-      </el-steps>
-      <div v-if="importStep === 0" class="import-step">
-        <p>请先下载导入模板，按模板格式填写业绩数据后上传。</p>
-        <el-button type="primary" @click="downloadTemplate"><el-icon><Download /></el-icon> 下载模板</el-button>
-      </div>
-      <div v-else-if="importStep === 1" class="import-step">
-        <el-upload drag :auto-upload="false" :on-change="onImportFileChange" accept=".xlsx,.xls">
-          <el-icon class="el-icon--upload"><Upload /></el-icon>
-          <div class="el-upload__text">拖拽文件到此处或 <em>点击上传</em></div>
-        </el-upload>
-      </div>
-      <div v-else class="import-step">
-        <el-result :icon="importResult.failureCount > 0 ? 'warning' : 'success'"
-          :title="`成功 ${importResult.successCount} 条，失败 ${importResult.failureCount} 条`">
-          <template #sub-title>
-            <div v-if="importResult.failures.length > 0" class="import-failures">
-              <p v-for="f in importResult.failures.slice(0,5)" :key="f.rowNum">第 {{ f.rowNum }} 行: {{ f.reason }}</p>
-            </div>
-          </template>
-        </el-result>
-      </div>
-      <template #footer>
-        <el-button v-if="importStep === 1 && importFile" type="primary" @click="confirmImport" :loading="importLoading">确认导入</el-button>
-        <el-button v-if="importStep === 2" @click="importVisible = false; importStep = 0">关闭</el-button>
-      </template>
-    </el-dialog>
+    <PerformanceImportDialog v-model="importVisible" @imported="loadData" />
   </div>
 </template>
 
@@ -174,12 +146,12 @@ import { ref, reactive, onMounted } from 'vue'
 import { performanceApi } from '@/api/modules/performance.js'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Download, Bell, Search } from '@element-plus/icons-vue'
-import { usePerformanceImport } from '@/composables/usePerformanceImport.js'
 import { useKnowledgePermission } from '@/composables/useKnowledgePermission'
 import PerformanceDetailDrawer from './components/PerformanceDetailDrawer.vue'
 import PerformanceFormDialog from './components/PerformanceFormDialog.vue'
 import PerformanceAlertConfigDialog from './components/performance/PerformanceAlertConfigDialog.vue'
 import PerformanceSimilarDrawer from './components/PerformanceSimilarDrawer.vue'
+import PerformanceImportDialog from './components/PerformanceImportDialog.vue'
 
 const { canManagePerformance, canAdminAlert: canAdminPerformanceAlert } = useKnowledgePermission()
 
@@ -223,10 +195,8 @@ const loadData = async () => {
   }
 }
 
-const {
-  importVisible, importStep, importFile, importLoading, importResult,
-  openImport: handleImport, downloadTemplate, onImportFileChange, confirmImport
-} = usePerformanceImport(loadData)
+const importVisible = ref(false)
+const handleImport = () => { importVisible.value = true }
 
 const getCustomerTypeTagType = (t) => t === 'CENTRAL_SOE' ? 'danger' : t === 'LOCAL_SOE' ? 'warning' : t === 'GOVERNMENT_INSTITUTION' ? 'success' : 'primary'
 const getStatusTagType = (s) => s === 'EXPIRED' ? 'danger' : s === 'EXPIRING' ? 'warning' : 'success'
@@ -294,7 +264,3 @@ const handleExport = async (command) => {
 onMounted(loadData)
 </script>
 <style scoped lang="scss" src="./components/Performance.scss"></style>
-<style scoped>
-.import-step { text-align: center; padding: 24px 0; }
-.import-failures { text-align: left; color: var(--el-color-danger); font-size: 13px; max-height: 120px; overflow-y: auto; }
-</style>
