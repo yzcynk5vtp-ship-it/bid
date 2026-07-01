@@ -18,6 +18,7 @@ import { projectsApi } from '@/api/modules/projects.js'
 import { createTaskDeliverable as apiCreateTaskDeliverable } from '@/api/modules/taskDeliverables.js'
 import { useUserStore } from '@/stores/user.js'
 import { TASK_STATUS } from '@/constants/taskStatus.js'
+import { validateSubmitForReview } from './useTaskSubmissionValidation.js'
 
 export function useTaskActions(options = {}) {
   const { onSubmitted, api = projectsApi } = options
@@ -94,8 +95,14 @@ export function useTaskActions(options = {}) {
       ElMessage.error('缺少项目信息，无法提交')
       return
     }
-    if (!submitNotes.value?.trim()) {
-      ElMessage.warning('请填写完成情况说明')
+    const validation = validateSubmitForReview({
+      deliverables: task.deliverables,
+      deliverableFiles: deliverableUploadRef.value?.uploadFiles,
+      hasDeliverable: hasDeliverable(task),
+      completionNotes: submitNotes.value
+    })
+    if (!validation.valid) {
+      ElMessage.warning(validation.message)
       return
     }
 

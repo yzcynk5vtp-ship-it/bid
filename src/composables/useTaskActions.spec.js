@@ -173,7 +173,7 @@ describe('useTaskActions', () => {
       const task = createMockTask({ deliverables: [{ id: 1 }] })
       openDeliverableUpload(task)
       await confirmSubmit()
-      expect(ElMessage.warning).toHaveBeenCalledWith('请填写完成情况说明')
+      expect(ElMessage.warning).toHaveBeenCalledWith('提交审核时必须填写完成情况')
       expect(projectsApi.updateTaskStatus).not.toHaveBeenCalled()
     })
 

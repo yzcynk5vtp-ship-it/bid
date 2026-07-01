@@ -89,6 +89,7 @@ import { TASK_STATUS, getTaskStatusDisplayName } from '@/constants/taskStatus.js
 import { taskBackendToCard } from '@/views/Project/project-utils.js'
 import { useProjectStore } from '@/stores/project'
 import { useUserStore } from '@/stores/user'
+import { validateSubmitForReview } from '@/composables/useTaskSubmissionValidation.js'
 import { uploadTaskFilesWithFallback } from '@/composables/projectDetail/taskAssigneePayload'
 
 const COLUMNS = [
@@ -192,14 +193,13 @@ async function handleSubmitForReview() {
     const projectId = data.projectId
     const taskId = data.id
 
-    const hasDeliverable = (data.deliverables && data.deliverables.length > 0)
-      || (data.deliverableFiles && data.deliverableFiles.length > 0)
-    if (!hasDeliverable) {
-      ElMessage.warning('提交审核时必须上传交付物')
-      return
-    }
-    if (!data.completionNotes || !String(data.completionNotes).trim()) {
-      ElMessage.warning('提交审核时必须填写完成情况')
+    const validation = validateSubmitForReview({
+      deliverables: data.deliverables,
+      deliverableFiles: data.deliverableFiles,
+      completionNotes: data.completionNotes
+    })
+    if (!validation.valid) {
+      ElMessage.warning(validation.message)
       return
     }
 

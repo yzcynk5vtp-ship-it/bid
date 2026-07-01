@@ -168,6 +168,7 @@ import UserPicker from '@/components/common/UserPicker.vue'
 import TaskActivityPanel from '@/components/project/TaskActivityPanel.vue'
 import { useTaskAssigneePicker } from './useTaskAssigneePicker.js'
 import { ElMessage } from 'element-plus'
+import { validateSubmitForReview } from '@/composables/useTaskSubmissionValidation.js'
 import { getTaskDeliverableDownloadUrl } from '@/api/modules/taskDeliverables.js'
 import { downloadWithFilename } from '@/utils/download.js'
 
@@ -421,13 +422,13 @@ function submit() {
 function submitForReview() {
   const msg = validate()
   if (msg) return { valid: false, message: msg }
-  const hasDeliverable = (localValue.deliverables && localValue.deliverables.length > 0)
-    || (deliverableFileList.value && deliverableFileList.value.length > 0)
-  if (!hasDeliverable) {
-    return { valid: false, message: '提交审核时必须上传交付物' }
-  }
-  if (!localValue.completionNotes || !String(localValue.completionNotes).trim()) {
-    return { valid: false, message: '提交审核时必须填写完成情况' }
+  const validation = validateSubmitForReview({
+    deliverables: localValue.deliverables,
+    deliverableFiles: deliverableFileList.value,
+    completionNotes: localValue.completionNotes
+  })
+  if (!validation.valid) {
+    return { valid: false, message: validation.message }
   }
   const data = { ...localValue, status: 'REVIEW' }
   emit('submit-review', data)

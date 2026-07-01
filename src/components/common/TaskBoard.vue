@@ -143,6 +143,7 @@ import { useUserStore } from '@/stores/user'
 import { getPriorityType, getPriorityLabel as getPriorityText } from '@/views/Dashboard/workbench-formatters.js'
 import { isTaskAssignee } from '@/utils/permission.js'
 import { hexToSoftBackground } from '@/utils/color.js'
+import { validateSubmitForReview } from '@/composables/useTaskSubmissionValidation.js'
 import TaskDeliverableUploadDialog from './TaskDeliverableUploadDialog.vue'
 
 const props = defineProps({
@@ -226,9 +227,11 @@ const canTransitionToStatus = (task, targetStatus) => {
   if (target === 'REVIEW') {
     if (currentStatus === 'TODO') {
       if (!isTaskAssignee(task)) return false
-      const hasDeliverable = (task.deliverables?.length > 0) || task.hasDeliverable
-      const hasCompletionNotes = task.completionNotes?.trim() !== ''
-      return hasDeliverable && hasCompletionNotes
+      return validateSubmitForReview({
+        deliverables: task.deliverables,
+        hasDeliverable: task.hasDeliverable,
+        completionNotes: task.completionNotes
+      }).valid
     }
     return false
   }
