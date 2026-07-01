@@ -246,7 +246,7 @@ const handlePreviewFile = async (file) => {
 const handleDownloadFile = async (file) => {
   try {
     const res = await httpClient.get(`/api/archive/files/${file.fileId}/download`, { responseType: 'blob' })
-    downloadBlob(res, file.fileName || '下载文件', res.type || 'application/octet-stream')
+    downloadBlob(res.data, file.fileName || '下载文件', res.data.type || 'application/octet-stream')
     drawerRef.value?.fetchDetail()
   } catch { ElMessage.warning('文件下载失败') }
 }
