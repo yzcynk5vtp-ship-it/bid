@@ -35,6 +35,7 @@ public class ProjectInitiationMapper {
                 d.getAnnualEcommerceAmount(),
                 d.getBidOpenTime(), d.getOwnerUserId(), d.getDepartmentSnapshot(),
                 d.getDepositAmount(), d.getDepositPaymentMethod(), d.getNeedDeposit(),
+                d.getDepositDueDate(),
                 d.getCompetitors(),
                 d.getTenderAdverseItems(), d.getRiskAssessment(), d.getRiskMitigationPlan(),
                 d.getPmUnderstandsProcess(), d.getSupportNeeded(), d.getProjectPlanGap(),
@@ -53,6 +54,7 @@ public class ProjectInitiationMapper {
                 e.getAnnualRevenue(), e.getAnnualEcommerceAmount(),
                 e.getBidOpenTime(), e.getOwnerUserId(), e.getDepartmentSnapshot(),
                 e.getDepositAmount(), e.getDepositPaymentMethod(), e.getNeedDeposit(),
+                e.getDepositDueDate(),
                 e.getCompetitors(),
                 e.getTenderAdverseItems(), e.getRiskAssessment(), e.getRiskMitigationPlan(),
                 e.getPmUnderstandsProcess(), e.getSupportNeeded(), e.getProjectPlanGap(),
@@ -72,7 +74,7 @@ public class ProjectInitiationMapper {
                 .bidOpenTime(in.bidOpenTime())
                 .ownerUserId(in.ownerUserId()).departmentSnapshot(in.departmentSnapshot())
                 .depositAmount(in.depositAmount()).depositPaymentMethod(in.depositPaymentMethod())
-                .needDeposit(in.needDeposit())
+                .needDeposit(in.needDeposit()).depositDueDate(in.depositDueDate())
                 .competitors(in.competitors())
                 .tenderAdverseItems(in.tenderAdverseItems()).riskAssessment(in.riskAssessment())
                 .riskMitigationPlan(in.riskMitigationPlan()).pmUnderstandsProcess(in.pmUnderstandsProcess())
@@ -102,6 +104,7 @@ public class ProjectInitiationMapper {
                 patch.getDepositAmount() != null ? patch.getDepositAmount() : base.depositAmount(),
                 patch.getDepositPaymentMethod() != null ? patch.getDepositPaymentMethod() : base.depositPaymentMethod(),
                 patch.getNeedDeposit() != null ? patch.getNeedDeposit() : base.needDeposit(),
+                patch.getDepositDueDate() != null ? patch.getDepositDueDate() : base.depositDueDate(),
                 patch.getCompetitors() != null ? patch.getCompetitors() : base.competitors(),
                 patch.getTenderAdverseItems() != null ? patch.getTenderAdverseItems() : base.tenderAdverseItems(),
                 patch.getRiskAssessment() != null ? patch.getRiskAssessment() : base.riskAssessment(),

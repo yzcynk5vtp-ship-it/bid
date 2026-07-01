@@ -23,7 +23,7 @@ class InitiationFieldPolicyTest {
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("100000.00"), new BigDecimal("50000.00"),
                 LocalDateTime.of(2026, 6, 1, 9, 30), 42L, "投标部",
-                new BigDecimal("50000.00"), "银行汇票", "NO",
+                new BigDecimal("50000.00"), "银行汇票", "NO", null,
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
     }
@@ -39,7 +39,7 @@ class InitiationFieldPolicyTest {
                 "国网", 3, 12, InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
-                null, null, "YES",
+                null, null, "YES", null,
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         var deny = assertInstanceOf(InitiationFieldPolicy.Decision.Deny.class,
@@ -48,13 +48,41 @@ class InitiationFieldPolicyTest {
         assertTrue(deny.missingFields().contains("depositPaymentMethod"));
     }
 
+    // CO-457: needDeposit=YES 时 depositDueDate 必填
+    @Test
+    void needDepositYes_requiresDepositDueDate() {
+        var in = new InitiationFieldPolicy.InitiationInput(
+                "国网", 3, 12, InitiationFieldPolicy.ProjectType.OFFICE,
+                InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
+                new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
+                new BigDecimal("50000"), "WIRE", "YES", null,
+                null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null);
+        var deny = assertInstanceOf(InitiationFieldPolicy.Decision.Deny.class,
+                InitiationFieldPolicy.validate(in));
+        assertTrue(deny.missingFields().contains("depositDueDate"));
+    }
+
+    @Test
+    void needDepositYes_withDepositDueDate_allowed() {
+        var in = new InitiationFieldPolicy.InitiationInput(
+                "国网", 3, 12, InitiationFieldPolicy.ProjectType.OFFICE,
+                InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
+                new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
+                new BigDecimal("50000"), "WIRE", "YES",
+                LocalDateTime.of(2026, 7, 15, 17, 0),
+                null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null);
+        assertTrue(InitiationFieldPolicy.validate(in).allowed());
+    }
+
     @Test
     void needDepositNo_amountNotRequired() {
         var in = new InitiationFieldPolicy.InitiationInput(
                 "国网", 3, 12, InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
-                null, null, "NO",
+                null, null, "NO", null,
                 null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(InitiationFieldPolicy.validate(in).allowed());
@@ -66,7 +94,7 @@ class InitiationFieldPolicyTest {
                 InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         var deny = assertInstanceOf(InitiationFieldPolicy.Decision.Deny.class,
                 InitiationFieldPolicy.validate(in));
@@ -80,7 +108,7 @@ class InitiationFieldPolicyTest {
                 InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(InitiationFieldPolicy.validate(in).allowed());
     }
@@ -90,7 +118,7 @@ class InitiationFieldPolicyTest {
         var in = new InitiationFieldPolicy.InitiationInput("国网", 3, 12, null,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(InitiationFieldPolicy.validate(in).allowed());
     }
@@ -101,7 +129,7 @@ class InitiationFieldPolicyTest {
         var in = new InitiationFieldPolicy.InitiationInput("国网", 3, 12,
                 InitiationFieldPolicy.ProjectType.OFFICE,
                 null, new BigDecimal("1"), null, LocalDateTime.now(), 1L, "部门",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(InitiationFieldPolicy.validate(in).allowed());
     }
@@ -113,7 +141,7 @@ class InitiationFieldPolicyTest {
                 InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 BigDecimal.ZERO, null, LocalDateTime.now(), 1L, "部门",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(InitiationFieldPolicy.validate(in).allowed());
     }
@@ -124,7 +152,7 @@ class InitiationFieldPolicyTest {
                 InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, null, 1L, "部门",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(((InitiationFieldPolicy.Decision.Deny)
                 InitiationFieldPolicy.validate(in)).missingFields().contains("bidOpenTime"));
@@ -136,7 +164,7 @@ class InitiationFieldPolicyTest {
                 InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, LocalDateTime.now(), null, "部门",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(((InitiationFieldPolicy.Decision.Deny)
                 InitiationFieldPolicy.validate(in)).missingFields().contains("ownerUserId"));
@@ -148,7 +176,7 @@ class InitiationFieldPolicyTest {
                 InitiationFieldPolicy.ProjectType.OFFICE,
                 InitiationFieldPolicy.CustomerType.CENTRAL_SOE,
                 new BigDecimal("1"), null, LocalDateTime.now(), 1L, "",
-                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null,
+                new BigDecimal("1"), "汇票", "NO", null, null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(((InitiationFieldPolicy.Decision.Deny)
                 InitiationFieldPolicy.validate(in)).missingFields().contains("departmentSnapshot"));
@@ -174,7 +202,8 @@ class InitiationFieldPolicyTest {
                 a.projectType(), a.customerType(), a.annualRevenue(), a.annualEcommerceAmount(),
                 LocalDateTime.of(2027, 1, 1, 9, 0),
                 a.ownerUserId(), a.departmentSnapshot(),
-                a.depositAmount(), a.depositPaymentMethod(), a.needDeposit(), a.competitors(),
+                a.depositAmount(), a.depositPaymentMethod(), a.needDeposit(), a.depositDueDate(),
+                a.competitors(),
                 null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(InitiationFieldPolicy.validateUpdate(a, b, false).allowed());
@@ -188,7 +217,8 @@ class InitiationFieldPolicyTest {
                 a.projectType(), a.customerType(), a.annualRevenue(), a.annualEcommerceAmount(),
                 LocalDateTime.of(2027, 1, 1, 9, 0),
                 a.ownerUserId(), a.departmentSnapshot(),
-                a.depositAmount(), a.depositPaymentMethod(), a.needDeposit(), a.competitors(),
+                a.depositAmount(), a.depositPaymentMethod(), a.needDeposit(), a.depositDueDate(),
+                a.competitors(),
                 null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         var d = InitiationFieldPolicy.validateUpdate(a, b, true);
@@ -205,7 +235,8 @@ class InitiationFieldPolicyTest {
                 a.projectType(), a.customerType(), a.annualRevenue(), a.annualEcommerceAmount(),
                 a.bidOpenTime(),
                 a.ownerUserId(), a.departmentSnapshot(),
-                new BigDecimal("99999"), a.depositPaymentMethod(), a.needDeposit(), a.competitors(),
+                new BigDecimal("99999"), a.depositPaymentMethod(), a.needDeposit(), a.depositDueDate(),
+                a.competitors(),
                 null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null);
         assertTrue(InitiationFieldPolicy.validateUpdate(a, b, true).allowed());
