@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { ElMessage } from 'element-plus'
 import httpClient from '../api/client.js'
-import { parseFilenameFromDisposition, triggerBlobDownload, downloadWithFilename, normalizeApiDownloadUrl } from './download.js'
+import { parseFilenameFromDisposition, triggerBlobDownload, downloadWithFilename, normalizeApiDownloadUrl, showApiDownloadError } from './download.js'
 
 vi.mock('element-plus', () => ({
   ElMessage: {
@@ -222,5 +222,64 @@ describe('downloadWithFilename', () => {
 
     expect(openSpy).not.toHaveBeenCalled()
     expect(ElMessage.error).toHaveBeenCalledWith('登录已过期或访问入口不一致，请刷新页面并重新登录后下载')
+  })
+})
+
+describe('showApiDownloadError', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    vi.mocked(ElMessage.error).mockReset()
+  })
+
+  it('401 应提示重新登录', () => {
+    showApiDownloadError({ response: { status: 401 } })
+    expect(ElMessage.error).toHaveBeenCalledWith('登录已过期或访问入口不一致，请刷新页面并重新登录后下载')
+  })
+
+  it('403 应提示重新登录', () => {
+    showApiDownloadError({ response: { status: 403 } })
+    expect(ElMessage.error).toHaveBeenCalledWith('登录已过期或访问入口不一致，请刷新页面并重新登录后下载')
+  })
+
+  it('409 + 后端业务消息应透传给用户（CO-442）', () => {
+    // 后端 ApiResponse 通过 @JsonProperty("msg") 输出消息字段
+    // 场景：投标文件已进入「评标」阶段，文件只读不可下载
+    showApiDownloadError({
+      response: {
+        status: 409,
+        data: { success: false, code: 409, msg: '投标文件已进入「评标」阶段，文件只读不可下载' }
+      }
+    })
+    expect(ElMessage.error).toHaveBeenCalledWith('投标文件已进入「评标」阶段，文件只读不可下载')
+  })
+
+  it('400 + 后端业务消息应透传给用户', () => {
+    showApiDownloadError({
+      response: {
+        status: 400,
+        data: { success: false, code: 400, msg: '文件不存在或已被删除' }
+      }
+    })
+    expect(ElMessage.error).toHaveBeenCalledWith('文件不存在或已被删除')
+  })
+
+  it('无后端消息时应回退到通用错误提示', () => {
+    showApiDownloadError({ response: { status: 500 } })
+    expect(ElMessage.error).toHaveBeenCalledWith('文件下载失败，请稍后重试')
+  })
+
+  it('无 response 时应回退到通用错误提示', () => {
+    showApiDownloadError(new Error('Network Error'))
+    expect(ElMessage.error).toHaveBeenCalledWith('文件下载失败，请稍后重试')
+  })
+
+  it('后端 msg 字段为非字符串时应回退到通用错误提示', () => {
+    showApiDownloadError({
+      response: {
+        status: 409,
+        data: { success: false, code: 409, msg: { nested: 'object' } }
+      }
+    })
+    expect(ElMessage.error).toHaveBeenCalledWith('文件下载失败，请稍后重试')
   })
 })

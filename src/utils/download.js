@@ -89,10 +89,17 @@ export function normalizeApiDownloadUrl(url) {
   }
 }
 
-function showApiDownloadError(error) {
+export function showApiDownloadError(error) {
   const status = error?.response?.status
   if (status === 401 || status === 403) {
     ElMessage.error('登录已过期或访问入口不一致，请刷新页面并重新登录后下载')
+    return
+  }
+  // 透传后端业务消息（如"投标文件已进入「XX」阶段，文件只读不可下载"）
+  // 后端 ApiResponse 通过 @JsonProperty("msg") 输出消息字段
+  const backendMsg = error?.response?.data?.msg
+  if (backendMsg && typeof backendMsg === 'string') {
+    ElMessage.error(backendMsg)
     return
   }
   ElMessage.error('文件下载失败，请稍后重试')
