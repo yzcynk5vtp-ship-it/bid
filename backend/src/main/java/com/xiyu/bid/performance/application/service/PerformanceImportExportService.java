@@ -6,6 +6,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
@@ -20,6 +22,7 @@ public class PerformanceImportExportService {
     private final PerformanceExcelExporter exporter;
     private final PerformanceZipExporter zipExporter;
     private final PerformanceRowImporter rowImporter;
+    private final PerformanceImportAttachmentProcessor attachmentProcessor;
 
     /** 生成导入模板 Excel */
     public byte[] generateTemplate() throws IOException {
@@ -27,21 +30,34 @@ public class PerformanceImportExportService {
     }
 
     /** 批量导入（同步校验，返回结果报告） */
-    public PerformanceImportResult batchImport(MultipartFile file) throws IOException {
+    public PerformanceImportResult batchImport(MultipartFile file,
+                                                List<PerformanceImportAttachmentProcessor.AttachmentInput> attachments)
+            throws IOException {
         var result = new PerformanceImportResult();
+        List<PerformanceRowImporter.ImportRowResult> importedRows = new ArrayList<>();
         try (InputStream is = file.getInputStream(); var wb = new XSSFWorkbook(is)) {
             var sheet = wb.getSheetAt(0);
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 var row = sheet.getRow(i);
                 if (row == null) continue;
                 try {
-                    rowImporter.importRow(row, i + 1);
+                    var rowResult = rowImporter.importRow(row, i + 1);
+                    importedRows.add(rowResult);
                     result.successCount++;
                 } catch (RuntimeException e) {
                     result.failures.add(new PerformanceImportResult.ImportFailure(i + 1, getCellStr(row, 0), e.getMessage()));
                     result.failureCount++;
                 }
             }
+        }
+
+        // 附件包归档（即使 Excel 行全部失败也执行，便于用户发现附件问题）
+        if (attachments != null && !attachments.isEmpty() && !importedRows.isEmpty()) {
+            var attachResult = attachmentProcessor.attachFiles(importedRows, attachments);
+            result.attachedCount = attachResult.matchedCount();
+            result.unmatchedFiles = attachResult.unmatched().stream()
+                    .map(PerformanceImportAttachmentProcessor.UnmatchedFile::filename)
+                    .toList();
         }
         return result;
     }

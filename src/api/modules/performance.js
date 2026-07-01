@@ -166,7 +166,8 @@ export const performanceApi = {
 
   async downloadTemplate() {
     const res = await httpClient.get('/api/knowledge/performance/template', { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([res]))
+    const blob = res.data
+    const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', 'performance_template.xlsx')
@@ -177,9 +178,10 @@ export const performanceApi = {
     return res
   },
 
-  async batchImport(file) {
+  async batchImport(file, attachments = []) {
     const formData = new FormData()
     formData.append('file', file)
+    attachments.forEach(a => formData.append('attachments', a))
     return httpClient.post('/api/knowledge/performance/import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
@@ -192,7 +194,8 @@ export const performanceApi = {
     }
     const query = qs.toString() ? `?${qs.toString()}` : ''
     const res = await httpClient.get(`/api/knowledge/performance/export${query}`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([res]))
+    const blob = res.data
+    const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
     link.setAttribute('download', `performance_export_${new Date().toISOString().slice(0,10)}.xlsx`)
@@ -210,7 +213,8 @@ export const performanceApi = {
     }
     const query = qs.toString() ? `?${qs.toString()}` : ''
     const res = await httpClient.get(`/api/knowledge/performance/export-zip${query}`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([res]))
+    const blob = res.data
+    const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
     const timestamp = new Date().toISOString().slice(0,10).replace(/-/g, '')
