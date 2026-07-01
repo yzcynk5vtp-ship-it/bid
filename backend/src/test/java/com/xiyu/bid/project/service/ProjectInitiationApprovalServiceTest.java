@@ -257,6 +257,88 @@ class ProjectInitiationApprovalServiceTest {
     }
 
     /**
+     * CO-448：needDeposit=YES 且有保证金金额/截止日期时，自动创建的任务应通过 extendedFields
+     * 带出这两个字段，供前端「缴纳投标保证金」任务表单只读展示。
+     */
+    @Test
+    void approve_whenNeedDepositYes_populatesExtendedFieldsWithDepositAmountAndDeadline() {
+        LocalDateTime expectedDueDate = LocalDateTime.of(2026, 8, 15, 10, 0);
+        BigDecimal expectedAmount = new BigDecimal("50");
+        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
+                .id(1L)
+                .projectId(100L)
+                .reviewStatus(InitiationReviewStatus.PENDING_REVIEW.name())
+                .locked(Boolean.FALSE)
+                .needDeposit("YES")
+                .depositAmount(expectedAmount)
+                .depositPaymentMethod("WIRE")
+                .depositDueDate(expectedDueDate)
+                .build();
+        when(initiationRepo.findByProjectId(100L)).thenReturn(Optional.of(details));
+        when(projectStageService.currentStage(100L)).thenReturn(ProjectStage.INITIATED);
+        when(initiationRepo.save(any(ProjectInitiationDetails.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(projectRepository.findById(100L))
+                .thenReturn(Optional.of(Project.builder().id(100L).managerId(55L).build()));
+        when(leadRepo.save(any(ProjectLeadAssignment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        InitiationApprovalRequest req = InitiationApprovalRequest.builder()
+                .primaryLeadUserId(3L)
+                .build();
+
+        service.approve(100L, req, 5L);
+
+        ArgumentCaptor<TaskDTO> taskCaptor = ArgumentCaptor.forClass(TaskDTO.class);
+        verify(taskService).createSystemTask(taskCaptor.capture());
+        TaskDTO captured = taskCaptor.getValue();
+        assertThat(captured.getExtendedFields())
+                .isNotNull()
+                .containsEntry("_taskType", "deposit-payment")
+                .containsEntry("depositAmount", expectedAmount)
+                .containsEntry("depositDeadline", expectedDueDate);
+    }
+
+    /**
+     * CO-448：needDeposit=YES 但 depositAmount/depositDueDate 为 null 时，
+     * extendedFields 中对应键仍应存在（值为 null），保证前端字段键稳定可读。
+     */
+    @Test
+    void approve_whenNeedDepositYesButAmountAndDeadlineNull_stillPopulatesExtendedFieldsKeys() {
+        ProjectInitiationDetails details = ProjectInitiationDetails.builder()
+                .id(1L)
+                .projectId(100L)
+                .reviewStatus(InitiationReviewStatus.PENDING_REVIEW.name())
+                .locked(Boolean.FALSE)
+                .needDeposit("YES")
+                .depositAmount(null)
+                .depositPaymentMethod("WIRE")
+                .depositDueDate(null)
+                .build();
+        when(initiationRepo.findByProjectId(100L)).thenReturn(Optional.of(details));
+        when(projectStageService.currentStage(100L)).thenReturn(ProjectStage.INITIATED);
+        when(initiationRepo.save(any(ProjectInitiationDetails.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(projectRepository.findById(100L))
+                .thenReturn(Optional.of(Project.builder().id(100L).managerId(55L).build()));
+        when(leadRepo.save(any(ProjectLeadAssignment.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        InitiationApprovalRequest req = InitiationApprovalRequest.builder()
+                .primaryLeadUserId(3L)
+                .build();
+
+        service.approve(100L, req, 5L);
+
+        ArgumentCaptor<TaskDTO> taskCaptor = ArgumentCaptor.forClass(TaskDTO.class);
+        verify(taskService).createSystemTask(taskCaptor.capture());
+        TaskDTO captured = taskCaptor.getValue();
+        assertThat(captured.getExtendedFields())
+                .isNotNull()
+                .containsOnlyKeys("_taskType", "depositAmount", "depositDeadline");
+    }
+
+    /**
      * CO-456：驳回后重新审批时，secondaryLeadUserId=null 不应覆盖已有的辅助人员。
      * 场景：首次审批设置了辅助人员（secondary=20）→ 驳回 → 重新审批只传 primary（secondary=null）
      * 期望：辅助人员保持原有值 20，不被清空

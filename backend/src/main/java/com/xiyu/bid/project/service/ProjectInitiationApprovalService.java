@@ -36,6 +36,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 立项审核服务。产品蓝图 V1.1 §4.3。
@@ -198,6 +200,13 @@ public class ProjectInitiationApprovalService {
         try {
             String paymentMethodText = "GUARANTEE".equalsIgnoreCase(depositPaymentMethod) ? "保险/保函" : "电汇";
             String description = buildDepositDescription(depositAmount, paymentMethodText);
+            // CO-448: 通过 extendedFields 带出保证金金额和缴纳截止日期，供任务表单只读展示。
+            // _taskType 标记用于前端识别任务类型（替代标题字符串匹配，避免标题改动导致字段消失）。
+            // 其余 4 个字段（收款方/收款账号/实际缴纳日期/预计归还日期）由前端执行人提交时填写。
+            Map<String, Object> extendedFields = new HashMap<>();
+            extendedFields.put("_taskType", "deposit-payment");
+            extendedFields.put("depositAmount", depositAmount);
+            extendedFields.put("depositDeadline", depositDueDate);
             TaskDTO depositTask = TaskDTO.builder()
                     .projectId(projectId)
                     .title("缴纳投标保证金")
@@ -205,6 +214,7 @@ public class ProjectInitiationApprovalService {
                     .assigneeId(assigneeId)
                     .priority(Task.Priority.HIGH)
                     .dueDate(depositDueDate)
+                    .extendedFields(extendedFields)
                     .build();
             taskService.createSystemTask(depositTask);
             log.info("Auto-created deposit task for project={}, assignee={}, dueDate={}",
