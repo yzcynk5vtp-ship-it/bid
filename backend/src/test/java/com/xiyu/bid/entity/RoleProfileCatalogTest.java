@@ -189,8 +189,8 @@ class RoleProfileCatalogTest {
     // ── CO-394-D：资质证书管理权限点对齐（三角色一致性） ──
 
     @Test
-    @DisplayName("CO-394: 投标组长/管理员/专员三角色 menuPermissions 含 qualification.manage")
-    void knowledgeRolesShouldIncludeQualificationManagePermission() {
+    @DisplayName("CO-439: 投标组长/管理员/专员三角色 menuPermissions 含 qualification.manage 和 qualification.view（读+管）")
+    void knowledgeRolesShouldIncludeQualificationManageAndViewPermissions() {
         String[] targetRoles = {
                 RoleProfileCatalog.BID_LEAD_CODE,
                 RoleProfileCatalog.BID_ADMIN_CODE,
@@ -201,11 +201,15 @@ class RoleProfileCatalogTest {
                     .as("%s 必须持有 qualification.manage 才能管理资质证书",
                             RoleProfileCatalog.canonicalCode(code))
                     .contains(RoleProfileCatalog.QUALIFICATION_MANAGE_PERMISSION);
+            assertThat(RoleProfileCatalog.definitionForCode(code).menuPermissions())
+                    .as("%s 必须持有 qualification.view 才能查看资质证书（读端点）",
+                            RoleProfileCatalog.canonicalCode(code))
+                    .contains(RoleProfileCatalog.QUALIFICATION_VIEW_PERMISSION);
         }
     }
 
     @Test
-    @DisplayName("CO-394: 行政人员(bid-administration) 仅含 qualification.view 只读，不含 qualification.manage")
+    @DisplayName("CO-439: 行政人员(bid-administration) 仅含 qualification.view 只读，可访问资质证书读端点（不含 qualification.manage）")
     void adminStaffShouldHaveQualificationViewOnlyWithoutManage() {
         RoleProfileCatalog.SeedDefinition def =
                 RoleProfileCatalog.definitionForCode(RoleProfileCatalog.ADMIN_STAFF_CODE);
