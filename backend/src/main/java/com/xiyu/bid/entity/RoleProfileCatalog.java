@@ -2,28 +2,8 @@ package com.xiyu.bid.entity;
 
 /**
  * 投标系统角色目录——角色定义与 seed 的单一真相来源。
- *
- * <h3>角色定义（DEFINITIONS map）</h3>
- * 所有标准角色的 SeedDefinition 在此定义，包括角色 code、显示名、说明、dataScope 和菜单权限。
- *
- * <h3>角色 seed（{@link #seedDefinitions()}）</h3>
- * 返回的列表决定了哪些角色会在<b>系统初始化/bootstrap</b>时写入数据库 role_profile 表。
- * 只有在此列表中的角色才会计入「系统设置 → 角色权限」页面。
- *
- * <h3>角色数据来源链路</h3>
- * 角色数据可通过三种方式进入数据库：
- * <ol>
- *   <li><b>Seed</b>（{@link #seedDefinitions()}）：系统初始化/bootstrap 时写入。</li>
- *   <li><b>Flyway 迁移</b>：通过 db/migration-mysql/Vxxx 脚本写入。</li>
- *   <li><b>运维手动 INSERT</b>：直接操作数据库。</li>
- * </ol>
- * 通常一个角色只需在 seed 中定义即可，seed 与 DEFINITIONS 必须保持同步——
- * DEFINITIONS 中新增角色时必须在 seed 列表中加入，删除时必须从 seed 列表中移除。
- *
- * <h3>OSS 外部角色映射</h3>
- * 参见 {@code OrganizationUserSyncWriter.OSS_TO_INTERNAL_ROLE}。
- * 外部 OSS 角色 code（如 /bidAdmin、bid-TeamLeader）通过该映射表转换为内部 code。
- * 映射目标必须在 DEFINITIONS map 中（或是 admin/manager/staff 等系统内置 code）。
+ * <p>角色数据来源链路：Seed（{@link #seedDefinitions()}）→ bootstrap 写入 DB；或 Flyway 迁移；或运维手动 INSERT。
+ * <p>OSS 外部角色映射参见 {@code OrganizationUserSyncWriter.OSS_TO_INTERNAL_ROLE}。
  */
 
 import java.util.Collections;
