@@ -39,7 +39,7 @@ import java.util.Objects;
  * 蓝图规则：
  * <ul>
  *   <li>接收人：行政人员（admin_staff）、投标管理员（bid_admin）、投标组长（bid_lead）</li>
- *   <li>渠道：站内信（Notification）+ 企微（NotificationCreatedWeComListener 自动转发）</li>
+ *   <li>渠道：站内信（Notification）+ 企微（NotificationDeliveryTaskListener 异步入队）</li>
  *   <li>频次：每张证书每日至多 1 次（lastRemindedAt + 24h 去重）</li>
  *   <li>跳过：下架（status=RETIRED）、续期（remainingDays > alertDays）、提醒策略被关闭</li>
  * </ul>

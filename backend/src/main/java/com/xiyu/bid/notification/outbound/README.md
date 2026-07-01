@@ -19,7 +19,7 @@
 | `OutboundLog.java` | Entity | 出站日志实体 |
 | `OutboundLogRepository.java` | Repository | 出站日志数据访问 |
 | `WeComPushService.java` | Service | 编排：收件人解析 + 格式化 + 调用发送 |
-| `NotificationCreatedWeComListener.java` | Listener | `@Async + @TransactionalEventListener(AFTER_COMMIT)` |
+| `NotificationDeliveryTaskListener.java` | Listener | `@TransactionalEventListener(AFTER_COMMIT) + REQUIRES_NEW` — 企微推送任务入库（唯一监听器） |
 
 ## 设计要点
 - **纯核心**：`core/` 无 Spring / DB / IO / 日志依赖，受 `FPJavaArchitectureTest` 保护

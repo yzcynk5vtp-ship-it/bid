@@ -46,6 +46,8 @@ public class NotificationApplicationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationApplicationService.class);
 
+    private static final Long SYSTEM_USER_ID = 0L;
+
     private final NotificationRepository notificationRepository;
     private final UserNotificationRepository userNotificationRepository;
     private final ObjectMapper objectMapper;
@@ -115,6 +117,7 @@ public class NotificationApplicationService {
             }
         }
 
+        Long effectiveCreatedBy = createdBy != null ? createdBy : SYSTEM_USER_ID;
         Notification toPersist = Notification.builder()
             .type(type.name())
             .sourceEntityType(request.sourceEntityType())
@@ -122,7 +125,7 @@ public class NotificationApplicationService {
             .title(request.title())
             .body(request.body())
             .payloadJson(serializePayload(request.payload()))
-            .createdBy(createdBy)
+            .createdBy(effectiveCreatedBy)
             .build();
         Notification saved = notificationRepository.save(toPersist);
 
