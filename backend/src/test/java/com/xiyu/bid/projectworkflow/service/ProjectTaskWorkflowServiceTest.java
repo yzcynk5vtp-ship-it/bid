@@ -136,15 +136,67 @@ class ProjectTaskWorkflowServiceTest {
         Task task = Task.builder().id(2L).projectId(10L).title("T").status(Task.Status.TODO).build();
         when(guardService.requireTask(10L, 2L)).thenReturn(task);
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(taskDeliverableRepository.countByTaskId(2L)).thenReturn(1L);
         ProjectTaskStatusUpdateRequest req = ProjectTaskStatusUpdateRequest.builder()
                 .status(ProjectTaskStatusUpdateRequest.Status.REVIEW)
                 .reviewComment("不应该被保存")
+                .completionNotes("已完成，请审核")
                 .build();
 
         ProjectTaskViewDTO dto = service.updateProjectTaskStatus(10L, 2L, req, "assignee");
 
         assertThat(dto.getStatus()).isEqualTo("review");
         assertThat(dto.getExtendedFields()).doesNotContainKey("lastRejectReason");
+    }
+
+    // ---------- CO-458: 提交审核验证 ----------
+
+    @Test
+    void co458_submitReviewWithoutDeliverables_throws422() {
+        Task task = Task.builder().id(3L).projectId(10L).title("T").status(Task.Status.TODO).build();
+        when(guardService.requireTask(10L, 3L)).thenReturn(task);
+        when(taskDeliverableRepository.countByTaskId(3L)).thenReturn(0L);
+        ProjectTaskStatusUpdateRequest req = ProjectTaskStatusUpdateRequest.builder()
+                .status(ProjectTaskStatusUpdateRequest.Status.REVIEW)
+                .completionNotes("已完成")
+                .build();
+
+        assertThatThrownBy(() -> service.updateProjectTaskStatus(10L, 3L, req, "assignee"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("提交审核时必须上传交付物");
+    }
+
+    @Test
+    void co458_submitReviewWithoutCompletionNotes_throws422() {
+        Task task = Task.builder().id(4L).projectId(10L).title("T").status(Task.Status.TODO).build();
+        when(guardService.requireTask(10L, 4L)).thenReturn(task);
+        when(taskDeliverableRepository.countByTaskId(4L)).thenReturn(1L);
+        ProjectTaskStatusUpdateRequest req = ProjectTaskStatusUpdateRequest.builder()
+                .status(ProjectTaskStatusUpdateRequest.Status.REVIEW)
+                .completionNotes("  ")
+                .build();
+
+        assertThatThrownBy(() -> service.updateProjectTaskStatus(10L, 4L, req, "assignee"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("提交审核时必须填写完成情况");
+    }
+
+    @Test
+    void co458_submitReviewWithDeliverablesAndNotes_persistsCompletionNotes() {
+        Task task = Task.builder().id(5L).projectId(10L).title("T").status(Task.Status.TODO).build();
+        when(guardService.requireTask(10L, 5L)).thenReturn(task);
+        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(taskDeliverableRepository.countByTaskId(5L)).thenReturn(2L);
+        when(taskDeliverableRepository.findByTaskIdOrderByCreatedAtDesc(5L)).thenReturn(List.of());
+        ProjectTaskStatusUpdateRequest req = ProjectTaskStatusUpdateRequest.builder()
+                .status(ProjectTaskStatusUpdateRequest.Status.REVIEW)
+                .completionNotes("  已完成全部交付内容，请审核  ")
+                .build();
+
+        ProjectTaskViewDTO dto = service.updateProjectTaskStatus(10L, 5L, req, "assignee");
+
+        assertThat(dto.getStatus()).isEqualTo("review");
+        assertThat(dto.getCompletionNotes()).isEqualTo("已完成全部交付内容，请审核");
     }
 
     // ---------- CO-460: toTaskView 必须返回 deliverables / attachments（治本，对齐独立任务）----------

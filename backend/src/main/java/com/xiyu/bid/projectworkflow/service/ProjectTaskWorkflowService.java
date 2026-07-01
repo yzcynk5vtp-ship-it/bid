@@ -18,6 +18,7 @@ import com.xiyu.bid.projectworkflow.entity.ProjectScoreDraft;
 import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.repository.TaskRepository;
 import com.xiyu.bid.repository.UserRepository;
+import com.xiyu.bid.task.core.TaskTransitionPolicy;
 import com.xiyu.bid.task.dto.TaskDeliverableAssembler;
 import com.xiyu.bid.task.dto.TaskDeliverableDTO;
 import com.xiyu.bid.task.entity.TaskDeliverable;
@@ -125,8 +126,26 @@ class ProjectTaskWorkflowService {
             }
         }
 
+        // CO-458: TODO -> REVIEW (提交审核) 时校验交付物和完成情况
+        if (task.getStatus() == Task.Status.TODO && targetStatus == Task.Status.REVIEW) {
+            long deliverableCount = taskDeliverableRepository.countByTaskId(taskId);
+            TaskTransitionPolicy.TransitionResult result = TaskTransitionPolicy.validateSubmission(
+                    TaskTransitionPolicy.TaskStatus.TODO,
+                    TaskTransitionPolicy.TaskStatus.REVIEW,
+                    (int) deliverableCount,
+                    request.getCompletionNotes());
+            if (!result.allowed()) {
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, result.reason());
+            }
+        }
+
         Task before = TaskSnapshots.copy(task);
         task.setStatus(targetStatus);
+
+        // CO-458: 提交审核时持久化 completionNotes
+        if (targetStatus == Task.Status.REVIEW && hasText(request.getCompletionNotes())) {
+            task.setCompletionNotes(request.getCompletionNotes().trim());
+        }
         // CO-413: 驳回原因持久化到 extendedFields.lastRejectReason，供执行人查看
         if (targetStatus == Task.Status.TODO && hasText(request.getReviewComment())) {
             Map<String, Object> extendedFields = new java.util.LinkedHashMap<>(deserializeExtendedFields(task));
