@@ -60,7 +60,6 @@ public class PlatformAccountController {
     private final UserRepository userRepository;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<ApiResponse<PlatformAccountDTO>> createAccount(
             @Valid @RequestBody PlatformAccountCreateRequest request,
             @AuthenticationPrincipal UserDetails currentUser) {

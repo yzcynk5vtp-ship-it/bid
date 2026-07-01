@@ -43,12 +43,14 @@ public class PlatformAccountService {
     private final EffectiveRoleResolver effectiveRoleResolver;
     /** CO-390: contactPerson userId → "姓名（工号）" 展示标签派生（独立类避免行数超 300）。 */
     private final PlatformAccountContactLabelEnricher contactLabelEnricher;
+    private final AccountCreationWhitelistStore whitelistStore;
 
     /** Create a new platform account. */
     @Transactional
     @Auditable(action = "CREATE", entityType = "PlatformAccount",
               description = "Created platform account")
     public PlatformAccountDTO createAccount(PlatformAccountCreateRequest request, User currentUser) {
+        whitelistStore.checkCreatePermission(effectiveRoleResolver.resolveRoleCode(currentUser), currentUser);
         validateRequest(request);
 
         if (repository.findByUsername(request.getUsername()).isPresent()) {
@@ -284,17 +286,13 @@ public class PlatformAccountService {
     }
 
     private void validateRequest(PlatformAccountCreateRequest request) {
-        if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+        if (request.getUsername() == null || request.getUsername().trim().isEmpty())
             throw new IllegalArgumentException("Username cannot be null or empty");
-        }
-        if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+        if (request.getPassword() == null || request.getPassword().trim().isEmpty())
             throw new IllegalArgumentException("Password cannot be null or empty");
-        }
-        if (request.getAccountName() == null || request.getAccountName().trim().isEmpty()) {
+        if (request.getAccountName() == null || request.getAccountName().trim().isEmpty())
             throw new IllegalArgumentException("Account name cannot be null or empty");
-        }
-        if (request.getPlatformType() == null) {
+        if (request.getPlatformType() == null)
             throw new IllegalArgumentException("Platform type cannot be null");
-        }
     }
 }
