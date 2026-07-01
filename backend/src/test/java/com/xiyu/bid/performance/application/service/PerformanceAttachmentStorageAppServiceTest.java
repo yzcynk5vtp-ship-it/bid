@@ -162,4 +162,53 @@ class PerformanceAttachmentStorageAppServiceTest {
                     "fileUrl 指向的文件应存在: " + result.fileUrl());
         }
     }
+
+    // CO-442 补充：支持 Word / Excel 上传
+    @Test
+    @DisplayName("上传 .docx 文件成功")
+    void upload_docxFile_succeed() throws IOException {
+        ReflectionTestUtils.setField(service, "uploadDir", tempDir.toString());
+        MultipartFile file = new MockMultipartFile(
+                "file", "合同协议.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "hello".getBytes());
+        var result = service.upload("CONTRACT_AGREEMENT", file);
+        assertEquals("合同协议.docx", result.fileName());
+        assertTrue(Files.exists(Paths.get(result.fileUrl())));
+    }
+
+    @Test
+    @DisplayName("上传 .xlsx 文件成功")
+    void upload_xlsxFile_succeed() throws IOException {
+        ReflectionTestUtils.setField(service, "uploadDir", tempDir.toString());
+        MultipartFile file = new MockMultipartFile(
+                "file", "报价清单.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "hello".getBytes());
+        var result = service.upload("OTHER", file);
+        assertEquals("报价清单.xlsx", result.fileName());
+        assertTrue(Files.exists(Paths.get(result.fileUrl())));
+    }
+
+    @Test
+    @DisplayName("上传 .doc 文件成功")
+    void upload_docFile_succeed() throws IOException {
+        ReflectionTestUtils.setField(service, "uploadDir", tempDir.toString());
+        MultipartFile file = new MockMultipartFile(
+                "file", "资质证明.doc", "application/msword", "hello".getBytes());
+        var result = service.upload("RELATIONSHIP_PROOF", file);
+        assertEquals("资质证明.doc", result.fileName());
+        assertTrue(Files.exists(Paths.get(result.fileUrl())));
+    }
+
+    @Test
+    @DisplayName("上传 .xls 文件成功")
+    void upload_xlsFile_succeed() throws IOException {
+        ReflectionTestUtils.setField(service, "uploadDir", tempDir.toString());
+        MultipartFile file = new MockMultipartFile(
+                "file", "数据表格.xls", "application/vnd.ms-excel", "hello".getBytes());
+        var result = service.upload("CATEGORY_PAGE", file);
+        assertEquals("数据表格.xls", result.fileName());
+        assertTrue(Files.exists(Paths.get(result.fileUrl())));
+    }
 }

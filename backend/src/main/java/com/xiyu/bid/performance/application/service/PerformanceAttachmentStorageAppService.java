@@ -26,8 +26,13 @@ import java.util.UUID;
 public class PerformanceAttachmentStorageAppService {
 
     private static final long MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    // CO-442: 支持 PDF / JPG / PNG / Word / Excel
     private static final Set<String> ALLOWED_TYPES = Set.of(
-            "application/pdf", "image/jpeg", "image/png", "image/jpg");
+            "application/pdf", "image/jpeg", "image/png", "image/jpg",
+            "application/msword", // .doc
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+            "application/vnd.ms-excel", // .xls
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"); // .xlsx
     private static final Set<String> ALLOWED_FILE_TYPES = Set.of(
             "CONTRACT_AGREEMENT", "MALL_SCREENSHOT", "SOE_DIRECTORY",
             "CATEGORY_PAGE", "RELATIONSHIP_PROOF", "BID_NOTICE", "OTHER");

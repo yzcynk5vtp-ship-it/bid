@@ -21,7 +21,7 @@
           <el-upload
             :http-request="(opt) => handleUpload({ ...opt, fileType: 'CONTRACT_AGREEMENT' })"
             :show-file-list="false"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
             multiple
           >
             <el-button type="primary" size="small">上传文件</el-button>
@@ -42,7 +42,7 @@
           <el-upload
             :http-request="(opt) => handleUpload({ ...opt, fileType: 'MALL_SCREENSHOT' })"
             :show-file-list="false"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
             multiple
           >
             <el-button type="primary" size="small">上传文件</el-button>
@@ -64,7 +64,7 @@
             <el-upload
               :http-request="(opt) => handleUpload({ ...opt, fileType: 'SOE_DIRECTORY' })"
               :show-file-list="false"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
               multiple
             >
               <el-button type="primary" size="small">上传文件</el-button>
@@ -83,7 +83,7 @@
             <el-upload
               :http-request="(opt) => handleUpload({ ...opt, fileType: 'RELATIONSHIP_PROOF' })"
               :show-file-list="false"
-              accept=".pdf,.jpg,.jpeg,.png"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
               multiple
             >
               <el-button type="primary" size="small">上传文件</el-button>
@@ -108,7 +108,7 @@
           <el-upload
             :http-request="(opt) => handleUpload({ ...opt, fileType: 'CATEGORY_PAGE' })"
             :show-file-list="false"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
             multiple
           >
             <el-button type="primary" size="small">上传文件</el-button>
@@ -129,7 +129,7 @@
           <el-upload
             :http-request="(opt) => handleUpload({ ...opt, fileType: 'BID_NOTICE' })"
             :show-file-list="false"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
             multiple
           >
             <el-button type="primary" size="small">上传文件</el-button>
@@ -150,7 +150,7 @@
           <el-upload
             :http-request="(opt) => handleUpload({ ...opt, fileType: 'OTHER' })"
             :show-file-list="false"
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
             multiple
           >
             <el-button type="primary" size="small">上传文件</el-button>
