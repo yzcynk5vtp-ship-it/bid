@@ -187,4 +187,53 @@ describe('ProjectArchive', () => {
 
     wrapper.unmount()
   })
+
+  // CO-453: 预览 PDF 时应传 res.data (Blob) 给 createObjectURL，而非整个 axios response 对象
+  it('passes Blob (res.data) to createObjectURL when previewing PDF', async () => {
+    const mockBlob = new Blob(['%PDF-1.4 mock'], { type: 'application/pdf' })
+    httpClient.get
+      .mockResolvedValueOnce({ totalArchives: 0, closedProjects: 0, caseCount: 0, reuseCount: 0 })
+      .mockResolvedValueOnce({ content: [], totalElements: 0 })
+      .mockResolvedValueOnce({ data: mockBlob, status: 200, headers: {} })
+
+    // jsdom 未实现 URL.createObjectURL，需手动定义后再 spy
+    if (!URL.createObjectURL) {
+      URL.createObjectURL = vi.fn()
+    }
+    const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url')
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+
+    const wrapper = mount(ProjectArchive, {
+      global: {
+        stubs: {
+          ElCard: { template: '<div><slot /><slot name="header" /></div>' },
+          ElForm: true, ElFormItem: { props: ['label'], template: '<div><slot /></div>' },
+          ElInput: true, ElDatePicker: true, ElSelect: true, ElOption: true,
+          ElButton: true, ElTable: true, ElTableColumn: true, ElPagination: true,
+          ElDrawer: true, ElRadioGroup: true, ElRadioButton: true,
+          ElIcon: true, ElTag: true, ElEmpty: true, ElTimeline: true, ElTimelineItem: true,
+          FileCategoryPopover: true, ArchiveStatsCards: true, ArchiveStatusTabs: true,
+          ArchiveDetailDrawer: true,
+          UserPicker: { name: 'UserPicker', props: ['modelValue', 'mode', 'valueField', 'placeholder', 'initialOptions', 'clearable'], emits: ['update:modelValue', 'select'], template: '<div />' },
+          Files: true, Search: true, Refresh: true
+        }
+      },
+      attachTo: document.body
+    })
+
+    await flushPromises()
+
+    await wrapper.vm.handlePreviewFile({ fileId: 1, fileName: 'test.pdf' })
+    await flushPromises()
+
+    expect(httpClient.get).toHaveBeenCalledWith('/api/archive/files/1/preview', { responseType: 'blob' })
+    expect(createObjectURLSpy).toHaveBeenCalledTimes(1)
+    const passedArg = createObjectURLSpy.mock.calls[0][0]
+    expect(passedArg).toBe(mockBlob)
+    expect(openSpy).toHaveBeenCalledWith('blob:mock-url', '_blank')
+
+    createObjectURLSpy.mockRestore()
+    openSpy.mockRestore()
+    wrapper.unmount()
+  })
 })
