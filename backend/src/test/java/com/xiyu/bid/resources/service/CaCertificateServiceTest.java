@@ -2,10 +2,12 @@ package com.xiyu.bid.resources.service;
 
 import com.xiyu.bid.entity.User;
 import com.xiyu.bid.platform.util.PasswordEncryptionUtil;
+import com.xiyu.bid.resources.dto.CaCertificateRequest;
 import com.xiyu.bid.resources.entity.CaCertificateEntity;
 import com.xiyu.bid.resources.repository.CaCertificatePlatformRepository;
 import com.xiyu.bid.resources.repository.CaCertificateRepository;
 import com.xiyu.bid.repository.UserRepository;
+import com.xiyu.bid.resources.service.CaBusinessException;
 import com.xiyu.bid.security.EffectiveRoleResolver;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,11 +16,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDate;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -100,7 +105,48 @@ class CaCertificateServiceTest {
         verify(certificateRepository, never()).save(any());
     }
 
-    // ── helpers ──
+    // ── create/update 密码校验（CO-435 修复） ──
+
+    @Test
+    void create_emptyPassword_throwsBusinessException() {
+        CaCertificateService service = newService();
+        CaCertificateRequest req = buildRequest("");
+
+        assertThatThrownBy(() -> service.create(req))
+                .isInstanceOf(CaBusinessException.class)
+                .hasMessageContaining("密码");
+
+        verify(certificateRepository, never()).save(any());
+    }
+
+    @Test
+    void update_emptyPassword_skipsPasswordUpdate() {
+        CaCertificateService service = newService();
+        CaCertificateEntity ca = caCertificate(1L, 20L);
+        when(certificateRepository.findById(1L)).thenReturn(Optional.of(ca));
+        when(certificateRepository.save(any())).thenReturn(ca);
+
+        CaCertificateRequest req = buildRequest("");
+        req.setExpiryDate(LocalDate.now().plusDays(60));
+
+        assertThatCode(() -> service.update(1L, req)).doesNotThrowAnyException();
+
+        verify(passwordEncryptionUtil, never()).encrypt(anyString());
+    }
+
+    private CaCertificateRequest buildRequest(String caPassword) {
+        CaCertificateRequest req = new CaCertificateRequest();
+        req.setCaType("ENTITY_CA");
+        req.setSealType("OFFICIAL_SEAL");
+        req.setCaPassword(caPassword);
+        req.setExpiryDate(LocalDate.now().plusDays(30));
+        req.setCustodianId(20L);
+        req.setCustodianName("保管员");
+        req.setIssuer("测试颁发机构");
+        req.setHolderName("测试持有人");
+        req.setPlatformIds(Collections.emptyList());
+        return req;
+    }
 
     private CaCertificateService newService() {
         return new CaCertificateService(

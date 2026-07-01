@@ -42,6 +42,9 @@ public class CaCertificateService {
 
     @Transactional
     public CaCertificateDTO create(CaCertificateRequest request) {
+        if (request.getCaPassword() == null || request.getCaPassword().isBlank()) {
+            throw new CaBusinessException("CA密码不能为空");
+        }
         String storedPassword = passwordEncryptionUtil.encrypt(request.getCaPassword());
         CaCertificateEntity entity = CaCertificateEntity.builder()
                 .caType(request.getCaType())

@@ -24,7 +24,6 @@ public class CaCertificateRequest {
 
     private String electronicAccount;
 
-    @NotBlank(message = "CA密码不能为空")
     private String caPassword;
 
     private String issuer;
