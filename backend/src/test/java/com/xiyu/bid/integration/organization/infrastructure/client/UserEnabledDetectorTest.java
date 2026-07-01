@@ -69,6 +69,34 @@ class UserEnabledDetectorTest {
     }
 
     @Test
+    @DisplayName("activationStatus=1 应判定为已激活（OSS 生产接口真实字段名）")
+    void isEnabled_activationStatus1_returnsTrue() {
+        JsonNode node = parseJson("{\"activationStatus\": 1}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isTrue();
+    }
+
+    @Test
+    @DisplayName("activationStatus=0 应判定为未激活（OSS 生产接口真实字段名）")
+    void isEnabled_activationStatus0_returnsFalse() {
+        JsonNode node = parseJson("{\"activationStatus\": 0}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isFalse();
+    }
+
+    @Test
+    @DisplayName("activationStatus 优先于 activationState（两者并存时以生产字段名为准）")
+    void isEnabled_activationStatus_overridesActivationState() {
+        JsonNode node = parseJson("{\"activationStatus\": 0, \"activationState\": 1}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isFalse();
+    }
+
+    @Test
+    @DisplayName("真实 OSS 抓包样本：del=0+status=1+employeeStatus=3+activationStatus=1 应判定为启用")
+    void isEnabled_realOssSample_inService_returnsTrue() {
+        JsonNode node = parseJson("{\"del\": 0, \"status\": 1, \"employeeStatus\": 3, \"activationStatus\": 1}");
+        assertThat(UserEnabledDetector.isEnabled(node)).isTrue();
+    }
+
+    @Test
     @DisplayName("status=1 应判定为在职")
     void isEnabled_status1_returnsTrue() {
         JsonNode node = parseJson("{\"status\": 1}");
