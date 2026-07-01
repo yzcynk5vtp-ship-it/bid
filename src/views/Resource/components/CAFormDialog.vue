@@ -104,9 +104,11 @@
       </el-form-item>
 
       <el-form-item label="保管员" prop="custodianId">
+        <!-- CO-451: 编辑模式下传入 initialOptions 以显示"姓名（工号）"格式 -->
         <UserPicker
           v-model="form.custodianId"
           mode="search"
+          :initial-options="custodianInitialOptions"
           placeholder="搜索选择保管员"
           clearable
           style="width: 100%"
@@ -182,6 +184,8 @@ function createDefaultForm() {
     caPlatformUrl: '',
     custodianName: '',
     custodianId: '',
+    // CO-451: 保管人工号，用于构造 initialOptions
+    custodianEmployeeNumber: '',
     status: 'ACTIVE',
     remarks: ''
   }
@@ -219,6 +223,8 @@ watch(() => props.ca, (ca) => {
     form.caPlatformUrl = ca.caPlatformUrl || ''
     form.custodianId = ca.custodianId || ''
     form.custodianName = ca.custodianName || ''
+    // CO-451: 填充保管人工号
+    form.custodianEmployeeNumber = ca.custodianEmployeeNumber || ''
     form.status = ca.status || 'ACTIVE'
     form.remarks = ca.remarks || ca.remark || ''
   } else {
@@ -231,6 +237,17 @@ watch(() => props.ca, (ca) => {
 
 watch(visible, (open) => {
   if (open) searchPlatforms('')
+})
+
+// CO-451: 编辑模式下为 UserPicker 提供 initialOptions（用于显示"姓名（工号）"格式）
+const custodianInitialOptions = computed(() => {
+  if (!props.ca?.custodianId) return []
+  return [{
+    id: props.ca.custodianId,
+    name: props.ca.custodianName,
+    fullName: props.ca.custodianName,
+    employeeNumber: props.ca.custodianEmployeeNumber || ''
+  }]
 })
 
 // When CA type changes to ENTITY_CA, clear electronic account
