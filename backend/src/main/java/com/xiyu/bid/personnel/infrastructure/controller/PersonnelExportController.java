@@ -6,6 +6,7 @@ import com.xiyu.bid.personnel.application.service.ExportPersonnelAppService;
 import com.xiyu.bid.personnel.application.service.ExportPersonnelAppService.ExportProgress;
 import com.xiyu.bid.personnel.application.service.ExportPersonnelAppService.ExportTaskInfo;
 import com.xiyu.bid.personnel.domain.valueobject.PersonnelStatus;
+import com.xiyu.bid.entity.RoleProfileCatalog;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -37,8 +38,11 @@ public class PersonnelExportController {
 
     private final ExportPersonnelAppService exportAppService;
 
+    // CO-438: 权限点统一为 RoleProfileCatalog 常量，与 PersonnelImportController 对齐
+    private static final String MANAGE_PERM = RoleProfileCatalog.PERSONNEL_MANAGE_PERMISSION;
+
     @PostMapping("/export")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader', 'bid-Team')")
+    @PreAuthorize("hasAuthority('" + MANAGE_PERM + "')")
     public ResponseEntity<ApiResponse<ExportTaskResponse>> startExport(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String departmentCode,
@@ -79,14 +83,14 @@ public class PersonnelExportController {
     }
 
     @GetMapping("/export/{taskId}")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader', 'bid-Team')")
+    @PreAuthorize("hasAuthority('" + MANAGE_PERM + "')")
     public ResponseEntity<ApiResponse<ExportProgress>> getExportProgress(@PathVariable String taskId) {
         ExportProgress progress = exportAppService.getProgress(taskId);
         return ResponseEntity.ok(ApiResponse.success("获取进度成功", progress));
     }
 
     @GetMapping("/export/{taskId}/download")
-    @PreAuthorize("hasAnyAuthority('/bidAdmin', 'bid-TeamLeader', 'bid-Team')")
+    @PreAuthorize("hasAuthority('" + MANAGE_PERM + "')")
     public ResponseEntity<Resource> downloadExportFile(@PathVariable String taskId) {
         try {
             byte[] zipBytes = exportAppService.getExportFile(taskId);

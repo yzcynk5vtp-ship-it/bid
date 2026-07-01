@@ -181,7 +181,7 @@ import PerformanceFormDialog from './components/PerformanceFormDialog.vue'
 import PerformanceAlertConfigDialog from './components/performance/PerformanceAlertConfigDialog.vue'
 import PerformanceSimilarDrawer from './components/PerformanceSimilarDrawer.vue'
 
-const { canManage: canManagePerformance, canAdminAlert: canAdminPerformanceAlert } = useKnowledgePermission()
+const { canManagePerformance, canAdminAlert: canAdminPerformanceAlert } = useKnowledgePermission()
 
 // Page state
 const searchForm = reactive({ keyword: '', customerTypes: [], projectTypes: [], statuses: [], customerLevels: [], territory: '', signingDateRange: null, expiryDateRange: null, hasBidNotice: null, projectManagerKeyword: '' })

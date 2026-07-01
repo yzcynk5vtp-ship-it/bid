@@ -72,7 +72,7 @@ import { reactive, watch, onBeforeUnmount } from 'vue'
 import { Search, RefreshRight, Plus, Download, Upload, Document } from '@element-plus/icons-vue'
 import { useKnowledgePermission } from '@/composables/useKnowledgePermission'
 
-const { canManage } = useKnowledgePermission()
+const { canManageWarehouse: canManage } = useKnowledgePermission()
 
 const props = defineProps({
   filters: { type: Object, default: () => ({}) },

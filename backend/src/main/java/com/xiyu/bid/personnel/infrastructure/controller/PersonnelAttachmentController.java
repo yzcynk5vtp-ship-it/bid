@@ -2,6 +2,7 @@ package com.xiyu.bid.personnel.infrastructure.controller;
 
 import com.xiyu.bid.annotation.Auditable;
 import com.xiyu.bid.dto.ApiResponse;
+import com.xiyu.bid.entity.RoleProfileCatalog;
 import com.xiyu.bid.exception.InvalidArgumentException;
 import com.xiyu.bid.personnel.application.dto.BatchAttachmentUploadResult;
 import com.xiyu.bid.personnel.application.service.BatchAttachmentAppService;
@@ -36,7 +37,7 @@ public class PersonnelAttachmentController {
      * 服务端将按工号匹配人员、按证书名匹配证书、存储文件并更新 attachmentUrl。
      */
     @PostMapping("/attachments/batch-upload")
-    @PreAuthorize("hasAnyAuthority('admin', '/bidAdmin', 'bid-TeamLeader', 'bid-Team')")
+    @PreAuthorize("hasAuthority('" + RoleProfileCatalog.PERSONNEL_MANAGE_PERMISSION + "')")
     @Auditable(action = "UPDATE", entityType = "PersonnelCertificate", description = "批量关联证书附件")
     public ResponseEntity<ApiResponse<BatchAttachmentUploadResult>> batchUpload(
             @RequestParam("files") List<MultipartFile> files) {
