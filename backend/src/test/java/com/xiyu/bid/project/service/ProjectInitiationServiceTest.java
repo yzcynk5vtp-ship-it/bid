@@ -14,6 +14,7 @@ import com.xiyu.bid.project.dto.InitiationDto;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
 import com.xiyu.bid.project.repository.ProjectInitiationDetailsRepository;
 import com.xiyu.bid.project.repository.ProjectLeadAssignmentRepository;
+import com.xiyu.bid.projectworkflow.entity.ProjectDocument;
 import com.xiyu.bid.projectworkflow.repository.ProjectDocumentRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import com.xiyu.bid.repository.UserRepository;
@@ -65,6 +66,9 @@ class ProjectInitiationServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         lenient().when(projectStageService.currentStage(1L))
                 .thenReturn(com.xiyu.bid.project.core.ProjectStage.INITIATED);
+        // CO-455: mock 招标文件存在且属于当前项目
+        lenient().when(projectDocumentRepository.findById(1L))
+                .thenReturn(Optional.of(ProjectDocument.builder().id(1L).projectId(1L).name("招标文件.pdf").build()));
     }
 
     private InitiationDto fullDto() {
@@ -77,6 +81,7 @@ class ProjectInitiationServiceTest {
                 .bidOpenTime(LocalDateTime.of(2026, 6, 1, 9, 30))
                 .ownerUserId(42L).departmentSnapshot("投标部")
                 .depositAmount(new BigDecimal("50000")).depositPaymentMethod("银行汇票")
+                .tenderDocumentId(1L)  // CO-455: 招标文件必传
                 .build();
     }
 
@@ -101,6 +106,46 @@ class ProjectInitiationServiceTest {
         assertThatThrownBy(() -> service.submit(1L, bad, 99L))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting("statusCode").isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    // CO-455: 招标文件必传校验
+    @Test
+    void submit_missingTenderDocumentId_throws422() {
+        var bad = fullDto();
+        bad.setTenderDocumentId(null);  // 缺少招标文件
+        lenient().when(repo.findByProjectId(1L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.submit(1L, bad, 99L))
+                .isInstanceOf(ResponseStatusException.class)
+                .matches(ex -> ((ResponseStatusException) ex).getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY
+                        && "请先上传招标文件".equals(((ResponseStatusException) ex).getReason()));
+    }
+
+    // CO-455: 招标文件不存在校验
+    @Test
+    void submit_tenderDocumentNotFound_throws422() {
+        var bad = fullDto();
+        bad.setTenderDocumentId(999L);  // 不存在的附件 ID
+        lenient().when(repo.findByProjectId(1L)).thenReturn(Optional.empty());
+        when(projectDocumentRepository.findById(999L)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.submit(1L, bad, 99L))
+                .isInstanceOf(ResponseStatusException.class)
+                .matches(ex -> ((ResponseStatusException) ex).getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY
+                        && "招标文件不存在或已被删除".equals(((ResponseStatusException) ex).getReason()));
+    }
+
+    // CO-455: 招标文件归属校验
+    @Test
+    void submit_tenderDocumentBelongsToOtherProject_throws422() {
+        var bad = fullDto();
+        bad.setTenderDocumentId(2L);
+        lenient().when(repo.findByProjectId(1L)).thenReturn(Optional.empty());
+        // 招标文件属于其他项目
+        when(projectDocumentRepository.findById(2L))
+                .thenReturn(Optional.of(ProjectDocument.builder().id(2L).projectId(999L).name("招标文件.pdf").build()));
+        assertThatThrownBy(() -> service.submit(1L, bad, 99L))
+                .isInstanceOf(ResponseStatusException.class)
+                .matches(ex -> ((ResponseStatusException) ex).getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY
+                        && "招标文件不属于当前项目".equals(((ResponseStatusException) ex).getReason()));
     }
 
     @Test

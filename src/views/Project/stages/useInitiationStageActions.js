@@ -402,6 +402,10 @@ export function useInitiationStageActions({
   }
 
   async function submit() {
+    // CO-455: 招标文件必传校验
+    if (!form.tenderDocumentId) {
+      return ElMessage.warning('请先上传招标文件')
+    }
     if (form.needDeposit === 'YES' && !form.depositPaymentMethod) {
       return ElMessage.warning('请选择保证金缴纳方式')
     }

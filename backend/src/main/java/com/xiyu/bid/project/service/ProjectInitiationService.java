@@ -72,6 +72,18 @@ public class ProjectInitiationService {
             var deny = (InitiationFieldPolicy.Decision.Deny) decision;
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, deny.reasonText());
         }
+
+        // CO-455: 招标文件必传校验（编排层校验附件存在性 + 归属，纯核心只校验业务内容）
+        if (req.getTenderDocumentId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "请先上传招标文件");
+        }
+        ProjectDocument tenderDoc = projectDocumentRepository.findById(req.getTenderDocumentId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                        "招标文件不存在或已被删除"));
+        if (!tenderDoc.getProjectId().equals(projectId)) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "招标文件不属于当前项目");
+        }
+
         ProjectInitiationDetails entity = repository.findByProjectId(projectId)
                 .orElseGet(() -> ProjectInitiationDetails.builder()
                         .projectId(projectId)
