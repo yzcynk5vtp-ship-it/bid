@@ -111,7 +111,20 @@ class ProjectTaskWorkflowServiceTest {
 
         assertThatThrownBy(() -> service.updateProjectTaskStatus(10L, 1L, req, "reviewer"))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("驳回任务时必须填写驳回原因");
+                .hasMessageContaining("退回待办必须填写 reviewComment");
+    }
+
+    @Test
+    void updateProjectTaskStatus_invalidTransitionFromTodoToCompleted_throws422() {
+        Task task = Task.builder().id(99L).projectId(10L).title("T").status(Task.Status.TODO).build();
+        when(guardService.requireTask(10L, 99L)).thenReturn(task);
+        ProjectTaskStatusUpdateRequest req = ProjectTaskStatusUpdateRequest.builder()
+                .status(ProjectTaskStatusUpdateRequest.Status.COMPLETED)
+                .build();
+
+        assertThatThrownBy(() -> service.updateProjectTaskStatus(10L, 99L, req, "user"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("不允许从");
     }
 
     @Test
