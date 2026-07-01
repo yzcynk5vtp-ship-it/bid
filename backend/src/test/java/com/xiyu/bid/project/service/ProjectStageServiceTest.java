@@ -1,5 +1,5 @@
 // Input: Mockito 桩 ProjectRepository
-// Output: 6 阶段线性推进 / 跨级 409 / CLOSED 终态 / null 入参 等行为断言
+// Output: 6 阶段线性推进 / 跨级 409 / CLOSED 终态 / null 入参 / CLOSED 补全 bidResult 等行为断言
 // Pos: backend test source
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.service;
@@ -9,7 +9,9 @@ import com.xiyu.bid.exception.ResourceNotFoundException;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy;
 import com.xiyu.bid.project.domain.ProjectStageTransitionedEvent;
+import com.xiyu.bid.project.entity.ProjectResult;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
+import com.xiyu.bid.project.repository.ProjectResultRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,7 @@ class ProjectStageServiceTest {
     private ProjectRepository projectRepo;
     private ProjectNotificationService notificationService;
     private ApplicationEventPublisher eventPublisher;
+    private ProjectResultRepository projectResultRepository;
     private ProjectStageService service;
 
     private static final Long PID = 1L;
@@ -46,8 +49,11 @@ class ProjectStageServiceTest {
         projectRepo = mock(ProjectRepository.class);
         eventPublisher = mock(ApplicationEventPublisher.class);
         notificationService = mock(ProjectNotificationService.class);
-        service = new ProjectStageService(projectRepo, eventPublisher, notificationService);
+        projectResultRepository = mock(ProjectResultRepository.class);
+        service = new ProjectStageService(projectRepo, eventPublisher, notificationService, projectResultRepository);
         when(projectRepo.save(any(Project.class))).thenAnswer(inv -> inv.getArgument(0));
+        // 默认返回空 Optional，表示无已登记结果；个别测试按需覆写
+        when(projectResultRepository.findByProjectId(PID)).thenReturn(Optional.empty());
     }
 
     private Project mockProjectAtStage(ProjectStage stage) {
@@ -262,5 +268,47 @@ class ProjectStageServiceTest {
             // expected
         }
         assertNull(p.getClosedAt(), "failed transition must not set closedAt");
+    }
+
+    // ---------- CO-443 次生问题: CLOSED 推进时补全 bidResult ----------
+
+    @Test
+    void transition_to_CLOSED_withoutBidResult_looksUpProjectResult_forStatus() {
+        // CO-443: 结项审核/复盘提交推进到 CLOSED 时未传 bidResult，
+        // 应从 project_result 表补全，避免 Project.Status 被错误覆盖为 INITIATED
+        Project p = mockProjectAtStage(ProjectStage.RETROSPECTIVE);
+        p.setStatus(Project.Status.WON);
+        ProjectResult result = ProjectResult.builder().projectId(PID).resultType("WON").build();
+        when(projectResultRepository.findByProjectId(PID)).thenReturn(Optional.of(result));
+
+        service.requestTransition(PID, ProjectStage.CLOSED, GATE);
+
+        assertEquals(Project.Status.WON, p.getStatus(),
+                "CLOSED 推进时应从 project_result 补全 bidResult，保持 WON 而非覆盖为 INITIATED");
+    }
+
+    @Test
+    void transition_to_CLOSED_withoutBidResult_noProjectResult_fallsBackToInitiated() {
+        // 无已登记结果时保持原有行为（fallback 到 INITIATED），不改变历史语义
+        Project p = mockProjectAtStage(ProjectStage.RETROSPECTIVE);
+        p.setStatus(Project.Status.WON);
+        when(projectResultRepository.findByProjectId(PID)).thenReturn(Optional.empty());
+
+        service.requestTransition(PID, ProjectStage.CLOSED, GATE);
+
+        assertEquals(Project.Status.INITIATED, p.getStatus(),
+                "无 project_result 记录时 fallback 到 INITIATED，保持原有行为");
+    }
+
+    @Test
+    void transition_to_CLOSED_withExplicitBidResult_doesNotLookUpProjectResult() {
+        // 显式传入 bidResult 时不应重复查询数据库
+        Project p = mockProjectAtStage(ProjectStage.RESULT_PENDING);
+        p.setStatus(Project.Status.EVALUATING);
+
+        service.requestTransition(PID, ProjectStage.CLOSED, GATE, "LOST");
+
+        assertEquals(Project.Status.LOST, p.getStatus());
+        verify(projectResultRepository, org.mockito.Mockito.never()).findByProjectId(any());
     }
 }

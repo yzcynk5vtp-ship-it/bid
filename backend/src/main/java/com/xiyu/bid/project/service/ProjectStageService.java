@@ -1,5 +1,6 @@
 // Input: projectId + 目标阶段 + GateInputs；调用 ProjectStageTransitionPolicy
 // Output: 写入 Project.stage + 审计 PROJECT_STAGE_TRANSITIONED；非法跳转 → 409
+//        CLOSED 推进时若未传 bidResult，自动从 project_result 表补全（CO-443）
 // Pos: project/service/ - 编排层，纯规则委托 core 包
 // 一旦我被更新，务必更新我的开头注释，以及所属的文件夹的 md。
 package com.xiyu.bid.project.service;
@@ -12,7 +13,9 @@ import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy;
 import com.xiyu.bid.project.core.ProjectStageTransitionPolicy.GateInputs;
 import com.xiyu.bid.project.domain.ProjectStageTransitionedEvent;
+import com.xiyu.bid.project.entity.ProjectResult;
 import com.xiyu.bid.project.notification.ProjectNotificationService;
+import com.xiyu.bid.project.repository.ProjectResultRepository;
 import com.xiyu.bid.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +48,7 @@ public class ProjectStageService {
     private final ProjectRepository projectRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ProjectNotificationService notificationService;
+    private final ProjectResultRepository projectResultRepository;
 
     @Transactional(readOnly = true)
     public ProjectStage currentStage(Long projectId) {
@@ -118,7 +122,15 @@ public class ProjectStageService {
     }
 
     private void syncProjectStatus(Project project, ProjectStage targetStage, String bidResult) {
-        Project.Status nextStatus = ProjectStatusPolicy.compute(targetStage, bidResult, true);
+        // CO-443: 推进到 CLOSED 时若未显式传入 bidResult，从 project_result 表补全，
+        // 避免结项审核/复盘提交后 Project.Status 被错误覆盖为 INITIATED。
+        String effectiveBidResult = bidResult;
+        if (targetStage == ProjectStage.CLOSED && effectiveBidResult == null) {
+            effectiveBidResult = projectResultRepository.findByProjectId(project.getId())
+                    .map(ProjectResult::getResultType)
+                    .orElse(null);
+        }
+        Project.Status nextStatus = ProjectStatusPolicy.compute(targetStage, effectiveBidResult, true);
         project.setStatus(nextStatus);
     }
 
