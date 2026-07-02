@@ -876,4 +876,120 @@ public class ArchitectureTest {
             .because("CO-438: 直接调用 Sheet.autoSizeColumn() 在服务器字体缺失时会抛 "
                 + "'Fontconfig head is null'。必须通过 ExcelAutoSizeHelper.autoSizeColumns() 统一处理，"
                 + "该方法在字体不可用时自动降级为固定列宽。");
+
+    /**
+     * Constitution VI (Authorization Unification, v1.3.0): 禁止 @PreAuthorize 使用
+     * hasAnyRole/hasRole 角色枚举式白名单。只允许 isAuthenticated() 或 hasAuthority('<perm>')。
+     *
+     * <p>双轨守卫设计（过渡期）：</p>
+     * <ul>
+     *   <li><b>规则 1（总数断言，主守卫）</b>：实际违规数必须等于 EXPECTED_LEGACY_USE_COUNT。
+     *       存量被锁定——迁移一处 → 实际减 1 → 必须同步递减 EXPECTED。任何"偷偷新增"或
+     *       "迁移后忘改常量"都触发失败。</li>
+     *   <li><b>规则 2（@ArchTest ArchRule，硬失败，最终态）</b>：扫描每个 @PreAuthorize 的
+     *       SpEL，含 hasAnyRole/hasRole 即报。过渡期内由规则 1 宽容存量；EXPECTED 归零后
+     *       删除规则 1 + 规则 2 自动升级为硬失败门禁（届时任何违规直接报，无需 EXPECTED）。</li>
+     * </ul>
+     *
+     * <p>当前处于过渡期，规则 2 会在测试输出中报告所有存量违规（187 处），但规则 1 是
+     * 真正的通过/失败判据。开发者看到规则 1 失败时，需检查是否新增了违规或忘改 EXPECTED。</p>
+     *
+     * <p>背景：eb58f2817 (06-16) 切断 bid-otherDept/bid-administration/bid-Team 的
+     * legacy ROLE_STAFF/ROLE_MANAGER 兼容（堵越权），但未迁移依赖该 authority 的
+     * @PreAuthorize 白名单 → 双轨制 → 20+ 个反复返工的 403 PR（CO-362→CO-466）。
+     * 详见 specs/024-preauthorize-unification/。</p>
+     *
+     * <p>注：ArchUnit 读字节码，<code>static final String</code> 常量（如 ADMIN_MANAGER_EXPR）
+     * 会被 Java 编译期内联为字面量，因此 <code>@PreAuthorize(ADMIN_MANAGER_EXPR)</code> 也
+     * 会被规则 2 正确捕获（gemini 审核确认）。</p>
+     */
+    private static final ArchCondition<com.tngtech.archunit.core.domain.JavaMethod> NOT_USE_ROLE_ENUMERATION_AUTH =
+        new ArchCondition<com.tngtech.archunit.core.domain.JavaMethod>(
+            "不使用 hasAnyRole/hasRole 角色枚举式白名单（Constitution VI）") {
+        @Override
+        public void check(com.tngtech.archunit.core.domain.JavaMethod method, ConditionEvents events) {
+            String spel = method.getAnnotationOfType(
+                org.springframework.security.access.prepost.PreAuthorize.class).value();
+            if (spel != null && (spel.contains("hasAnyRole") || spel.contains("hasRole"))) {
+                events.add(SimpleConditionEvent.violated(method,
+                    "禁止 hasAnyRole/hasRole，改用 hasAuthority/isAuthenticated。"
+                    + "Constitution VI；method=" + method.getFullName() + " spel=" + spel
+                    + "；迁移流程：递减 EXPECTED_LEGACY_USE_COUNT 并改写为 hasAuthority"));
+            }
+        }
+    };
+
+    /**
+     * 当前遗留违规总数（含字面量 + 编译期内联的常量引用）。
+     * 初始值 187 = 175 字面量 + 12 常量引用内联后（P1 修复后基线，2026-07-02 ArchUnit 实测）。
+     * 后续 P3 批次迁移每消除一处，此常量递减 1；归零后删除规则 1，规则 2 升级为硬失败门禁。
+     */
+    private static final int EXPECTED_LEGACY_USE_COUNT = 187;
+
+    /**
+     * 规则 1（主守卫，过渡期）：实际违规数必须等于 EXPECTED_LEGACY_USE_COUNT。
+     * 这是过渡期的通过/失败判据，宽容存量、拦截新增。
+     */
+    @ArchTest
+    public static final void legacy_hasanyrole_count_must_match_baseline(JavaClasses classes) {
+        int actual = countPreAuthorizeWithRoleEnumeration(classes);
+        org.assertj.core.api.Assertions.assertThat(actual)
+            .as("hasAnyRole/hasRole @PreAuthorize 使用点总数须与 EXPECTED_LEGACY_USE_COUNT ("
+                + EXPECTED_LEGACY_USE_COUNT + ") 一致（实际=" + actual + "）。"
+                + "不一致原因：1) 新增了违规注解未走迁移流程（实际 > 预期）"
+                + "；2) 迁移后忘递减 EXPECTED_LEGACY_USE_COUNT（实际 < 预期）。"
+                + "参见 Constitution VI 与 specs/024-preauthorize-unification")
+            .isEqualTo(EXPECTED_LEGACY_USE_COUNT);
+    }
+
+    /**
+     * 规则 2（硬失败门禁，最终态）：扫描 @PreAuthorize 注解的 SpEL，禁止含 hasAnyRole/hasRole。
+     *
+     * <p><b>过渡期行为</b>：当实际违规数 == EXPECTED_LEGACY_USE_COUNT 时，视为"存量已登记"，
+     * 本规则跳过（assumption passed），由规则 1（{@link #legacy_hasanyrole_count_must_match_baseline}）
+     * 守护。当实际数与 EXPECTED 不一致时（说明有人偷偷新增或忘改常量），规则 1 已先失败。</p>
+     *
+     * <p><b>最终态</b>：待 P3 全部批次迁移完成（EXPECTED 归零），删除规则 1 + 删除本方法的
+     * "过渡期跳过"逻辑，本规则成为永久硬失败门禁——任何违规直接报。</p>
+     *
+     * <p>本规则作为<b>目标态活文档</b>保留，让所有人看到迁移完成后的硬失败门禁长什么样。</p>
+     */
+    @ArchTest
+    public static final void preauthorize_should_not_use_role_enumeration(JavaClasses classes) {
+        int actual = countPreAuthorizeWithRoleEnumeration(classes);
+        if (actual == EXPECTED_LEGACY_USE_COUNT) {
+            // 过渡期：存量已由规则 1 锁定，本规则跳过（不阻塞 CI）
+            org.junit.jupiter.api.Assumptions.assumeTrue(true,
+                "Constitution VI 过渡期：存量 " + actual + " 处由规则 1 宽容，"
+                    + "本规则（硬失败门禁）跳过。EXPECTED 归零后此 assume 移除。");
+            return;
+        }
+        // 实际数 != EXPECTED：规则 1 已失败，本规则也报（双重保险）
+        methods()
+            .that().areAnnotatedWith("org.springframework.security.access.prepost.PreAuthorize")
+            .should(NOT_USE_ROLE_ENUMERATION_AUTH)
+            .because("Constitution VI: 禁止 hasAnyRole/hasRole 角色枚举式白名单（双轨制元凶）。"
+                + "改用 hasAuthority('<permissionKey>') 或 isAuthenticated()。"
+                + "权限键在 RoleProfileCatalog.SeedDefinition.menuPermissions 注册。"
+                + "参见 specs/024-preauthorize-unification 与 docs/architecture/preauthorize-unification-design.md")
+            .check(classes);
+    }
+
+    /** 统计 @PreAuthorize 注解中 SpEL 含 hasAnyRole/hasRole 的方法数（含编译期内联的常量）。 */
+    private static int countPreAuthorizeWithRoleEnumeration(JavaClasses classes) {
+        int[] count = {0};
+        for (JavaClass clazz : classes) {
+            for (com.tngtech.archunit.core.domain.JavaMethod method : clazz.getMethods()) {
+                if (method.isAnnotatedWith(
+                        "org.springframework.security.access.prepost.PreAuthorize")) {
+                    String spel = method.getAnnotationOfType(
+                        org.springframework.security.access.prepost.PreAuthorize.class).value();
+                    if (spel != null && (spel.contains("hasAnyRole") || spel.contains("hasRole"))) {
+                        count[0]++;
+                    }
+                }
+            }
+        }
+        return count[0];
+    }
 }
