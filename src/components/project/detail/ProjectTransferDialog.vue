@@ -1,0 +1,55 @@
+<template>
+  <el-dialog
+    v-model="ctx.transferDialogVisible.value"
+    title="项目转移"
+    width="520px"
+    :close-on-click-modal="false"
+    append-to-body
+  >
+    <el-form :model="ctx.transferForm" label-width="100px">
+      <el-form-item label="项目名称">
+        <span>{{ ctx.project?.name }}</span>
+      </el-form-item>
+      <el-form-item label="当前负责人">
+        <span>{{ ctx.project?.projectLeaderName || ctx.project?.managerName || '—' }}</span>
+      </el-form-item>
+      <el-form-item label="新负责人" required>
+        <UserPicker
+          v-model="ctx.transferForm.newOwnerUserId"
+          mode="search"
+          placeholder="搜索人员（姓名/工号/拼音）"
+          style="width: 100%;"
+          :exclude-ids="ctx.excludeOwnerIds.value"
+        />
+      </el-form-item>
+      <el-form-item label="转移原因">
+        <el-input
+          v-model="ctx.transferForm.reason"
+          type="textarea"
+          :rows="3"
+          maxlength="500"
+          show-word-limit
+          placeholder="可选，最多 500 字符"
+        />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="ctx.closeTransfer">取消</el-button>
+      <el-button
+        type="primary"
+        :loading="ctx.transferring.value"
+        @click="ctx.handleTransferConfirm"
+      >
+        确认转移
+      </el-button>
+    </template>
+  </el-dialog>
+</template>
+
+<script setup>
+import { inject } from 'vue'
+import UserPicker from '@/components/common/UserPicker.vue'
+import { projectDetailKey } from '@/composables/projectDetail/context.js'
+
+const ctx = inject(projectDetailKey)
+</script>
