@@ -197,11 +197,20 @@
             empty-text="暂无借用申请"
           >
             <el-table-column type="index" label="序号" width="70" />
-            <el-table-column label="关联CA" min-width="140">
+            <el-table-column label="CA证书" min-width="140">
               <template #default="{ row }">{{ row.caName || `CA#${row.caCertificateId}` }}</template>
             </el-table-column>
-            <el-table-column label="借用时间" min-width="120">
-              <template #default="{ row }">{{ row.borrowDate || '-' }}</template>
+            <el-table-column label="使用目的" min-width="160" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.purpose || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="借用期限" width="100">
+              <template #default="{ row }">{{ row.borrowDurationType === 'LONG_TERM' ? '长期' : row.borrowDurationType === 'SHORT_TERM' ? '短期' : '-' }}</template>
+            </el-table-column>
+            <el-table-column label="盖章承诺书" width="120">
+              <template #default="{ row }">
+                <a v-if="row.commitmentLetterUrl" :href="row.commitmentLetterUrl" target="_blank" class="download-link">下载</a>
+                <span v-else>-</span>
+              </template>
             </el-table-column>
             <el-table-column label="预计归还" min-width="120">
               <template #default="{ row }">{{ row.expectedReturnDate || '-' }}</template>
@@ -210,6 +219,9 @@
               <template #default="{ row }">
                 <el-tag :type="applicationStatusType(row.status)" size="small">{{ row.statusLabel }}</el-tag>
               </template>
+            </el-table-column>
+            <el-table-column label="创建时间" min-width="120">
+              <template #default="{ row }">{{ row.createdAt || '-' }}</template>
             </el-table-column>
             <el-table-column label="操作" width="100" fixed="right">
               <template #default="{ row }">
@@ -229,14 +241,23 @@
             empty-text="暂无待审批申请"
           >
             <el-table-column type="index" label="序号" width="70" />
-            <el-table-column label="关联CA" min-width="140">
+            <el-table-column label="CA证书" min-width="140">
               <template #default="{ row }">{{ row.caName || `CA#${row.caCertificateId}` }}</template>
             </el-table-column>
             <el-table-column label="申请人" min-width="100">
               <template #default="{ row }">{{ row.applicantName || '-' }}</template>
             </el-table-column>
-            <el-table-column label="借用时间" min-width="120">
-              <template #default="{ row }">{{ row.borrowDate || '-' }}</template>
+            <el-table-column label="使用目的" min-width="160" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.purpose || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="借用期限" width="100">
+              <template #default="{ row }">{{ row.borrowDurationType === 'LONG_TERM' ? '长期' : row.borrowDurationType === 'SHORT_TERM' ? '短期' : '-' }}</template>
+            </el-table-column>
+            <el-table-column label="盖章承诺书" width="120">
+              <template #default="{ row }">
+                <a v-if="row.commitmentLetterUrl" :href="row.commitmentLetterUrl" target="_blank" class="download-link">下载</a>
+                <span v-else>-</span>
+              </template>
             </el-table-column>
             <el-table-column label="预计归还" min-width="120">
               <template #default="{ row }">{{ row.expectedReturnDate || '-' }}</template>
@@ -245,6 +266,9 @@
               <template #default="{ row }">
                 <el-tag :type="applicationStatusType(row.status)" size="small">{{ row.statusLabel }}</el-tag>
               </template>
+            </el-table-column>
+            <el-table-column label="创建时间" min-width="120">
+              <template #default="{ row }">{{ row.createdAt || '-' }}</template>
             </el-table-column>
             <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
@@ -834,6 +858,14 @@ onMounted(() => {
 .text-muted {
   color: var(--el-text-color-secondary);
   font-size: 12px;
+}
+
+.download-link {
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
+.download-link:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 768px) {

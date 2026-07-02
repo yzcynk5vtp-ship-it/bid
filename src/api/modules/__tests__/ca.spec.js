@@ -109,6 +109,19 @@ describe('normalizeBorrowApplication — 基本形态回归', () => {
     expect(result.applicantName).toBe('王五')
     expect(result.status).toBe('PENDING')
   })
+
+  // CO-459: 盖章承诺书字段（长期借用申请的可下载附件）
+  it('正确映射 commitmentLetterUrl 字段', () => {
+    const input = { id: 1, commitmentLetterUrl: '/uploads/letter.pdf' }
+    const result = normalizeBorrowApplication(input)
+    expect(result.commitmentLetterUrl).toBe('/uploads/letter.pdf')
+  })
+
+  it('commitmentLetterUrl 为空时返回空字符串', () => {
+    const input = { id: 1 }
+    const result = normalizeBorrowApplication(input)
+    expect(result.commitmentLetterUrl).toBe('')
+  })
 })
 
 describe('normalizeOperationEvent — 基本形态回归', () => {

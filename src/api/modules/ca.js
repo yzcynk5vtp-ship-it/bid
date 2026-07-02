@@ -133,6 +133,7 @@ export function normalizeBorrowApplication(item) {
     expectedReturnDate: formatDate(item.expectedReturnDate),
     actualReturnDate: formatDate(item.actualReturnDate || item.returnedAt),
     borrowDurationType: item.borrowDurationType || '',
+    commitmentLetterUrl: item.commitmentLetterUrl || '',
     status: item.status || 'PENDING_APPROVAL',
     statusLabel: { PENDING_APPROVAL: '待审批', APPROVED: '已批准', REJECTED: '已拒绝', RETURNED: '已归还', CANCELLED: '已取消' }[item.status] || item.status,
     remark: item.remark || '',

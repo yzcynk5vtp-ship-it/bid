@@ -441,3 +441,55 @@ describe('CAManagement — CO-441 handleDelete 取消确认容错', () => {
     expect(errorSpy).toHaveBeenCalledWith('下架失败')
   })
 })
+
+// ── CO-459: CA 借用申请/审批列表字段调整 ──
+// 需求：
+//   1. 增加"使用目的"列（在"申请人"后面）
+//   2. 增加"借用期限"列（长期/短期）
+//   3. 增加"盖章承诺书"列（长期借用时显示下载链接，短期显示"-"）
+//   4. "关联CA"列名改为"CA证书"
+//   5. "借用时间"列名改为"创建时间"，位置移到操作列之前
+
+describe('CAManagement — CO-459 借用申请/审批列表字段', () => {
+  it('"我的申请" tab 表头包含 CA证书/使用目的/借用期限/盖章承诺书/创建时间', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    // 切换到"我的申请"tab
+    wrapper.vm.activeTab = 'myApplications'
+    await wrapper.vm.$nextTick()
+
+    const html = wrapper.html()
+    // 需求 4: 关联CA → CA证书
+    expect(html).toContain('CA证书')
+    expect(html).not.toContain('关联CA')
+    // 需求 1: 使用目的
+    expect(html).toContain('使用目的')
+    // 需求 2: 借用期限
+    expect(html).toContain('借用期限')
+    // 需求 3: 盖章承诺书
+    expect(html).toContain('盖章承诺书')
+    // 需求 5: 借用时间 → 创建时间
+    expect(html).toContain('创建时间')
+    expect(html).not.toContain('借用时间')
+  })
+
+  it('"我的审批" tab 表头包含 CA证书/申请人/使用目的/借用期限/盖章承诺书/创建时间', async () => {
+    const wrapper = createWrapper()
+    await flushPromises()
+
+    // 切换到"我的审批"tab
+    wrapper.vm.activeTab = 'myApprovals'
+    await wrapper.vm.$nextTick()
+
+    const html = wrapper.html()
+    expect(html).toContain('CA证书')
+    expect(html).not.toContain('关联CA')
+    expect(html).toContain('申请人')
+    expect(html).toContain('使用目的')
+    expect(html).toContain('借用期限')
+    expect(html).toContain('盖章承诺书')
+    expect(html).toContain('创建时间')
+    expect(html).not.toContain('借用时间')
+  })
+})
