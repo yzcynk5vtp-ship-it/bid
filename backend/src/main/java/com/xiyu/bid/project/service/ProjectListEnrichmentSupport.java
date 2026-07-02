@@ -1,6 +1,7 @@
 package com.xiyu.bid.project.service;
 
 import com.xiyu.bid.entity.Tender;
+import com.xiyu.bid.project.core.InitiationFieldPolicy;
 import com.xiyu.bid.project.core.ProjectStage;
 import com.xiyu.bid.project.core.ProjectStatusPolicy;
 import com.xiyu.bid.project.dto.ProjectDTO;
@@ -38,7 +39,8 @@ final class ProjectListEnrichmentSupport {
             dto.setProjectType(t.getProjectType());
         }
         if (dto.getCustomerType() == null && t.getCustomerType() != null) {
-            dto.setCustomerType(t.getCustomerType());
+            String normalized = InitiationFieldPolicy.normalizeCustomerType(t.getCustomerType());
+            dto.setCustomerType(normalized != null ? normalized : t.getCustomerType());
         }
         if (dto.getRegion() == null && t.getRegion() != null) {
             dto.setRegion(t.getRegion());

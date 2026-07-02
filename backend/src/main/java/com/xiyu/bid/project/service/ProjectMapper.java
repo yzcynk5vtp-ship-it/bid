@@ -1,6 +1,7 @@
 package com.xiyu.bid.project.service;
 
 import com.xiyu.bid.entity.Project;
+import com.xiyu.bid.project.core.InitiationFieldPolicy;
 import com.xiyu.bid.project.dto.ProjectDTO;
 
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ public final class ProjectMapper {
                 .customer(p.getCustomer())
                 .budget(p.getBudget())
                 .industry(p.getIndustry())
-                .customerType(p.getCustomerType())
+                .customerType(normalizeCustomerTypeOrKeep(p.getCustomerType()))
                 .region(p.getRegion())
                 .platform(p.getPlatform())
                 .deadline(p.getDeadline())
@@ -82,5 +83,15 @@ public final class ProjectMapper {
                 .customerManager(dto.getCustomerManager())
                 .customerManagerId(dto.getCustomerManagerId())
                 .build();
+    }
+
+    /**
+     * 归一化 customerType：将历史中文/前端旧 value 统一为后端 CustomerType 枚举名。
+     * 无法识别时保留原值，避免丢失数据。
+     */
+    private static String normalizeCustomerTypeOrKeep(String raw) {
+        if (raw == null || raw.isBlank()) return raw;
+        String normalized = InitiationFieldPolicy.normalizeCustomerType(raw);
+        return normalized != null ? normalized : raw;
     }
 }

@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InitiationFieldPolicyTest {
@@ -192,6 +193,58 @@ class InitiationFieldPolicyTest {
         assertEquals(2, InitiationFieldPolicy.lockedFields().size());
         assertTrue(InitiationFieldPolicy.lockedFields().contains("bidOpenTime"));
         assertTrue(InitiationFieldPolicy.lockedFields().contains("ownerUnit"));
+    }
+
+    // ── normalizeCustomerType：列表筛选归一化的核心 ──
+
+    @Test
+    void normalizeCustomerType_nullOrBlank_returnsNull() {
+        assertNull(InitiationFieldPolicy.normalizeCustomerType(null));
+        assertNull(InitiationFieldPolicy.normalizeCustomerType(""));
+        assertNull(InitiationFieldPolicy.normalizeCustomerType("   "));
+    }
+
+    @Test
+    void normalizeCustomerType_centralSoeCnText_returnsCanonical() {
+        assertEquals("CENTRAL_SOE", InitiationFieldPolicy.normalizeCustomerType("央企"));
+        assertEquals("CENTRAL_SOE", InitiationFieldPolicy.normalizeCustomerType("国企"));
+    }
+
+    @Test
+    void normalizeCustomerType_centralSoeEnum_returnsCanonical() {
+        assertEquals("CENTRAL_SOE", InitiationFieldPolicy.normalizeCustomerType("CENTRAL_SOE"));
+    }
+
+    @Test
+    void normalizeCustomerType_governmentFrontendLegacyValue_returnsCanonical() {
+        // 前端旧 value GOVERNMENT_INSTITUTION 必须能映射为后端枚举名 GOVERNMENT
+        assertEquals("GOVERNMENT", InitiationFieldPolicy.normalizeCustomerType("GOVERNMENT_INSTITUTION"));
+        assertEquals("GOVERNMENT", InitiationFieldPolicy.normalizeCustomerType("政府机关"));
+        assertEquals("GOVERNMENT", InitiationFieldPolicy.normalizeCustomerType("GOVERNMENT"));
+    }
+
+    @Test
+    void normalizeCustomerType_privateAndForeignLegacyValues_returnCanonical() {
+        assertEquals("PRIVATE", InitiationFieldPolicy.normalizeCustomerType("PRIVATE_ENTERPRISE"));
+        assertEquals("PRIVATE", InitiationFieldPolicy.normalizeCustomerType("民企"));
+        assertEquals("FOREIGN", InitiationFieldPolicy.normalizeCustomerType("FOREIGN_HK_MACAO_TW"));
+        assertEquals("FOREIGN", InitiationFieldPolicy.normalizeCustomerType("港澳台及外企"));
+    }
+
+    @Test
+    void normalizeCustomerType_other_returnsCanonical() {
+        assertEquals("OTHER", InitiationFieldPolicy.normalizeCustomerType("其他"));
+        assertEquals("OTHER", InitiationFieldPolicy.normalizeCustomerType("OTHER"));
+    }
+
+    @Test
+    void normalizeCustomerType_unknownValue_returnsNull() {
+        assertNull(InitiationFieldPolicy.normalizeCustomerType("外星人"));
+    }
+
+    @Test
+    void normalizeCustomerType_trimsWhitespace() {
+        assertEquals("CENTRAL_SOE", InitiationFieldPolicy.normalizeCustomerType("  央企  "));
     }
 
     @Test
