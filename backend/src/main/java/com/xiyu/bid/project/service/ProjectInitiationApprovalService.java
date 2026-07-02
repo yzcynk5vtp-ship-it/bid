@@ -207,10 +207,13 @@ public class ProjectInitiationApprovalService {
             extendedFields.put("_taskType", "deposit-payment");
             extendedFields.put("depositAmount", depositAmount);
             extendedFields.put("depositDeadline", depositDueDate);
+            // 保证金说明写入 content 字段（数据库 schema 注释：content = 任务详细描述）。
+            // 前端 TaskForm.vue "详细描述" 绑定 content，校验也检查 content；
+            // 写入 description 会导致前端 normalize 后 content 恒为空，触发"请填写详细描述"误报。
             TaskDTO depositTask = TaskDTO.builder()
                     .projectId(projectId)
                     .title("缴纳投标保证金")
-                    .description(description)
+                    .content(description)
                     .assigneeId(assigneeId)
                     .priority(Task.Priority.HIGH)
                     .dueDate(depositDueDate)
