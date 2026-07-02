@@ -40,6 +40,7 @@ public class CaBorrowService {
     private final UserRepository userRepository;
     private final CaNotificationDispatcher caNotificationDispatcher;
     private final EffectiveRoleResolver effectiveRoleResolver;
+    private final CaBorrowApplicationNameEnricher caNameEnricher;
 
     // ========== CA 借用申请 ==========
 
@@ -240,8 +241,7 @@ public class CaBorrowService {
     // ========== 查询 ==========
 
     public List<CaBorrowApplicationDTO> getBorrowApplicationsByCaId(Long caCertificateId) {
-        return borrowRepository.findByCaCertificateIdOrderByCreatedAtDesc(caCertificateId)
-                .stream().map(CaBorrowApplicationDTO::from).collect(Collectors.toList());
+        return caNameEnricher.enrich(borrowRepository.findByCaCertificateIdOrderByCreatedAtDesc(caCertificateId));
     }
 
     public List<CaBorrowEventDTO> getBorrowEvents(Long applicationId) {
@@ -251,39 +251,43 @@ public class CaBorrowService {
 
     /**
      * CO-459: 待审批列表 —— 数据库层面过滤，管理员返回全部待审批，保管员返回自己的。
+     * CO-466: 返回结果 enrich caName。
      */
     public List<CaBorrowApplicationDTO> getPendingApprovals(UserDetails userDetails) {
         User user = resolveUser(userDetails);
         String roleCode = effectiveRoleResolver.resolveRoleCode(user);
+        List<CaBorrowApplicationEntity> apps;
         if (CaBorrowPermissionChecker.isPrivilegedRole(roleCode)) {
-            return borrowRepository.findByStatusOrderByCreatedAtDesc(BorrowStatus.PENDING_APPROVAL.name())
-                    .stream().map(CaBorrowApplicationDTO::from).collect(Collectors.toList());
+            apps = borrowRepository.findByStatusOrderByCreatedAtDesc(BorrowStatus.PENDING_APPROVAL.name());
+        } else {
+            apps = borrowRepository.findByApproverIdAndStatus(user.getId(), BorrowStatus.PENDING_APPROVAL.name());
         }
-        return borrowRepository.findByApproverIdAndStatus(user.getId(), BorrowStatus.PENDING_APPROVAL.name())
-                .stream().map(CaBorrowApplicationDTO::from).collect(Collectors.toList());
+        return caNameEnricher.enrich(apps);
     }
 
     /**
      * CO-459: 我的借用申请 —— 返回当前用户作为申请人的全部申请。
+     * CO-466: 返回结果 enrich caName。
      */
     public List<CaBorrowApplicationDTO> getMyBorrowApplications(UserDetails userDetails) {
         User user = resolveUser(userDetails);
-        return borrowRepository.findByApplicantIdOrderByCreatedAtDesc(user.getId())
-                .stream().map(CaBorrowApplicationDTO::from).collect(Collectors.toList());
+        return caNameEnricher.enrich(borrowRepository.findByApplicantIdOrderByCreatedAtDesc(user.getId()));
     }
 
     /**
      * CO-459: 我的审批 Tab —— 管理员返回全部申请，保管员返回自己的。
+     * CO-466: 返回结果 enrich caName。
      */
     public List<CaBorrowApplicationDTO> findAllApprovals(UserDetails userDetails) {
         User user = resolveUser(userDetails);
         String roleCode = effectiveRoleResolver.resolveRoleCode(user);
+        List<CaBorrowApplicationEntity> apps;
         if (CaBorrowPermissionChecker.isPrivilegedRole(roleCode)) {
-            return borrowRepository.findAllByOrderByCreatedAtDesc()
-                    .stream().map(CaBorrowApplicationDTO::from).collect(Collectors.toList());
+            apps = borrowRepository.findAllByOrderByCreatedAtDesc();
+        } else {
+            apps = borrowRepository.findByApproverIdOrderByCreatedAtDesc(user.getId());
         }
-        return borrowRepository.findByApproverIdOrderByCreatedAtDesc(user.getId())
-                .stream().map(CaBorrowApplicationDTO::from).collect(Collectors.toList());
+        return caNameEnricher.enrich(apps);
     }
 
     // ========== User resolution ==========

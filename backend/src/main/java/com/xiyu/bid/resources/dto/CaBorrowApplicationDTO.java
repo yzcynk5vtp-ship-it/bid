@@ -11,6 +11,12 @@ import java.time.LocalDateTime;
 public class CaBorrowApplicationDTO {
     private Long id;
     private Long caCertificateId;
+    /**
+     * CO-466: CA 证书显示名，由 Service 层 enrich 拼装，格式与前端
+     * CABorrowDialog.vue caLabel 一致：
+     * <pre>[持有人, 关联平台(逗号分隔), 印章中文].filter(Boolean).join(' / ')</pre>
+     */
+    private String caName;
     private Long applicantId;
     private String applicantName;
     private String purpose;
@@ -31,9 +37,18 @@ public class CaBorrowApplicationDTO {
     private LocalDateTime updatedAt;
 
     public static CaBorrowApplicationDTO from(CaBorrowApplicationEntity entity) {
+        return from(entity, null);
+    }
+
+    /**
+     * CO-466: 带 caName 的重载，由 Service 层 enrich 后调用。
+     * caName 为 null 时留空（前端会 fallback 到 CA#${caCertificateId}）。
+     */
+    public static CaBorrowApplicationDTO from(CaBorrowApplicationEntity entity, String caName) {
         return CaBorrowApplicationDTO.builder()
                 .id(entity.getId())
                 .caCertificateId(entity.getCaCertificateId())
+                .caName(caName)
                 .applicantId(entity.getApplicantId())
                 .applicantName(entity.getApplicantName())
                 .purpose(entity.getPurpose())
