@@ -6,6 +6,7 @@
 
 | 文件 | 类型 | 主题 | 日期 |
 |------|------|------|------|
+| `root-cause-analysis-wecom-notification-skipped.md` | Bug 根因分析 + 工程规范 | 企微通知全部 SKIPPED 根因（Spring Boot 松散绑定陷阱 + prod yml 配置占位符缺失 + outbound_log 状态误标 + 链路验证 SOP） | 2026-07-02 |
 | `root-cause-analysis-co-438-fontconfig-head-null.md` | Bug 根因分析 | POI autoSizeColumn "Fontconfig head is null"（systemd 缺 headless + 三层防御 + 多 Agent 并行 PR 教训） | 2026-06-30 |
 | `root-cause-analysis-crm-leader-priority.md` | Bug 根因分析 | CRM 商机负责人被自动分配覆盖（tryAutoAssign guard clause 修复） | 2026-06-26 |
 | `root-cause-analysis-co-301.md` | Bug 根因分析 | 标讯创建去重拦截报错文案改为"投标管理系统该标讯已存在"（错误消息缺少系统上下文） | 2026-06-22 |
