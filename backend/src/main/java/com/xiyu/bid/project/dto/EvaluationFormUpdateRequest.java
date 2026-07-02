@@ -1,6 +1,11 @@
 // Input: PATCH /form 请求体 - 项目评估表单填写
 // Output: 7个字段的表单数据
 // Pos: project/dto/
+// ⚠️ 防复发警告（CO-461 之后又踩坑）：
+// 本 DTO 是「评估表 5 个业务字段」更新接口，5 个字段全部 @NotBlank/@NotNull。
+// 禁止用于「只更新 notes」场景 —— 本 DTO 根本没有 notes 字段。
+// 如果业务需要单独保存 notes，应新增 PATCH /evaluation/notes 端点，不要复用本接口。
+// 详见 docs/lessons/lessons-learned.md §23 全链路日志排查 SOP。
 package com.xiyu.bid.project.dto;
 
 import jakarta.validation.constraints.DecimalMax;

@@ -117,12 +117,16 @@ async function handleSubmit() {
   try {
     const currentSubStage = view.value?.subStage
     if (targetSubStage.value !== currentSubStage) {
+      // 状态切换 → 走 /sub-stage 端点（DTO 只要 targetSubStage + notes）
       await projectLifecycleApi.transitionEvaluationSubStage(props.projectId, {
         targetSubStage: targetSubStage.value, notes: evaluationNotes.value
       })
-    } else if (evaluationNotes.value !== (view.value?.notes || '')) {
-      await projectLifecycleApi.updateEvaluationForm(props.projectId, { notes: evaluationNotes.value })
     }
+    // ⚠️ 防复发（CO-461 之后又踩坑）：状态没变时不要调 /form 端点。
+    // /form 端点 DTO (EvaluationFormUpdateRequest) 强制 5 个业务字段必填，
+    // 且 notes 字段在 DTO 中根本不存在；只传 {notes} 会触发 400 校验失败。
+    // 如果业务后续需要"状态没变也保存 notes"，应新增 PATCH /evaluation/notes 端点，
+    // 不要复用 /form 端点。详见 docs/lessons/lessons-learned.md §23 全链路日志排查 SOP。
     if (pendingIds.length > 0) {
       await projectLifecycleApi.attachEvaluationEvidence(props.projectId, { fileIds: pendingIds })
       evidenceUploadRef.value?.clearPendingFileIds()
