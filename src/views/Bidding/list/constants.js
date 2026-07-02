@@ -242,6 +242,7 @@ export const MANUAL_FORM_RULES = {
   bidOpeningTime: [{ required: true, message: '请选择开标时间', trigger: 'change' }],
   customerType: [{ required: true, message: '请选择客户类型', trigger: 'change' }],
   priority: [{ required: true, message: '请选择优先级', trigger: 'change' }],
+  projectType: [{ required: true, message: '请选择项目类型', trigger: 'change' }],
   // 联系人1手机号格式校验
   phone: [
     { pattern: PHONE_REGEX, message: '请输入正确的手机号格式', trigger: 'blur' },
