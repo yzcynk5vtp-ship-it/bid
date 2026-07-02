@@ -38,7 +38,7 @@ describe('TaskDepositFields', () => {
   it('renders all 6 deposit field labels', () => {
     const wrapper = mountComponent()
     const text = wrapper.text()
-    expect(text).toContain('保证金金额（万）')
+    expect(text).toContain('保证金金额（元）')
     expect(text).toContain('保证金缴纳截止日期')
     expect(text).toContain('收款方')
     expect(text).toContain('收款账号')

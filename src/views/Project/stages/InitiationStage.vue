@@ -24,7 +24,7 @@
 </el-form-item>
 <template v-if="form.needDeposit === 'YES'">
   <div class="grid-2">
-    <el-form-item label="保证金金额（万）" required><el-input-number v-model="form.depositAmount" :min="0" :precision="2" @focus="handleAmountFocus('depositAmount')" @blur="handleAmountBlur('depositAmount')" /></el-form-item>
+    <el-form-item label="保证金金额（元）" required><el-input-number v-model="form.depositAmount" :min="0" :precision="2" @focus="handleAmountFocus('depositAmount')" @blur="handleAmountBlur('depositAmount')" /></el-form-item>
     <el-form-item label="保证金缴纳方式" required>
       <el-select v-model="form.depositPaymentMethod">
         <el-option label="电汇" value="WIRE" />
