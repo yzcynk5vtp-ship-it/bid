@@ -122,6 +122,20 @@ describe('normalizeBorrowApplication — 基本形态回归', () => {
     const result = normalizeBorrowApplication(input)
     expect(result.commitmentLetterUrl).toBe('')
   })
+
+  // CO-466: 后端 enrich caName 字段（持有人 / 关联平台 / 印章），前端 normalize 必须透传
+  it('正确透传 caName 字段（CO-466）', () => {
+    const input = { id: 1, caCertificateId: 5, caName: '张三 / 政采云, 国铁采购 / 公章' }
+    const result = normalizeBorrowApplication(input)
+    expect(result.caName).toBe('张三 / 政采云, 国铁采购 / 公章')
+    expect(result.caCertificateId).toBe(5)
+  })
+
+  it('caName 缺失时返回空字符串（前端 fallback 到 CA#${id}）', () => {
+    const input = { id: 1, caCertificateId: 5 }
+    const result = normalizeBorrowApplication(input)
+    expect(result.caName).toBe('')
+  })
 })
 
 describe('normalizeOperationEvent — 基本形态回归', () => {
