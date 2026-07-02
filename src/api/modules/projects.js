@@ -356,6 +356,22 @@ export const projectsApi = {
     }
 
     return httpClient.delete(`/api/projects/${projectId}/members/${userId}`)
+  },
+
+  /**
+   * 项目转移（FR-001 ~ FR-008）
+   * 在任何项目状态下更改项目负责人，新负责人承接旧负责人的所有内容，
+   * 旧负责人立即失去所有权限。仅投标管理员/组长可操作。
+   *
+   * @param {number} projectId 项目 ID
+   * @param {{ newOwnerUserId: number, reason?: string }} payload 转移请求
+   */
+  async transferProject(projectId, payload) {
+    if (!isNumericId(projectId)) {
+      return apiModeFailure('project')
+    }
+
+    return httpClient.post(`/api/projects/${projectId}/transfer`, payload)
   }
 }
 

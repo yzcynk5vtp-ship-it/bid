@@ -17,6 +17,7 @@
       <ProjectDetailResultDialogs />
       <ProjectDetailWorkflowDialogs />
       <ProjectTenderBreakdownDialog />
+      <ProjectTransferDialog />
       <ProjectDetailBidAgentDrawer />
     </div>
   </div>
@@ -43,6 +44,7 @@ import { useProjectDetailResultActions } from '@/composables/projectDetail/usePr
 import { useProjectDetailQuality } from '@/composables/projectDetail/useProjectDetailQuality.js'
 import { useProjectDetailState } from '@/composables/projectDetail/useProjectDetailState.js'
 import { useProjectDetailTaskActions } from '@/composables/projectDetail/useProjectDetailTaskActions.js'
+import { useProjectDetailTransfer } from '@/composables/projectDetail/useProjectDetailTransfer.js'
 import { useProjectDetailWorkflow } from '@/composables/projectDetail/useProjectDetailWorkflow.js'
 import ProjectDetailAssistantPanels from './ProjectDetailAssistantPanels.vue'
 import ProjectDetailBidAgentDrawer from './ProjectDetailBidAgentDrawer.vue'
@@ -50,6 +52,7 @@ import ProjectDetailHeader from './ProjectDetailHeader.vue'
 import ProjectDetailMainColumn from './ProjectDetailMainColumn.vue'
 import ProjectDetailResultDialogs from './ProjectDetailResultDialogs.vue'
 import ProjectTenderBreakdownDialog from './ProjectTenderBreakdownDialog.vue'
+import ProjectTransferDialog from './ProjectTransferDialog.vue'
 import ProjectDetailWorkflowDialogs from './ProjectDetailWorkflowDialogs.vue'
 import './project-detail-shell.css'
 
@@ -86,6 +89,13 @@ const taskActions = useProjectDetailTaskActions({
   state,
   workflow,
 })
+const transfer = useProjectDetailTransfer({
+  userStore,
+  projectStore,
+  projectsApi,
+  project: state.project,
+  message,
+})
 
 const loading = state.loading
 const project = state.project
@@ -108,6 +118,7 @@ const projectDetailContext = reactive({
   ...documentActions,
   ...resultActions,
   ...taskActions,
+  ...transfer,
   runAICheck: async () => {
     await ai.runAICheck()
     await quality.runQualityCheck({ silent: true })
