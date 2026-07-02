@@ -85,7 +85,7 @@ const scoreCount = ref(0)
 const chapterCount = ref(0)
 
 const depositLabels = {
-  depositAmount: '保证金金额（亿）',
+  depositAmount: '保证金金额（元）',
   paymentMethod: '缴纳方式',
   payeeName: '收款方名称',
   payeeAccount: '收款账号',

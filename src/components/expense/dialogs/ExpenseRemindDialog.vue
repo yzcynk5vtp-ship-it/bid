@@ -3,7 +3,7 @@
     <div v-if="expense" class="remind-content">
       <el-descriptions :column="1" border>
         <el-descriptions-item label="项目名称">{{ expense.project }}</el-descriptions-item>
-        <el-descriptions-item label="保证金金额">¥{{ Number(expense.amount || 0).toFixed(2) }}万元</el-descriptions-item>
+        <el-descriptions-item label="保证金金额（元）">¥{{ Number(expense.amount || 0).toFixed(2) }}</el-descriptions-item>
         <el-descriptions-item label="应退日期">{{ expense.expectedReturn }}</el-descriptions-item>
         <el-descriptions-item label="收款方">{{ expense.payee }}</el-descriptions-item>
       </el-descriptions>

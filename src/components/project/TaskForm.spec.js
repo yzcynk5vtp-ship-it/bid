@@ -677,7 +677,7 @@ describe('TaskForm', () => {
     })
     await flushPromises()
     const text = wrapper.text()
-    expect(text).toContain('保证金金额（万）')
+    expect(text).toContain('保证金金额（元）')
     expect(text).toContain('保证金缴纳截止日期')
     expect(text).toContain('收款方')
     expect(text).toContain('收款账号')
@@ -703,7 +703,7 @@ describe('TaskForm', () => {
     })
     await flushPromises()
     const text = wrapper.text()
-    expect(text).not.toContain('保证金金额（万）')
+    expect(text).not.toContain('保证金金额（元）')
     expect(text).not.toContain('收款方')
   })
 
@@ -726,7 +726,7 @@ describe('TaskForm', () => {
     })
     await flushPromises()
     const text = wrapper.text()
-    expect(text).toContain('保证金金额（万）')
+    expect(text).toContain('保证金金额（元）')
     expect(text).toContain('收款方')
   })
 

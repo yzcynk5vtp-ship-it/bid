@@ -10,7 +10,7 @@
     <el-descriptions :column="2" border size="small">
       <el-descriptions-item label="是否需要保证金">{{ hasDeposit ? '是' : '否' }}</el-descriptions-item>
       <template v-if="hasDeposit">
-        <el-descriptions-item label="保证金金额">{{ formatAmount(preview?.depositAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="保证金金额（元）">{{ formatAmount(preview?.depositAmount) }}</el-descriptions-item>
         <el-descriptions-item label="缴纳方式">{{ preview?.depositPaymentMethod || '-' }}</el-descriptions-item>
         <el-descriptions-item label="退回状态">{{ statusText }}</el-descriptions-item>
         <el-descriptions-item label="退回日期">{{ preview?.depositReturnDate || '-' }}</el-descriptions-item>

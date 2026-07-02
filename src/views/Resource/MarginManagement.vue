@@ -8,13 +8,13 @@
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="4">
         <div class="stat-card card-paid">
-          <div class="stat-label">保证金支付总额</div>
+          <div class="stat-label">保证金支付总额（元）</div>
           <div class="stat-value">¥ {{ fmtMoney(summary.totalPaid) }}</div>
         </div>
       </el-col>
       <el-col :span="5">
         <div class="stat-card card-pending">
-          <div class="stat-label">保证金未退回总额</div>
+          <div class="stat-label">保证金未退回总额（元）</div>
           <div class="stat-value">¥ {{ fmtMoney(summary.totalPending) }}</div>
         </div>
       </el-col>
@@ -26,7 +26,7 @@
       </el-col>
       <el-col :span="5">
         <div class="stat-card card-overdue-amount">
-          <div class="stat-label">超期未退回金额</div>
+          <div class="stat-label">超期未退回金额（元）</div>
           <div class="stat-value overdue">¥ {{ fmtMoney(summary.overdueAmount) }}</div>
         </div>
       </el-col>
@@ -110,7 +110,7 @@
         </el-table-column>
         <el-table-column prop="ownerUnit" label="业主单位" min-width="160" />
         <el-table-column prop="projectLeaderName" label="项目负责人" width="120" />
-        <el-table-column prop="depositAmount" label="保证金金额" width="160" align="right">
+        <el-table-column prop="depositAmount" label="保证金金额（元）" width="160" align="right">
           <template #default="{ row }">¥{{ fmtMoney(row.depositAmount) }}</template>
         </el-table-column>
         <el-table-column prop="paymentDate" label="缴纳日期" width="115">

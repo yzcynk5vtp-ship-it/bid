@@ -1,7 +1,7 @@
 <template>
   <div class="task-deposit-fields" data-test="task-deposit-fields">
     <!-- CO-448: 仅在「缴纳投标保证金」任务上显示，保证金金额和截止日期始终只读 -->
-    <el-form-item label="保证金金额（万）">
+    <el-form-item label="保证金金额（元）">
       <el-input
         :model-value="extendedFields.depositAmount ?? ''"
         disabled
