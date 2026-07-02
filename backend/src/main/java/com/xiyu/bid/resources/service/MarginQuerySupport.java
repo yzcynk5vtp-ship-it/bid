@@ -96,37 +96,27 @@ final class MarginQuerySupport {
               + " m.exp_return_date, m.returned_amount,"
               + " m.service_fee_amount, m.actual_return_date, m.status"
               + " FROM ("
-              + "   SELECT f.id as fee_id, f.project_id, p.name as project_name,"
-              + "     pid.owner_unit, pid.project_leader_name,"
-              + "     pid.bidding_leader_name, f.amount, f.payment_date,"
-              + "     pid.deposit_payment_method, f.return_to as payee_name,"
-              + "     NULL as payee_account, f.fee_date as exp_return_date,"
-              + "     CASE WHEN f.status='RETURNED' THEN f.amount ELSE NULL END"
-              + "       as returned_amount,"
-              + "     NULL as service_fee_amount, f.return_date as actual_return_date,"
-              + "     f.status, f.created_at"
+              + MarginDerivedTableColumns.DERIVED_SELECT_FEES
               + FEES_JOIN + rf
               + "   UNION ALL"
-              + "   SELECT -pid.project_id as fee_id, pid.project_id,"
-              + "     p.name as project_name, pid.owner_unit,"
-              + "     pid.project_leader_name, pid.bidding_leader_name,"
-              + "     pid.deposit_amount, NULL as payment_date,"
-              + "     pid.deposit_payment_method, NULL as payee_name,"
-              + "     NULL as payee_account, NULL as exp_return_date,"
-              + "     NULL as returned_amount, NULL as service_fee_amount,"
-              + "     NULL as actual_return_date, 'PENDING' as status,"
-              + "     COALESCE(pid.created_at, p.created_at) as created_at"
+              + MarginDerivedTableColumns.DERIVED_SELECT_INIT
               + initOnlyFragment(rf)
               + " ) m WHERE 1=1");
     }
 
     static StringBuilder countBase(final MarginQueryRole policy) {
         String rf = policy.apply("p", "pid");
+        // 复用 listBase 的派生表 SELECT 列定义，保证派生表列与 appendFilters
+        // 引用的列严格对齐，避免再次出现 "Unknown column 'm.status'"。
+        // 多出的列（如 returned_amount / actual_return_date）对 COUNT(*)
+        // 无业务影响，但保证列契约单一来源、零漂移。
         return new StringBuilder(
                 "SELECT COUNT(*) FROM ("
-              + "   SELECT f.id as fee_id, pid.project_leader_name, pid.bidding_leader_name" + FEES_JOIN + rf
+              + MarginDerivedTableColumns.DERIVED_SELECT_FEES
+              + FEES_JOIN + rf
               + "   UNION ALL"
-              + "   SELECT pid.project_id as fee_id, pid.project_leader_name, pid.bidding_leader_name" + initOnlyFragment(rf)
+              + MarginDerivedTableColumns.DERIVED_SELECT_INIT
+              + initOnlyFragment(rf)
               + " ) m WHERE 1=1");
     }
 
