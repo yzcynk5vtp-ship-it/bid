@@ -368,7 +368,7 @@ export function useInitiationStageActions({
       rejecting.value = true
       errorMsg.value = ''
       try {
-        await projectLifecycleApi.rejectInitiation(props.projectId, { rejectionReason: reason.trim() })
+        await projectLifecycleApi.rejectInitiation(props.projectId, { comment: reason.trim() })
         ElMessage.success('已驳回')
         emit('updated')
         await load()

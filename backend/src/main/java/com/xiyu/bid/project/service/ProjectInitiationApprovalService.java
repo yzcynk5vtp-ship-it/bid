@@ -148,7 +148,7 @@ public class ProjectInitiationApprovalService {
      * 驳回立项申请，记录原因供项目负责人修改后重新提交。
      *
      * @param projectId 项目 ID
-     * @param req 驳回请求（必须包含非空 rejectionReason）
+     * @param req 驳回请求（必须包含非空 comment）
      * @param currentUserId 当前审核人 ID
      * @throws ResponseStatusException 422 验证失败 / 404 立项详情不存在
      * @throws org.springframework.security.access.AccessDeniedException 数据权限不足
@@ -166,17 +166,17 @@ public class ProjectInitiationApprovalService {
         }
 
         entity.setReviewStatus(InitiationReviewStatus.REJECTED.name());
-        entity.setRejectionReason(req.getRejectionReason());
+        entity.setRejectionReason(req.getComment());
         entity.setReviewedBy(currentUserId);
         entity.setReviewedAt(LocalDateTime.now());
         entity.setUpdatedBy(currentUserId);
         initiationRepo.save(entity);
 
         // 通知 #3: 立项驳回 → 项目负责人
-        notificationService.notifyInitiationRejected(projectId, currentUserId, req.getRejectionReason());
+        notificationService.notifyInitiationRejected(projectId, currentUserId, req.getComment());
 
         log.info("Initiation rejected project={} reviewer={} reason={}",
-                projectId, currentUserId, req.getRejectionReason());
+                projectId, currentUserId, req.getComment());
     }
 
     /**

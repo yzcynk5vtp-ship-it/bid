@@ -1,5 +1,6 @@
 package com.xiyu.bid.project.controller;
 
+import com.xiyu.bid.project.dto.ClosureApprovalRequest;
 import com.xiyu.bid.project.service.ProjectService;
 import com.xiyu.bid.project.service.ProjectExportService;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,7 @@ class ProjectControllerAuthorizationTest {
         Method method = ProjectClosureController.class.getMethod(
                 "approve",
                 Long.class,
+                ClosureApprovalRequest.class,
                 org.springframework.security.core.userdetails.UserDetails.class
         );
 

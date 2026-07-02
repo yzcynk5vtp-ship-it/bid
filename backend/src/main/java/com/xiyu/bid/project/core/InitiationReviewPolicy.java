@@ -31,7 +31,7 @@ public final class InitiationReviewPolicy {
         if (currentStatus != InitiationReviewStatus.PENDING_REVIEW) {
             return new Decision.Deny("项目不在待审核状态: " + currentStatus);
         }
-        if (req == null || req.getRejectionReason() == null || req.getRejectionReason().isBlank()) {
+        if (req == null || req.getComment() == null || req.getComment().isBlank()) {
             return new Decision.Deny("驳回原因不能为空");
         }
         return Decision.ALLOW;
