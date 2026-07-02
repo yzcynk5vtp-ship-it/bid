@@ -80,7 +80,7 @@
             </el-col>
             <el-col :span="12">
               <el-form-item label="项目类型" prop="projectType">
-                <el-select v-model="form.projectType" placeholder="选择项目类型（选填）" clearable class="full-width">
+                <el-select v-model="form.projectType" placeholder="选择项目类型" class="full-width">
                   <el-option v-for="t in projectTypes" :key="t" :label="t" :value="t" />
                 </el-select>
               </el-form-item>
