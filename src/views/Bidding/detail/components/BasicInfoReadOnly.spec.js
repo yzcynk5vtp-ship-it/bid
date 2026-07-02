@@ -6,6 +6,7 @@ import BasicInfoReadOnly from './BasicInfoReadOnly.vue'
 import BasicFieldsSection from './BasicFieldsSection.vue'
 import ProjectPlanGapUpload from './ProjectPlanGapUpload.vue'
 import TenderEvaluationForm from '../TenderEvaluationForm.vue'
+import { vAutosize } from '@/directives/autosize.js'
 
 function mountWithElementPlus(component, options = {}) {
   return mount(component, {
@@ -13,6 +14,7 @@ function mountWithElementPlus(component, options = {}) {
     global: {
       ...(options.global || {}),
       plugins: [ElementPlus, ...(options.global?.plugins || [])],
+      directives: { autosize: vAutosize, ...(options.global?.directives || {}) },
     },
   })
 }
@@ -48,11 +50,12 @@ describe('BasicInfoReadOnly — 只读详情多行字段绕过 Element Plus 滚�
     const elTextareas = wrapper.findAllComponents({ name: 'ElInput' }).filter(c => c.props('type') === 'textarea')
     expect(elTextareas).toHaveLength(0)
 
-    // 验证原生 textarea 的属性
+    // 验证原生 textarea 的属性：readonly 启用，不再固定 rows=10
+    // （改由 v-autosize 指令根据内容自适应高度，详见 src/directives/autosize.js）
     expect(nativeTextareas[0].attributes('readonly')).toBeDefined()
-    expect(nativeTextareas[0].attributes('rows')).toBe('10')
+    expect(nativeTextareas[0].attributes('rows')).toBeUndefined()
     expect(nativeTextareas[1].attributes('readonly')).toBeDefined()
-    expect(nativeTextareas[1].attributes('rows')).toBe('10')
+    expect(nativeTextareas[1].attributes('rows')).toBeUndefined()
   })
 })
 
