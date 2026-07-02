@@ -1,0 +1,9 @@
+version: 1
+task: "fix-notification-route-blank"
+locks:
+  - path: "src/router/index.js"
+    scope: "file"
+    owner: "agent"
+    branch: "agent/cursor/fix-notification-route-blank"
+    expiresAt: "2026-07-03T04:23:33.090Z"
+    reason: "CO-441 fix notification route blank: add /project/:id/:stage subroute"

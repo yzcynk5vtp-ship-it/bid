@@ -20,6 +20,18 @@ export function getStageIndex(stageCode) {
 }
 
 /**
+ * URL 子路径 → stage code 反查
+ * 用于通知跳转 /project/128/initiation 时根据 route.params.stage='initiation' 解析出 'INITIATED'
+ * @param {string} routeParam - URL 子路径段（initiation/drafting/evaluation/result/retrospective/closure）
+ * @returns {string|null} stage code，未匹配返回 null
+ */
+export function routeToStageCode(routeParam) {
+  if (!routeParam || typeof routeParam !== 'string') return null
+  const stage = PROJECT_STAGES.find(s => s.route === routeParam)
+  return stage ? stage.code : null
+}
+
+/**
  * 获取下一阶段代码
  */
 export function getNextStage(currentStage) {

@@ -119,10 +119,12 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { Clock } from '@element-plus/icons-vue'
 // import { Document, DocumentChecked, Folder, Upload } from '@element-plus/icons-vue' // 暂时隐藏项目文档
 import { useProjectDetailContext } from '@/composables/projectDetail/context.js'
 import { useProjectStore } from '@/stores/project'
+import { routeToStageCode } from '@/constants/projectStages'
 import ProjectApprovalStatusCard from '@/components/project/ProjectApprovalStatusCard.vue'
 import ProjectBasicInfoCard from '@/components/project/ProjectBasicInfoCard.vue'
 import ProjectStageTimeline from '@/components/project/stage/ProjectStageTimeline.vue'
@@ -142,6 +144,7 @@ import { projectLifecycleApi } from '@/api/modules/projectLifecycle.js'
 
 const ctx = useProjectDetailContext()
 const projectStore = useProjectStore()
+const route = useRoute()
 
 const activeStageTab = ref('')
 // 项目真实当前阶段（来自 timeline snapshot），与 activeStageTab（用户当前查看的 tab）解耦。
@@ -207,13 +210,38 @@ function handleStageClick(stage) {
   activeStageTab.value = stage.code
 }
 
+// URL stage 参数 → stage code，未匹配返回 null
+// route 可能在外部测试环境未注入，做轻量防御
+function stageFromRoute() {
+  const stageParam = route?.params?.stage
+  if (!stageParam) return null
+  return routeToStageCode(stageParam)
+}
+
 function handleSnapshot(snapshot) {
-  if (snapshot?.defaultOpenStage || snapshot?.currentStage) {
-    const stage = snapshot.defaultOpenStage || snapshot.currentStage
-    activeStageTab.value = stage
+  // currentProjectStage 始终记录项目真实阶段（用于阶段门禁）
+  if (snapshot?.currentStage) {
     currentProjectStage.value = snapshot.currentStage
   }
+  // URL stage 参数优先（用户从通知主动跳转表达明确意图）
+  // 其次才用 timeline 推荐的 defaultOpenStage
+  const fromRoute = stageFromRoute()
+  if (fromRoute) {
+    activeStageTab.value = fromRoute
+  } else if (snapshot?.defaultOpenStage || snapshot?.currentStage) {
+    const stage = snapshot.defaultOpenStage || snapshot.currentStage
+    activeStageTab.value = stage
+  }
 }
+
+// 同项目不同 stage 跳转（如用户在通知中心连续点不同 stage 通知）
+// immediate: 初始化时若 URL 带 stage 参数，立即切换到对应 tab
+watch(() => route?.params?.stage, (newStage) => {
+  if (newStage) {
+    const code = routeToStageCode(newStage)
+    if (code) activeStageTab.value = code
+  }
+}, { immediate: true })
 
 function handleSwitchTab(v) {
   activeStageTab.value = v

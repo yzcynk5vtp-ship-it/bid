@@ -144,6 +144,14 @@ const routes = [
         meta: { title: '项目详情', showBack: true }
       },
       {
+        // 支持通知跳转直达 stage 子页面：/project/128/initiation
+        // ProjectDetailShell / ProjectDetailMainColumn 读取 route.params.stage 切换 activeStageTab
+        path: 'project/:id/:stage',
+        name: 'ProjectDetailStage',
+        component: () => import('@/views/Project/Detail.vue'),
+        meta: { title: '项目详情', showBack: true }
+      },
+      {
         path: 'knowledge',
         component: () => import('@/views/Knowledge/KbLayout.vue'),
         meta: { requiresAuth: true },
