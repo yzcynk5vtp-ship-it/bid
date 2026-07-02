@@ -217,22 +217,24 @@ export const caApi = {
   },
 
   // CA 借用申请
-  async borrow(id, data = {}) {
+  // 注意：禁止使用 data = {} 默认参数兜底（JS 默认参数只对 undefined 生效，对 '' 不生效）
+  // 详见 docs/architecture/approval-contract.md §5.1
+  async borrow(id, data) {
     return httpClient.post(`${BASE}/${id}/borrow`, data)
   },
 
   // 审批：批准
-  async approve(applicationId, data = {}) {
+  async approve(applicationId, data) {
     return httpClient.post(`${BASE}/borrow-applications/${applicationId}/approve`, data)
   },
 
   // 审批：拒绝
-  async reject(applicationId, data = {}) {
+  async reject(applicationId, data) {
     return httpClient.post(`${BASE}/borrow-applications/${applicationId}/reject`, data)
   },
 
   // 归还
-  async returnCa(applicationId, data = {}) {
+  async returnCa(applicationId, data) {
     return httpClient.post(`${BASE}/borrow-applications/${applicationId}/return`, data)
   },
 
