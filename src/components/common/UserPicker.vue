@@ -10,7 +10,7 @@
     :disabled="disabled"
     :clearable="clearable"
     :multiple="multiple"
-    :value-key="valueField"
+    value-key="value"
     @change="handleChange"
   >
     <template v-if="selectOptions.length === 0" #empty>

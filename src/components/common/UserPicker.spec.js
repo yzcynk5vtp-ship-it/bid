@@ -151,7 +151,7 @@ describe('UserPicker', () => {
     expect(select.props('options')).toEqual([
       { value: 1, label: '张三（20260509）' },
     ])
-    expect(select.props('valueKey')).toBe('id')
+    expect(select.props('valueKey')).toBe('value')
   })
 
   it('excludes users listed in excludeIds from options', () => {
