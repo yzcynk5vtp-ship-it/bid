@@ -2263,7 +2263,7 @@ ssh jetty@172.16.38.78 'grep -E "请求体不可读|Required request body" /var/
 
 ### 问题背景
 
-后端 187 处 `@PreAuthorize` 使用 `hasAnyRole`/`hasRole` 角色枚举式白名单（含 12 处 `static final String` 常量引用，Java 编译期内联后 ArchUnit 字节码扫描统一捕获），与 `RoleProfileCatalog` 的细粒度权限键形成双轨制。
+后端 201 处 `@PreAuthorize` 使用 `hasAnyRole`/`hasRole` 角色枚举式白名单（方法级 187 + 类级 14；方法级含 12 处 `static final String` 常量引用，Java 编译期内联后 ArchUnit 字节码扫描统一捕获），与 `RoleProfileCatalog` 的细粒度权限键形成双轨制。
 
 根因：`eb58f2817`（2026-06-16）切断 `bid-otherDept`/`bid-administration`/`bid-Team` 的 legacy `ROLE_STAFF`/`ROLE_MANAGER` 兼容（堵越权，正确），但未同步迁移依赖该 authority 的白名单 → 系统分裂为"新模型给角色赋权 / 旧模型拒绝承认"的矛盾状态 → CO-362→CO-466 共 20+ 个反复返工的 403 PR。最近症状：`bid-otherDept` 用户(09118) 2026-07-02 访问 `GET /api/task-extended-fields` 被 403。
 
@@ -2281,7 +2281,7 @@ ssh jetty@172.16.38.78 'grep -E "请求体不可读|Required request body" /var/
 
 ```java
 // 规则 1（主守卫，过渡期）：实际违规数 == EXPECTED 常量
-private static final int EXPECTED_LEGACY_USE_COUNT = 187;  // 初始基线，迁移递减
+private static final int EXPECTED_LEGACY_USE_COUNT = 201;  // 方法级187+类级14，迁移递减
 
 @ArchTest
 public static final void legacy_count_must_match_baseline(JavaClasses classes) {

@@ -79,5 +79,30 @@ class TaskExtendedFieldSecurityTest {
         mockMvc.perform(get("/api/task-extended-fields"))
                 .andExpect(status().isOk());
     }
+
+    /**
+     * M1 审查修复：补 anonymous 401/403 测试（tasks.md T009 要求）。
+     * 验证未认证请求被拒——证明类级 isAuthenticated() 仍守门，删方法级注解不等于放行匿名。
+     * 实际返回码取决于 SecurityConfig 的 AuthenticationEntryPoint（401 或 403），
+     * 本测试用 is4xxClientError() 兼容两者，避免对 EntryPoint 实现过度耦合。
+     */
+    @Test
+    void anonymous_cannotListExtendedFields() throws Exception {
+        mockMvc.perform(get("/api/task-extended-fields"))
+                .andExpect(status().is4xxClientError());
+    }
+
+    /**
+     * S1 审查建议：补 bid-projectLeader 角色覆盖（白名单曾显式列 SALES/BID_PROJECTLEADER，
+     * P1 修复后该角色仍应可访问，回归保护）。
+     */
+    @Test
+    @WithMockUser(roles = "BID_PROJECTLEADER")
+    void bidProjectLeader_canListExtendedFields() throws Exception {
+        when(service.listEnabled()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/task-extended-fields"))
+                .andExpect(status().isOk());
+    }
 }
 

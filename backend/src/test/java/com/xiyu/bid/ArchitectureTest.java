@@ -903,7 +903,7 @@ public class ArchitectureTest {
      * 会被 Java 编译期内联为字面量，因此 <code>@PreAuthorize(ADMIN_MANAGER_EXPR)</code> 也
      * 会被规则 2 正确捕获（gemini 审核确认）。</p>
      */
-    private static final ArchCondition<com.tngtech.archunit.core.domain.JavaMethod> NOT_USE_ROLE_ENUMERATION_AUTH =
+    private static final ArchCondition<com.tngtech.archunit.core.domain.JavaMethod> NOT_USE_ROLE_ENUMERATION_AUTH_METHOD =
         new ArchCondition<com.tngtech.archunit.core.domain.JavaMethod>(
             "不使用 hasAnyRole/hasRole 角色枚举式白名单（Constitution VI）") {
         @Override
@@ -919,22 +919,59 @@ public class ArchitectureTest {
         }
     };
 
-    /**
-     * 当前遗留违规总数（含字面量 + 编译期内联的常量引用）。
-     * 初始值 187 = 175 字面量 + 12 常量引用内联后（P1 修复后基线，2026-07-02 ArchUnit 实测）。
-     * 后续 P3 批次迁移每消除一处，此常量递减 1；归零后删除规则 1，规则 2 升级为硬失败门禁。
-     */
-    private static final int EXPECTED_LEGACY_USE_COUNT = 187;
+    /** 类级 @PreAuthorize 守卫条件：扫描类级注解的 SpEL（覆盖类级 hasAnyRole/hasRole 盲区）。 */
+    private static final ArchCondition<JavaClass> NOT_USE_ROLE_ENUMERATION_AUTH_CLASS =
+        new ArchCondition<JavaClass>(
+            "类级 @PreAuthorize 不使用 hasAnyRole/hasRole 角色枚举式白名单（Constitution VI）") {
+        @Override
+        public void check(JavaClass clazz, ConditionEvents events) {
+            if (!clazz.isAnnotatedWith(
+                    "org.springframework.security.access.prepost.PreAuthorize")) {
+                return;
+            }
+            String spel = clazz.getAnnotationOfType(
+                org.springframework.security.access.prepost.PreAuthorize.class).value();
+            if (spel != null && (spel.contains("hasAnyRole") || spel.contains("hasRole"))) {
+                events.add(SimpleConditionEvent.violated(clazz,
+                    "类级 @PreAuthorize 禁止 hasAnyRole/hasRole，改用 isAuthenticated()/hasAuthority。"
+                    + "Constitution VI；class=" + clazz.getName() + " spel=" + spel
+                    + "；迁移流程：递减 EXPECTED_LEGACY_USE_COUNT 并改写"));
+            }
+        }
+    };
 
     /**
-     * 规则 1（主守卫，过渡期）：实际违规数必须等于 EXPECTED_LEGACY_USE_COUNT。
+     * 当前遗留违规总数（方法级 + 类级）。
+     *
+     * <p><b>溯源（M2 修正，2026-07-02）</b>：初始基线 201，构成如下：
+     * <ul>
+     *   <li>方法级 187 = 字面量 175（P1 修复 TaskExtendedFieldController 后）+
+     *       编译期内联的 static final String 常量 12（如 ADMIN_MANAGER_EXPR，
+     *       Java 编译器把 static final String 内联为字面量，ArchUnit 字节码扫描
+     *       与字面量写法同等捕获）</li>
+     *   <li>类级 14 = 14 个 Controller 在<b>类</b>上（非方法）标注
+     *       @PreAuthorize("hasAnyRole(...)") 或 hasRole('ADMIN')
+     *       （S2 审查发现：原 countPreAuthorizeWithRoleEnumeration 只扫 getMethods()，
+     *       漏掉类级注解；修正后守卫同时扫方法和类）</li>
+     * </ul>
+     * grep 参考：方法级字面量
+     * {@code grep -rEn '@PreAuthorize\("hasAnyRole[^"]*"|@PreAuthorize\("hasRole[^"]*"' backend/src/main/java --include=*.java | grep -v /test/}
+     * = 175（P1 修复后）；类级（行首 @）= 14。ArchUnit 实测因常量内联略高于 grep。</p>
+     *
+     * <p>后续 P3 批次迁移每消除一处（方法级或类级），此常量递减 1；
+     * 归零后删除规则 1，规则 2 升级为硬失败门禁。</p>
+     */
+    private static final int EXPECTED_LEGACY_USE_COUNT = 201;
+
+    /**
+     * 规则 1（主守卫，过渡期）：实际违规数（方法级 + 类级）必须等于 EXPECTED_LEGACY_USE_COUNT。
      * 这是过渡期的通过/失败判据，宽容存量、拦截新增。
      */
     @ArchTest
     public static final void legacy_hasanyrole_count_must_match_baseline(JavaClasses classes) {
         int actual = countPreAuthorizeWithRoleEnumeration(classes);
         org.assertj.core.api.Assertions.assertThat(actual)
-            .as("hasAnyRole/hasRole @PreAuthorize 使用点总数须与 EXPECTED_LEGACY_USE_COUNT ("
+            .as("hasAnyRole/hasRole @PreAuthorize 使用点总数（方法级+类级）须与 EXPECTED_LEGACY_USE_COUNT ("
                 + EXPECTED_LEGACY_USE_COUNT + ") 一致（实际=" + actual + "）。"
                 + "不一致原因：1) 新增了违规注解未走迁移流程（实际 > 预期）"
                 + "；2) 迁移后忘递减 EXPECTED_LEGACY_USE_COUNT（实际 < 预期）。"
@@ -943,42 +980,51 @@ public class ArchitectureTest {
     }
 
     /**
-     * 规则 2（硬失败门禁，最终态）：扫描 @PreAuthorize 注解的 SpEL，禁止含 hasAnyRole/hasRole。
+     * 规则 2（硬失败门禁，最终态）：扫描方法级 + 类级 @PreAuthorize，禁止含 hasAnyRole/hasRole。
      *
      * <p><b>过渡期行为</b>：当实际违规数 == EXPECTED_LEGACY_USE_COUNT 时，视为"存量已登记"，
-     * 本规则跳过（assumption passed），由规则 1（{@link #legacy_hasanyrole_count_must_match_baseline}）
-     * 守护。当实际数与 EXPECTED 不一致时（说明有人偷偷新增或忘改常量），规则 1 已先失败。</p>
+     * 直接 return（S3 修正：原 assumeTrue(true) 是 no-op，简化为 return）。由规则 1
+     * （{@link #legacy_hasanyrole_count_must_match_baseline}）守护。当实际数与 EXPECTED 不一致时
+     * （偷偷新增或忘改常量），规则 1 已先失败。</p>
      *
      * <p><b>最终态</b>：待 P3 全部批次迁移完成（EXPECTED 归零），删除规则 1 + 删除本方法的
-     * "过渡期跳过"逻辑，本规则成为永久硬失败门禁——任何违规直接报。</p>
-     *
-     * <p>本规则作为<b>目标态活文档</b>保留，让所有人看到迁移完成后的硬失败门禁长什么样。</p>
+     * "过渡期 return"逻辑，本规则成为永久硬失败门禁——任何违规直接报。</p>
      */
     @ArchTest
     public static final void preauthorize_should_not_use_role_enumeration(JavaClasses classes) {
         int actual = countPreAuthorizeWithRoleEnumeration(classes);
         if (actual == EXPECTED_LEGACY_USE_COUNT) {
-            // 过渡期：存量已由规则 1 锁定，本规则跳过（不阻塞 CI）
-            org.junit.jupiter.api.Assumptions.assumeTrue(true,
-                "Constitution VI 过渡期：存量 " + actual + " 处由规则 1 宽容，"
-                    + "本规则（硬失败门禁）跳过。EXPECTED 归零后此 assume 移除。");
+            // 过渡期：存量已由规则 1 锁定，本规则（硬失败门禁）跳过，不阻塞 CI。
+            // S3 修正：原 assumeTrue(true, ...) 是永真 no-op，JVM 仍计入"假设通过"；
+            // 此处直接 return 语义更清晰。EXPECTED 归零后此分支自然走不到（actual==0==EXPECTED），
+            // 届时删除整个 if + 规则 1，让下方 check 独立生效。
             return;
         }
         // 实际数 != EXPECTED：规则 1 已失败，本规则也报（双重保险）
+        // 同时扫方法级和类级（S2 修正：原只扫方法级，类级 hasAnyRole 是盲区）
         methods()
             .that().areAnnotatedWith("org.springframework.security.access.prepost.PreAuthorize")
-            .should(NOT_USE_ROLE_ENUMERATION_AUTH)
+            .should(NOT_USE_ROLE_ENUMERATION_AUTH_METHOD)
             .because("Constitution VI: 禁止 hasAnyRole/hasRole 角色枚举式白名单（双轨制元凶）。"
                 + "改用 hasAuthority('<permissionKey>') 或 isAuthenticated()。"
-                + "权限键在 RoleProfileCatalog.SeedDefinition.menuPermissions 注册。"
-                + "参见 specs/024-preauthorize-unification 与 docs/architecture/preauthorize-unification-design.md")
+                + "参见 specs/024-preauthorize-unification")
+            .check(classes);
+        classes()
+            .that().areAnnotatedWith("org.springframework.security.access.prepost.PreAuthorize")
+            .should(NOT_USE_ROLE_ENUMERATION_AUTH_CLASS)
+            .because("Constitution VI 类级守卫：类级 @PreAuthorize 也禁止 hasAnyRole/hasRole。"
+                + "参见 specs/024-preauthorize-unification")
             .check(classes);
     }
 
-    /** 统计 @PreAuthorize 注解中 SpEL 含 hasAnyRole/hasRole 的方法数（含编译期内联的常量）。 */
+    /**
+     * 统计 @PreAuthorize 注解中 SpEL 含 hasAnyRole/hasRole 的<b>方法级 + 类级</b>使用点数。
+     * 含编译期内联的 static final String 常量（S2 修正：补充类级注解扫描）。
+     */
     private static int countPreAuthorizeWithRoleEnumeration(JavaClasses classes) {
         int[] count = {0};
         for (JavaClass clazz : classes) {
+            // 方法级注解
             for (com.tngtech.archunit.core.domain.JavaMethod method : clazz.getMethods()) {
                 if (method.isAnnotatedWith(
                         "org.springframework.security.access.prepost.PreAuthorize")) {
@@ -987,6 +1033,15 @@ public class ArchitectureTest {
                     if (spel != null && (spel.contains("hasAnyRole") || spel.contains("hasRole"))) {
                         count[0]++;
                     }
+                }
+            }
+            // 类级注解（S2 修正：原只扫 getMethods()，漏掉类级注解）
+            if (clazz.isAnnotatedWith(
+                    "org.springframework.security.access.prepost.PreAuthorize")) {
+                String spel = clazz.getAnnotationOfType(
+                    org.springframework.security.access.prepost.PreAuthorize.class).value();
+                if (spel != null && (spel.contains("hasAnyRole") || spel.contains("hasRole"))) {
+                    count[0]++;
                 }
             }
         }
