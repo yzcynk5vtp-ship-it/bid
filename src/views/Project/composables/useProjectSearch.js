@@ -21,11 +21,11 @@ export const projectTypeOptions = [
 ]
 
 export const customerTypeOptions = [
-  { value: 'GOVERNMENT_INSTITUTION', label: '政府机关/事业单位/高校' },
+  { value: 'GOVERNMENT', label: '政府机关/事业单位/高校' },
   { value: 'CENTRAL_SOE', label: '央企' },
   { value: 'LOCAL_SOE', label: '地方国企' },
-  { value: 'PRIVATE_ENTERPRISE', label: '民企' },
-  { value: 'FOREIGN_HK_MACAO_TW', label: '港澳台及外企' },
+  { value: 'PRIVATE', label: '民企' },
+  { value: 'FOREIGN', label: '港澳台及外企' },
   { value: 'OTHER', label: '其他' },
 ]
 

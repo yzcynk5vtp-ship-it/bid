@@ -27,8 +27,8 @@ public final class InitiationFieldPolicy {
     /** §3.1.1 项目类型枚举（办公/综合/集采/工业品/其他），对齐前端 PROJECT_TYPE_OPTIONS。 */
     public enum ProjectType { OFFICE, COMPREHENSIVE, COLLECTIVE, INDUSTRIAL, OTHER }
 
-    /** §3.1.1 客户类型枚举（政府/央企/地方国企/民企/港澳台及外企），对齐前端 CUSTOMER_TYPE_OPTIONS。 */
-    public enum CustomerType { GOVERNMENT, CENTRAL_SOE, LOCAL_SOE, PRIVATE, FOREIGN }
+    /** §3.1.1 客户类型枚举（政府/央企/地方国企/民企/港澳台及外企/其他），对齐前端 CUSTOMER_TYPE_OPTIONS。 */
+    public enum CustomerType { GOVERNMENT, CENTRAL_SOE, LOCAL_SOE, PRIVATE, FOREIGN, OTHER }
 
     private static final Set<String> LOCKED_FIELDS = Set.of("bidOpenTime", "ownerUnit");
 
@@ -82,6 +82,8 @@ public final class InitiationFieldPolicy {
         m.put("港澳台及外企", "FOREIGN");
         m.put("FOREIGN_HK_MACAO_TW", "FOREIGN");
         m.put("FOREIGN", "FOREIGN");
+        m.put("其他", "OTHER");
+        m.put("OTHER", "OTHER");
         return Map.copyOf(m);
     }
 
@@ -91,6 +93,16 @@ public final class InitiationFieldPolicy {
     /** 提交后不可变更的字段集合（§3.1.2）。 */
     public static Set<String> lockedFields() {
         return LOCKED_FIELDS;
+    }
+
+    /**
+     * 将原始 customerType 文本（中文/前端旧 value/标讯系统枚举/历史数据）归一化为
+     * 后端 CustomerType 枚举名。列表展示与筛选统一以此为准。
+     * 无法识别时返回 null（调用方可保留原值或置空）。
+     */
+    public static String normalizeCustomerType(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        return CUSTOMER_TYPE_MAPPING.get(raw.trim());
     }
 
     /**
