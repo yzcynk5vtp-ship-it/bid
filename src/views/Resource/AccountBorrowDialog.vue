@@ -23,7 +23,7 @@
     </el-form>
     <template #footer>
       <el-button @click="visible = false">取消</el-button>
-      <el-button type="primary" @click="submit">提交申请</el-button>
+      <el-button type="primary" :loading="submitting" @click="submit">提交申请</el-button>
     </template>
   </el-dialog>
 </template>
@@ -63,12 +63,17 @@ watch(() => props.account, async (acc) => {
   }
 })
 
+const submitting = ref(false)
+
 const formatDate = formatLocalDateTime
 
 const submit = async () => {
   if (!form.value.purpose.trim()) { ElMessage.warning('请填写使用目的'); return }
   if (!form.value.returnDate) { ElMessage.warning('请选择预计归还日期'); return }
   if (!props.account) return
+  if (submitting.value) return
+
+  submitting.value = true
 
   const custodianId = props.account.raw?.custodian ?? props.account.custodian
   const payload = {
@@ -77,12 +82,18 @@ const submit = async () => {
     projectId: form.value.projectId,
     expectedReturnAt: formatDate(form.value.returnDate)
   }
-  const res = await resourcesApi.accounts.submitBorrowApplication(props.account.id, payload)
-  if (!res?.success) {
-    ElMessage.error(res?.msg || '申请提交失败'); return
+  try {
+    const res = await resourcesApi.accounts.submitBorrowApplication(props.account.id, payload)
+    if (!res?.success) {
+      ElMessage.error(res?.msg || '申请提交失败'); return
+    }
+    ElMessage.success('申请已提交，等待保管员审批')
+    visible.value = false
+    emit('submitted')
+  } catch {
+    // 错误消息已由 axios 拦截器统一显示，此处只需阻止异常冒泡触发 ErrorBoundary
+  } finally {
+    submitting.value = false
   }
-  ElMessage.success('申请已提交，等待保管员审批')
-  visible.value = false
-  emit('submitted')
 }
 </script>
