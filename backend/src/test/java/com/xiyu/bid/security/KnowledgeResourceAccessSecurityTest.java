@@ -10,6 +10,7 @@ import com.xiyu.bid.repository.UserRepository;
 import com.xiyu.bid.resources.service.CaBorrowService;
 import com.xiyu.bid.resources.service.CaCertificateImportAppService;
 import com.xiyu.bid.resources.service.CaCertificateService;
+import com.xiyu.bid.resources.service.CaCommitmentLetterUploadService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,6 +85,8 @@ class KnowledgeResourceAccessSecurityTest {
     private CaBorrowService caBorrowService;
     @MockBean
     private CaCertificateImportAppService caCertificateImportAppService;
+    @MockBean
+    private CaCommitmentLetterUploadService caCommitmentLetterUploadService;
 
     @EnableWebSecurity
     @EnableMethodSecurity(prePostEnabled = true)

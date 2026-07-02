@@ -139,6 +139,7 @@ public class CaCertificateController {
     }
 
     @PostMapping("/borrow-applications/{applicationId}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER') or hasAuthority('ROLE_BID_TEAM')")
     @Auditable(action = "APPROVE", entityType = "CaBorrowApplication", description = "审批通过CA借用申请")
     public ResponseEntity<CaBorrowApplicationDTO> approve(
             @PathVariable Long applicationId,
@@ -148,6 +149,7 @@ public class CaCertificateController {
     }
 
     @PostMapping("/borrow-applications/{applicationId}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER') or hasAuthority('ROLE_BID_TEAM')")
     @Auditable(action = "REJECT", entityType = "CaBorrowApplication", description = "驳回CA借用申请")
     public ResponseEntity<CaBorrowApplicationDTO> reject(
             @PathVariable Long applicationId,
