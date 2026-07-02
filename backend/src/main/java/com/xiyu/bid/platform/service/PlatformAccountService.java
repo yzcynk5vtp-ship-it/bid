@@ -20,6 +20,7 @@ import com.xiyu.bid.platform.util.PlatformAccountContactMatcher;
 import com.xiyu.bid.security.EffectiveRoleResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -124,7 +125,7 @@ public class PlatformAccountService {
         String code = viewer == null ? null : effectiveRoleResolver.resolveRoleCode(viewer);
         boolean privileged = PlatformAccountViewerPolicy.isPrivilegedRole(code);
         boolean bidTeam = PlatformAccountViewerPolicy.isBidTeamRole(code);
-        return repository.findAll().stream()
+        return repository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
             .map(account -> (privileged || (bidTeam && PlatformAccountContactMatcher.isContactPerson(account, viewer)))
                 ? PlatformAccountMapper.toDTO(account)
                 : PlatformAccountMapper.toSummaryDTO(account))
