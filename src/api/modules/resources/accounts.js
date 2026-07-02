@@ -128,7 +128,7 @@ export const accountsApi = {
     return httpClient.get('/api/borrow-applications/my-approvals')
   },
 
-  async approveBorrowApplication(id, payload = {}) {
+  async approveBorrowApplication(id, payload) {
     if (!isNumericId(id)) return Promise.resolve(invalidIdMessage('application'))
     return httpClient.post(`/api/borrow-applications/${id}/approve`, payload)
   },

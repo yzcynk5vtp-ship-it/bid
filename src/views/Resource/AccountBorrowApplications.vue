@@ -146,7 +146,7 @@ const reload = () => {
 
 const approve = async (row) => {
   try {
-    const res = await resourcesApi.accounts.approveBorrowApplication(row.id)
+    const res = await resourcesApi.accounts.approveBorrowApplication(row.id, { comment: '' })
     if (!res?.success) { ElMessage.error(res?.msg || '审批失败'); return }
     ElMessage.success('已审批通过')
     await loadApprovals()
