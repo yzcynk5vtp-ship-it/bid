@@ -297,6 +297,12 @@ class ProjectInitiationApprovalServiceTest {
                 .containsEntry("_taskType", "deposit-payment")
                 .containsEntry("depositAmount", expectedAmount)
                 .containsEntry("depositDeadline", expectedDueDate);
+        // 保证金说明应写入 content（数据库 schema：content=任务详细描述），
+        // 不能写入 description，否则前端 normalize 后 content 恒空，触发"请填写详细描述"误报。
+        assertThat(captured.getContent())
+                .contains("保证金金额")
+                .contains("保证金缴纳方式");
+        assertThat(captured.getDescription()).isNull();
     }
 
     /**

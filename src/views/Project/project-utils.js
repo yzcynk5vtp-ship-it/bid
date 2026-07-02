@@ -204,7 +204,10 @@ export function taskBackendToCard(dto = {}) {
     id: dto.id,
     projectId: dto.projectId ?? null,
     name: dto.title ?? dto.name ?? '',
-    content: dto.content ?? '',
+    // 兼容存量数据：后端早期 createDepositTask 把详细描述写入 description（已修复为 content）。
+    // 新代码都应写 content；description fallback 仅用于兜底旧任务，避免 UI 显示空、校验误报"请填写详细描述"。
+    // 注意：用 || 不用 ??，因为后端可能返回空字符串 ""，?? 对空字符串不会 fallback。
+    content: dto.content || dto.description || '',
     status: normalizeTaskStatusFromApi(dto.status),
     priority: dto.priority,
     deadline: dto.dueDate ?? '',
