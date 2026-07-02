@@ -11,6 +11,7 @@ import java.util.List;
 /**
  * 立项审核通过请求。
  * 产品蓝图 V1.1 §4.3：审核通过必须分配投标负责人。
+ * <p>审批意见字段统一为 {@code comment}，参照 docs/architecture/approval-contract.md。
  */
 @Data
 @Builder
@@ -25,5 +26,6 @@ public class InitiationApprovalRequest {
 
     private List<Long> auxiliaryUserIds;
 
-    private String reviewerNotes;
+    /** 审批意见（可选，通过操作允许不填）。 */
+    private String comment;
 }

@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 /**
  * 立项审核驳回请求。
  * 产品蓝图 V1.1 §4.3：驳回必须填写原因。
+ * <p>字段统一为 {@code comment}，参照 docs/architecture/approval-contract.md。
  */
 @Data
 @Builder
@@ -17,5 +18,5 @@ import lombok.NoArgsConstructor;
 public class InitiationRejectionRequest {
 
     @NotBlank(message = "驳回原因不能为空")
-    private String rejectionReason;
+    private String comment;
 }

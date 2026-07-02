@@ -25,7 +25,7 @@ class InitiationReviewPolicyTest {
 
     private InitiationRejectionRequest validRejection() {
         return InitiationRejectionRequest.builder()
-                .rejectionReason("信息不完整")
+                .comment("信息不完整")
                 .build();
     }
 
@@ -89,7 +89,7 @@ class InitiationReviewPolicyTest {
 
     @Test
     void reject_blankReason_denied() {
-        var req = InitiationRejectionRequest.builder().rejectionReason("   ").build();
+        var req = InitiationRejectionRequest.builder().comment("   ").build();
         var d = InitiationReviewPolicy.validateRejection(
                 InitiationReviewStatus.PENDING_REVIEW, req);
         assertFalse(d.allowed());
@@ -97,7 +97,7 @@ class InitiationReviewPolicyTest {
 
     @Test
     void reject_nullReason_denied() {
-        var req = InitiationRejectionRequest.builder().rejectionReason(null).build();
+        var req = InitiationRejectionRequest.builder().comment(null).build();
         var d = InitiationReviewPolicy.validateRejection(
                 InitiationReviewStatus.PENDING_REVIEW, req);
         assertFalse(d.allowed());
