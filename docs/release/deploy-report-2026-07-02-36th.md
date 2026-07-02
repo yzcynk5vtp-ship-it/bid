@@ -141,11 +141,13 @@
 
 ## 已知问题
 
-### 1. 服务器端 remote-deploy.sh 健康检查逻辑旧版
+### 1. remote-deploy.sh systemd 兼容性（已在本次修复）
+
 - **现象**：部署脚本输出"Service not stable: ActiveState=unknown, SubState=unknown"，但实际服务正常运行
-- **根因**：服务器上的 `/opt/xiyu-bid/incoming/remote-deploy.sh` 为旧版，PR !1536 的修复（P1）在源码中但服务器端脚本未更新
-- **影响**：低 — 脚本误报但不影响实际部署结果，手动验证即可
-- **后续行动**：下次部署时验证修复后的脚本是否已同步到服务器执行路径
+- **根因**：服务器 systemd 版本为 219（CentOS 7），不支持 `systemctl show --value` 参数（systemd 230+ 才引入）。PR !1536 新增的 systemd 状态检查使用了 `--value`，导致命令失败 fallback 到 `unknown`
+- **修复**：改用 `systemctl show -p ActiveState <service> | cut -d= -f2` 提取值，兼容 systemd 219+
+- **验证**：服务器端直接测试 `ActiveState=active`, `SubState=running` ✅
+- **服务器脚本同步**：已更新全部 3 个位置的 remote-deploy.sh（`/opt/xiyu-bid/incoming/`、`/opt/xiyu-bid/builds/source-cc8c08d2/scripts/release/`、`/opt/xiyu-bid/releases/incoming/`）
 
 ## 部署确认清单
 
@@ -156,7 +158,7 @@
 | Flyway 预检 3 步 | ✅ |
 | 本地打包 | ✅ |
 | 产物校验 | ✅ |
-| 上传 + 部署 | ✅（脚本误报，手动验证通过） |
+| 上传 + 部署 | ✅（systemd 兼容性已修复，服务器脚本已同步） |
 | 后端健康检查 | ✅ 9/9 组件 UP |
 | Smoke 测试 | ✅ 7 项全绿 |
 | 前端一致性 | ✅ |
