@@ -240,7 +240,8 @@ class PlatformAccountServiceTest {
         ownAccount.setStatus(AccountStatus.IN_USE);
         PlatformAccount otherAccount = accountWithId(2L);
         otherAccount.setContactPerson(99L);
-        when(repository.findAll()).thenReturn(List.of(ownAccount, otherAccount));
+        when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(ownAccount, otherAccount));
 
         List<?> result = service.getAccountsForViewer(BID_TEAM_USER);
 
@@ -259,7 +260,8 @@ class PlatformAccountServiceTest {
         PlatformAccount account = accountWithId(1L);
         account.setContactPerson(99L);
         account.setStatus(AccountStatus.AVAILABLE);
-        when(repository.findAll()).thenReturn(List.of(account));
+        when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(account));
 
         List<?> result = service.getAccountsForViewer(BID_TEAM_USER);
 
@@ -606,6 +608,31 @@ class PlatformAccountServiceTest {
                 .thenReturn(List.of(accountWithId(1L)));
         List<PlatformAccountDTO> result = service.findOverdueAccounts();
         assertThat(result).hasSize(1);
+    }
+
+    // ── CO-447: 列表按 createdAt 倒序 ──
+
+    @Test
+    @DisplayName("CO-447: getAccountsForViewer 按 createdAt 倒序返回")
+    void getAccountsForViewer_shouldSortByCreatedAtDesc() {
+        LocalDateTime t1 = LocalDateTime.of(2026, 1, 1, 10, 0);
+        LocalDateTime t2 = LocalDateTime.of(2026, 6, 1, 10, 0);
+        LocalDateTime t3 = LocalDateTime.of(2026, 7, 1, 10, 0);
+        PlatformAccount a1 = accountWithId(1L); a1.setCreatedAt(t1);
+        PlatformAccount a2 = accountWithId(2L); a2.setCreatedAt(t2);
+        PlatformAccount a3 = accountWithId(3L); a3.setCreatedAt(t3);
+        // mock findAll(Sort) 返回倒序（最新在前）
+        when(repository.findAll(org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.DESC, "createdAt")))
+                .thenReturn(List.of(a3, a2, a1));
+
+        List<?> result = service.getAccountsForViewer(ADMIN_USER);
+
+        assertThat(result).hasSize(3);
+        PlatformAccountDTO first = (PlatformAccountDTO) result.get(0);
+        assertThat(first.getId()).isEqualTo(3L); // 最新创建的排第一
+        PlatformAccountDTO last = (PlatformAccountDTO) result.get(2);
+        assertThat(last.getId()).isEqualTo(1L);  // 最早创建的排最后
     }
 
     // ── helpers ──
