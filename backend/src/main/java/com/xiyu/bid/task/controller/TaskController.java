@@ -196,6 +196,11 @@ public class TaskController {
     }
 
     @GetMapping("/overdue")
+    // TODO: [P3 Migration][specs/024-preauthorize-unification] 需业务确认是否为 admin 专属视图：
+    //   - 若是 admin 全局视图 → 转为类级 isAuthenticated() + Service 层按 admin 角色返回全量、
+    //     其他角色返回空（与 getUpcomingTasks 同源，Service 已有 visibleTasks 数据范围过滤）
+    //   - 若应放行所有已认证用户 → 直接 isAuthenticated()（Service 的 visibleTasks 已限制数据范围）
+    //   当前保留 hasRole('ADMIN') 以避免在业务语义未确认前擅自放宽（§17 避免推测式修复）。
     @PreAuthorize("hasRole('ADMIN')")
     @Auditable(action = "READ", entityType = "Task", description = "获取已过期任务")
     public ResponseEntity<ApiResponse<List<TaskDTO>>> getOverdueTasks() {
