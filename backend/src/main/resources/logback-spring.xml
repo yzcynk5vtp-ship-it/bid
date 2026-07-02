@@ -25,7 +25,7 @@
         <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
     </springProfile>
 
-    <!-- ==================== 生产/预发布：结构化 JSON ==================== -->
+    <!-- ==================== 生产/预发布：结构化 JSON + Sentry ==================== -->
     <springProfile name="prod | staging">
         <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
@@ -52,9 +52,16 @@
             </encoder>
         </appender>
 
+        <!-- Sentry: 所有 ERROR 日志自动上报（含 MDC 上下文：traceId/userId/roleCode） -->
+        <!-- 无 DSN 时 SentryAppender 自动 no-op，不影响业务 -->
+        <appender name="SENTRY" class="io.sentry.logback.SentryAppender">
+            <minimumLevel>ERROR</minimumLevel>
+        </appender>
+
         <root level="WARN">
             <appender-ref ref="JSON"/>
             <appender-ref ref="JSON-FILE"/>
+            <appender-ref ref="SENTRY"/>
         </root>
         <logger name="com.xiyu" level="INFO"/>
     </springProfile>

@@ -49,11 +49,8 @@ const IGNORED_ERRORS = [
 export function initSentry(app) {
   const dsn = import.meta.env.VITE_SENTRY_DSN
 
-  // 无 DSN 时 Sentry 自动禁用（开发环境可能不配置）
-  if (!dsn || dsn.trim() === '') {
-    console.info('[Sentry] DSN not configured, Sentry disabled')
-    return
-  }
+  // 无 DSN 时跳过初始化（开发环境可能不配置）
+  if (!dsn || dsn.trim() === '') return
 
   const environment = import.meta.env.VITE_SENTRY_ENVIRONMENT || 'dev'
   const tracesSampleRate = parseFloat(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE || '0.1')
